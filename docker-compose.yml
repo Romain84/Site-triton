@@ -1,0 +1,72 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: triton-postgres
+    restart: always
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+        - NEXT_PUBLIC_URL
+        - NEXT_PUBLIC_BASE_URL
+        - NEXT_PUBLIC_SITE_URL
+        - NEXT_PUBLIC_APP_URL
+    container_name: triton-web
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    volumes:
+      - /var/lib/triton_uploads:/app/public/uploads
+    environment:
+      - DATABASE_URL=postgresql://postgres:TritonNewSite84@db:5432/postgres
+      - SESSION_SECRET
+      - BLOB_READ_WRITE_TOKEN
+      - STRIPE_SECRET_KEY
+      - STRIPE_WEBHOOK_SECRET
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+      - NEXT_PUBLIC_URL
+      - NEXT_PUBLIC_BASE_URL
+      - NEXT_PUBLIC_SITE_URL
+      - NEXT_PUBLIC_APP_URL
+      - MISTRAL_API_KEY
+    command: >
+      sh -c "
+        echo 'Attente du démarrage de la base de données...' &&
+        npx prisma db push &&
+        echo 'Base de données synchronisée et migrée avec succès !' &&
+        echo 'Démarrage du serveur Next.js...' &&
+        npm run start
+      "
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: triton-ngrok
+    restart: always
+    environment:
+      - NGROK_AUTHTOKEN
+    command: http web:3000 --url=tactile-thorn-guzzler.ngrok-free.dev
+    depends_on:
+      - web
+
+volumes:
+  pgdata:
+

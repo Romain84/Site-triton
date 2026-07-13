@@ -1,0 +1,788 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Coach {
+  id                     String                @id @default(cuid())
+  prenom                 String
+  nom                    String?
+  email                  String?               @unique
+  password               String?
+  telephone              String?
+  photo                  String?
+  bio                    String?
+  specialites            String?
+  siret                  String?
+  adresse                String?
+  actif                  Boolean               @default(true)
+  lastLogin              DateTime?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  plannings              CoachPlanning[]
+  evenements             EvenementCalendrier[]
+  evenementsTournants    EvenementTournant[]
+  factures               FactureCoach[]
+  lignesRemplacement     LigneFactureCoach[]   @relation("LignesRemplacementCoach")
+  remplacementsEffectues Remplacement[]        @relation("CoachRemplacant")
+  remplacementsRecus     Remplacement[]        @relation("CoachRemplace")
+
+  @@map("coaches")
+}
+
+model Remplacement {
+  id                String   @id @default(cuid())
+  coachRemplaceId   String
+  coachRemplacantId String
+  date              DateTime
+  heureDebut        String
+  heureFin          String
+  planningId        String?
+  motif             String?
+  description       String?
+  actif             Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  coachRemplacant   Coach    @relation("CoachRemplacant", fields: [coachRemplacantId], references: [id])
+  coachRemplace     Coach    @relation("CoachRemplace", fields: [coachRemplaceId], references: [id])
+
+  @@index([coachRemplaceId])
+  @@index([coachRemplacantId])
+  @@index([date])
+  @@map("remplacements")
+}
+
+model Planning {
+  id          String          @id @default(cuid())
+  jourSemaine String
+  heureDebut  String
+  heureFin    String
+  groupeId    String?
+  lieu        String?
+  couleur     String?
+  actif       Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  coachs      CoachPlanning[]
+  groupe      Groupe?         @relation(fields: [groupeId], references: [id])
+
+  @@index([groupeId])
+  @@map("plannings")
+}
+
+model CoachPlanning {
+  id         String   @id @default(cuid())
+  coachId    String
+  planningId String
+  createdAt  DateTime @default(now())
+  coach      Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  planning   Planning @relation(fields: [planningId], references: [id], onDelete: Cascade)
+
+  @@unique([coachId, planningId])
+  @@index([coachId])
+  @@index([planningId])
+  @@map("coach_planning")
+}
+
+model EvenementCalendrier {
+  id           String    @id @default(cuid())
+  title        String
+  date         DateTime
+  dateFin      DateTime?
+  heureDebut   String?
+  heureFin     String?
+  description  String?
+  lieu         String?
+  type         String?
+  groupeId     String?
+  coachId      String?
+  couleur      String?
+  pdfReglement String?
+  actif        Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  coach        Coach?    @relation(fields: [coachId], references: [id])
+  groupe       Groupe?   @relation(fields: [groupeId], references: [id])
+
+  @@index([date])
+  @@index([groupeId])
+  @@map("evenements_calendrier")
+}
+
+model Actualite {
+  id        String   @id @default(cuid())
+  titre     String
+  slug      String   @unique
+  contenu   String
+  excerpt   String?
+  image     String?
+  auteur    String?
+  publie    Boolean  @default(false)
+  datePubli DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([datePubli])
+  @@map("actualites")
+}
+
+model Evenement {
+  id        String   @id @default(cuid())
+  titre     String
+  slug      String   @unique
+  contenu   String
+  excerpt   String?
+  image     String?
+  dateEvent DateTime
+  lieu      String?
+  publie    Boolean  @default(false)
+  datePubli DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([dateEvent])
+  @@map("evenements")
+}
+
+model Groupe {
+  id                     String                 @id @default(cuid())
+  nom                    String                 @unique
+  description            String?
+  total                  Int
+  inscrits               Int                    @default(0)
+  inscrits1Cours         Int                    @default(0)
+  ageMin                 Int?
+  ageMax                 Int?
+  niveau                 String?
+  tarif                  Float?
+  tarif1Cours            Float?
+  libelleOption1         String?
+  libelleOption2         String?
+  caution                Float?
+  prixLicence            Float?
+  actif                  Boolean                @default(true)
+  ordre                  Int                    @default(0)
+  dateDebut              DateTime?
+  dateFin                DateTime?
+  tempsFacture           Int?
+  isCompetition          Boolean                @default(false)
+  nbCompetitions         Int?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  enfantsBureau          Int                    @default(0)
+  membresBureau          Int                    @default(0)
+  evenementsCalendrier   EvenementCalendrier[]
+  evenementsTournants    EvenementTournant[]
+  evenementsTournantsMulti EvenementTournant[] @relation("EvenementTournantGroupes")
+  inscriptions           Inscription[]
+  plannings              Planning[]
+  seancesExceptionnelles SeanceExceptionnelle[]
+
+  @@map("groupes")
+}
+
+model Inscription {
+  id                String    @id @default(cuid())
+  prenomNageur      String
+  nomNageur         String
+  dateNaissance     DateTime
+  sexe              String?
+  niveau            String?
+  prenomParent      String
+  nomParent         String
+  email             String
+  telephone         String
+  adresse           String?
+  codePostal        String?
+  ville             String?
+  certificatMedical Boolean   @default(false)
+  allergies         String?
+  commentaires      String?
+  groupeId          String
+  statut            String    @default("en_attente")
+  montant           Float?
+  paye              Boolean   @default(false)
+  modePaiement      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  factures          Facture[]
+  groupe            Groupe    @relation(fields: [groupeId], references: [id])
+
+  @@index([email])
+  @@index([statut])
+  @@map("inscriptions")
+}
+
+model Facture {
+  id            String      @id @default(cuid())
+  numero        String      @unique
+  inscriptionId String
+  montant       Float
+  dateEmission  DateTime    @default(now())
+  datePaiement  DateTime?
+  statut        String      @default("en_attente")
+  pdfPath       String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  inscription   Inscription @relation(fields: [inscriptionId], references: [id])
+
+  @@index([numero])
+  @@map("factures")
+}
+
+model SeanceExceptionnelle {
+  id              String              @id @default(cuid())
+  titre           String
+  description     String?
+  groupeId        String?
+  dateSeance      DateTime
+  heureDebut      String
+  heureFin        String
+  placesTotal     Int
+  placesRestantes Int
+  prix            Float
+  actif           Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  reservations    ReservationSeance[]
+  groupe          Groupe?             @relation(fields: [groupeId], references: [id])
+
+  @@index([dateSeance])
+  @@index([actif])
+  @@map("seances_exceptionnelles")
+}
+
+model ReservationSeance {
+  id              String               @id @default(cuid())
+  seanceId        String
+  prenom          String
+  nom             String
+  email           String
+  telephone       String
+  montant         Float
+  statutPaiement  String               @default("en_attente")
+  stripeSessionId String?
+  stripePaymentId String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  seance          SeanceExceptionnelle @relation(fields: [seanceId], references: [id])
+
+  @@index([email])
+  @@index([seanceId])
+  @@map("reservations_seances")
+}
+
+model GalerieAlbum {
+  id          String         @id @default(cuid())
+  nom         String
+  slug        String         @unique
+  description String?
+  categorie   String
+  couverture  String?
+  ordre       Int            @default(0)
+  actif       Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  medias      GalerieMedia[]
+
+  @@map("galerie_albums")
+}
+
+model GalerieMedia {
+  id          String       @id @default(cuid())
+  albumId     String
+  titre       String?
+  description String?
+  url         String
+  type        String
+  ordre       Int          @default(0)
+  actif       Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  album       GalerieAlbum @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  @@index([albumId])
+  @@map("galerie_medias")
+}
+
+model Settings {
+  id                           String   @id @default(cuid())
+  tauxHoraire                  Float    @default(35)
+  forfaitCompetition           Float    @default(150)
+  nbCompetitionsAnnee          Int      @default(20)
+  nbDemiJourneesParCompetition Int      @default(2)
+  forfaitRegionalActif         Boolean  @default(false)
+  montantForfaitRegional       Float    @default(50)
+  boutiqueOuverte              Boolean  @default(true)
+  emailClub                    String?
+  emailNotification            String?
+  logoUrl                      String?
+  smtpHost                     String?
+  smtpPort                     Int?
+  smtpUser                     String?
+  smtpPassword                 String?
+  inscriptionUrl               String?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+  reductionEnfantBureau        Float    @default(50)
+  nomClub String? @default("Triton Club Cavaillon")
+  soldeDepartSaison            Float    @default(0)
+  chatbotModel                 String   @default("mistral-small")
+  debutCoursNormal             String?  @default("Lundi 21 Septembre 2026")
+  debutCoursBnssa              String?  @default("Jeudi 1er Octobre 2026")
+  datesTests                   String[] @default(["Mercredi 16 Septembre 2026", "Vendredi 18 Septembre 2026"])
+  interSaisonActif             Boolean  @default(false)
+  texteFiligrane               String   @default("Saison 2025 - 2026")
+  statutsUrl                   String?  @default("https://www.tritoncavaillon.fr/wp-content/uploads/2017/07/20150616statut.pdf")
+  reglementPiscineUrl          String?
+  reglementClubUrl             String?
+  signaturePresidentUrl        String?
+  nomSignataireRecu            String?  @default("Le Président")
+  titreSignataireRecu          String?  @default("Président")
+  signatureTresoriereUrl       String?
+  nomTresoriereRecu            String?  @default("La Trésorière")
+  titreTresoriereRecu          String?  @default("Trésorière")
+  ovhApplicationKey            String?
+  ovhApplicationSecret         String?
+  ovhConsumerKey               String?
+  ovhServiceName               String?  @default("vps-248c64f5.vps.ovh.net")
+
+  @@map("settings")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  nom       String?
+  prenom    String?
+  role      String    @default("admin")
+  actif     Boolean   @default(true)
+  lastLogin DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  dons      Don[]
+
+  @@map("users")
+}
+
+model Don {
+  id                String    @id @default(cuid())
+  numeroRecu        String    @unique // Format: TCC-AAAA-00001
+  typeDonateur      String    // "particulier" | "entreprise"
+  nomDonateur       String    // Nom/Prénom ou Raison sociale
+  emailDonateur     String?   // Email du donateur pour envoi auto
+  adresseDonateur   String    // Adresse postale complète
+  siren             String?   // SIREN de l'entreprise (requis si entreprise)
+  montant           Float     // Montant du don en euros
+  montantLettres    String    // Montant écrit en toutes lettres
+  dateDon           DateTime  // Date de versement
+  natureDon         String    // "numeraire" | "cheque" | "virement" | "nature" | "abandon_frais"
+  descriptionNature String?   // Description pour don en nature ou abandon de frais
+  modePaiement      String?   // Complément de mode (ex: banque, carte)
+  statut            String    @default("brouillon") // "brouillon" | "emis" | "annule"
+  pdfUrl            String?   // URL d'accès au PDF (Vercel Blob ou local)
+  dateEmission      DateTime? // Date réelle d'émission
+  creeParId         String?
+  creePar           User?     @relation(fields: [creeParId], references: [id])
+  commentaire       String?   // Note ou commentaire interne
+  signataire        String    @default("president") // "president" ou "tresoriere"
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("dons")
+}
+
+model EvenementTournant {
+  id          String   @id @default(cuid())
+  titre       String
+  date        DateTime
+  heureDebut  String
+  heureFin    String
+  description String?
+  lieu        String?
+  groupeId    String?
+  coachId     String?
+  actif       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  coach       Coach?   @relation(fields: [coachId], references: [id])
+  groupe      Groupe?  @relation(fields: [groupeId], references: [id])
+  groupes     Groupe[] @relation("EvenementTournantGroupes")
+
+  @@index([date])
+  @@index([coachId])
+  @@index([groupeId])
+  @@map("evenements_tournants")
+}
+
+model FactureCoach {
+  id             String              @id @default(cuid())
+  numero         String              @unique
+  coachId        String
+  mois           Int
+  annee          Int
+  montantTotal   Float
+  tauxHoraire    Float
+  statut         String              @default("brouillon")
+  pdfPath        String?
+  dateGeneration DateTime?
+  dateEnvoi      DateTime?
+  datePaiement   DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  coach          Coach               @relation(fields: [coachId], references: [id])
+  lignes         LigneFactureCoach[]
+
+  @@unique([coachId, mois, annee])
+  @@index([numero])
+  @@index([coachId])
+  @@index([annee, mois])
+  @@map("factures_coach")
+}
+
+model LigneFactureCoach {
+  id              String       @id @default(cuid())
+  factureId       String
+  type            String
+  date            DateTime
+  description     String
+  heures          Float?
+  demiJournees    Int?
+  montantFixe     Float?
+  lieu            String?
+  groupe          String?
+  coachRemplaceId String?
+  remplacementId  String?
+  montant         Float
+  ordre           Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  coachRemplace   Coach?       @relation("LignesRemplacementCoach", fields: [coachRemplaceId], references: [id])
+  facture         FactureCoach @relation(fields: [factureId], references: [id], onDelete: Cascade)
+
+  @@index([factureId])
+  @@map("lignes_facture_coach")
+}
+
+model PeriodeVacances {
+  id                 String   @id @default(cuid())
+  nom                String
+  description        String?
+  dateDebut          DateTime
+  dateFin            DateTime
+  type               String   @default("vacances")
+  impacteFacturation Boolean  @default(true)
+  actif              Boolean  @default(true)
+  couleur            String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([dateDebut])
+  @@index([dateFin])
+  @@map("periodes_vacances")
+}
+
+model CategorieProduit {
+  id          String    @id @default(cuid())
+  nom         String    @unique
+  slug        String    @unique
+  description String?
+  image       String?
+  ordre       Int       @default(0)
+  actif       Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  produits    Produit[]
+
+  @@map("categories_produits")
+}
+
+model Fournisseur {
+  id        String    @id @default(cuid())
+  nom       String    @unique
+  contact   String?
+  telephone String?
+  email     String?
+  actif     Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  produits  Produit[]
+
+  @@map("fournisseurs")
+}
+
+model Produit {
+  id                String            @id @default(cuid())
+  nom               String
+  slug              String            @unique
+  description       String?
+  descriptionCourte String?
+  prix              Float
+  prixAchat         Float             @default(0)
+  tauxTVA           Float             @default(20)
+  prixPromo         Float?
+  enPromo           Boolean           @default(false)
+  stock             Int               @default(0)
+  gererStock        Boolean           @default(true)
+  stockIllimite     Boolean           @default(false)
+  image             String?
+  images            String?
+  categorieId       String?
+  fournisseurId     String?
+  tailles           String?
+  couleurs          String?
+  poids             Int?
+  metaTitle         String?
+  metaDescription   String?
+  actif             Boolean           @default(true)
+  enVedette         Boolean           @default(false)
+  personnalisable   Boolean           @default(false)
+  prixFlocage       Float             @default(0)
+  ordre             Int               @default(0)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  lignesCommande    LigneCommande[]
+  categorie         CategorieProduit? @relation(fields: [categorieId], references: [id])
+  fournisseur       Fournisseur?      @relation(fields: [fournisseurId], references: [id])
+  variantes         VarianteProduit[]
+
+  @@index([slug])
+  @@index([categorieId])
+  @@index([fournisseurId])
+  @@index([actif])
+  @@map("produits")
+}
+
+model VarianteProduit {
+  id             String          @id @default(cuid())
+  produitId      String
+  taille         String?
+  couleur        String?
+  sku            String?         @unique
+  prix           Float?
+  prixCoutantHT  Float?          @default(0)
+  prixFlocageHT  Float?          @default(0)
+  tauxTVA        Float           @default(20)
+  stock          Int             @default(0)
+  image          String?
+  actif          Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  lignesCommande LigneCommande[]
+  produit        Produit         @relation(fields: [produitId], references: [id], onDelete: Cascade)
+
+  @@index([produitId])
+  @@index([sku])
+  @@map("variantes_produits")
+}
+
+model Commande {
+  id               String          @id @default(cuid())
+  numeroCommande   String          @unique
+  email            String
+  prenom           String
+  nom              String
+  telephone        String?
+  prenomNageur     String
+  nomNageur        String
+  adresse          String?
+  adresseComp      String?
+  codePostal       String?
+  ville            String?
+  pays             String          @default("France")
+  sousTotal        Float
+  fraisLivraison   Float           @default(0)
+  reduction        Float           @default(0)
+  total            Float
+  modePaiement     String
+  stripePaymentId  String?
+  stripeSessionId  String?
+  statutPaiement   String          @default("en_attente")
+  statut           String          @default("nouvelle")
+  methodeLivraison String?
+  numeroSuivi      String?
+  dateExpedition   DateTime?
+  dateLivraison    DateTime?
+  noteClient       String?
+  noteInterne      String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  lignes           LigneCommande[]
+
+  @@index([numeroCommande])
+  @@index([email])
+  @@index([statut])
+  @@index([statutPaiement])
+  @@index([createdAt])
+  @@map("commandes")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  email     String
+  userType  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([token])
+  @@index([email])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model LigneCommande {
+  id           String           @id @default(cuid())
+  commandeId   String
+  produitId    String
+  varianteId   String?
+  nomProduit   String
+  taille       String?
+  couleur      String?
+  image        String?
+  prixUnitaire      Float
+  quantite          Int
+  total             Float
+  textePersonnalise String?
+  createdAt         DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  commande     Commande         @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+  produit      Produit          @relation(fields: [produitId], references: [id])
+  variante     VarianteProduit? @relation(fields: [varianteId], references: [id])
+
+  @@index([commandeId])
+  @@index([produitId])
+  @@map("lignes_commande")
+}
+
+model ChatbotKnowledge {
+  id        String   @id @default(cuid())
+  categorie String
+  question  String
+  reponse   String
+  motsCles  String?
+  priorite  Int      @default(0)
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categorie])
+  @@map("chatbot_knowledge")
+}
+
+
+model SeanceAnnulee {
+  id         String   @id @default(cuid())
+  date       DateTime
+  motif      String?
+  planningId String?  // Optionnel : lie à un créneau spécifique
+  groupeId   String?  // Optionnel : lie à un groupe
+  coachId    String?  // Optionnel : lie à un coach
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([date])
+  @@map("seances_annulees")
+}
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  actorId    String?
+  actorRole  String?
+  targetType String?
+  targetId   String?
+  details    String?  // Chaîne JSON pour stocker les variables d'action
+  timestamp  DateTime @default(now())
+
+  @@index([timestamp])
+  @@index([action])
+  @@map("admin_audit_logs")
+}
+
+model ChatbotSuggestion {
+  id        String   @id @default(cuid())
+  question  String
+  reponse   String?
+  source    String   @default("auto") // "auto" (détection) ou "vote" (pouce bas)
+  statut    String   @default("a_traiter") // "a_traiter", "integre", "ignore"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([statut])
+  @@map("chatbot_suggestions")
+}
+
+model EmailQueue {
+  id          String    @id @default(cuid())
+  to          String
+  subject     String
+  html        String
+  attachments String?   // JSON string representing attachments array
+  status      String    @default("pending") // "pending", "sent", "failed"
+  attempts    Int       @default(0)
+  lastError   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("email_queue")
+}
+
+model TransactionComptable {
+  id           String   @id @default(cuid())
+  type         String   // "recette" | "depense"
+  categorie    String   // "subvention", "cotisation", "don", "achat_materiel", "frais_fonctionnement", "autre"
+  libelle      String
+  montant      Float
+  date         DateTime @default(now())
+  justificatif String?  // Chemin relatif vers le fichier justificatif (/uploads/justificatifs/...)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([type])
+  @@index([date])
+  @@map("transactions_comptables")
+}
+
+model ChatbotTokenLog {
+  id               String   @id @default(cuid())
+  modelName        String
+  promptTokens     Int
+  completionTokens Int
+  totalTokens      Int
+  createdAt        DateTime @default(now())
+
+  @@map("chatbot_token_logs")
+}
+
+model CategorieComptable {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  nom       String
+  type      String   // "recette" | "depense" | "double"
+  systeme   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("categories_comptables")
+}
+
+model InscriptionBlock {
+  id        String   @id @default(cuid())
+  type      String
+  titre     String?
+  contenu   Json
+  ordre     Int
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("inscription_blocks")
+}

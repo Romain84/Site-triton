@@ -1,0 +1,352 @@
+import { NextRequest } from 'next/server';
+import fs from 'fs';
+import path from 'path';
+import { getAdminSession } from '@/lib/auth/session';
+import { isSameOriginRequest } from '@/lib/security/origin';
+import { apiError, apiSuccess } from '@/lib/api/response';
+import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { parseCalendarEventsFromText, parseCompetitionSheets } from '@/lib/calendar/import-parser';
+
+const importLogger = logger.withContext('ImportCalendrierAutomatique');
+
+// Known locations to split Title | Location | Categories
+const LOCATIONS = [
+  'Saint-Tropez', 'Pertuis', 'Gap', 'Avignon - Stuart Mill', 'Sorgues', 'Libourne',
+  'Nice', 'Bourg-en-Bresse', 'Saint Raphaël', 'Vedène', 'Châteauroux', 'Nîmes',
+  'Avignon', 'Châlon-sur-Saône', 'Orange', 'Toulon ?', 'Toulon', 'Carpentras', 'Venelles',
+  'Tarbes', 'Aix en Provence', 'Saint Etienne', 'Martigues', 'Cannet-en-Roussillon', 'Cavaillon ?', 'Cavaillon'
+];
+
+// Exact month mapping by event index (0 to 35) for 2026 season
+const INDEX_TO_MONTH: Record<number, number> = {
+  0: 1, 1: 1, 2: 1, // Janvier
+  3: 2, 4: 2, 5: 2, 6: 2, // Février
+  7: 3, 8: 3, 9: 3, 10: 3, // Mars
+  11: 4, 12: 4, 13: 4, 14: 4, // Avril
+  15: 5, 16: 5, 17: 5, 18: 5, 19: 5, 20: 5, 21: 5, 22: 5, 23: 5, // Mai
+  24: 6, 25: 6, 26: 6, 27: 6, 28: 6, 29: 6, 30: 6, // Juin
+  31: 7, 32: 7, // Juillet
+  33: 9, 34: 9, // Septembre
+  35: 10 // Octobre
+};
+
+// Maps categories to database groups
+function getGroupIdsForCategories(categories: string, dbGroups: any[]): string[] {
+  const matchedIds: string[] = [];
+  const cats = categories.toLowerCase().trim();
+  
+  if (!cats) return [];
+
+  // Helper filters to match Triton Cavaillon groups
+  const isAvenirs = (g: any) => g.nom.includes('Avenirs');
+  const isBenjamins = (g: any) => g.nom.includes('Benjamins');
+  const isJuniors = (g: any) => g.nom.includes('Juniors');
+  const isAdultes = (g: any) => g.nom.includes('Adultes');
+
+  // Handle composite categories ("et +")
+  if (cats.includes('u12 et +') || cats.includes('u12 et plus')) {
+    // "u12 et +" covers Benjamins, Juniors, and Adultes (Seniors/Maitres)
+    const gIds = dbGroups.filter(g => isBenjamins(g) || isJuniors(g) || isAdultes(g)).map(g => g.id);
+    matchedIds.push(...gIds);
+  } else if (cats.includes('u14 et +') || cats.includes('u14 et plus')) {
+    // "u14 et +" covers Juniors and Adultes (Seniors/Maitres)
+    const gIds = dbGroups.filter(g => isJuniors(g) || isAdultes(g)).map(g => g.id);
+    matchedIds.push(...gIds);
+  } else if (cats.includes('u18 et +') || cats.includes('u18 et plus')) {
+    // "u18 et +" covers Adultes (Seniors/Maitres)
+    const gIds = dbGroups.filter(g => isAdultes(g)).map(g => g.id);
+    matchedIds.push(...gIds);
+  } else {
+    // Precise individual age categories
+    // 1. U11 et moins = Avenirs
+    if (cats.includes('u11') || cats.includes('avenirs')) {
+      const gIds = dbGroups.filter(isAvenirs).map(g => g.id);
+      matchedIds.push(...gIds);
+    }
+    // 2. U12 et U13 = Benjamins
+    if (cats.includes('u12') || cats.includes('u13') || cats.includes('benjamins')) {
+      const gIds = dbGroups.filter(isBenjamins).map(g => g.id);
+      matchedIds.push(...gIds);
+    }
+    // 3. U14 jusqu'à U18 = Juniors (Compétition & Loisirs)
+    if (
+      cats.includes('u14') || cats.includes('u15') || cats.includes('u16') ||
+      cats.includes('u17') || cats.includes('u18') || cats.includes('juniors')
+    ) {
+      const gIds = dbGroups.filter(isJuniors).map(g => g.id);
+      matchedIds.push(...gIds);
+    }
+    // 4. U18 jusqu'à U25 = Seniors & au delà de 25ans = Maîtres (both map to Adultes in Cavaillon)
+    if (
+      cats.includes('u20') || cats.includes('u25') || cats.includes('seniors') ||
+      cats.includes('elites') || cats.includes('maîtres') || cats.includes('maitres') ||
+      cats.includes('adultes')
+    ) {
+      const gIds = dbGroups.filter(isAdultes).map(g => g.id);
+      matchedIds.push(...gIds);
+    }
+  }
+  
+  return Array.from(new Set(matchedIds));
+}
+
+function makeReglementPagerender() {
+  let currentPage = 0;
+  return async function pagerender(pageData: any): Promise<string> {
+    currentPage++;
+    const content = await pageData.getTextContent();
+    let text = "";
+    let lastY: number | undefined;
+    for (const item of content.items as any[]) {
+      if (lastY === item.transform[5] || !lastY) {
+        text += item.str;
+      } else {
+        text += '\n' + item.str;
+      }
+      lastY = item.transform[5];
+    }
+    return `${text}\n__PAGE_NUMBER__:${currentPage}\n`;
+  };
+}
+
+function makePagerender() {
+  let currentPage = 0;
+
+  return async function pagerender(pageData: any): Promise<string> {
+    currentPage++;
+    const content = await pageData.getTextContent();
+
+    // Détecter si cette page contient le titre unique du calendrier
+    const isCalendarPage = content.items.some((item: any) =>
+      (item.str ?? '').includes('CALENDRIER COMPÉTITIONS')
+    );
+
+    if (isCalendarPage) {
+      importLogger.info(`Page calendrier détectée dynamiquement à la page ${currentPage}`);
+    }
+
+    const buckets = new Map<number, Array<{ x: number; text: string }>>();
+    for (const item of content.items as any[]) {
+      const str: string = item.str ?? '';
+      if (!str.trim()) continue;
+      const y = item.transform[5] as number;
+      const x = item.transform[4] as number;
+      let key = y;
+      for (const k of buckets.keys()) {
+        if (Math.abs(k - y) <= 3) { key = k; break; }
+      }
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key)!.push({ x, text: str });
+    }
+
+    const pageText = [...buckets.entries()]
+      .sort(([a], [b]) => b - a) // haut → bas
+      .map(([, items]) => {
+        // Page calendrier : trier gauche → droite pour reconstruire les colonnes
+        // Autres pages : ordre naturel du PDF (déjà correct)
+        if (isCalendarPage) items.sort((a, b) => a.x - b.x);
+        return items.map(i => i.text).join(' ');
+      })
+      .join('\n');
+
+    return `${pageText}\n__PAGE_NUMBER__:${currentPage}\n`;
+  };
+}
+
+async function parsePdfText(buffer: Buffer, options?: Record<string, unknown>): Promise<string> {
+  const pdfparseModule = require('pdf-parse');
+  const uint8Array = new Uint8Array(buffer);
+
+  const finalOptions = {
+    pageJoiner: '__PAGE_NUMBER__:page_number',
+    ...options
+  };
+
+  if (typeof pdfparseModule === 'function') {
+    const data = await pdfparseModule(uint8Array, finalOptions);
+    return data.text;
+  } else if (pdfparseModule && typeof pdfparseModule.PDFParse === 'function') {
+    const parser = new pdfparseModule.PDFParse(uint8Array, finalOptions);
+    const data = await parser.getText(finalOptions);
+    return data.text;
+  } else {
+    throw new Error("Impossible de trouver la fonction de parsing dans le module 'pdf-parse'");
+  }
+}
+
+export async function POST(request: NextRequest) {
+  if (!isSameOriginRequest(request)) {
+    return apiError('Origine non autorisée', 403, undefined, 'FORBIDDEN_ORIGIN');
+  }
+
+  const session = await getAdminSession();
+  if (!session) {
+    return apiError('Non authentifié', 401, undefined, 'UNAUTHENTICATED');
+  }
+
+  try {
+    const formData = await request.formData();
+    const calendarFile = formData.get('calendar');
+    const reglementFile = formData.get('reglement');
+    const regionalFile = formData.get('regional');
+
+    if (!(calendarFile instanceof File)) {
+      return apiError('Fichier PDF du calendrier manquant', 400, undefined, 'MISSING_CALENDAR');
+    }
+    if (!(reglementFile instanceof File)) {
+      return apiError('Fichier PDF du règlement départemental manquant', 400, undefined, 'MISSING_REGLEMENT_DEP');
+    }
+    if (!(regionalFile instanceof File)) {
+      return apiError('Fichier PDF du règlement régional manquant', 400, undefined, 'MISSING_REGLEMENT_REG');
+    }
+
+    const calendarBuffer = Buffer.from(await calendarFile.arrayBuffer());
+    const reglementBuffer = Buffer.from(await reglementFile.arrayBuffer());
+    const regionalBuffer = Buffer.from(await regionalFile.arrayBuffer());
+
+    // 1. Sauvegarder les fichiers avec un nom unique pour éviter les conflits et le cache navigateur
+    const timestamp = Date.now();
+    const cleanCalName = calendarFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const uniqueCalName = `${timestamp}-${cleanCalName}`;
+
+    const cleanRegName = reglementFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const uniqueRegName = `${timestamp}-${cleanRegName}`;
+
+    const cleanRegionalName = regionalFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const uniqueRegionalName = `${timestamp}-${cleanRegionalName}`;
+
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'reglements');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    fs.writeFileSync(path.join(uploadDir, uniqueCalName), calendarBuffer);
+    fs.writeFileSync(path.join(uploadDir, uniqueRegName), reglementBuffer);
+    fs.writeFileSync(path.join(uploadDir, uniqueRegionalName), regionalBuffer);
+
+    const pdfReglementPath = `/uploads/reglements/${uniqueRegName}`;
+    const regionalPdfPath = `/uploads/reglements/${uniqueRegionalName}`;
+
+    // 2. Extraire les fiches de compétition depuis le règlement départemental
+    const regText = await parsePdfText(reglementBuffer, { pagerender: makeReglementPagerender() });
+    const sheets = parseCompetitionSheets(regText);
+    sheets.forEach(s => (s as any).pdfPath = pdfReglementPath);
+    importLogger.info(`${sheets.length} fiches de compétition extraites du règlement départemental.`);
+
+    // Extraire les fiches de compétition depuis le règlement régional
+    const regionalText = await parsePdfText(regionalBuffer, { pagerender: makeReglementPagerender() });
+    const regionalSheets = parseCompetitionSheets(regionalText);
+    regionalSheets.forEach(s => (s as any).pdfPath = regionalPdfPath);
+    importLogger.info(`${regionalSheets.length} fiches de compétition extraites du règlement régional PACA.`);
+
+    const allSheets = [...sheets, ...regionalSheets];
+
+    // 3. Extraire le texte du PDF calendrier et parser les événements de manière robuste
+    const calendarText = await parsePdfText(calendarBuffer, { pagerender: makePagerender() });
+    const events = parseCalendarEventsFromText(calendarText, allSheets);
+    importLogger.info(`Parsed ${events.length} events from calendar PDF using robust regex parser.`);
+
+    // 4. Charger les groupes pour la distribution
+    const dbGroups = await prisma.groupe.findMany({
+      select: { id: true, nom: true, niveau: true }
+    });
+
+    // 5. Nettoyer les anciennes compétitions 2026
+    const deleteResult = await prisma.evenementCalendrier.deleteMany({
+      where: {
+        date: {
+          gte: new Date(2026, 0, 1),
+          lte: new Date(2026, 11, 31)
+        },
+        type: 'competition'
+      }
+    });
+    importLogger.info(`Deleted ${deleteResult.count} old 2026 competitions.`);
+
+    // 6. Insérer les nouveaux événements distribués par groupes
+    let totalInsertions = 0;
+
+    for (const event of events) {
+      const categoriesStr = event.categories || '';
+      const matchingGroupIds = getGroupIdsForCategories(categoriesStr, dbGroups);
+      
+      const baseDescription = event.description || `Compétition CD84 - Catégories : ${categoriesStr || 'Toutes'}`;
+
+      let eventPdfReglement = pdfReglementPath;
+      if (event.sheet && (event.sheet as any).pdfPath) {
+        eventPdfReglement = (event.sheet as any).pdfPath;
+      }
+
+      const dataPayload = {
+        title: event.title,
+        date: new Date(event.date),
+        dateFin: event.dateFin ? new Date(event.dateFin) : null,
+        heureDebut: event.heureDebut || '08:00',
+        heureFin: event.heureFin || '18:00',
+        lieu: event.lieu || null,
+        type: 'competition' as const,
+        pdfReglement: eventPdfReglement,
+        actif: true
+      };
+
+      if (matchingGroupIds.length === 0) {
+        await prisma.evenementCalendrier.create({
+          data: {
+            ...dataPayload,
+            description: baseDescription,
+            couleur: '#15803d',
+          }
+        });
+        totalInsertions++;
+      } else if (matchingGroupIds.length === 1) {
+        const gId = matchingGroupIds[0];
+        const group = dbGroups.find(g => g.id === gId);
+        await prisma.evenementCalendrier.create({
+          data: {
+            ...dataPayload,
+            description: event.description ? baseDescription : `${baseDescription} (${group?.nom})`,
+            groupeId: gId,
+            couleur: group?.niveau === 'competition' ? '#1d4ed8' : '#15803d',
+          }
+        });
+        totalInsertions++;
+      } else {
+        const groupNames = matchingGroupIds
+          .map(gId => dbGroups.find(g => g.id === gId)?.nom)
+          .filter(Boolean)
+          .join(', ');
+
+        const hasCompetitionGroup = dbGroups
+          .filter(g => matchingGroupIds.includes(g.id))
+          .some(g => g.niveau === 'competition');
+
+        await prisma.evenementCalendrier.create({
+          data: {
+            ...dataPayload,
+            description: `${baseDescription}\n__TARGET_GROUPS__:${JSON.stringify(matchingGroupIds)}`,
+            groupeId: null,
+            couleur: hasCompetitionGroup ? '#1d4ed8' : '#15803d',
+          }
+        });
+        totalInsertions++;
+      }
+    }
+
+    return apiSuccess({
+      message: 'Importation réussie',
+      eventsCount: events.length,
+      insertionsCount: totalInsertions,
+      deletedCount: deleteResult.count
+    });
+
+  } catch (err) {
+    importLogger.error('[IMPORT_ERROR]', err);
+    return apiError(
+      `Erreur lors de l'importation : ${err instanceof Error ? err.message : String(err)}`,
+      500,
+      undefined,
+      'IMPORT_ERROR'
+    );
+  }
+}
