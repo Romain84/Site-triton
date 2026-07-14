@@ -543,6 +543,51 @@ export default function ParametresManager() {
     }
   }
 
+  const handleDeclencheDebutSaison = async () => {
+    if (!window.confirm("Êtes-vous sûr de vouloir déclarer le début de la nouvelle saison ?\n\nCela va :\n1. Désactiver le mode inter-saison\n2. Incrémenter automatiquement d'un an toutes vos dates configurées (rentrée, tests)\n3. Faire avancer l'année de la saison (filigrane)")) {
+      return
+    }
+
+    setSaving(true)
+    setError('')
+    setSuccess('')
+    try {
+      const response = await fetch('/api/admin/parametres/debut-saison', {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+      if (response.ok) {
+        setSuccess("Début de saison déclaré avec succès !")
+        // Mettre à jour l'état local pour refléter les changements
+        const s = data.settings
+        setInterSaisonActif(s.interSaisonActif)
+        setTexteFiligrane(s.texteFiligrane)
+        setDebutCoursNormal(s.debutCoursNormal)
+        setDebutCoursBnssa(s.debutCoursBnssa)
+        setDatesTests(s.datesTests || [])
+        
+        // Mettre à jour l'objet settings pour éviter que autoSaveSettings ne détecte un changement
+        if (settings) {
+          setSettings({
+            ...settings,
+            interSaisonActif: s.interSaisonActif,
+            texteFiligrane: s.texteFiligrane,
+            debutCoursNormal: s.debutCoursNormal,
+            debutCoursBnssa: s.debutCoursBnssa,
+            datesTests: s.datesTests
+          })
+        }
+      } else {
+        setError(data.error || 'Erreur lors de la déclaration du début de saison')
+      }
+    } catch {
+      setError('Erreur réseau lors de la déclaration du début de saison')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   useEffect(() => {
     if (!isInitialized || !isChanged()) return
 
@@ -1151,6 +1196,27 @@ export default function ParametresManager() {
                 </p>
               </div>
             )}
+
+            <hr className="border-slate-100 my-4" />
+
+            <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex-1">
+                <h4 className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
+                  🚀 Transition vers la Nouvelle Saison
+                </h4>
+                <p className="text-xs text-amber-800 mt-1">
+                  Cette action désactive le mode inter-saison et incrémente automatiquement d&apos;un an toutes les dates configurées dans vos paramètres (dates de début des cours, tests de rentrée et année de filigrane).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDeclencheDebutSaison}
+                disabled={saving}
+                className="whitespace-nowrap px-4 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                Déclarer le début de saison
+              </button>
+            </div>
           </div>
         </div>
 

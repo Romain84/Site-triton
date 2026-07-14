@@ -209,3 +209,54 @@ export async function PATCH(
     )
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: Params
+) {
+  try {
+    const session = await getAdminSession()
+
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Non authentifié' },
+        { status: 401 }
+      )
+    }
+
+    const { id } = await params
+
+    const factureExistante = await prisma.factureCoach.findUnique({
+      where: { id },
+    })
+
+    if (!factureExistante) {
+      return NextResponse.json(
+        { error: 'Facture introuvable' },
+        { status: 404 }
+      )
+    }
+
+    // Supprimer la facture (les lignes sont onDelete: Cascade)
+    await prisma.factureCoach.delete({
+      where: { id },
+    })
+
+    logAdminAudit({
+      action: 'facture.delete',
+      actorId: session.userId,
+      actorRole: session.role,
+      targetType: 'FactureCoach',
+      targetId: id,
+      details: { numero: factureExistante.numero },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    logger.withContext('Admin').error('Erreur lors de la suppression de la facture', error)
+    return NextResponse.json(
+      { error: 'Erreur lors de la suppression de la facture' },
+      { status: 500 }
+    )
+  }
+}

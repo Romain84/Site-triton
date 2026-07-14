@@ -123,6 +123,28 @@ export default function FacturesManager() {
     }
   }
 
+  const handleDeleteFacture = async (factureId: string, numero: string) => {
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement la facture ${numero} ?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/admin/factures/${factureId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success(`Facture ${numero} supprimée avec succès`)
+        await fetchFactures()
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Erreur lors de la suppression')
+      }
+    } catch (error) {
+      toast.error('Erreur réseau lors de la suppression')
+    }
+  }
+
   const uniqueCoaches = Array.from(
     new Set(factures.map(f => f.coachId))
   ).map(id => factures.find(f => f.coachId === id)!.coach)
@@ -244,6 +266,12 @@ export default function FacturesManager() {
                       className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 hover:text-gray-900 transition-colors flex items-center gap-1.5"
                     >
                       🔎 Consulter le détail
+                    </button>
+                    <button
+                      onClick={() => handleDeleteFacture(facture.id, facture.numero)}
+                      className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 hover:text-red-900 transition-colors flex items-center gap-1.5"
+                    >
+                      🗑️ Supprimer
                     </button>
                   </div>
                 </div>
