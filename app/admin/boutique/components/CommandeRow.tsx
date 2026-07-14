@@ -8,9 +8,10 @@ interface CommandeRowProps {
   onUpdateStatut: (id: string, statut: string) => void
   onShowDetails: (commande: Commande) => void
   onExportPDF?: (commande: Commande) => void
+  onDelete: (id: string, numero: string) => void
 }
 
-function CommandeRowComponent({ commande, onUpdateStatut, onShowDetails, onExportPDF }: CommandeRowProps) {
+function CommandeRowComponent({ commande, onUpdateStatut, onShowDetails, onExportPDF, onDelete }: CommandeRowProps) {
   return (
     <tr className="border-t hover:bg-gray-50">
       <td className="p-4">
@@ -113,6 +114,13 @@ function CommandeRowComponent({ commande, onUpdateStatut, onShowDetails, onExpor
               PDF
             </button>
           )}
+          <button
+            onClick={() => onDelete(commande.id, commande.numeroCommande)}
+            className="text-red-600 hover:text-red-800 text-sm"
+            title="Supprimer la commande"
+          >
+            Supprimer
+          </button>
         </div>
       </td>
     </tr>

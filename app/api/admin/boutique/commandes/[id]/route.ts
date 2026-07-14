@@ -38,3 +38,36 @@ export async function PUT(
     )
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Vérifier l'authentification admin
+    const session = await getAdminSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    // 1. Annuler et restaurer le stock (si la commande est en_attente)
+    // Importation dynamique ou directe
+    const { cancelCommandePayment } = await import('@/lib/checkout/fulfillment')
+    await cancelCommandePayment(id)
+
+    // 2. Supprimer la commande (les lignes associées seront supprimées en cascade)
+    await prisma.commande.delete({
+      where: { id },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    boutiqueLogger.error('Erreur lors de la suppression de la commande', error)
+    return NextResponse.json(
+      { error: 'Erreur lors de la suppression de la commande' },
+      { status: 500 }
+    )
+  }
+}

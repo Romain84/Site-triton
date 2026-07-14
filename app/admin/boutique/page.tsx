@@ -164,6 +164,32 @@ function BoutiquePageContent() {
     }
   }, [loadData])
 
+  const handleDeleteCommande = useCallback(async (id: string, numero: string) => {
+    const confirmed = await confirm({
+      title: 'Supprimer la commande',
+      message: `Êtes-vous sûr de vouloir supprimer définitivement la commande #${numero} ? Cela va également restaurer le stock si le paiement était en attente. Cette action est irréversible.`,
+      confirmText: 'Supprimer',
+      variant: 'danger',
+    })
+    if (!confirmed) return
+
+    try {
+      const res = await fetch(`/api/admin/boutique/commandes/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (res.ok) {
+        loadData()
+        toast.success(`Commande #${numero} supprimée`)
+      } else {
+        toast.error(data.error || 'Erreur lors de la suppression')
+      }
+    } catch (err) {
+      toast.error('Erreur de connexion')
+    }
+  }, [confirm, loadData])
+
   const handleDeleteProduit = useCallback(async (id: string) => {
     const confirmed = await confirm({
       title: 'Supprimer le produit',
@@ -797,6 +823,7 @@ function BoutiquePageContent() {
                         onUpdateStatut={handleUpdateStatut}
                         onShowDetails={handleShowCommandeDetails}
                         onExportPDF={handleExportCommandePDF}
+                        onDelete={handleDeleteCommande}
                       />
                     ))}
                   </tbody>
