@@ -1,12 +1,14 @@
+version: '3.8'
+
 services:
   db:
     image: postgres:16-alpine
-    container_name: triton-postgres
+    container_name: triton-postgres-dev
     restart: always
     environment:
-      - POSTGRES_USER
-      - POSTGRES_PASSWORD
-      - POSTGRES_DB
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=TritonNewSite84
+      - POSTGRES_DB=postgres
     ports:
       - "5432:5432"
     volumes:
@@ -18,55 +20,33 @@ services:
       retries: 5
 
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-        - NEXT_PUBLIC_URL
-        - NEXT_PUBLIC_BASE_URL
-        - NEXT_PUBLIC_SITE_URL
-        - NEXT_PUBLIC_APP_URL
-    container_name: triton-web
+    image: node:20-alpine
+    container_name: triton-web-dev
     restart: always
+    working_dir: /app
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "3000:3000"
     volumes:
-      - /var/lib/triton_uploads:/app/public/uploads
+      - .:/app
+      - /app/node_modules
+      - /app/.next
     environment:
-      - DATABASE_URL=postgresql://postgres:TritonNewSite84@db:5432/postgres
-      - SESSION_SECRET
-      - BLOB_READ_WRITE_TOKEN
-      - STRIPE_SECRET_KEY
-      - STRIPE_WEBHOOK_SECRET
-      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-      - NEXT_PUBLIC_URL
-      - NEXT_PUBLIC_BASE_URL
-      - NEXT_PUBLIC_SITE_URL
-      - NEXT_PUBLIC_APP_URL
-      - MISTRAL_API_KEY
+      - DATABASE_URL=postgresql://postgres:TritonNewSite84@db:5432/postgres?schema=public
+      - SESSION_SECRET=local-development-secret-key-123456789
+      - BLOB_READ_WRITE_TOKEN=vercel_blob_rw_O668kGM0NLjS2W9j_fwjTlDnE1iX7Qcx3IuBMB41EODbq0t
+      - STRIPE_SECRET_KEY=sk_test_51S5tcrLOxXo6f8ZWuQHkJXvPWPQ1lDFb7tYzGFPRw7h244rE1YNdvjiNCaeL44bDrwZqpiHhIN3sldG6RyK0Z2nF00kNH3hHbv
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51S5tcrLOxXo6f8ZWtiePJopwWZaEGqSY0fFHLVOaT9QqBWeqAIDc3Ja6kElSGFCr9aiCm9UEGJZA5CIgthQauulC00ygGM69UN
+      - NEXT_PUBLIC_URL=http://localhost:3000
+      - MISTRAL_API_KEY=lJrBYMfUx2uZAOWYkKswSZjdzsCa7wc4
     command: >
       sh -c "
-        echo 'Attente du démarrage de la base de données...' &&
+        npm install &&
         npx prisma db push &&
-        echo 'Base de données synchronisée et migrée avec succès !' &&
-        echo 'Démarrage du serveur Next.js...' &&
-        npm run start
+        npm run dev
       "
-
-  ngrok:
-    image: ngrok/ngrok:latest
-    container_name: triton-ngrok
-    restart: always
-    environment:
-      - NGROK_AUTHTOKEN
-    command: http web:3000 --url=tactile-thorn-guzzler.ngrok-free.dev
-    depends_on:
-      - web
 
 volumes:
   pgdata:
-
