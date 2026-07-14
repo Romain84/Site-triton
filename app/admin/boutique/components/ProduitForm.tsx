@@ -286,34 +286,34 @@ export default function ProduitForm({
 
             <div className="md:col-span-2 bg-slate-50 border border-slate-200 p-4.5 rounded-xl space-y-2 text-sm">
               <div className="flex justify-between items-center text-xs font-semibold text-slate-550 border-b border-slate-200 pb-2 mb-1.5 uppercase tracking-wider">
-                <span>Indicateurs Financiers (Hors Taxes)</span>
+                <span>Indicateurs Financiers (Association)</span>
                 <span>Vision Rentabilité</span>
               </div>
               {(() => {
-                const prixVenteTTC = formData.prix || 0;
-                const prixVenteHT = prixVenteTTC / (1 + formData.tauxTVA / 100);
-                const tvaCollectee = prixVenteTTC - prixVenteHT;
+                const prixVenteNet = formData.prix || 0; // Pas de TVA collectée sur la revente
                 const prixAchatHT = formData.prixAchat || 0;
-                const beneficeHT = prixVenteHT - prixAchatHT;
-                const margePercent = prixVenteHT > 0 ? (beneficeHT / prixVenteHT) * 100 : 0;
+                const tauxTVAAchat = formData.tauxTVA || 20;
+                const prixAchatTTC = prixAchatHT * (1 + tauxTVAAchat / 100); // L'association paie la TVA mais ne la récupère pas
+                const beneficeReel = prixVenteNet - prixAchatTTC;
+                const margePercent = prixVenteNet > 0 ? (beneficeReel / prixVenteNet) * 100 : 0;
 
                 return (
                   <div className="space-y-1.5 font-medium text-slate-700">
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Prix de vente HT :</span>
-                      <span className="font-mono text-slate-900">{prixVenteHT.toFixed(2)} €</span>
+                      <span className="text-slate-500">Prix de vente public (Net) :</span>
+                      <span className="font-mono text-slate-900">{prixVenteNet.toFixed(2)} €</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">TVA collectée ({formData.tauxTVA}%) :</span>
-                      <span className="font-mono text-slate-450">{tvaCollectee.toFixed(2)} €</span>
+                      <span className="text-slate-500">Coût d&apos;achat fournisseur TTC :</span>
+                      <span className="font-mono text-slate-800">{prixAchatTTC.toFixed(2)} €</span>
                     </div>
                     <div className="flex justify-between border-t border-slate-150 pt-2 font-bold">
-                      <span>Bénéfice net unitaire (HT) :</span>
+                      <span>Bénéfice net unitaire (Réel) :</span>
                       <div className="flex items-center gap-2">
-                        <span className={beneficeHT >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          {beneficeHT >= 0 ? '+' : ''}{beneficeHT.toFixed(2)} €
+                        <span className={beneficeReel >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          {beneficeReel >= 0 ? '+' : ''}{beneficeReel.toFixed(2)} €
                         </span>
-                        <span className={`text-xs px-2.5 py-0.5 rounded-full ${beneficeHT >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        <span className={`text-xs px-2.5 py-0.5 rounded-full ${beneficeReel >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                           Marge: {margePercent.toFixed(1)}%
                         </span>
                       </div>

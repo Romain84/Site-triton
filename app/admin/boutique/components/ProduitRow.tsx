@@ -54,30 +54,30 @@ function ProduitRowComponent({ produit, onEdit, onDelete, onShowVariantes }: Pro
               {produit.prix.toFixed(2)} €
             </div>
             <div className="text-red-600 font-bold font-mono text-sm">
-              {produit.prixPromo.toFixed(2)} € TTC
+              {produit.prixPromo.toFixed(2)} €
             </div>
           </div>
         ) : (
-          <div className="font-bold text-slate-900 font-mono text-sm">{produit.prix.toFixed(2)} € TTC</div>
+          <div className="font-bold text-slate-900 font-mono text-sm">{produit.prix.toFixed(2)} €</div>
         )}
         <div className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">
-          TVA: {produit.tauxTVA || 20}%
+          TVA achat: {produit.tauxTVA || 20}%
         </div>
       </td>
       <td className="p-4 text-right">
         {(() => {
-          const prixEffectiveTTC = produit.enPromo && produit.prixPromo ? produit.prixPromo : produit.prix;
+          const prixEffective = produit.enPromo && produit.prixPromo ? produit.prixPromo : produit.prix;
           const tvaRate = produit.tauxTVA !== undefined ? produit.tauxTVA : 20;
-          const prixEffectiveHT = prixEffectiveTTC / (1 + tvaRate / 100);
-          const beneficeHT = prixEffectiveHT - (produit.prixAchat || 0);
-          const marginHT = prixEffectiveHT > 0 ? (beneficeHT / prixEffectiveHT) * 100 : 0;
+          const prixAchatTTC = (produit.prixAchat || 0) * (1 + tvaRate / 100);
+          const beneficeReel = prixEffective - prixAchatTTC;
+          const margin = prixEffective > 0 ? (beneficeReel / prixEffective) * 100 : 0;
           return (
             <div className="flex flex-col items-end">
-              <span className={`font-black font-mono text-sm ${beneficeHT >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {beneficeHT >= 0 ? '+' : ''}{beneficeHT.toFixed(2)} € HT
+              <span className={`font-black font-mono text-sm ${beneficeReel >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {beneficeReel >= 0 ? '+' : ''}{beneficeReel.toFixed(2)} €
               </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 mt-0.5 rounded-full ${beneficeHT >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                Marge: {marginHT.toFixed(1)}%
+              <span className={`text-[10px] font-bold px-2 py-0.5 mt-0.5 rounded-full ${beneficeReel >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                Marge: {margin.toFixed(1)}%
               </span>
             </div>
           );
