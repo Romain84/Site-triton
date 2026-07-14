@@ -35,7 +35,8 @@ export default function VarianteForm({
   const totalHT = formData.prixCoutantHT + formData.prixFlocageHT
   const tva = totalHT * (formData.tauxTVA / 100)
   const coutTTC = totalHT + tva
-  const marge = formData.prix - coutTTC
+  const fraisStripe = formData.prix > 0 ? (formData.prix * 0.015) + 0.25 : 0
+  const marge = formData.prix - coutTTC - fraisStripe
   const margePercent = formData.prix > 0 ? (marge / formData.prix) * 100 : 0
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -196,7 +197,7 @@ export default function VarianteForm({
             {/* Calcul de marge en temps réel */}
             <div className="md:col-span-2 bg-gray-50 p-4 rounded-lg">
               <h4 className="font-bold mb-3">Calcul automatique</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                 <div>
                   <div className="text-gray-600">Total HT</div>
                   <div className="font-bold">{totalHT.toFixed(2)} €</div>
@@ -210,7 +211,11 @@ export default function VarianteForm({
                   <div className="font-bold text-red-600">{coutTTC.toFixed(2)} €</div>
                 </div>
                 <div>
-                  <div className="text-gray-600">Marge</div>
+                  <div className="text-gray-600" title="Stripe (1.5% + 0.25€)">Frais Stripe (est.)</div>
+                  <div className="font-bold text-gray-700">{fraisStripe.toFixed(2)} €</div>
+                </div>
+                <div>
+                  <div className="text-gray-600">Marge Réelle</div>
                   <div className={`font-bold ${marge > 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {marge.toFixed(2)} € ({margePercent.toFixed(1)}%)
                   </div>

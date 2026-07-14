@@ -69,7 +69,8 @@ function ProduitRowComponent({ produit, onEdit, onDelete, onShowVariantes }: Pro
           const prixEffective = produit.enPromo && produit.prixPromo ? produit.prixPromo : produit.prix;
           const tvaRate = produit.tauxTVA !== undefined ? produit.tauxTVA : 20;
           const prixAchatTTC = (produit.prixAchat || 0) * (1 + tvaRate / 100);
-          const beneficeReel = prixEffective - prixAchatTTC;
+          const fraisStripe = prixEffective > 0 ? (prixEffective * 0.015) + 0.25 : 0;
+          const beneficeReel = prixEffective - prixAchatTTC - fraisStripe;
           const margin = prixEffective > 0 ? (beneficeReel / prixEffective) * 100 : 0;
           return (
             <div className="flex flex-col items-end">

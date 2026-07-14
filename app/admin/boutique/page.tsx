@@ -1260,7 +1260,8 @@ function BoutiquePageContent() {
                           const totalHT = variante.prixCoutantHT + variante.prixFlocageHT
                           const tva = totalHT * (variante.tauxTVA / 100)
                           const coutTTC = totalHT + tva
-                          const marge = prixVente - coutTTC
+                          const fraisStripe = prixVente > 0 ? (prixVente * 0.015) + 0.25 : 0
+                          const marge = prixVente - coutTTC - fraisStripe
                           const margePercent = prixVente > 0 ? (marge / prixVente) * 100 : 0
 
                           return (
@@ -1286,6 +1287,9 @@ function BoutiquePageContent() {
                                 </div>
                                 <div className="text-xs text-gray-600">
                                   {margePercent.toFixed(1)}%
+                                </div>
+                                <div className="text-[10px] text-gray-400 italic mt-0.5" title="Frais Stripe estimés (1.5% + 0.25€)">
+                                  Stripe: -{fraisStripe.toFixed(2)} €
                                 </div>
                               </td>
                               <td className="p-3 text-center">

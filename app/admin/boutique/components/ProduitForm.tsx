@@ -294,7 +294,8 @@ export default function ProduitForm({
                 const prixAchatHT = formData.prixAchat || 0;
                 const tauxTVAAchat = formData.tauxTVA || 20;
                 const prixAchatTTC = prixAchatHT * (1 + tauxTVAAchat / 100); // L'association paie la TVA mais ne la récupère pas
-                const beneficeReel = prixVenteNet - prixAchatTTC;
+                const fraisStripe = prixVenteNet > 0 ? (prixVenteNet * 0.015) + 0.25 : 0; // Estimation frais Stripe (1.5% + 0.25€)
+                const beneficeReel = prixVenteNet - prixAchatTTC - fraisStripe;
                 const margePercent = prixVenteNet > 0 ? (beneficeReel / prixVenteNet) * 100 : 0;
 
                 return (
@@ -306,6 +307,10 @@ export default function ProduitForm({
                     <div className="flex justify-between">
                       <span className="text-slate-500">Coût d&apos;achat fournisseur TTC :</span>
                       <span className="font-mono text-slate-800">{prixAchatTTC.toFixed(2)} €</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-550 italic">Frais Stripe (est. 1.5% + 0.25€) :</span>
+                      <span className="font-mono text-slate-500 italic">{fraisStripe.toFixed(2)} €</span>
                     </div>
                     <div className="flex justify-between border-t border-slate-150 pt-2 font-bold">
                       <span>Bénéfice net unitaire (Réel) :</span>
