@@ -21,6 +21,7 @@ const PRISMA_MODELS = [
   'galerieMedia',
   'settings',
   'user',
+  'don',
   'evenementTournant',
   'factureCoach',
   'ligneFactureCoach',
@@ -38,7 +39,9 @@ const PRISMA_MODELS = [
   'chatbotSuggestion',
   'emailQueue',
   'transactionComptable',
-  'chatbotTokenLog'
+  'chatbotTokenLog',
+  'categorieComptable',
+  'inscriptionBlock'
 ]
 
 // GET: Exporter toute la base de données au format JSON
