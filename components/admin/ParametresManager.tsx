@@ -51,6 +51,7 @@ export default function ParametresManager() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [activeTab, setActiveTab] = useState<'general' | 'finances' | 'documents' | 'system'>('general')
 
   // Form state
   const [tauxHoraire, setTauxHoraire] = useState('35')
@@ -136,7 +137,6 @@ export default function ParametresManager() {
         setDatesTests(s.datesTests || [])
         setInterSaisonActif(s.interSaisonActif ?? false)
         setTexteFiligrane(s.texteFiligrane || 'Saison 2025 - 2026')
-        // Don't set password for security
         setIsInitialized(true)
       }
     } catch (err) {
@@ -150,8 +150,7 @@ export default function ParametresManager() {
     if (!e.target.files || e.target.files.length === 0) return
     const file = e.target.files[0]
 
-    // Client side validation
-    if (file.size > 2 * 1024 * 1024) { // 2MB
+    if (file.size > 2 * 1024 * 1024) {
       setError('Fichier trop volumineux (Max 2MB)')
       return
     }
@@ -181,7 +180,6 @@ export default function ParametresManager() {
       setError(getErrorMessage(err))
     } finally {
       setUploadingLogo(false)
-      // Reset input value
       e.target.value = ''
     }
   }
@@ -190,7 +188,6 @@ export default function ParametresManager() {
     if (!e.target.files || e.target.files.length === 0) return
     const file = e.target.files[0]
 
-    // Validation de taille
     if (file.size > 2 * 1024 * 1024) {
       setError('Fichier trop volumineux (Max 2MB)')
       return
@@ -422,7 +419,7 @@ export default function ParametresManager() {
           smtpHost,
           smtpPort,
           smtpUser,
-          smtpPassword: smtpPassword || undefined, // Only send if provided
+          smtpPassword: smtpPassword || undefined,
           inscriptionUrl: inscriptionUrl || null,
           soldeDepartSaison,
           chatbotModel,
@@ -442,7 +439,7 @@ export default function ParametresManager() {
       const data = await response.json()
       setSettings(data.settings)
       setSuccess('Paramètres enregistrés avec succès')
-      setSmtpPassword('') // Clear password field after save
+      setSmtpPassword('')
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -559,7 +556,6 @@ export default function ParametresManager() {
       const data = await response.json()
       if (response.ok) {
         setSuccess("Début de saison déclaré avec succès !")
-        // Mettre à jour l'état local pour refléter les changements
         const s = data.settings
         setInterSaisonActif(s.interSaisonActif)
         setTexteFiligrane(s.texteFiligrane)
@@ -567,7 +563,6 @@ export default function ParametresManager() {
         setDebutCoursBnssa(s.debutCoursBnssa)
         setDatesTests(s.datesTests || [])
         
-        // Mettre à jour l'objet settings pour éviter que autoSaveSettings ne détecte un changement
         if (settings) {
           setSettings({
             ...settings,
@@ -700,1083 +695,902 @@ export default function ParametresManager() {
   const smtpValidationWarning = getSmtpValidationWarning()
 
   if (loading) {
-    return <p className="text-gray-600">Chargement...</p>
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-3" />
+          <p className="text-slate-500 font-medium text-xs">Chargement des paramètres...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">Paramètres de l&apos;application</h2>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center flex-wrap gap-4 border-b border-slate-200 pb-4">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Paramètres Globaux</h2>
+          <p className="text-sm text-gray-550 mt-0.5">Configurez le fonctionnement du club, de la trésorerie et de l&apos;intelligence artificielle.</p>
+        </div>
+      </div>
 
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded">
-          <p className="text-red-700">{error}</p>
+        <div className="bg-rose-50 border border-rose-100 p-4 rounded-xl flex items-start gap-3 shadow-3xs">
+          <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-rose-900 text-xs font-bold">Erreur rencontrée</p>
+            <p className="text-rose-700 text-xs mt-0.5 font-normal">{error}</p>
+          </div>
         </div>
       )}
 
       {success && (
-        <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-6 rounded">
-          <p className="text-green-700">{success}</p>
+        <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-start gap-3 shadow-3xs animate-pulse">
+          <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 text-xs font-bold">✓</div>
+          <div>
+            <p className="text-emerald-900 text-xs font-bold">Action réussie</p>
+            <p className="text-emerald-700 text-xs mt-0.5 font-normal">{success}</p>
+          </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Logo du club */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4">Logo du club</h3>
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-             {/* Preview */}
-             <div className="flex-shrink-0">
-                <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden bg-gray-50 relative">
-                  {logoUrl ? (
-                    <Image
-                      src={logoUrl}
-                      alt="Logo"
-                      fill
-                      className="object-contain"
-                      unoptimized={logoUrl.includes('blob.vercel-storage.com')}
+      {/* Onglets interactifs premium */}
+      <div className="flex flex-wrap gap-2 bg-slate-50 border border-slate-250/60 p-1.5 rounded-2xl w-fit">
+        <button
+          type="button"
+          onClick={() => setActiveTab('general')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+            activeTab === 'general'
+              ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span>🏠</span> Général & Rentrée
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('finances')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+            activeTab === 'finances'
+              ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span>💰</span> Tarifs & Trésorerie
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('documents')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+            activeTab === 'documents'
+              ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span>📁</span> Documents & Signatures
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('system')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+            activeTab === 'system'
+              ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span>⚙️</span> Système & SMTP
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <AnimatePresence mode="wait">
+          {activeTab === 'general' && (
+            <motion.div
+              key="general"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              {/* Logo du club */}
+              <div className="card p-6">
+                <h3 className="text-md font-bold text-slate-900 mb-4 border-b pb-2 flex items-center gap-2">Logo du Club</h3>
+                <div className="flex flex-col md:flex-row gap-6 items-start">
+                   <div className="flex-shrink-0">
+                      <div className="w-28 h-28 border border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden bg-slate-50 relative shadow-2xs">
+                        {logoUrl ? (
+                          <Image
+                            src={logoUrl}
+                            alt="Logo"
+                            fill
+                            className="object-contain p-2"
+                            unoptimized={logoUrl.includes('blob.vercel-storage.com')}
+                          />
+                        ) : (
+                          <span className="text-gray-400 text-xs">Aucun logo</span>
+                        )}
+                      </div>
+                      {logoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setLogoUrl('')}
+                          className="mt-2 text-red-600 text-xs font-semibold hover:underline w-full text-center"
+                        >
+                          Supprimer le logo
+                        </button>
+                      )}
+                   </div>
+
+                   <div className="flex-1 space-y-3">
+                     <label className="block text-xs font-bold text-gray-700">
+                       Télécharger un nouveau logo
+                     </label>
+                     <input
+                       type="file"
+                       accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                       onChange={handleLogoUpload}
+                       disabled={uploadingLogo}
+                       className="block w-full text-xs text-gray-500
+                         file:mr-4 file:py-1.5 file:px-4
+                         file:rounded-full file:border-0
+                         file:text-xs file:font-semibold
+                         file:bg-slate-100 file:text-slate-800
+                         hover:file:bg-slate-200
+                         disabled:opacity-50 cursor-pointer"
+                     />
+                     <p className="text-[10px] text-gray-500">
+                       Formats acceptés : JPG, PNG, WEBP, SVG. Taille max : 2Mo. Le logo apparaîtra automatiquement dans l&apos;en-tête du site.
+                     </p>
+                     {uploadingLogo && <p className="text-blue-600 text-xs font-bold mt-1">Upload en cours...</p>}
+                   </div>
+                 </div>
+              </div>
+
+              {/* Généralités & Inscription */}
+              <div className="card p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-md font-bold text-slate-900 border-b pb-2">Informations Générales</h3>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Adresse email officielle du club
+                    </label>
+                    <input
+                      type="email"
+                      value={emailClub}
+                      onChange={(e) => setEmailClub(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                      placeholder="email@club.com"
                     />
-                  ) : (
-                    <span className="text-gray-400 text-sm">Aucun logo</span>
+                    <p className="text-[10px] text-gray-500 mt-1">Les factures générées par les coaches et les demandes de contact sont envoyées à cette adresse.</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Lien d&apos;inscription
+                    </label>
+                    <input
+                      type="text"
+                      value={inscriptionUrl}
+                      onChange={(e) => setInscriptionUrl(e.target.value)}
+                      placeholder="/actualites/inscriptions"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                    />
+                    <p className="text-[10px] text-gray-500 mt-1">Page vers laquelle les boutons &quot;S&apos;inscrire&quot; redirigent les visiteurs.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 md:border-l md:border-slate-100 md:pl-6">
+                  <h3 className="text-md font-bold text-slate-900 border-b pb-2">Mode Inter-Saison</h3>
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-gray-700 mb-2">
+                      <input
+                        type="checkbox"
+                        checked={interSaisonActif}
+                        onChange={(e) => setInterSaisonActif(e.target.checked)}
+                        className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                      />
+                      Activer le mode inter-saison
+                    </label>
+                    <p className="text-[10px] text-gray-500">
+                      Grise légèrement les pages Tarifs (Horaires et Inscriptions) pour indiquer qu&apos;il s&apos;agit des anciennes données en cours de mise à jour.
+                    </p>
+                  </div>
+                  {interSaisonActif && (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        Texte du filigrane
+                      </label>
+                      <input
+                        type="text"
+                        value={texteFiligrane}
+                        onChange={(e) => setTexteFiligrane(e.target.value)}
+                        placeholder="Ex: Saison 2025 - 2026"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                      />
+                    </div>
                   )}
                 </div>
-                {logoUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setLogoUrl('')}
-                    className="mt-2 text-red-600 text-sm hover:underline w-full text-center"
-                  >
-                    Supprimer le logo
-                  </button>
-                )}
-             </div>
-
-             {/* Upload controls */}
-             <div className="flex-1">
-               <label className="block text-sm font-medium text-gray-700 mb-2">
-                 Télécharger un nouveau logo
-               </label>
-               <input
-                 type="file"
-                 accept="image/png, image/jpeg, image/webp, image/svg+xml"
-                 onChange={handleLogoUpload}
-                 disabled={uploadingLogo}
-                 className="block w-full text-sm text-gray-500
-                   file:mr-4 file:py-2 file:px-4
-                   file:rounded-full file:border-0
-                   file:text-sm file:font-semibold
-                   file:bg-primary file:text-white
-                   hover:file:bg-primary-dark
-                   disabled:opacity-50 cursor-pointer"
-               />
-               <p className="mt-2 text-sm text-gray-500">
-                 Formats acceptés : JPG, PNG, WEBP, SVG. Taille max : 2MB.
-               </p>
-               {uploadingLogo && <p className="text-blue-600 text-sm mt-2">Upload en cours...</p>}
-
-               <div className="mt-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                <p className="text-blue-700 text-sm">
-                  <strong>💡 Info:</strong> Le logo apparaîtra automatiquement dans l&apos;en-tête du site une fois enregistré.
-                </p>
-              </div>
-             </div>
-           </div>
-        </div>
-
-        {/* Signature & Signataire Reçus Fiscaux */}
-        <div className="card p-6 space-y-8">
-          <h3 className="text-xl font-bold border-b border-gray-100 pb-2">Reçus Fiscaux - Paramétrage des signatures</h3>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* Président signature column */}
-            <div className="space-y-4">
-              <h4 className="font-bold text-slate-800 border-l-4 border-primary pl-2 text-base">Signature du Président</h4>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="nomSignataireRecu" className="block text-xs font-medium text-gray-700 mb-1">
-                    Nom complet
-                  </label>
-                  <input
-                    type="text"
-                    id="nomSignataireRecu"
-                    value={nomSignataireRecu}
-                    onChange={(e) => setNomSignataireRecu(e.target.value)}
-                    placeholder="Ex: Jean Dupont"
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200/85 rounded-lg focus:border-slate-800 focus:bg-white outline-none font-normal text-slate-805 text-xs"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="titreSignataireRecu" className="block text-xs font-medium text-gray-700 mb-1">
-                    Fonction / Titre
-                  </label>
-                  <input
-                    type="text"
-                    id="titreSignataireRecu"
-                    value={titreSignataireRecu}
-                    onChange={(e) => setTitreSignataireRecu(e.target.value)}
-                    placeholder="Ex: Président"
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200/85 rounded-lg focus:border-slate-800 focus:bg-white outline-none font-normal text-slate-805 text-xs"
-                  />
-                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4 items-start pt-2">
-                <div className="flex-shrink-0">
-                  <div className="w-40 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden bg-gray-50 relative">
-                    {signaturePresidentUrl ? (
-                      <Image
-                        src={signaturePresidentUrl}
-                        alt="Signature Président"
-                        fill
-                        className="object-contain p-1"
-                        unoptimized={signaturePresidentUrl.includes('blob.vercel-storage.com')}
-                      />
-                    ) : (
-                      <span className="text-gray-400 text-xs">Aucune signature</span>
-                    )}
+              {/* Dates Rentrée & Tests */}
+              <div className="card p-6 space-y-6">
+                <h3 className="text-md font-bold text-slate-900 border-b pb-2 flex items-center gap-2">Dates de Rentrée & Tests</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      Début des cours (Groupes classiques)
+                    </label>
+                    <input
+                      type="text"
+                      value={debutCoursNormal}
+                      onChange={(e) => setDebutCoursNormal(e.target.value)}
+                      placeholder="Ex: Lundi 21 Septembre 2026"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-805"
+                    />
                   </div>
-                  {signaturePresidentUrl && (
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      Début des cours (Groupe BNSSA)
+                    </label>
+                    <input
+                      type="text"
+                      value={debutCoursBnssa}
+                      onChange={(e) => setDebutCoursBnssa(e.target.value)}
+                      placeholder="Ex: Jeudi 1er Octobre 2026"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-805"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-2">
+                    Dates des tests de rentrée programmés
+                  </label>
+                  
+                  <div className="flex gap-2 max-w-lg mb-3">
+                    <input
+                      type="text"
+                      value={newTestDate}
+                      onChange={(e) => setNewTestDate(e.target.value)}
+                      placeholder="Ex: Mercredi 16 Septembre 2026"
+                      className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                    />
                     <button
                       type="button"
-                      onClick={() => setSignaturePresidentUrl('')}
-                      className="mt-1.5 text-red-600 text-xs hover:underline w-full text-center block"
+                      onClick={() => {
+                        if (newTestDate.trim() && !datesTests.includes(newTestDate.trim())) {
+                          setDatesTests([...datesTests, newTestDate.trim()])
+                          setNewTestDate('')
+                        }
+                      }}
+                      className="px-4 py-1.5 bg-primary text-slate-950 font-bold rounded-lg hover:bg-primary-dark transition-all text-xs cursor-pointer shadow-3xs"
                     >
-                      Supprimer
+                      Ajouter
                     </button>
-                  )}
-                </div>
-
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Image signature fac-similé (Président)
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/png, image/jpeg, image/webp"
-                    onChange={handleSignatureUpload}
-                    disabled={uploadingSignature}
-                    className="block w-full text-xs text-gray-500
-                      file:mr-3 file:py-1.5 file:px-3
-                      file:rounded-full file:border-0
-                      file:text-xs file:font-semibold
-                      file:bg-primary file:text-white
-                      hover:file:bg-primary-dark
-                      disabled:opacity-50 cursor-pointer"
-                  />
-                  {uploadingSignature && <p className="text-blue-600 text-xs mt-1 animate-pulse">Upload...</p>}
-                </div>
-              </div>
-            </div>
-
-            {/* Trésorière signature column */}
-            <div className="space-y-4 lg:border-l lg:border-gray-100 lg:pl-8">
-              <h4 className="font-bold text-slate-800 border-l-4 border-teal-500 pl-2 text-base">Signature de la Trésorière</h4>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="nomTresoriereRecu" className="block text-xs font-medium text-gray-700 mb-1">
-                    Nom complet
-                  </label>
-                  <input
-                    type="text"
-                    id="nomTresoriereRecu"
-                    value={nomTresoriereRecu}
-                    onChange={(e) => setNomTresoriereRecu(e.target.value)}
-                    placeholder="Ex: Sophie Martin"
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200/85 rounded-lg focus:border-slate-800 focus:bg-white outline-none font-normal text-slate-850 text-xs"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="titreTresoriereRecu" className="block text-xs font-medium text-gray-700 mb-1">
-                    Fonction / Titre
-                  </label>
-                  <input
-                    type="text"
-                    id="titreTresoriereRecu"
-                    value={titreTresoriereRecu}
-                    onChange={(e) => setTitreTresoriereRecu(e.target.value)}
-                    placeholder="Ex: Trésorière"
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200/85 rounded-lg focus:border-slate-800 focus:bg-white outline-none font-normal text-slate-850 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-4 items-start pt-2">
-                <div className="flex-shrink-0">
-                  <div className="w-40 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden bg-gray-50 relative">
-                    {signatureTresoriereUrl ? (
-                      <Image
-                        src={signatureTresoriereUrl}
-                        alt="Signature Trésorière"
-                        fill
-                        className="object-contain p-1"
-                        unoptimized={signatureTresoriereUrl.includes('blob.vercel-storage.com')}
-                      />
-                    ) : (
-                      <span className="text-gray-400 text-xs">Aucune signature</span>
-                    )}
                   </div>
-                  {signatureTresoriereUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setSignatureTresoriereUrl('')}
-                      className="mt-1.5 text-red-600 text-xs hover:underline w-full text-center block"
-                    >
-                      Supprimer
-                    </button>
+
+                  {datesTests.length === 0 ? (
+                    <p className="text-[11px] text-gray-500 italic">Aucune date configurée.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 max-w-full">
+                      {datesTests.map((date, index) => (
+                        <div key={index} className="flex items-center gap-2 bg-slate-100/80 border border-slate-200/60 rounded-xl px-3 py-1 text-xs">
+                          <span className="text-slate-800 font-medium">{date}</span>
+                          <button
+                            type="button"
+                            onClick={() => setDatesTests(datesTests.filter((_, i) => i !== index))}
+                            className="text-red-500 hover:text-red-700 font-bold text-[10px] cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
+              </div>
 
+              {/* Transition Saison Card */}
+              <div className="bg-amber-50/50 border border-amber-200/70 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-3xs">
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Image signature fac-similé (Trésorière)
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/png, image/jpeg, image/webp"
-                    onChange={handleSignatureTresoriereUpload}
-                    disabled={uploadingSignatureTresoriere}
-                    className="block w-full text-xs text-gray-500
-                      file:mr-3 file:py-1.5 file:px-3
-                      file:rounded-full file:border-0
-                      file:text-xs file:font-semibold
-                      file:bg-teal-600 file:text-white
-                      hover:file:bg-teal-700
-                      disabled:opacity-50 cursor-pointer"
-                  />
-                  {uploadingSignatureTresoriere && <p className="text-teal-600 text-xs mt-1 animate-pulse">Upload...</p>}
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        {/* Statuts du club */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4">Statuts du club</h3>
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-             {/* Preview */}
-             <div className="flex-shrink-0">
-                <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden bg-gray-50 relative">
-                  {statutsUrl ? (
-                    <div className="flex flex-col items-center p-2 text-center">
-                      <svg className="w-12 h-12 text-red-500 mb-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                      </svg>
-                      <span className="text-[10px] text-gray-600 truncate max-w-full font-mono">
-                        {statutsUrl.substring(statutsUrl.lastIndexOf('/') + 1)}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400 text-sm">Aucun statut</span>
-                  )}
-                </div>
-                {statutsUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setStatutsUrl('')}
-                    className="mt-2 text-red-600 text-sm hover:underline w-full text-center"
-                  >
-                    Supprimer les statuts
-                  </button>
-                )}
-             </div>
-
-             {/* Upload controls */}
-             <div className="flex-1">
-               <label className="block text-sm font-medium text-gray-700 mb-2">
-                 Télécharger un nouveau document de statuts (PDF)
-               </label>
-               <input
-                 type="file"
-                 accept="application/pdf"
-                 onChange={handleStatutsUpload}
-                 disabled={uploadingStatuts}
-                 className="block w-full text-sm text-gray-500
-                   file:mr-4 file:py-2 file:px-4
-                   file:rounded-full file:border-0
-                   file:text-sm file:font-semibold
-                   file:bg-primary file:text-white
-                   hover:file:bg-primary-dark
-                   disabled:opacity-50 cursor-pointer"
-               />
-               <p className="mt-2 text-sm text-gray-500">
-                 Format accepté : PDF uniquement. Taille max : 5MB.
-               </p>
-               {uploadingStatuts && <p className="text-blue-600 text-sm mt-2">Upload en cours...</p>}
-
-               <div className="mt-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                <p className="text-blue-700 text-sm">
-                  <strong>💡 Info:</strong> Le document sera mis à disposition dans la section &quot;Statuts Officiels&quot; de la page &quot;Le Club&quot;.
-                </p>
-              </div>
-             </div>
-          </div>
-        </div>
-
-        {/* Règlement intérieur de la piscine */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4">Règlement intérieur de la piscine</h3>
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-             {/* Preview */}
-             <div className="flex-shrink-0">
-                <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden bg-gray-50 relative">
-                  {reglementPiscineUrl ? (
-                    <div className="flex flex-col items-center p-2 text-center">
-                      <svg className="w-12 h-12 text-red-500 mb-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                      </svg>
-                      <span className="text-[10px] text-gray-600 truncate max-w-full font-mono">
-                        {reglementPiscineUrl.substring(reglementPiscineUrl.lastIndexOf('/') + 1)}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400 text-sm">Aucun règlement</span>
-                  )}
-                </div>
-                {reglementPiscineUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setReglementPiscineUrl('')}
-                    className="mt-2 text-red-600 text-sm hover:underline w-full text-center"
-                  >
-                    Supprimer le règlement
-                  </button>
-                )}
-             </div>
-
-             {/* Upload controls */}
-             <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Télécharger un nouveau règlement de la piscine (PDF)
-                </label>
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={handleReglementPiscineUpload}
-                  disabled={uploadingReglementPiscine}
-                  className="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-full file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-primary file:text-white
-                    hover:file:bg-primary-dark
-                    disabled:opacity-50 cursor-pointer"
-                />
-                <p className="mt-2 text-sm text-gray-500">
-                  Format accepté : PDF uniquement. Taille max : 5MB.
-                </p>
-                {uploadingReglementPiscine && <p className="text-blue-600 text-sm mt-2">Upload en cours...</p>}
-
-                <div className="mt-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                  <p className="text-blue-700 text-sm">
-                    <strong>💡 Info:</strong> Le document sera mis à disposition dans la section &quot;Documents Officiels&quot; de la page &quot;Le Club&quot;.
+                  <h4 className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
+                    🚀 Transition vers la Nouvelle Saison
+                  </h4>
+                  <p className="text-[11px] text-amber-800 mt-1 leading-relaxed">
+                    Cette action désactive le mode inter-saison, incrémente automatiquement d&apos;un an toutes vos dates de cours, de tests et met à jour l&apos;année du filigrane général.
                   </p>
                 </div>
-             </div>
-          </div>
-        </div>
-
-        {/* Règlement intérieur du club */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4">Règlement intérieur du club</h3>
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-             {/* Preview */}
-             <div className="flex-shrink-0">
-                <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden bg-gray-50 relative">
-                  {reglementClubUrl ? (
-                    <div className="flex flex-col items-center p-2 text-center">
-                      <svg className="w-12 h-12 text-red-500 mb-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                      </svg>
-                      <span className="text-[10px] text-gray-600 truncate max-w-full font-mono">
-                        {reglementClubUrl.substring(reglementClubUrl.lastIndexOf('/') + 1)}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400 text-sm">Aucun règlement</span>
-                  )}
-                </div>
-                {reglementClubUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setReglementClubUrl('')}
-                    className="mt-2 text-red-600 text-sm hover:underline w-full text-center"
-                  >
-                    Supprimer le règlement
-                  </button>
-                )}
-             </div>
-
-             {/* Upload controls */}
-             <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Télécharger un nouveau règlement du club (PDF)
-                </label>
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={handleReglementClubUpload}
-                  disabled={uploadingReglementClub}
-                  className="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-full file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-primary file:text-white
-                    hover:file:bg-primary-dark
-                    disabled:opacity-50 cursor-pointer"
-                />
-                <p className="mt-2 text-sm text-gray-500">
-                  Format accepté : PDF uniquement. Taille max : 5MB.
-                </p>
-                {uploadingReglementClub && <p className="text-blue-600 text-sm mt-2">Upload en cours...</p>}
-
-                <div className="mt-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                  <p className="text-blue-700 text-sm">
-                    <strong>💡 Info:</strong> Le document sera mis à disposition dans la section &quot;Documents Officiels&quot; de la page &quot;Le Club&quot;.
-                  </p>
-                </div>
-             </div>
-          </div>
-        </div>
-
-        {/* Paramètres du site */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4">Paramètres du site</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Lien d&apos;inscription (page vers laquelle les boutons &quot;S&apos;inscrire&quot; renvoient)
-              </label>
-              <input
-                type="text"
-                value={inscriptionUrl}
-                onChange={(e) => setInscriptionUrl(e.target.value)}
-                placeholder="/actualites/inscriptions-2025-2026"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-              <p className="mt-2 text-sm text-gray-500">
-                Ce lien change chaque année. Exemple : /actualites/inscriptions-2025-2026
-              </p>
-            </div>
-
-            <hr className="border-slate-100 my-4" />
-
-            <div>
-              <label className="flex items-center gap-2 cursor-pointer font-semibold text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={interSaisonActif}
-                  onChange={(e) => setInterSaisonActif(e.target.checked)}
-                  className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                />
-                Activer le mode inter-saison (grise les pages Tarifs et Horaires et affiche un filigrane)
-              </label>
-              <p className="mt-1 text-xs text-gray-500 pl-6">
-                Lorsque cette case est cochée, les pages d&apos;inscription (Tarifs) et de planning (Horaires) seront légèrement grisées pour indiquer aux utilisateurs qu&apos;il s&apos;agit des informations de la saison précédente en attente de mise à jour.
-              </p>
-            </div>
-
-            {interSaisonActif && (
-              <div className="pl-6 space-y-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Texte du filigrane à afficher
-                </label>
-                <input
-                  type="text"
-                  value={texteFiligrane}
-                  onChange={(e) => setTexteFiligrane(e.target.value)}
-                  placeholder="Ex: Saison 2025 - 2026"
-                  className="w-full md:w-80 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-slate-700 text-sm"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Ce texte apparaîtra en filigrane diagonal en arrière-plan des pages grisées.
-                </p>
-              </div>
-            )}
-
-            <hr className="border-slate-100 my-4" />
-
-            <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex-1">
-                <h4 className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
-                  🚀 Transition vers la Nouvelle Saison
-                </h4>
-                <p className="text-xs text-amber-800 mt-1">
-                  Cette action désactive le mode inter-saison et incrémente automatiquement d&apos;un an toutes les dates configurées dans vos paramètres (dates de début des cours, tests de rentrée et année de filigrane).
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleDeclencheDebutSaison}
-                disabled={saving}
-                className="whitespace-nowrap px-4 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                Déclarer le début de saison
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Dates de rentrée et de tests */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-            📅 Dates de rentrée & Tests de rentrée
-          </h3>
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Début des cours (Normal)
-                </label>
-                <input
-                  type="text"
-                  value={debutCoursNormal}
-                  onChange={(e) => setDebutCoursNormal(e.target.value)}
-                  placeholder="Ex: Lundi 21 Septembre 2026"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-slate-700 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Début des cours (BNSSA)
-                </label>
-                <input
-                  type="text"
-                  value={debutCoursBnssa}
-                  onChange={(e) => setDebutCoursBnssa(e.target.value)}
-                  placeholder="Ex: Jeudi 1er Octobre 2026"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-slate-700 text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Dates des tests de rentrée (nageurs convoqués)
-              </label>
-              
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  value={newTestDate}
-                  onChange={(e) => setNewTestDate(e.target.value)}
-                  placeholder="Ex: Mercredi 16 Septembre 2026"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-slate-700 text-sm"
-                />
                 <button
                   type="button"
-                  onClick={() => {
-                    if (newTestDate.trim() && !datesTests.includes(newTestDate.trim())) {
-                      setDatesTests([...datesTests, newTestDate.trim()])
-                      setNewTestDate('')
-                    }
-                  }}
-                  className="px-4 py-2 bg-primary text-slate-950 font-bold rounded-lg hover:bg-primary-dark transition-all text-sm cursor-pointer"
+                  onClick={handleDeclencheDebutSaison}
+                  disabled={saving}
+                  className="whitespace-nowrap px-4 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
-                  Ajouter une date
+                  Déclarer le début de saison
                 </button>
               </div>
+            </motion.div>
+          )}
 
-              {datesTests.length === 0 ? (
-                <p className="text-xs text-gray-500 italic">Aucune date de test configurée.</p>
-              ) : (
-                <div className="space-y-2 max-w-md">
-                  {datesTests.map((date, index) => (
-                    <div key={index} className="flex justify-between items-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm">
-                      <span className="text-slate-800 font-medium">{date}</span>
-                      <button
-                        type="button"
-                        onClick={() => setDatesTests(datesTests.filter((_, i) => i !== index))}
-                        className="text-red-600 hover:text-red-800 font-bold text-xs cursor-pointer"
-                      >
-                        Supprimer
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Assistant Virtuel (Chatbot) */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-            🤖 Assistant Virtuel (Chatbot)
-          </h3>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Modèle d&apos;Intelligence Artificielle
-            </label>
-            <select
-              value={chatbotModel}
-              onChange={(e) => setChatbotModel(e.target.value)}
-              className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-slate-700 text-sm"
+          {activeTab === 'finances' && (
+            <motion.div
+              key="finances"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
             >
-              <option value="mistral-7b">Mistral 7B (Économique / Basique)</option>
-              <option value="mistral-small">Mistral Small (Recommandé - Équilibré & Rapide)</option>
-              <option value="ministral-8b">Ministral 8B (Très rapide & Intelligent)</option>
-              <option value="mistral-large">Mistral Large (Ultra intelligent / Maximum de précision)</option>
-            </select>
-            <p className="text-xs text-gray-500 mt-2">
-              Le modèle d&apos;IA définit l&apos;intelligence du chatbot. <strong>Mistral Small</strong> est recommandé pour un excellent rapport qualité/prix. 
-              <strong>Mistral Large</strong> offre le niveau de réponse le plus précis mais consomme plus de jetons API.
-            </p>
-          </div>
-        </div>
-
-        {/* Configuration Financière */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-            💰 Configuration Financière de la Saison
-            <HelpTooltip title="Solde initial de trésorerie">
-              Indiquez la somme de départ disponible dans la caisse ou le compte du club au début de la saison.
-            </HelpTooltip>
-          </h3>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-              Solde de départ de la saison (€)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={soldeDepartSaison}
-              onChange={(e) => setSoldeDepartSaison(e.target.value)}
-              required
-              className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="0.00"
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              Cette somme sert de base de départ pour tous les calculs cumulés et l&apos;évolution de la trésorerie globale.
-            </p>
-          </div>
-        </div>
-
-        {/* Tarification */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-            Tarification
-            <HelpTooltip title="Tarification des coaches">
-              Ces paramètres définissent la rémunération des coaches. Le taux horaire s&apos;applique aux entraînements, le forfait compétition aux accompagnements en compétition.
-            </HelpTooltip>
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                Taux horaire (€/h)
-                <CalculationTooltip
-                  title="Calcul des heures"
-                  formula="Heures travaillées × Taux horaire"
-                  explanation="Appliqué à chaque heure d'entraînement (planning fixe, tournant, remplacements)."
-                  example="10h × 35€ = 350€"
-                />
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={tauxHoraire}
-                onChange={(e) => setTauxHoraire(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="35.00"
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                Taux horaire utilisé pour le calcul des factures des coaches
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                Forfait compétition (€/demi-journée)
-                <CalculationTooltip
-                  title="Calcul compétitions"
-                  formula="Nb demi-journées × Forfait"
-                  explanation="Une journée complète = 2 demi-journées. Ce forfait remplace le taux horaire pour les compétitions."
-                  example="2 demi-journées × 150€ = 300€"
-                />
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={forfaitCompetition}
-                onChange={(e) => setForfaitCompetition(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="150.00"
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                Montant forfaitaire pour chaque demi-journée de compétition
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                Demi-journées par compétition
-                <CalculationTooltip
-                  title="Calcul coût compétitions"
-                  formula="Nb compétitions × Nb demi-journées × Forfait"
-                  explanation="Utilisé dans l'outil Coût Groupes pour estimer le coût des compétitions sur la saison."
-                  example="20 compétitions × 2 demi-journées × 150€"
-                />
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="2"
-                step="1"
-                value={nbDemiJourneesParCompetition}
-                onChange={(e) => setNbDemiJourneesParCompetition(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="2"
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                Valeur par défaut pour une compétition (1 ou 2 demi-journées)
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                Nombre de compétitions par saison (défaut)
-                <CalculationTooltip
-                  title="Valeur par défaut"
-                  formula="Nb compétitions groupe ou défaut global"
-                  explanation="Cette valeur est utilisée dans Coût Groupes quand un groupe n'a pas de nombre de compétitions spécifique."
-                  example="Si un groupe n'a pas de valeur, on utilise 20 compétitions"
-                />
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={nbCompetitionsAnnee}
-                onChange={(e) => setNbCompetitionsAnnee(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="20"
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                Nombre de compétitions appliqué par défaut sur l&apos;année
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Forfait Régional */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-            Forfait Régional (déplacements)
-            <HelpTooltip title="Forfait Régional">
-              Indemnité pour les compétitions nécessitant un déplacement hors département avec hébergement. S&apos;ajoute au forfait compétition classique.
-            </HelpTooltip>
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Le forfait régional permet de rémunérer les coaches pour les compétitions hors département nécessitant un hébergement.
-          </p>
-
-          <div className="flex flex-col md:flex-row md:items-start gap-6">
-            {/* Checkbox pour montant libre */}
-            <div className="flex-1">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={forfaitRegionalActif}
-                  onChange={(e) => setForfaitRegionalActif(e.target.checked)}
-                  className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
-                />
+              {/* Trésorerie & Boutique */}
+              <div className="card p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <span className="text-sm font-medium text-gray-700">Montant libre</span>
-                  <p className="text-sm text-gray-500">
-                    Le coach peut saisir le montant de son choix
-                  </p>
+                  <h3 className="text-md font-bold text-slate-900 mb-4 border-b pb-2 flex items-center gap-1.5">
+                    Trésorerie
+                    <HelpTooltip title="Solde initial">
+                      Le solde initial de trésorerie disponible au début de la saison comptable.
+                    </HelpTooltip>
+                  </h3>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Solde de départ de la saison (€)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={soldeDepartSaison}
+                    onChange={(e) => setSoldeDepartSaison(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                    placeholder="0.00"
+                  />
                 </div>
-              </label>
-            </div>
 
-            {/* Montant fixe (affiché seulement si montant non libre) */}
-            {!forfaitRegionalActif && (
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Montant fixe par forfait régional (€)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={montantForfaitRegional}
-                  onChange={(e) => setMontantForfaitRegional(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="50.00"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Montant imposé pour chaque forfait régional déclaré
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4 p-4 rounded-lg border border-gray-200 bg-gray-50">
-            {forfaitRegionalActif ? (
-              <div className="flex items-start gap-3">
-                <span className="text-green-600 text-xl">✓</span>
-                <div>
-                  <p className="font-medium text-gray-800">Mode libre activé</p>
-                  <p className="text-sm text-gray-600">
-                    Les coaches peuvent ajouter un forfait régional et saisir librement le montant de leur choix dans leur facturation.
-                  </p>
+                <div className="md:border-l md:border-slate-100 md:pl-6">
+                  <h3 className="text-md font-bold text-slate-900 mb-4 border-b pb-2">Boutique Club</h3>
+                  <label className="flex items-center gap-3 cursor-pointer mt-2">
+                    <input
+                      type="checkbox"
+                      checked={boutiqueOuverte}
+                      onChange={(e) => setBoutiqueOuverte(e.target.checked)}
+                      className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-gray-700">Ouvrir la boutique aux commandes</span>
+                      <p className="text-[10px] text-gray-500">
+                        Si décoché, les articles sont visibles mais les membres ne peuvent pas commander.
+                      </p>
+                    </div>
+                  </label>
+                  {!boutiqueOuverte && (
+                    <div className="mt-3 bg-amber-50 border border-amber-100 p-2.5 rounded-lg text-amber-700 text-[10px] font-semibold">
+                      ⚠️ La boutique est fermée aux ventes.
+                    </div>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="flex items-start gap-3">
-                <span className="text-blue-600 text-xl">🔒</span>
-                <div>
-                  <p className="font-medium text-gray-800">Mode fixe activé</p>
-                  <p className="text-sm text-gray-600">
-                    Les coaches peuvent ajouter un forfait régional, mais le montant sera fixé à <strong>{montantForfaitRegional}€</strong> (non modifiable).
-                  </p>
+
+              {/* Rémunération des Entraîneurs */}
+              <div className="card p-6 space-y-6">
+                <h3 className="text-md font-bold text-slate-900 border-b pb-2 flex items-center gap-1.5">Rémunération des Coaches</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
+                      Taux horaire (€/h)
+                      <CalculationTooltip
+                        title="Rémunération horaire"
+                        formula="Heures entraînements × Taux horaire"
+                        explanation="Appliqué à chaque heure d'entraînement (planning fixe, tournant, remplacements)."
+                        example="10h × 35€ = 350€"
+                      />
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={tauxHoraire}
+                      onChange={(e) => setTauxHoraire(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
+                      Forfait compétition (€/demi-journée)
+                      <CalculationTooltip
+                        title="Forfait compétition"
+                        formula="Nb demi-journées × Forfait"
+                        explanation="Rémunère les demi-journées d'accompagnement en compétitions."
+                        example="2 demi-journées × 150€ = 300€"
+                      />
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={forfaitCompetition}
+                      onChange={(e) => setForfaitCompetition(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
+                      Demi-journées par compétition
+                      <CalculationTooltip
+                        title="Compétition par défaut"
+                        formula="Par défaut : 2 demi-journées"
+                        explanation="Valeur par défaut appliquée pour l'estimation de coût d'une compétition."
+                        example="1 compétition = 2 demi-journées de forfait"
+                      />
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="2"
+                      step="1"
+                      value={nbDemiJourneesParCompetition}
+                      onChange={(e) => setNbDemiJourneesParCompetition(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
+                      Compétitions par saison (défaut)
+                      <CalculationTooltip
+                        title="Nombre par saison"
+                        formula="Estimations par défaut"
+                        explanation="Nombre de compétitions estimées par défaut sur l'année pour les groupes n'ayant pas de valeur spécifique."
+                        example="Appliqué dans l'analyse financière globale."
+                      />
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={nbCompetitionsAnnee}
+                      onChange={(e) => setNbCompetitionsAnnee(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-805"
+                    />
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* Réductions Bureau */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-            👔 Réductions Membres du Bureau
-            <HelpTooltip title="Réductions Bureau">
-              Les membres du bureau et leurs enfants bénéficient de réductions sur les tarifs. Ces réductions sont prises en compte dans le calcul de la rentabilité des groupes.
-            </HelpTooltip>
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Les membres du bureau bénéficient de la gratuité (100%). Vous pouvez définir ici le pourcentage de réduction pour leurs enfants.
-          </p>
+              {/* Forfait Régional & Réductions Bureau */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Forfait Régional */}
+                <div className="card p-6 space-y-4">
+                  <h3 className="text-md font-bold text-slate-900 border-b pb-2 flex items-center gap-1.5">
+                    Déplacements Régionaux (Bonus)
+                    <HelpTooltip title="Forfait Régional">
+                      Indemnisation s'ajoutant aux frais de déplacement pour les compétitions hors département avec hébergement.
+                    </HelpTooltip>
+                  </h3>
+                  
+                  <div className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={forfaitRegionalActif}
+                      onChange={(e) => setForfaitRegionalActif(e.target.checked)}
+                      className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-gray-700">Autoriser la saisie d&apos;un montant libre</span>
+                      <p className="text-[10px] text-gray-500">Le coach déclare le montant de son choix.</p>
+                    </div>
+                  </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-              Réduction enfants du bureau (%)
-              <CalculationTooltip
-                title="Calcul tarif enfant bureau"
-                formula="Tarif × (1 - Réduction%)"
-                explanation="Le tarif réduit est appliqué aux enfants des membres du bureau dans le calcul des revenus."
-                example="200€ × (1 - 50%) = 100€"
-              />
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="1"
-              value={reductionEnfantBureau}
-              onChange={(e) => setReductionEnfantBureau(e.target.value)}
-              className="w-full md:w-48 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="50"
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              Par défaut : 50% (soit demi-tarif pour les enfants des membres du bureau)
-            </p>
-          </div>
+                  {!forfaitRegionalActif && (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        Montant fixe imposé (€)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={montantForfaitRegional}
+                        onChange={(e) => setMontantForfaitRegional(e.target.value)}
+                        className="w-full md:w-48 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                        placeholder="50.00"
+                      />
+                    </div>
+                  )}
 
-          <div className="mt-4 p-4 rounded-lg border border-gray-200 bg-gray-50">
-            <div className="flex items-start gap-3">
-              <span className="text-blue-600 text-xl">ℹ️</span>
-              <div>
-                <p className="font-medium text-gray-800">Récapitulatif</p>
-                <ul className="text-sm text-gray-600 mt-1 list-disc ml-4">
-                  <li><strong>Membres du bureau :</strong> Gratuit (100% de réduction)</li>
-                  <li><strong>Enfants du bureau :</strong> {reductionEnfantBureau}% de réduction</li>
-                </ul>
+                  <div className="bg-slate-50 p-3 border border-slate-200/60 rounded-xl text-slate-650 text-xs">
+                    {forfaitRegionalActif ? (
+                      <p>✅ <strong>Mode libre actif</strong> : Les coaches règlent eux-mêmes le montant du forfait.</p>
+                    ) : (
+                      <p>🔒 <strong>Mode fixe actif</strong> : Rémunération bloquée à <strong>{montantForfaitRegional}€</strong> par forfait régional.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Réductions bureau */}
+                <div className="card p-6 space-y-4">
+                  <h3 className="text-md font-bold text-slate-900 border-b pb-2 flex items-center gap-1.5">
+                    Réductions Membres du Bureau
+                    <HelpTooltip title="Réductions Bureau">
+                      Remises accordées aux administrateurs bénévoles du club et à leurs enfants.
+                    </HelpTooltip>
+                  </h3>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">
+                      Réduction enfants de dirigeants (%)
+                      <CalculationTooltip
+                        title="Réduction enfants"
+                        formula="Tarif × (1 - Pourcentage%)"
+                        explanation="Applique le pourcentage de remise calculé sur les enfants de membres du bureau."
+                        example="Ex : 200€ × (1 - 50%) = 100€"
+                      />
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={reductionEnfantBureau}
+                      onChange={(e) => setReductionEnfantBureau(e.target.value)}
+                      className="w-full md:w-40 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-850"
+                      placeholder="50"
+                    />
+                  </div>
+                  <div className="bg-slate-50 p-3 border border-slate-200/60 rounded-xl text-xs space-y-1">
+                    <p>• <strong>Dirigeants (bureau) :</strong> Gratuité totale (100% de réduction).</p>
+                    <p>• <strong>Enfants de dirigeants :</strong> {reductionEnfantBureau}% de réduction.</p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
+            </motion.div>
+          )}
 
-        {/* Boutique */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4">Boutique</h3>
-          <div>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={boutiqueOuverte}
-                onChange={(e) => setBoutiqueOuverte(e.target.checked)}
-                className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-700">Boutique ouverte</span>
-                <p className="text-sm text-gray-500">
-                  Lorsque la boutique est fermée, les articles restent visibles mais les visiteurs ne peuvent plus passer de commandes
-                </p>
+          {activeTab === 'documents' && (
+            <motion.div
+              key="documents"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              {/* Signatures Reçus Fiscaux */}
+              <div className="card p-6 space-y-6">
+                <h3 className="text-md font-bold text-slate-900 border-b pb-2 flex items-center gap-1.5">Signatures Fac-similés (Reçus fiscaux)</h3>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* President */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-bold text-slate-800 border-l-2 border-primary pl-2 uppercase tracking-wide">Signature Président</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-600 mb-1">Nom complet</label>
+                        <input
+                          type="text"
+                          value={nomSignataireRecu}
+                          onChange={(e) => setNomSignataireRecu(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-805"
+                          placeholder="Jean Dupont"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-600 mb-1">Titre du signataire</label>
+                        <input
+                          type="text"
+                          value={titreSignataireRecu}
+                          onChange={(e) => setTitreSignataireRecu(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-805"
+                          placeholder="Le Président"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-4 items-start pt-2">
+                      <div className="w-36 h-20 border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden bg-slate-50 relative shadow-2xs">
+                        {signaturePresidentUrl ? (
+                          <Image
+                            src={signaturePresidentUrl}
+                            alt="Signature"
+                            fill
+                            className="object-contain p-1.5"
+                            unoptimized={signaturePresidentUrl.includes('blob.vercel-storage.com')}
+                          />
+                        ) : (
+                          <span className="text-gray-400 text-[10px]">Aucune image</span>
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <input
+                          type="file"
+                          accept="image/png, image/jpeg, image/webp"
+                          onChange={handleSignatureUpload}
+                          disabled={uploadingSignature}
+                          className="block w-full text-[10px] text-gray-500
+                            file:mr-2 file:py-1 file:px-3
+                            file:rounded-full file:border-0
+                            file:text-[10px] file:font-semibold
+                            file:bg-slate-100 file:text-slate-800
+                            hover:file:bg-slate-200"
+                        />
+                        {signaturePresidentUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setSignaturePresidentUrl('')}
+                            className="text-red-500 hover:text-red-700 text-[10px] font-bold block"
+                          >
+                            Retirer la signature
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Treasurer */}
+                  <div className="space-y-4 lg:border-l lg:border-slate-100 lg:pl-8">
+                    <h4 className="text-xs font-bold text-slate-800 border-l-2 border-teal-500 pl-2 uppercase tracking-wide">Signature Trésorière</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-600 mb-1">Nom complet</label>
+                        <input
+                          type="text"
+                          value={nomTresoriereRecu}
+                          onChange={(e) => setNomTresoriereRecu(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-850"
+                          placeholder="Sophie Martin"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-600 mb-1">Titre de la signataire</label>
+                        <input
+                          type="text"
+                          value={titreTresoriereRecu}
+                          onChange={(e) => setTitreTresoriereRecu(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-850"
+                          placeholder="La Trésorière"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-4 items-start pt-2">
+                      <div className="w-36 h-20 border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden bg-slate-50 relative shadow-2xs">
+                        {signatureTresoriereUrl ? (
+                          <Image
+                            src={signatureTresoriereUrl}
+                            alt="Signature"
+                            fill
+                            className="object-contain p-1.5"
+                            unoptimized={signatureTresoriereUrl.includes('blob.vercel-storage.com')}
+                          />
+                        ) : (
+                          <span className="text-gray-400 text-[10px]">Aucune image</span>
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <input
+                          type="file"
+                          accept="image/png, image/jpeg, image/webp"
+                          onChange={handleSignatureTresoriereUpload}
+                          disabled={uploadingSignatureTresoriere}
+                          className="block w-full text-[10px] text-gray-500
+                            file:mr-2 file:py-1 file:px-3
+                            file:rounded-full file:border-0
+                            file:text-[10px] file:font-semibold
+                            file:bg-slate-100 file:text-slate-800
+                            hover:file:bg-slate-200"
+                        />
+                        {signatureTresoriereUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setSignatureTresoriereUrl('')}
+                            className="text-red-500 hover:text-red-700 text-[10px] font-bold block"
+                          >
+                            Retirer la signature
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </label>
-            {!boutiqueOuverte && (
-              <div className="mt-4 bg-orange-50 border-l-4 border-orange-500 p-4 rounded">
-                <p className="text-orange-700 text-sm">
-                  <strong>⚠️ Attention:</strong> La boutique est actuellement fermée. Les visiteurs ne pourront pas commander.
-                </p>
+
+              {/* Uploads PDF Documents */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Statuts */}
+                <div className="card p-5 space-y-4">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 border-b pb-2">📜 Statuts du Club</h3>
+                  <div className="w-24 h-24 border border-slate-200 bg-slate-50 rounded-xl flex flex-col items-center justify-center text-center p-2 mx-auto">
+                    {statutsUrl ? (
+                      <>
+                        <span className="text-red-500 text-3xl">📄</span>
+                        <span className="text-[8px] text-gray-500 truncate max-w-full font-mono mt-1">{statutsUrl.substring(statutsUrl.lastIndexOf('/') + 1)}</span>
+                      </>
+                    ) : (
+                      <span className="text-gray-400 text-[10px]">Aucun PDF</span>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleStatutsUpload}
+                    disabled={uploadingStatuts}
+                    className="block w-full text-[10px] text-gray-500"
+                  />
+                  {statutsUrl && (
+                    <button type="button" onClick={() => setStatutsUrl('')} className="text-red-500 hover:text-red-700 text-[10px] font-bold w-full text-center">Retirer</button>
+                  )}
+                </div>
+
+                {/* Règlement piscine */}
+                <div className="card p-5 space-y-4">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 border-b pb-2">🏊‍♂️ Règlement Piscine</h3>
+                  <div className="w-24 h-24 border border-slate-200 bg-slate-50 rounded-xl flex flex-col items-center justify-center text-center p-2 mx-auto">
+                    {reglementPiscineUrl ? (
+                      <>
+                        <span className="text-red-500 text-3xl">📄</span>
+                        <span className="text-[8px] text-gray-500 truncate max-w-full font-mono mt-1">{reglementPiscineUrl.substring(reglementPiscineUrl.lastIndexOf('/') + 1)}</span>
+                      </>
+                    ) : (
+                      <span className="text-gray-400 text-[10px]">Aucun PDF</span>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleReglementPiscineUpload}
+                    disabled={uploadingReglementPiscine}
+                    className="block w-full text-[10px] text-gray-500"
+                  />
+                  {reglementPiscineUrl && (
+                    <button type="button" onClick={() => setReglementPiscineUrl('')} className="text-red-500 hover:text-red-700 text-[10px] font-bold w-full text-center">Retirer</button>
+                  )}
+                </div>
+
+                {/* Règlement club */}
+                <div className="card p-5 space-y-4">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 border-b pb-2">📋 Règlement Intérieur</h3>
+                  <div className="w-24 h-24 border border-slate-200 bg-slate-50 rounded-xl flex flex-col items-center justify-center text-center p-2 mx-auto">
+                    {reglementClubUrl ? (
+                      <>
+                        <span className="text-red-500 text-3xl">📄</span>
+                        <span className="text-[8px] text-gray-500 truncate max-w-full font-mono mt-1">{reglementClubUrl.substring(reglementClubUrl.lastIndexOf('/') + 1)}</span>
+                      </>
+                    ) : (
+                      <span className="text-gray-400 text-[10px]">Aucun PDF</span>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleReglementClubUpload}
+                    disabled={uploadingReglementClub}
+                    className="block w-full text-[10px] text-gray-500"
+                  />
+                  {reglementClubUrl && (
+                    <button type="button" onClick={() => setReglementClubUrl('')} className="text-red-500 hover:text-red-700 text-[10px] font-bold w-full text-center">Retirer</button>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        </div>
+            </motion.div>
+          )}
 
-        {/* Email du club */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4">Email du club</h3>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Adresse email du club
-            </label>
-            <input
-              type="email"
-              value={emailClub}
-              onChange={(e) => setEmailClub(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="contact@triton-club.fr"
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              Les factures des coaches seront envoyées à cette adresse
-            </p>
-          </div>
-        </div>
-
-        {/* Configuration SMTP */}
-        <div className="card p-6">
-          <h3 className="text-xl font-bold mb-4">Configuration SMTP</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Paramètres du serveur SMTP pour l&apos;envoi des emails (factures, notifications, etc.)
-          </p>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Serveur SMTP (Host)
-                </label>
-                <input
-                  type="text"
-                  value={smtpHost}
-                  onChange={(e) => setSmtpHost(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="smtp.gmail.com"
-                />
+          {activeTab === 'system' && (
+            <motion.div
+              key="system"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              {/* Chatbot AI */}
+              <div className="card p-6 space-y-4">
+                <h3 className="text-md font-bold text-slate-900 border-b pb-2 flex items-center gap-2">🤖 Paramètres Assistant Virtuel</h3>
+                <div className="max-w-md">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Modèle d&apos;Intelligence Artificielle actif</label>
+                  <select
+                    value={chatbotModel}
+                    onChange={(e) => setChatbotModel(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                  >
+                    <option value="mistral-7b">Mistral 7B (Économique / Basique)</option>
+                    <option value="mistral-small">Mistral Small (Recommandé - Équilibré & Rapide)</option>
+                    <option value="ministral-8b">Ministral 8B (Très rapide & Intelligent)</option>
+                    <option value="mistral-large">Mistral Large (Précision maximale / Plus coûteux)</option>
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">Le choix du modèle détermine le niveau de raisonnement du chatbot. Mistral Small offre un compromis optimal.</p>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Port SMTP
-                </label>
-                <input
-                  type="number"
-                  value={smtpPort}
-                  onChange={(e) => setSmtpPort(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="587"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Port standard: 587 (TLS) ou 465 (SSL)
-                </p>
+              {/* SMTP configuration */}
+              <div className="card p-6 space-y-6">
+                <h3 className="text-md font-bold text-slate-900 border-b pb-2 flex items-center gap-1.5">Configuration Serveur SMTP</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Serveur SMTP (Host)</label>
+                    <input
+                      type="text"
+                      value={smtpHost}
+                      onChange={(e) => setSmtpHost(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                      placeholder="smtp.gmail.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Port SMTP</label>
+                    <input
+                      type="number"
+                      value={smtpPort}
+                      onChange={(e) => setSmtpPort(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                      placeholder="587"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Identifiant / Utilisateur SMTP</label>
+                    <input
+                      type="text"
+                      value={smtpUser}
+                      onChange={(e) => setSmtpUser(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                      placeholder="votrecompte@gmail.com"
+                    />
+                  </div>
+
+                  <div className="md:col-span-3">
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Mot de passe SMTP</label>
+                    <input
+                      type="password"
+                      value={smtpPassword}
+                      onChange={(e) => setSmtpPassword(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                      placeholder={settings?.smtpPasswordConfigured ? '••••••••' : 'Saisir le mot de passe'}
+                    />
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      {settings?.smtpPasswordConfigured ? 'Laissez vide pour conserver le mot de passe configuré.' : 'Requis pour l\'envoi des e-mails.'} Pour Gmail, utilisez un <strong>mot de passe d&apos;application</strong> à 16 caractères.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100 pt-5 space-y-3">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Tester les connexions mails</h4>
+                  <p className="text-[10px] text-gray-500">Testez les paramètres SMTP configurés ci-dessus avant de les sauvegarder définitivement.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => testSmtpConnection(false)}
+                      disabled={testingSmtp || !smtpHost || !smtpUser}
+                      className="px-4 py-2 text-xs font-bold text-slate-700 border border-slate-250 hover:bg-slate-50 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {testingSmtp ? 'Vérification...' : 'Tester la connexion'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => testSmtpConnection(true)}
+                      disabled={testingSmtp || !smtpHost || !smtpUser}
+                      className="px-4 py-2 text-xs font-bold text-slate-900 bg-primary hover:bg-primary-dark rounded-xl transition-all cursor-pointer disabled:opacity-50 shadow-3xs"
+                    >
+                      {testingSmtp ? 'Envoi...' : 'Envoyer un email de test'}
+                    </button>
+                  </div>
+
+                  {smtpTestedFingerprint && !smtpNeedsRetest && (
+                    <p className="text-emerald-700 text-[10px] font-bold mt-1">✅ Configuration SMTP validée avec succès pour ces paramètres.</p>
+                  )}
+                  {smtpNeedsRetest && (
+                    <p className="text-amber-700 text-[10px] font-semibold mt-1">⚠️ Des champs ont changé depuis votre dernier test. Il est conseillé de retester.</p>
+                  )}
+                  {smtpValidationWarning && (
+                    <p className="text-rose-600 text-[10px] font-semibold mt-1">⚠️ {smtpValidationWarning}</p>
+                  )}
+                </div>
               </div>
-            </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Utilisateur SMTP
-              </label>
-              <input
-                type="text"
-                value={smtpUser}
-                onChange={(e) => setSmtpUser(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="moncompte@gmail.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mot de passe SMTP
-              </label>
-              <input
-                type="password"
-                value={smtpPassword}
-                onChange={(e) => setSmtpPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder={settings?.smtpPasswordConfigured ? '••••••••' : 'Mot de passe'}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {settings?.smtpPasswordConfigured
-                  ? 'Laissez vide pour conserver le mot de passe actuel'
-                  : 'Requis pour l\'envoi d\'emails'}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Pour Gmail, utilisez un <strong>mot de passe d&apos;application</strong> (16 caractères), pas le mot de passe principal du compte.
-              </p>
-            </div>
-          </div>
-
-          {/* Test SMTP */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-md font-semibold mb-3">Tester la configuration SMTP</h4>
-            <p className="text-sm text-gray-600 mb-4">
-              Vérifiez que les paramètres SMTP sont corrects avant d&apos;enregistrer.
-              Cette fonctionnalité est essentielle pour le bon fonctionnement de la réinitialisation de mot de passe.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => testSmtpConnection(false)}
-                disabled={testingSmtp || !smtpHost || !smtpUser}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 text-sm font-medium"
-              >
-                {testingSmtp ? 'Test en cours...' : 'Tester la connexion'}
-              </button>
-              <button
-                type="button"
-                onClick={() => testSmtpConnection(true)}
-                disabled={testingSmtp || !smtpHost || !smtpUser}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 text-sm font-medium"
-              >
-                {testingSmtp ? 'Envoi en cours...' : 'Envoyer un email de test'}
-              </button>
-            </div>
-            {smtpTestedFingerprint && !smtpNeedsRetest && (
-              <p className="text-green-700 text-sm mt-2">
-                ✅ Configuration SMTP testée avec succès pour les valeurs actuelles.
-              </p>
-            )}
-            {smtpNeedsRetest && (
-              <p className="text-amber-700 text-sm mt-2">
-                ⚠️ Les champs SMTP ont changé depuis le dernier test. Pensez à retester la connexion.
-              </p>
-            )}
-            {smtpValidationWarning && (
-              <p className="text-amber-700 text-sm mt-2">
-                ⚠️ {smtpValidationWarning}
-              </p>
-            )}
-            {(!smtpHost || !smtpUser) && (
-              <p className="text-orange-600 text-sm mt-2">
-                Remplissez les champs serveur et utilisateur SMTP pour tester.
-              </p>
-            )}
-          </div>
-
-          <div className="mt-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-            <p className="text-blue-700 text-sm">
-              <strong>💡 Conseil Gmail:</strong> Host <code>smtp.gmail.com</code>, port <code>587</code> (TLS) ou <code>465</code> (SSL), utilisateur = adresse Gmail complète.
-            </p>
-          </div>
-        </div>
-
-        {/* Enregistrement automatique & Manuel */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-200 pt-6">
-          <div className="text-sm font-semibold flex items-center gap-2 h-6">
+        {/* Barre de sauvegarde collante inférieure */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-250/60 pt-6">
+          <div className="text-xs font-semibold flex items-center gap-2 h-6">
             <AnimatePresence mode="wait">
               {saveStatus === 'saving' && (
                 <motion.span
@@ -1787,7 +1601,7 @@ export default function ParametresManager() {
                   className="text-slate-500 flex items-center gap-1.5"
                 >
                   <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
-                  Sauvegarde en cours...
+                  Sauvegarde automatique en cours...
                 </motion.span>
               )}
               {saveStatus === 'saved' && (
@@ -1809,7 +1623,7 @@ export default function ParametresManager() {
                   exit={{ opacity: 0, y: -5 }}
                   className="text-rose-600 flex items-center gap-1.5 font-bold"
                 >
-                  <AlertTriangle className="w-4 h-4 text-rose-500" /> Erreur de sauvegarde automatique
+                  <AlertTriangle className="w-4 h-4 text-rose-500" /> Échec de la sauvegarde automatique
                 </motion.span>
               )}
               {saveStatus === 'idle' && (
@@ -1820,7 +1634,7 @@ export default function ParametresManager() {
                   exit={{ opacity: 0, y: -5 }}
                   className="text-slate-400 font-medium flex items-center gap-1.5"
                 >
-                  <Cloud className="w-4 h-4 text-slate-350" /> Les modifications sont enregistrées automatiquement
+                  <Cloud className="w-4 h-4 text-slate-350" /> Toute modification est sauvegardée automatiquement en arrière-plan
                 </motion.span>
               )}
             </AnimatePresence>
@@ -1829,10 +1643,10 @@ export default function ParametresManager() {
           <button
             type="submit"
             disabled={saving || saveStatus === 'saving'}
-            className="px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 font-medium cursor-pointer flex items-center gap-2"
+            className="px-8 py-2.5 bg-primary text-slate-950 rounded-xl hover:bg-primary-dark transition-all disabled:opacity-50 font-bold text-xs cursor-pointer flex items-center gap-2 shadow-2xs active:scale-95"
           >
             {saving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4.5 h-4.5 animate-spin" />
             ) : (
               <Save className="w-4 h-4" />
             )}
