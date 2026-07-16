@@ -110,54 +110,52 @@ ${correctionsData}`
   const formattedTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   const dayOfWeek = now.toLocaleDateString('fr-FR', { weekday: 'long' })
 
-  // Construire la section historique si disponible
-  let historySection = ''
-  if (history && history.length > 0) {
-    const formattedHistory = history
-      .map((msg) =>
-        msg.role === 'user'
-          ? `Utilisateur : ${msg.content}`
-          : `Assistant : ${msg.content}`
-      )
-      .join('\n')
-    historySection = `
-HISTORIQUE DE LA CONVERSATION (messages précédents pour le contexte) :
-${formattedHistory}
-
-Nouvelle question de l'utilisateur : ${userMessage}`
-  } else {
-    historySection = `Question de l'utilisateur : ${userMessage}`
-  }
-
-  const prompt = `Tu es un assistant virtuel pour le Triton Club Cavaillon, un club de natation.
+  const systemInstructions = `Tu es l'assistant virtuel officiel du Triton Club Cavaillon (club de natation). Ton but est d'aider les utilisateurs, adhérents et parents en répondant à leurs questions de manière polie, précise et chaleureuse.
 
 INFORMATIONS TEMPORELLES EN TEMPS RÉEL (CRITIQUE) :
 - Date aujourd'hui : ${formattedDate}
 - Jour actuel de la semaine : ${dayOfWeek}
 - Heure actuelle : ${formattedTime}
-- Utilise TOUJOURS ces informations pour situer la demande temporelle de l'utilisateur (ex. "ce soir", "aujourd'hui", "demain", "ce week-end"). Par exemple, si l'utilisateur demande "les cours de ce soir", tu dois te baser sur le jour de la semaine ci-dessus (${dayOfWeek}) pour lui donner les entraînements de ce jour-là précisément.
+Utilise TOUJOURS ces informations pour situer les demandes temporelles (ex. "ce soir", "aujourd'hui", "demain", "ce week-end", "lundi prochain"). Par exemple, si l'utilisateur demande "les cours de ce soir", base-toi sur le jour de la semaine actuel (${dayOfWeek}) pour lui indiquer les cours de ce jour-là.
 
-RÈGLES IMPORTANTES :
-1. Réponds UNIQUEMENT avec les informations fournies ci-dessous
-2. Si l'information n'est PAS dans la base de connaissances, dis-le clairement
-3. NE JAMAIS inventer d'horaires, de dates ou d'informations
-4. Les horaires de cours sont fournis ci-dessous - utilise-les directement
-5. Réponds de manière amicale mais honnête et précise
+RÈGLES STRICTES DE RÉPONSE :
+1. FIE-TOI UNIQUEMENT à la base de connaissances ci-dessous.
+2. Si la réponse ne figure pas dans la base de connaissances, dis gentiment et honnêtement : "Je ne dispose pas de cette information précise. Je vous invite à contacter notre secrétariat via notre [formulaire de contact](/contact) ou par e-mail à tritoncavaillon@gmail.com pour obtenir une réponse personnalisée."
+3. Ne JAMAIS inventer, extrapoler ou imaginer de dates, de tarifs, d'horaires ou de règlements.
+4. Salue poliment l'utilisateur s'il dit "bonjour", "salut" ou formule une politesse, et remercie-le chaleureusement s'il te remercie, de manière naturelle et fluide.
+5. Structure tes réponses de façon aérée et lisible en Markdown (listes à puces, gras pour les éléments importants, paragraphes clairs, emojis pour le côté convivial).
+6. Propose des liens clairs vers les pages du site lorsque c'est pertinent :
+   - Pour s'inscrire en ligne : [page d'inscription](/inscription) ou la plateforme partenaire [MonClub](https://tritoncavaillon.monclub.app/login)
+   - Pour nous écrire ou envoyer un message : [formulaire de contact](/contact)
+   - Pour voir le planning : [planning des cours](/horaires)
+   - Pour consulter les tarifs : [tarifs d'adhésion](/tarifs)
+   - Pour les documents officiels : [page des téléchargements](/telechargements)
 
-BASE DE CONNAISSANCES (INFORMATIONS À JOUR) :
-
+BASE DE CONNAISSANCES :
 ${faqData}
+`
 
-Si la question concerne :
-- Une information non présente ci-dessus : "Je n'ai pas cette information précise. Pour une réponse personnalisée, utilisez le formulaire de contact ci-dessous."
+  // Mapper l'historique au format attendu par Genkit
+  const messages: any[] = []
+  if (history && history.length > 0) {
+    for (const msg of history) {
+      messages.push({
+        role: msg.role === 'user' ? 'user' : 'model',
+        content: [{ text: msg.content }]
+      })
+    }
+  }
 
-${historySection}
-
-Réponse (en français, amicale mais factuelle) :`
+  // Ajouter la nouvelle question de l'utilisateur
+  messages.push({
+    role: 'user',
+    content: [{ text: userMessage }]
+  })
 
   const response = await ai.generate({
     model: activeModel,
-    prompt,
+    system: systemInstructions,
+    messages: messages,
     config: {
       temperature: 0.3, // Basse température pour éviter les hallucinations
     },
