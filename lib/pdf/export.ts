@@ -124,7 +124,7 @@ export function generateCommandePDF(commande: CommandePDF): jsPDF {
   // Pied de page
   doc.setFontSize(8)
   doc.setTextColor(128, 128, 128)
-  doc.text('Triton Club Cavaillon - contact@tritoncavaillon.fr', 105, 285, { align: 'center' })
+  doc.text('Triton Club Cavaillon - tritoncavaillon@gmail.com', 105, 285, { align: 'center' })
 
   return doc
 }

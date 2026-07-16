@@ -22,7 +22,7 @@ export default function MentionsLegalesPage() {
             <p className="text-gray-700">Triton Club Cavaillon</p>
             <p className="text-gray-700">Siège social : Piscine Alphonse Roudière, Bd Jean Moulin, Quartier La Clède, 84300 Cavaillon</p>
             <p className="text-gray-700">RNA : W841000669 · SIREN : 448 666 065 · SIRET : 448 666 065 00017</p>
-            <p className="text-gray-700">Email : contact@tritoncavaillon.fr</p>
+            <p className="text-gray-700">Email : tritoncavaillon@gmail.com</p>
           </section>
 
           <section className="space-y-2">

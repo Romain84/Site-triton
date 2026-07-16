@@ -28,7 +28,7 @@ const settingsData = [
     "forfaitRegionalActif": false,
     "montantForfaitRegional": 50,
     "boutiqueOuverte": true,
-    "emailClub": "contact@triton-club-cavaillon.fr",
+    "emailClub": "tritoncavaillon@gmail.com",
     "emailNotification": null,
     "logoUrl": "https://o668kgm0nljs2w9j.public.blob.vercel-storage.com/logo-1779742611839-logo.png",
     "smtpHost": "smtp.gmail.com",
@@ -3052,7 +3052,7 @@ const actualitesData = [
     "id": "cmozpew8b004ch438vgq71q8d",
     "titre": "Planning des vacances de la Toussaint",
     "slug": "planning-vacances-toussaint-2025",
-    "contenu": "🍂 Information importante : modification des horaires pendant les vacances de la Toussaint.\n\n## Dates des vacances\n\n**Du 19 octobre au 3 novembre 2025**\n\n## Entraînements maintenus\n\nLes groupes suivants continuent leurs entraînements normalement :\n\n- **Juniors Compétition** : tous les créneaux maintenus\n- **Adultes Compétition** : planning habituel\n- **BNSSA** : jeudi 31 octobre maintenu\n\n## Entraînements annulés\n\nLes groupes suivants sont en pause pendant les vacances :\n\n- ENF 1 et 2\n- Avenirs 1, 2 et 3\n- Benjamins 1 et 2\n- Loisirs 1, 2 et 3\n- Natation Artistique\n- AquaGym\n\n## Stage de la Toussaint\n\nUn **stage de perfectionnement** est organisé du 21 au 25 octobre pour les groupes ENF, Avenirs et Benjamins.\n\n**Horaires** : 9h00 - 11h00\n**Tarif** : 80€ la semaine\n**Inscriptions** : jusqu'au 15 octobre\n\n## Reprise des cours\n\nLa reprise des entraînements pour tous les groupes est prévue le **lundi 4 novembre 2025**.\n\nPour toute question, contactez-nous à contact@tritoncavaillon.fr\n\nBonnes vacances à tous ! 🏊‍♂️",
+    "contenu": "🍂 Information importante : modification des horaires pendant les vacances de la Toussaint.\n\n## Dates des vacances\n\n**Du 19 octobre au 3 novembre 2025**\n\n## Entraînements maintenus\n\nLes groupes suivants continuent leurs entraînements normalement :\n\n- **Juniors Compétition** : tous les créneaux maintenus\n- **Adultes Compétition** : planning habituel\n- **BNSSA** : jeudi 31 octobre maintenu\n\n## Entraînements annulés\n\nLes groupes suivants sont en pause pendant les vacances :\n\n- ENF 1 et 2\n- Avenirs 1, 2 et 3\n- Benjamins 1 et 2\n- Loisirs 1, 2 et 3\n- Natation Artistique\n- AquaGym\n\n## Stage de la Toussaint\n\nUn **stage de perfectionnement** est organisé du 21 au 25 octobre pour les groupes ENF, Avenirs et Benjamins.\n\n**Horaires** : 9h00 - 11h00\n**Tarif** : 80€ la semaine\n**Inscriptions** : jusqu'au 15 octobre\n\n## Reprise des cours\n\nLa reprise des entraînements pour tous les groupes est prévue le **lundi 4 novembre 2025**.\n\nPour toute question, contactez-nous à tritoncavaillon@gmail.com\n\nBonnes vacances à tous ! 🏊‍♂️",
     "excerpt": "🍂 Planning modifié pendant les vacances de la Toussaint. Stage de perfectionnement du 21 au 25 octobre.",
     "image": "/images/hero-background.JPG",
     "auteur": "Baptiste BUTTIGIEG",
@@ -3919,7 +3919,7 @@ const chatbotSuggestionsData = [
   {
     "id": "cmplmy0yw00000s38f1lbkr7k",
     "question": "Quels sont les tarifs du club ?",
-    "reponse": "Voici les tarifs des différents groupes proposés par le **Triton Club Cavaillon** pour la saison en cours :\n\n- **École de natation française (ENF 1 & ENF 2)** : **270 €** (débutants)\n- **Avenirs (1, 2 ou 3)** : **320 €**\n- **Benjamins 1** : **380 €** *(places disponibles)*\n- **Juniors Loisirs** : **300 €** *(complet)*\n- **Adultes Loisirs 1** : **350 €** *(complet)*\n- **Adultes Loisirs 2** : **350 €** *(1 place disponible)*\n- **Natation Artistique** : **400 €** *(complet)*\n- **AquaGym** : **250 €** *(3 places disponibles)*\n- **BNSSA** : **600 €** *(4 places disponibles)*\n\n*Note : Certains groupes sont complets (ex. Juniors Compétition, Adultes Compétition).*\nPour plus d’infos ou une inscription, contactez-nous via **contact@tritoncavaillon.fr** ! 😊",
+    "reponse": "Voici les tarifs des différents groupes proposés par le **Triton Club Cavaillon** pour la saison en cours :\n\n- **École de natation française (ENF 1 & ENF 2)** : **270 €** (débutants)\n- **Avenirs (1, 2 ou 3)** : **320 €**\n- **Benjamins 1** : **380 €** *(places disponibles)*\n- **Juniors Loisirs** : **300 €** *(complet)*\n- **Adultes Loisirs 1** : **350 €** *(complet)*\n- **Adultes Loisirs 2** : **350 €** *(1 place disponible)*\n- **Natation Artistique** : **400 €** *(complet)*\n- **AquaGym** : **250 €** *(3 places disponibles)*\n- **BNSSA** : **600 €** *(4 places disponibles)*\n\n*Note : Certains groupes sont complets (ex. Juniors Compétition, Adultes Compétition).*\nPour plus d’infos ou une inscription, contactez-nous via **tritoncavaillon@gmail.com** ! 😊",
     "source": "vote",
     "statut": "ignore",
     "createdAt": {
@@ -3934,7 +3934,7 @@ const chatbotSuggestionsData = [
   {
     "id": "cmplm7yf70000no38ub1q4u9l",
     "question": "Comment s'inscrire ?",
-    "reponse": "Vous pouvez vous inscrire au **Triton Club Cavaillon** de deux manières :\n\n1. **En ligne** : Via notre formulaire de contact disponible sur le site du club.\n2. **Sur place** : Directement à la piscine municipale (Avenue Pierre de Coubertin, 84300 Cavaillon) pendant les heures d’ouverture du secrétariat.\n\n**Documents à fournir obligatoirement** :\n- Un **certificat médical** de non-contre-indication à la natation (daté de moins d’1 an pour les moins de 16 ans, sans limite pour les adultes).\n- Une **photo d’identité**.\n- Un **formulaire d’inscription complété**.\n\nN’hésitez pas à nous contacter pour toute question :\n✉ **Email** : contact@tritoncavaillon.fr\n\nBonne inscription ! 🏊‍♂️",
+    "reponse": "Vous pouvez vous inscrire au **Triton Club Cavaillon** de deux manières :\n\n1. **En ligne** : Via notre formulaire de contact disponible sur le site du club.\n2. **Sur place** : Directement à la piscine municipale (Avenue Pierre de Coubertin, 84300 Cavaillon) pendant les heures d’ouverture du secrétariat.\n\n**Documents à fournir obligatoirement** :\n- Un **certificat médical** de non-contre-indication à la natation (daté de moins d’1 an pour les moins de 16 ans, sans limite pour les adultes).\n- Une **photo d’identité**.\n- Un **formulaire d’inscription complété**.\n\nN’hésitez pas à nous contacter pour toute question :\n✉ **Email** : tritoncavaillon@gmail.com\n\nBonne inscription ! 🏊‍♂️",
     "source": "vote",
     "statut": "ignore",
     "createdAt": {

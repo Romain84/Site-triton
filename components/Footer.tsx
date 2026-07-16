@@ -47,10 +47,10 @@ export default function Footer() {
         {/* Right: Contact Email & Socials */}
         <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-slate-500">
           <a 
-            href="mailto:contact@tritoncavaillon.fr" 
+            href="mailto:tritoncavaillon@gmail.com" 
             className="hover:text-white transition-colors lowercase tracking-normal text-slate-400"
           >
-            contact@tritoncavaillon.fr
+            tritoncavaillon@gmail.com
           </a>
           <span className="text-slate-850">•</span>
           <a 

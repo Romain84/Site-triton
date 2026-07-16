@@ -183,10 +183,10 @@ function ConfirmationContent() {
               <p className="text-gray-600 text-sm">
                 Des questions ? Contactez-nous à{' '}
                 <a
-                  href="mailto:contact@tritoncavaillon.fr"
+                  href="mailto:tritoncavaillon@gmail.com"
                   className="text-primary hover:underline"
                 >
-                  contact@tritoncavaillon.fr
+                  tritoncavaillon@gmail.com
                 </a>
               </p>
             </div>

@@ -27,7 +27,7 @@ export default function PolitiqueConfidentialitePage() {
             <div className="text-gray-700 space-y-2">
               <p><strong>Responsable :</strong> Triton Club Cavaillon</p>
               <p><strong>Adresse :</strong> Piscine Municipale, Avenue Pierre de Coubertin, 84300 Cavaillon</p>
-              <p><strong>Email :</strong> <a href="mailto:contact@tritoncavaillon.fr" className="text-primary hover:underline">contact@tritoncavaillon.fr</a></p>
+              <p><strong>Email :</strong> <a href="mailto:tritoncavaillon@gmail.com" className="text-primary hover:underline">tritoncavaillon@gmail.com</a></p>
             </div>
           </section>
 
@@ -156,7 +156,7 @@ export default function PolitiqueConfidentialitePage() {
                 <strong>Pour exercer vos droits, contactez-nous :</strong>
               </p>
               <ul className="list-disc list-inside space-y-1 ml-4">
-                <li>Par email : <a href="mailto:contact@tritoncavaillon.fr" className="text-primary hover:underline">contact@tritoncavaillon.fr</a></li>
+                <li>Par email : <a href="mailto:tritoncavaillon@gmail.com" className="text-primary hover:underline">tritoncavaillon@gmail.com</a></li>
                 <li>Par courrier : Triton Club Cavaillon, Piscine Municipale, Avenue Pierre de Coubertin, 84300 Cavaillon</li>
               </ul>
 
@@ -217,7 +217,7 @@ export default function PolitiqueConfidentialitePage() {
                 Pour toute question concernant cette politique de confidentialité ou le traitement de vos données personnelles, vous pouvez nous contacter :
               </p>
               <ul className="list-disc list-inside space-y-1 ml-4">
-                <li>Email : <a href="mailto:contact@tritoncavaillon.fr" className="text-primary hover:underline">contact@tritoncavaillon.fr</a></li>
+                <li>Email : <a href="mailto:tritoncavaillon@gmail.com" className="text-primary hover:underline">tritoncavaillon@gmail.com</a></li>
                 <li>Adresse : Piscine Municipale, Avenue Pierre de Coubertin, 84300 Cavaillon</li>
               </ul>
             </div>

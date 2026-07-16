@@ -145,7 +145,7 @@ export async function genererFacturePDF(
   doc.text('Piscine municipale', 120, 48)
   doc.text('Avenue Pierre de Coubertin', 120, 53)
   doc.text('84300 Cavaillon', 120, 58)
-  doc.text('Email : contact@triton-club-cavaillon.fr', 120, 63)
+  doc.text('Email : tritoncavaillon@gmail.com', 120, 63)
 
   // Ligne séparatrice horizontale avant la période
   const sepY = Math.max(coachY, 63) + 4

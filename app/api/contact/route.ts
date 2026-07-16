@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       return apiError('Paramètres email non configurés', 503, undefined, 'SMTP_NOT_CONFIGURED')
     }
 
-    const emailTo = settings.emailClub || 'contact@tritoncavaillon.fr'
+    const emailTo = settings.emailClub || 'tritoncavaillon@gmail.com'
     const emailSent = await sendEmail({
       to: sanitizeEmailHeader(emailTo),
       replyTo: sanitizeEmailHeader(email),

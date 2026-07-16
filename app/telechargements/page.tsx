@@ -180,8 +180,8 @@ export default function TelechargementPage() {
           <p className="text-yellow-700">
             Si vous rencontrez des difficultés pour télécharger ou remplir ces documents,
             n&apos;hésitez pas à nous contacter par email à{' '}
-            <a href="mailto:contact@tritoncavaillon.fr" className="underline font-semibold">
-              contact@tritoncavaillon.fr
+            <a href="mailto:tritoncavaillon@gmail.com" className="underline font-semibold">
+              tritoncavaillon@gmail.com
             </a>
             .
           </p>

@@ -35,7 +35,7 @@ const faqDataStatique = `
 
 **Contact :**
 - Adresse : Piscine Municipale, Avenue Pierre de Coubertin, 84300 Cavaillon
-- Email : contact@tritoncavaillon.fr
+- Email : tritoncavaillon@gmail.com
 
 **Horaires du secrétariat :**
 - Lundi - Vendredi : 17h00 - 19h00

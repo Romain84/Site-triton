@@ -37,7 +37,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <p className="font-semibold">📧 Email</p>
-                    <a href="mailto:contact@tritoncavaillon.fr" className="text-primary hover:underline">contact@tritoncavaillon.fr</a>
+                    <a href="mailto:tritoncavaillon@gmail.com" className="text-primary hover:underline">tritoncavaillon@gmail.com</a>
                   </div>
                 </div>
               </div>
@@ -69,7 +69,7 @@ export default function ContactPage() {
 
       <div className="fixed bottom-4 left-4 right-4 z-40 md:hidden pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="grid grid-cols-2 gap-2 rounded-xl bg-white/95 backdrop-blur border border-gray-200 shadow-lg p-2">
-          <a href="mailto:contact@tritoncavaillon.fr" className="text-center py-2 rounded-lg bg-gray-100 text-sm font-semibold text-gray-800">✉️ Email</a>
+          <a href="mailto:tritoncavaillon@gmail.com" className="text-center py-2 rounded-lg bg-gray-100 text-sm font-semibold text-gray-800">✉️ Email</a>
           <a href="https://www.google.com/maps/dir/?api=1&destination=Piscine+couverte+Alphonse+Roudiere+Cavaillon" target="_blank" rel="noopener noreferrer" className="text-center py-2 rounded-lg bg-primary text-sm font-semibold text-white">📍 Itinéraire</a>
         </div>
       </div>
