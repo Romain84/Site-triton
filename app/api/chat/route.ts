@@ -6,9 +6,62 @@ import { prisma } from '@/lib/prisma'
 
 const chatLogger = logger.withContext('Chat')
 
+// Quotas mensuels de tokens de sécurité par modèle
+const MODEL_QUOTAS: Record<string, number> = {
+  'mistral-large': 50000,    // 50k tokens
+  'mistral-small': 500000,   // 500k tokens
+  'ministral-8b': 1000000,  // 1M tokens
+  'mistral-7b': 2000000,    // 2M tokens
+}
+
+/**
+ * Vérifie si le quota mensuel de tokens pour le modèle sélectionné a été dépassé
+ */
+async function isMonthlyQuotaExceeded(modelName: string): Promise<boolean> {
+  try {
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const normalizedModel = modelName.toLowerCase()
+
+    const aggregate = await prisma.chatbotTokenLog.aggregate({
+      where: {
+        modelName: {
+          equals: modelName,
+          mode: 'insensitive',
+        },
+        createdAt: {
+          gte: startOfMonth,
+        },
+      },
+      _sum: {
+        totalTokens: true,
+      },
+    })
+
+    const totalTokens = aggregate._sum.totalTokens || 0
+    const limit = MODEL_QUOTAS[normalizedModel] || MODEL_QUOTAS['mistral-small']
+    return totalTokens >= limit
+  } catch (error) {
+    chatLogger.error('Erreur lors du calcul de la consommation mensuelle de tokens', error)
+    return false // Ne pas bloquer le chat en cas d'erreur de base de données
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Get user IP for rate limiting
+    // 1. Récupérer le modèle actif et vérifier le quota mensuel globale
+    const settings = await prisma.settings.findFirst({ select: { chatbotModel: true } })
+    const activeModel = settings?.chatbotModel || 'mistral-small'
+
+    const quotaExceeded = await isMonthlyQuotaExceeded(activeModel)
+    if (quotaExceeded) {
+      return NextResponse.json(
+        { error: "Le quota mensuel d'utilisation du chatbot a été atteint. Le chat est temporairement désactivé." },
+        { status: 503 }
+      )
+    }
+
+    // 2. Get user IP for rate limiting
     const ip = request.headers.get('x-forwarded-for') ||
                request.headers.get('x-real-ip') ||
                'unknown'
@@ -128,19 +181,34 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET endpoint to check rate limit status
+// GET endpoint to check rate limit status and monthly quota
 export async function GET(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for') ||
-             request.headers.get('x-real-ip') ||
-             'unknown'
+  try {
+    const ip = request.headers.get('x-forwarded-for') ||
+               request.headers.get('x-real-ip') ||
+               'unknown'
 
-  const stats = rateLimiter.getStats(ip)
-  const rateLimitResult = rateLimiter.checkLimitReadOnly(ip)
+    const stats = rateLimiter.getStats(ip)
+    const rateLimitResult = rateLimiter.checkLimitReadOnly(ip)
 
-  return NextResponse.json({
-    available: rateLimitResult.allowed,
-    stats,
-    remaining: rateLimitResult.remaining,
-    resetTime: rateLimitResult.resetTime,
-  })
+    const settings = await prisma.settings.findFirst({ select: { chatbotModel: true } })
+    const activeModel = settings?.chatbotModel || 'mistral-small'
+    const quotaExceeded = await isMonthlyQuotaExceeded(activeModel)
+
+    return NextResponse.json({
+      available: rateLimitResult.allowed && !quotaExceeded,
+      stats,
+      remaining: rateLimitResult.remaining,
+      resetTime: rateLimitResult.resetTime,
+      monthlyQuotaExceeded: quotaExceeded,
+    })
+  } catch (error) {
+    chatLogger.error('Erreur GET chatbot status', error)
+    return NextResponse.json({
+      available: true,
+      remaining: 15,
+      resetTime: Date.now() + 60000,
+      monthlyQuotaExceeded: false,
+    })
+  }
 }

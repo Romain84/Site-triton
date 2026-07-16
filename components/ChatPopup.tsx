@@ -127,6 +127,7 @@ export default function ChatPopup() {
   const [remaining, setRemaining] = useState<number | null>(null)
   const [resetTime, setResetTime] = useState<number | null>(null)
   const [countdown, setCountdown] = useState<number | null>(null)
+  const [monthlyQuotaExceeded, setMonthlyQuotaExceeded] = useState(false)
   const [showBadge, setShowBadge] = useState(true)
   const [lastUserMessage, setLastUserMessage] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -143,6 +144,7 @@ export default function ChatPopup() {
         if (data.resetTime !== undefined) {
           setResetTime(data.resetTime)
         }
+        setMonthlyQuotaExceeded(!!data.monthlyQuotaExceeded)
       }
     } catch (err) {
       console.error('Erreur récupération quota:', err)
@@ -566,7 +568,12 @@ export default function ChatPopup() {
           {/* Input */}
           <div className="p-3 bg-white border-t border-slate-100">
             {/* Status indicator / Compteur de messages restants */}
-            {countdown !== null && countdown > 0 ? (
+            {monthlyQuotaExceeded ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 mb-2 bg-red-50 border border-red-200 text-red-700 rounded-xl text-[11px] font-medium">
+                <span className="shrink-0 text-xs">⚠️</span>
+                <span>Quota mensuel atteint. Veuillez utiliser le formulaire de contact.</span>
+              </div>
+            ) : countdown !== null && countdown > 0 ? (
               <div className="flex items-center gap-1.5 px-3 py-1.5 mb-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl text-[11px] font-medium animate-pulse">
                 <span className="shrink-0 text-xs">⏳</span>
                 <span>Limite atteinte. Recharge dans <strong>{formatCountdown(countdown)}</strong></span>
@@ -591,14 +598,14 @@ export default function ChatPopup() {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={countdown !== null && countdown > 0 ? "Quota temporairement épuisé..." : "Votre question..."}
-                disabled={isLoading || (countdown !== null && countdown > 0)}
+                placeholder={monthlyQuotaExceeded ? "Quota mensuel épuisé..." : countdown !== null && countdown > 0 ? "Quota temporairement épuisé..." : "Votre question..."}
+                disabled={isLoading || (countdown !== null && countdown > 0) || monthlyQuotaExceeded}
                 maxLength={500}
                 className="flex-1 px-4 py-2.5 border border-slate-200 rounded-full focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white bg-slate-50 transition-all outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed"
               />
               <button
                 onClick={handleSendMessage}
-                disabled={isLoading || !inputMessage.trim() || (countdown !== null && countdown > 0)}
+                disabled={isLoading || !inputMessage.trim() || (countdown !== null && countdown > 0) || monthlyQuotaExceeded}
                 className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark text-white rounded-full hover:from-primary-dark hover:to-emerald-600 shadow-md shadow-primary/15 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0"
                 aria-label="Envoyer"
               >

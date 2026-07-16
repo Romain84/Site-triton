@@ -12,6 +12,13 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   'mistral-7b': { input: 0.046, output: 0.14 },   // $0.05 / $0.15
 }
 
+const MODEL_QUOTAS: Record<string, number> = {
+  'mistral-large': 50000,    // 50k tokens
+  'mistral-small': 500000,   // 500k tokens
+  'ministral-8b': 1000000,  // 1M tokens
+  'mistral-7b': 2000000,    // 2M tokens
+}
+
 function calculateCost(modelName: string, promptTokens: number, completionTokens: number): number {
   const pricing = MODEL_PRICING[modelName.toLowerCase()] || MODEL_PRICING['mistral-small']
   const inputCost = (promptTokens / 1_000_000) * pricing.input
@@ -23,6 +30,11 @@ export async function GET() {
   try {
     const auth = await requireAdmin()
     if (!auth.ok) return auth.response
+
+    // Récupérer le modèle actif et sa limite
+    const settings = await prisma.settings.findFirst({ select: { chatbotModel: true } })
+    const activeModel = settings?.chatbotModel || 'mistral-small'
+    const limit = MODEL_QUOTAS[activeModel.toLowerCase()] || MODEL_QUOTAS['mistral-small']
 
     // 1. Déterminer les dates du mois en cours
     const now = new Date()
@@ -107,6 +119,8 @@ export async function GET() {
     }))
 
     return apiSuccess({
+      activeModel,
+      monthlyLimit: limit,
       global: {
         count: aggregateGlobal._count || 0,
         promptTokens: aggregateGlobal._sum.promptTokens || 0,

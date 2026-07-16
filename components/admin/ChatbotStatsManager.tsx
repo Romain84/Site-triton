@@ -26,6 +26,8 @@ interface StatsResponse {
   global: StatsGroup
   month: StatsGroup
   recentLogs: TokenLog[]
+  activeModel?: string
+  monthlyLimit?: number
 }
 
 const MONTHLY_LIMIT = 500000 // 500k tokens par défaut
@@ -109,8 +111,9 @@ export default function ChatbotStatsManager() {
     )
   }
 
+  const monthlyLimit = data?.monthlyLimit || 500000
   const monthUsage = data?.month.totalTokens || 0
-  const monthPercentage = Math.min(100, (monthUsage / MONTHLY_LIMIT) * 100)
+  const monthPercentage = Math.min(100, (monthUsage / monthlyLimit) * 100)
   const averageTokens = data?.global.count ? Math.round(data.global.totalTokens / data.global.count) : 0
 
   return (
@@ -171,9 +174,9 @@ export default function ChatbotStatsManager() {
               <h3 className="font-extrabold text-slate-800 text-lg">Consommation du mois</h3>
               <p className="text-xs text-slate-500">Mise à jour à chaque appel.</p>
             </div>
-            <div className="text-right">
+             <div className="text-right">
               <span className="font-bold text-slate-900 font-mono">{monthUsage.toLocaleString('fr-FR')}</span>
-              <span className="text-slate-400 text-xs"> / {MONTHLY_LIMIT.toLocaleString('fr-FR')} tokens</span>
+              <span className="text-slate-400 text-xs"> / {monthlyLimit.toLocaleString('fr-FR')} tokens ({data?.activeModel || 'mistral-small'})</span>
             </div>
           </div>
           <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -192,7 +195,7 @@ export default function ChatbotStatsManager() {
             {monthPercentage >= 90 ? (
               <span className="text-red-650 font-bold">⚠️ Attention, vous approchez de la limite d'utilisation recommandée pour ce mois.</span>
             ) : (
-              <span>Votre quota recommandé est réinitialisé le 1er de chaque mois.</span>
+               <span>Le quota de votre modèle ({data?.activeModel || 'mistral-small'}) est réinitialisé le 1er de chaque mois. En cas de dépassement, le chat est bloqué automatiquement.</span>
             )}
           </div>
         </div>
