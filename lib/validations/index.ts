@@ -136,7 +136,7 @@ export const evenementSchema = z.object({
  */
 export const groupeSchema = z.object({
   nom: z.string().min(1, 'Le nom est requis'),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   ageMin: z.coerce.number().int().min(0).max(99).optional().nullable(),
   ageMax: z.coerce.number().int().min(0).max(99).optional().nullable(),
   total: z.coerce.number().int().min(1, 'Le nombre de places est requis'),
