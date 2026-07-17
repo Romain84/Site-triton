@@ -311,6 +311,33 @@ export default function CoachAgendaBassin({ sessions }: CoachAgendaBassinProps) 
     return sDate.toDateString() === targetDate.toDateString()
   })
 
+  const hasPPG = daySessions.some(s => {
+    const lieu = s.lieu || ''
+    return lieu.toUpperCase().includes('PPG')
+  })
+
+  const localLaneKeys = [
+    'Grand Bassin - Ligne 1',
+    'Grand Bassin - Ligne 2',
+    'Grand Bassin - Ligne 3',
+    'Grand Bassin - Ligne 4',
+    'Petit Bassin'
+  ]
+  if (hasPPG) {
+    localLaneKeys.push('PPG')
+  }
+
+  const localLaneLabels = [
+    { key: 'Grand Bassin - Ligne 1', label: 'Ligne 1' },
+    { key: 'Grand Bassin - Ligne 2', label: 'Ligne 2' },
+    { key: 'Grand Bassin - Ligne 3', label: 'Ligne 3' },
+    { key: 'Grand Bassin - Ligne 4', label: 'Ligne 4' },
+    { key: 'Petit Bassin', label: 'Petit Bassin' }
+  ]
+  if (hasPPG) {
+    localLaneLabels.push({ key: 'PPG', label: 'PPG' })
+  }
+
   // Group by lane
   const laneAssignments: { [key: string]: Session[] } = {
     'Grand Bassin - Ligne 1': [],
@@ -319,13 +346,16 @@ export default function CoachAgendaBassin({ sessions }: CoachAgendaBassinProps) 
     'Grand Bassin - Ligne 4': [],
     'Petit Bassin': [],
   }
+  if (hasPPG) {
+    laneAssignments['PPG'] = []
+  }
 
   const explicitSessions: Session[] = []
   const genericSessions: Session[] = []
 
   daySessions.forEach(s => {
     const lieu = s.lieu || ''
-    if (laneKeys.includes(lieu)) {
+    if (localLaneKeys.includes(lieu)) {
       explicitSessions.push(s)
     } else {
       let matchedKey: string | null = null
@@ -334,6 +364,7 @@ export default function CoachAgendaBassin({ sessions }: CoachAgendaBassinProps) 
       else if (lieu.includes('Ligne 3')) matchedKey = 'Grand Bassin - Ligne 3'
       else if (lieu.includes('Ligne 4')) matchedKey = 'Grand Bassin - Ligne 4'
       else if (lieu.includes('Petit Bassin')) matchedKey = 'Petit Bassin'
+      else if (lieu.toUpperCase().includes('PPG')) matchedKey = 'PPG'
 
       if (matchedKey) {
         explicitSessions.push({ ...s, lieu: matchedKey })
@@ -355,7 +386,7 @@ export default function CoachAgendaBassin({ sessions }: CoachAgendaBassinProps) 
 
   sortedGeneric.forEach(s => {
     let assigned = false
-    for (const laneKey of laneKeys) {
+    for (const laneKey of localLaneKeys) {
       const hasOverlap = laneAssignments[laneKey].some(existing => overlaps(s, existing))
       if (!hasOverlap) {
         laneAssignments[laneKey].push(s)
@@ -423,7 +454,7 @@ export default function CoachAgendaBassin({ sessions }: CoachAgendaBassinProps) 
           </div>
 
           {/* Lanes */}
-          <div className="flex-grow relative grid grid-cols-5 h-full">
+          <div className={`flex-grow relative grid h-full ${hasPPG ? 'grid-cols-6' : 'grid-cols-5'}`}>
             {/* Horizontal lines */}
             <div className="absolute inset-0 pointer-events-none z-0 mt-6 h-[calc(100%-1.5rem)]">
               {Array.from({ length: 15 }).map((_, idx) => {
@@ -439,7 +470,7 @@ export default function CoachAgendaBassin({ sessions }: CoachAgendaBassinProps) 
             </div>
 
             {/* Vertical lane separators */}
-            {[20, 40, 60, 80].map((leftPct, idx) => (
+            {(hasPPG ? [16.66, 33.33, 50, 66.66, 83.33] : [20, 40, 60, 80]).map((leftPct, idx) => (
               <div
                 key={idx}
                 className="absolute top-6 bottom-0 w-1 -ml-0.5 z-20 pointer-events-none opacity-60"
@@ -452,7 +483,7 @@ export default function CoachAgendaBassin({ sessions }: CoachAgendaBassinProps) 
             ))}
 
             {/* Lanes columns mapping */}
-            {laneLabels.map((lane) => {
+            {localLaneLabels.map((lane) => {
               const laneSessions = laneAssignments[lane.key] || []
               const sorted = [...laneSessions].sort((a, b) => timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut))
               

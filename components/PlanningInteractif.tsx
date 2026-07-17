@@ -345,6 +345,11 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
   }
 
   const renderPoolGrid = (day: string, planningsForDay: Planning[], isPrintOnly: boolean = false) => {
+    const hasPPG = planningsForDay.some(p => {
+      const lieu = p.lieu || ''
+      return lieu.toUpperCase().includes('PPG')
+    })
+
     const laneKeys = [
       'Grand Bassin - Ligne 1',
       'Grand Bassin - Ligne 2',
@@ -352,6 +357,9 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
       'Grand Bassin - Ligne 4',
       'Petit Bassin'
     ]
+    if (hasPPG) {
+      laneKeys.push('PPG')
+    }
 
     const laneAssignments: { [key: string]: Planning[] } = {
       'Grand Bassin - Ligne 1': [],
@@ -359,6 +367,9 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
       'Grand Bassin - Ligne 3': [],
       'Grand Bassin - Ligne 4': [],
       'Petit Bassin': [],
+    }
+    if (hasPPG) {
+      laneAssignments['PPG'] = []
     }
     
     const explicitPlannings: Planning[] = []
@@ -375,6 +386,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
         else if (lieu.includes('Ligne 3')) matchedKey = 'Grand Bassin - Ligne 3'
         else if (lieu.includes('Ligne 4')) matchedKey = 'Grand Bassin - Ligne 4'
         else if (lieu.includes('Petit Bassin')) matchedKey = 'Petit Bassin'
+        else if (lieu.toUpperCase().includes('PPG')) matchedKey = 'PPG'
         
         if (matchedKey) {
           explicitPlannings.push({ ...p, lieu: matchedKey })
@@ -408,6 +420,18 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
         laneAssignments['Grand Bassin - Ligne 1'].push(p)
       }
     })
+
+    const separatorPct = hasPPG ? [16.66, 33.33, 50, 66.66, 83.33] : [20, 40, 60, 80]
+    const lanesList = [
+      { key: 'Grand Bassin - Ligne 1', label: 'Ligne 1' },
+      { key: 'Grand Bassin - Ligne 2', label: 'Ligne 2' },
+      { key: 'Grand Bassin - Ligne 3', label: 'Ligne 3' },
+      { key: 'Grand Bassin - Ligne 4', label: 'Ligne 4' },
+      { key: 'Petit Bassin', label: 'Petit Bassin' }
+    ]
+    if (hasPPG) {
+      lanesList.push({ key: 'PPG', label: 'PPG' })
+    }
 
     return (
       <div className="bg-slate-100 rounded-3xl p-5 shadow-inner border border-slate-200/80 overflow-x-auto print:bg-white print:border-0 print:p-0">
@@ -453,7 +477,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
             </div>
 
             {/* Lanes column container */}
-            <div className="flex-grow relative grid grid-cols-5 h-full">
+            <div className={`flex-grow relative grid h-full ${hasPPG ? 'grid-cols-6' : 'grid-cols-5'}`}>
               
               {/* Horizontal grid lines */}
               <div className="absolute inset-0 pointer-events-none z-0 mt-10 h-[calc(100%-2.5rem)]">
@@ -470,7 +494,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
               </div>
 
               {/* Repeating pool lane separators (vertical ropes) */}
-              {[20, 40, 60, 80].map((leftPct, idx) => {
+              {separatorPct.map((leftPct, idx) => {
                 return (
                   <div
                     key={idx}
@@ -486,13 +510,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
               })}
 
               {/* Lanes mapping */}
-              {[
-                { key: 'Grand Bassin - Ligne 1', label: 'Ligne 1' },
-                { key: 'Grand Bassin - Ligne 2', label: 'Ligne 2' },
-                { key: 'Grand Bassin - Ligne 3', label: 'Ligne 3' },
-                { key: 'Grand Bassin - Ligne 4', label: 'Ligne 4' },
-                { key: 'Petit Bassin', label: 'Petit Bassin' },
-              ].map((lane, laneIdx) => {
+              {lanesList.map((lane, laneIdx) => {
                 const columnPlannings = laneAssignments[lane.key] || []
                 
                 const sortedPlannings = [...columnPlannings].sort((a, b) => {
