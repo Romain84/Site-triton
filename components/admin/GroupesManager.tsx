@@ -186,6 +186,12 @@ export default function GroupesManager() {
 
       if (!response.ok) {
         const data = await response.json()
+        if (data.details?.fieldErrors) {
+          const detailMessages = Object.values(data.details.fieldErrors)
+            .flat()
+            .join(', ')
+          throw new Error(`Données invalides : ${detailMessages}`)
+        }
         throw new Error(data.error || 'Erreur lors de l\'enregistrement')
       }
 
