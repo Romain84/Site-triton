@@ -417,12 +417,12 @@ export default function ProduitForm({
               </div>
               {formData.image && (
                 <div className="relative inline-block mt-2">
-                  <div className="relative h-24 w-36 border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                  <div className="relative h-24 w-36 border border-slate-200 rounded-lg overflow-hidden bg-white">
                     <Image
                       src={formData.image}
                       alt="Aperçu du produit"
                       fill
-                      className="object-cover"
+                      className="object-contain p-1"
                       unoptimized={formData.image.includes('blob.vercel-storage.com') || formData.image.startsWith('/uploads/')}
                     />
                   </div>
@@ -462,12 +462,12 @@ export default function ProduitForm({
               {formData.images.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 mt-3">
                   {formData.images.map((img, idx) => (
-                    <div key={idx} className="relative group border border-slate-200 rounded-lg overflow-hidden bg-slate-50 h-20">
+                    <div key={idx} className="relative group border border-slate-200 rounded-lg overflow-hidden bg-white h-20">
                       <Image
                         src={img}
                         alt={`Photo supplémentaire ${idx + 1}`}
                         fill
-                        className="object-cover"
+                        className="object-contain p-1"
                         unoptimized={img.includes('blob.vercel-storage.com') || img.startsWith('/uploads/')}
                       />
                       <button

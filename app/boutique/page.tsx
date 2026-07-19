@@ -181,13 +181,13 @@ export default function BoutiquePage() {
                 className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
               >
                 {/* Image */}
-                <div className="relative h-64 bg-gray-100 overflow-hidden">
+                <div className="relative h-64 bg-white overflow-hidden">
                   {produit.image ? (
                     <Image
                       src={produit.image}
                       alt={produit.nom}
                       fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="object-contain p-2 group-hover:scale-105 transition-transform duration-300"
                       unoptimized={produit.image.includes('blob.vercel-storage.com') || produit.image.startsWith('/uploads/')}
                     />
                   ) : (

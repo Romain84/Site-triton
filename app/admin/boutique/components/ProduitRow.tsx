@@ -21,7 +21,7 @@ function ProduitRowComponent({ produit, onEdit, onDelete, onShowVariantes }: Pro
             alt={produit.nom}
             width={64}
             height={64}
-            className="w-16 h-16 object-cover rounded"
+            className="w-16 h-16 object-contain bg-white border border-slate-200 rounded"
             unoptimized={produit.image.includes('blob.vercel-storage.com') || produit.image.startsWith('/uploads/')}
           />
         ) : (

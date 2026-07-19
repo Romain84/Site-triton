@@ -470,13 +470,13 @@ export default function ProduitDetailPage() {
           {/* Images */}
           <div>
             <div className="card overflow-hidden mb-4 border border-slate-100 shadow-xs rounded-2xl group">
-              <div className="relative h-96 bg-gray-100 overflow-hidden">
+              <div className="relative h-96 bg-white overflow-hidden">
                 {allImages.length > 0 ? (
                   <Image
                     src={allImages[activeImageIndex]}
                     alt={produit.nom}
                     fill
-                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                    className="object-contain p-4 transition-transform duration-500 ease-out group-hover:scale-105"
                     unoptimized={allImages[activeImageIndex].includes('blob.vercel-storage.com') || allImages[activeImageIndex].startsWith('/uploads/')}
                   />
                 ) : (
@@ -494,7 +494,7 @@ export default function ProduitDetailPage() {
                   <button
                     key={index}
                     onClick={() => setActiveImageIndex(index)}
-                    className={`card overflow-hidden cursor-pointer relative h-24 bg-gray-150 border-2 rounded-xl transition-all duration-200 ${
+                    className={`card overflow-hidden cursor-pointer relative h-24 bg-white border-2 rounded-xl transition-all duration-200 ${
                       activeImageIndex === index
                         ? 'border-primary ring-2 ring-primary/20 scale-[0.98]'
                         : 'border-transparent hover:border-slate-350'
@@ -504,7 +504,7 @@ export default function ProduitDetailPage() {
                       src={img}
                       alt={`${produit.nom} ${index + 1}`}
                       fill
-                      className="object-cover"
+                      className="object-contain p-1"
                       unoptimized={img.includes('blob.vercel-storage.com') || img.startsWith('/uploads/')}
                     />
                   </button>
