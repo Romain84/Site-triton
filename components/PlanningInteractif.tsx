@@ -369,9 +369,9 @@ const getCardGradient = (hexColor: string | null | undefined): string => {
 export default function PlanningInteractif({ plannings, groupes }: PlanningInteractifProps) {
   const [filtre, setFiltre] = useState<string>('all')
   const [viewMode, setViewMode] = useState<'grille' | 'tableau' | 'bassin'>(() => {
-    if (typeof window === 'undefined') return 'grille'
+    if (typeof window === 'undefined') return 'bassin'
     const saved = localStorage.getItem('planning_view_mode')
-    return saved === 'tableau' || saved === 'grille' || saved === 'bassin' ? (saved as any) : 'grille'
+    return saved === 'tableau' || saved === 'grille' || saved === 'bassin' ? (saved as any) : 'bassin'
   })
 
   const [selectedDayTimeline, setSelectedDayTimeline] = useState<string>('Lundi')
@@ -1170,7 +1170,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                   <div>
                     <span className="block text-[10px] text-slate-400 font-black uppercase tracking-wider">Entraîneur(s) :</span>
                     <span className="block mt-0.5 text-slate-800 font-bold">
-                      {selectedPlanningDetails.coachs.map(c => `${c.coach.prenom} ${c.coach.nom || ''}`).join(', ')}
+                      {selectedPlanningDetails.coachs.map(c => c.coach.prenom).join(', ')}
                     </span>
                   </div>
                 </div>

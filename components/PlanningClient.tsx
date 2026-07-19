@@ -116,10 +116,10 @@ export default function PlanningClient({ plannings, groupes, coaches }: Planning
             {coaches.map((coach) => (
               <div key={coach.id} className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center text-white font-bold text-xl">
-                  {coach.prenom[0]}{coach.nom?.[0] || ''}
+                  {coach.prenom[0]}
                 </div>
                 <div>
-                  <p className="font-bold">{coach.prenom} {coach.nom || ''}</p>
+                  <p className="font-bold">{coach.prenom}</p>
                   {coach.specialites && (
                     <p className="text-sm text-gray-600">{coach.specialites}</p>
                   )}
@@ -161,7 +161,7 @@ export default function PlanningClient({ plannings, groupes, coaches }: Planning
 
                     {cours.coach && (
                       <p className="text-sm text-gray-700">
-                        👤 Coach : {cours.coach.prenom} {cours.coach.nom || ''}
+                        👤 Coach : {cours.coach.prenom}
                       </p>
                     )}
                   </div>

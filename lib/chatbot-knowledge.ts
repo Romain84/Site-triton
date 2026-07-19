@@ -158,7 +158,7 @@ export async function getPlanningKnowledgeBase(): Promise<string> {
           const groupe = planning.groupe?.nom || 'Groupe non défini'
           const niveau = planning.groupe?.niveau ? ` (${planning.groupe.niveau})` : ''
           const coachs = planning.coachs && planning.coachs.length > 0
-            ? ` - Coach: ${planning.coachs.map(c => `${c.coach.prenom} ${c.coach.nom || ''}`).join(', ')}`
+            ? ` - Coach: ${planning.coachs.map(c => c.coach.prenom).join(', ')}`
             : ''
           const lieu = planning.lieu ? ` - ${planning.lieu}` : ''
 
