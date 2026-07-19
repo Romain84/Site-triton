@@ -584,7 +584,6 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                     <div className="relative flex-grow h-[calc(100%-2.5rem)]">
                       {columns.map((col, colIdx) => {
                         const leftPct = (colIdx / totalCols) * 100
-                        const widthPct = 100 / totalCols
                         
                         return col.map((planning) => {
                           const startMin = timeToMinutes(planning.heureDebut)
@@ -597,6 +596,22 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
 
                           const color = getCouleurGroupe(planning.groupe?.nom || '', planning.groupe?.couleur)
                           
+                          // Calculate colSpan
+                          let colSpan = 1
+                          for (let nextColIdx = colIdx + 1; nextColIdx < totalCols; nextColIdx++) {
+                            const hasOverlap = columns[nextColIdx].some(other => {
+                              const oStart = timeToMinutes(other.heureDebut)
+                              const oEnd = timeToMinutes(other.heureFin)
+                              return startMin < oEnd && endMin > oStart
+                            })
+                            if (!hasOverlap) {
+                              colSpan++
+                            } else {
+                              break
+                            }
+                          }
+                          const widthPct = (colSpan / totalCols) * 100
+
                           return (
                             <div
                               key={planning.id}

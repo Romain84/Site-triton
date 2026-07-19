@@ -522,7 +522,6 @@ export default function CoachAgendaBassin({ sessions }: CoachAgendaBassinProps) 
                   <div className="relative flex-grow h-[calc(100%-1.5rem)]">
                     {columns.map((col, colIdx) => {
                       const leftPct = (colIdx / totalCols) * 100
-                      const widthPct = 100 / totalCols
 
                       return col.map((session) => {
                         const startMin = timeToMinutes(session.heureDebut)
@@ -535,6 +534,22 @@ export default function CoachAgendaBassin({ sessions }: CoachAgendaBassinProps) 
 
                         const isMine = session.isMySession
                         const color = getCouleurGroupe(session.titre)
+
+                        // Calculate colSpan
+                        let colSpan = 1
+                        for (let nextColIdx = colIdx + 1; nextColIdx < totalCols; nextColIdx++) {
+                          const hasOverlap = columns[nextColIdx].some(other => {
+                            const oStart = timeToMinutes(other.heureDebut)
+                            const oEnd = timeToMinutes(other.heureFin)
+                            return startMin < oEnd && endMin > oStart
+                          })
+                          if (!hasOverlap) {
+                            colSpan++
+                          } else {
+                            break
+                          }
+                        }
+                        const widthPct = (colSpan / totalCols) * 100
 
                         return (
                           <div

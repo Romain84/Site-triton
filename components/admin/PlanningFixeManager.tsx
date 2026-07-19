@@ -1199,8 +1199,7 @@ export default function PlanningFixeManager() {
                             {/* Lane Body where blocks are rendered */}
                             <div className="relative flex-grow h-[calc(100%-2.5rem)] py-2">
                               {columns.map((col, colIdx) => {
-                                const widthPct = 100 / totalCols
-                                const leftPct = colIdx * widthPct
+                                const leftPct = (colIdx / totalCols) * 100
                                 
                                 return col.map(planning => {
                                   const startMin = Math.max(480, Math.min(1320, timeToMinutes(planning.heureDebut)))
@@ -1218,6 +1217,22 @@ export default function PlanningFixeManager() {
                                   const isGroupeFiltered = filterGroupeId && planning.groupeId !== filterGroupeId
                                   const isDimmed = isCoachFiltered || isGroupeFiltered
                                   
+                                  // Calculate colSpan
+                                  let colSpan = 1
+                                  for (let nextColIdx = colIdx + 1; nextColIdx < totalCols; nextColIdx++) {
+                                    const hasOverlap = columns[nextColIdx].some(other => {
+                                      const oStart = Math.max(480, Math.min(1320, timeToMinutes(other.heureDebut)))
+                                      const oEnd = Math.max(480, Math.min(1320, timeToMinutes(other.heureFin)))
+                                      return startMin < oEnd && endMin > oStart
+                                    })
+                                    if (!hasOverlap) {
+                                      colSpan++
+                                    } else {
+                                      break
+                                    }
+                                  }
+                                  const widthPct = (colSpan / totalCols) * 100
+
                                   return (
                                     <div
                                       key={planning.id}
