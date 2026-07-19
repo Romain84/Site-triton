@@ -21,6 +21,7 @@ interface Planning {
   }>
   lieu: string | null
   couleur: string | null
+  nomSession: string | null
   actif: boolean
 }
 
@@ -565,7 +566,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                             <div
                               key={planning.id}
                               onClick={() => setSelectedPlanningDetails(planning)}
-                              title={`${planning.groupe?.nom}\nHoraires : ${planning.heureDebut} - ${planning.heureFin}\nLieu : ${planning.lieu || 'Piscine'}${planning.coachs && planning.coachs.length > 0 ? `\nCoach(s) : ${planning.coachs.map(c => c.coach.prenom).join(', ')}` : ''}`}
+                              title={`${planning.nomSession || planning.groupe?.nom}\nHoraires : ${planning.heureDebut} - ${planning.heureFin}\nLieu : ${planning.lieu || 'Piscine'}${planning.coachs && planning.coachs.length > 0 ? `\nCoach(s) : ${planning.coachs.map(c => c.coach.prenom).join(', ')}` : ''}`}
                               style={{
                                 top: `${topPct}%`,
                                 height: `${heightPct}%`,
@@ -579,7 +580,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                             >
                               <div className="min-w-0 space-y-0.5 print:space-y-0">
                                 <p className="font-black text-[10px] md:text-xs print:text-[8px] print:leading-tight print:whitespace-normal print:break-words truncate leading-tight">
-                                  {planning.groupe?.nom}
+                                  {planning.nomSession || planning.groupe?.nom}
                                 </p>
                                 <p className="text-[9px] font-extrabold leading-none print:text-[7.5px] print:leading-none opacity-85">
                                   {planning.heureDebut} - {planning.heureFin}
@@ -783,7 +784,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                           </div>
                           
                           <h3 className="text-base md:text-lg font-black text-slate-900 group-hover:text-cyan-600 transition-colors">
-                            {session.groupe?.nom}
+                            {session.nomSession || session.groupe?.nom}
                           </h3>
 
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 font-medium">
@@ -853,7 +854,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                   {session.groupe ? categoriseGroupe(session.groupe.nom).toUpperCase() : 'AUTRE'}
                                 </span>
                                 <h3 className="text-sm font-black text-slate-900 mt-1">
-                                  {session.groupe?.nom}
+                                  {session.nomSession || session.groupe?.nom}
                                 </h3>
                                 <div className="flex gap-x-4 mt-1 text-[10px] text-slate-500 font-medium">
                                   <span>📍 {session.lieu || 'Piscine'}</span>
@@ -922,7 +923,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                     <div
                                       key={session.id}
                                       onClick={() => setSelectedPlanningDetails(session)}
-                                      title={`${session.groupe?.nom || groupe.nom}\nHoraires : ${session.heureDebut} - ${session.heureFin}\nLieu : ${session.lieu || 'Piscine'}${session.coachs && session.coachs.length > 0 ? `\nCoach(s) : ${session.coachs.map(c => c.coach.prenom).join(', ')}` : ''}`}
+                                      title={`${session.nomSession || session.groupe?.nom || groupe.nom}\nHoraires : ${session.heureDebut} - ${session.heureFin}\nLieu : ${session.lieu || 'Piscine'}${session.coachs && session.coachs.length > 0 ? `\nCoach(s) : ${session.coachs.map(c => c.coach.prenom).join(', ')}` : ''}`}
                                       style={{
                                         background: session.couleur ? getCardGradient(session.couleur) : color.gradient,
                                         color: session.couleur ? '#ffffff' : color.textColor,
@@ -1019,8 +1020,13 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                 Détails du cours
               </span>
               <h3 className="text-xl font-black text-slate-900 mt-2.5 leading-tight">
-                {selectedPlanningDetails.groupe?.nom}
+                {selectedPlanningDetails.nomSession || selectedPlanningDetails.groupe?.nom}
               </h3>
+              {selectedPlanningDetails.nomSession && selectedPlanningDetails.groupe?.nom && (
+                <div className="text-xs text-slate-500 font-semibold mt-1">
+                  Groupe : {selectedPlanningDetails.groupe.nom}
+                </div>
+              )}
             </div>
 
             <div className="space-y-3.5 mb-6">

@@ -201,12 +201,12 @@ export default async function CoachDashboard() {
         upcomingSessions.push({
           id: `${p.id}-${dayDate.toISOString().split('T')[0]}`,
           type: 'fixe',
-          titre: p.groupe?.nom || 'Entraînement',
+          titre: p.nomSession || p.groupe?.nom || 'Entraînement',
           date: dayDate,
           heureDebut: p.heureDebut,
           heureFin: p.heureFin,
           lieu: p.lieu || 'Piscine',
-          groupe: p.groupe?.nom || 'Groupe',
+          groupe: p.nomSession || p.groupe?.nom || 'Groupe',
           isMySession,
           coachName: coachesText || null,
         })

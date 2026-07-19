@@ -5,7 +5,13 @@ export const dynamic = 'force-dynamic'
 async function getGroupes() {
   try {
     return await prisma.groupe.findMany({
-      where: { actif: true },
+      where: {
+        actif: true,
+        OR: [
+          { tarif: { not: null } },
+          { tarif1Cours: { not: null } },
+        ],
+      },
       orderBy: { ordre: 'asc' },
       select: {
         id: true,

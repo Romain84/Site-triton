@@ -45,7 +45,13 @@ async function getBlocks(): Promise<BlockData[]> {
 async function getGroupes(): Promise<Groupe[]> {
   try {
     return await prisma.groupe.findMany({
-      where: { actif: true },
+      where: {
+        actif: true,
+        OR: [
+          { tarif: { not: null } },
+          { tarif1Cours: { not: null } },
+        ],
+      },
       orderBy: { ordre: 'asc' },
     }) as unknown as Groupe[]
   } catch {

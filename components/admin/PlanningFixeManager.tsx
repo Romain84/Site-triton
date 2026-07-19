@@ -30,6 +30,7 @@ interface Planning {
   }>
   lieu: string | null
   couleur: string | null
+  nomSession: string | null
   actif: boolean
 }
 
@@ -336,6 +337,7 @@ export default function PlanningFixeManager() {
   const [heureFin, setHeureFin] = useState('')
   const [groupeId, setGroupeId] = useState('')
   const [coachIds, setCoachIds] = useState<string[]>([])
+  const [nomSession, setNomSession] = useState('')
   
   // Custom lieu selector state
   const [lieuType, setLieuType] = useState('Grand Bassin - Ligne 1')
@@ -370,6 +372,7 @@ export default function PlanningFixeManager() {
     setHeureFin('')
     setGroupeId('')
     setCoachIds([])
+    setNomSession('')
     setLieuType('Grand Bassin - Ligne 1')
     setLieuCustom('')
     setCouleur('#00bcd4')
@@ -385,6 +388,7 @@ export default function PlanningFixeManager() {
     setHeureFin(planning.heureFin)
     setGroupeId(planning.groupeId)
     setCoachIds(planning.coachs.map(c => c.coach.id))
+    setNomSession(planning.nomSession || '')
     
     const currentLieu = planning.lieu || 'Grand Bassin - Ligne 1'
     if (PRESET_LIEUX.includes(currentLieu)) {
@@ -422,6 +426,7 @@ export default function PlanningFixeManager() {
           coachIds,
           lieu: finalLieu,
           couleur,
+          nomSession: nomSession || null,
           actif,
         }),
       })
@@ -551,6 +556,22 @@ export default function PlanningFixeManager() {
               ))}
             </select>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Nom personnalisé de la séance (optionnel - ex: "Aquabike", "Aquagym")
+          </label>
+          <input
+            type="text"
+            value={nomSession}
+            onChange={(e) => setNomSession(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            placeholder="Laisser vide pour utiliser le nom du groupe"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Si renseigné, ce nom sera affiché à la place du nom du groupe sur le planning public (utile pour gérer l'Aquabike/Aquagym rattachés au groupe Aquafitness).
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -809,7 +830,12 @@ export default function PlanningFixeManager() {
                               </div>
                             </td>
                             <td className="py-3 px-4">
-                              {planning.groupe?.nom || '-'}
+                              <div className="font-semibold">{planning.groupe?.nom || '-'}</div>
+                              {planning.nomSession && (
+                                <div className="text-xs text-gray-500 italic">
+                                  Séance : {planning.nomSession}
+                                </div>
+                              )}
                             </td>
                             <td className="py-3 px-4">
                               {planning.coachs.length > 0 ? (
@@ -1220,7 +1246,7 @@ export default function PlanningFixeManager() {
                                     >
                                       <div className="leading-tight">
                                         <p className="font-extrabold text-xs tracking-wide truncate drop-shadow-sm flex items-center gap-1">
-                                          {planning.groupe?.nom}
+                                          {planning.nomSession || planning.groupe?.nom}
                                           {isDynamicallyAssigned && (
                                             <span className="text-[9px] opacity-75" title="Assignation automatique au couloir">⚡</span>
                                           )}
@@ -1242,7 +1268,10 @@ export default function PlanningFixeManager() {
                                       {/* Tooltip on hover */}
                                       <div className="absolute inset-0 bg-slate-950/95 p-3 text-xs rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between pointer-events-none z-30 border border-slate-700">
                                         <div>
-                                          <p className="font-bold text-cyan-400 text-xs mb-1">{planning.groupe?.nom}</p>
+                                          <p className="font-bold text-cyan-400 text-xs mb-0.5">{planning.nomSession || planning.groupe?.nom}</p>
+                                          {planning.nomSession && (
+                                            <p className="text-[9px] text-slate-450 font-medium mb-1">Groupe: {planning.groupe?.nom}</p>
+                                          )}
                                           <div className="space-y-1 text-slate-300 text-[10px]">
                                             <p><span className="text-slate-400">⏰ Horaire:</span> {planning.heureDebut} - {planning.heureFin}</p>
                                             <p><span className="text-slate-400">📍 Lieu original:</span> {planning.lieu || 'Non spécifié'}</p>

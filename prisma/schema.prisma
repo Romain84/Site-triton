@@ -63,6 +63,7 @@ model Planning {
   groupeId    String?
   lieu        String?
   couleur     String?
+  nomSession  String?
   actif       Boolean         @default(true)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
