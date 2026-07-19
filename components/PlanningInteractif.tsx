@@ -43,13 +43,13 @@ const JOURS_ORDRE = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'
 
 const CATEGORIES = {
   all: 'Tous',
-  enf: 'ENF (Apprentissage)',
-  avenirs: 'Avenirs (U11 et -)',
-  benjamins: 'Benjamins (U12 - U13)',
-  juniors: 'Juniors (U14 - U18)',
-  adultes: 'Adultes / Maîtres (25 ans et +)',
-  loisirs: 'Loisirs',
-  autres: 'Autres (Artistique, AquaGym, BNSSA)',
+  enf: 'ENF',
+  avenirs: 'Avenirs',
+  benjamins: 'Benjamins',
+  juniors: 'Juniors',
+  adultes: 'Adultes',
+  loisirs: 'Loisir',
+  autres: 'Autres',
 }
 
 function categoriseGroupe(nom: string): string {
