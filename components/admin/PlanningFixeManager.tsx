@@ -15,6 +15,7 @@ interface Coach {
 interface Groupe {
   id: string
   nom: string
+  couleur: string | null
 }
 
 interface Planning {
@@ -75,7 +76,37 @@ const getCardGradient = (hexColor: string | null | undefined): string => {
   }
 }
 
-function getCouleurGroupe(nom: string): { bg: string; text: string; border: string; badge: string; accent: string; gradient: string; textColor: string; textBorder: string } {
+interface CouleurStyle {
+  bg: string
+  text: string
+  border: string
+  badge: string
+  accent: string
+  gradient: string
+  textColor: string
+  textBorder: string
+  borderStyle?: React.CSSProperties
+  badgeStyle?: React.CSSProperties
+  accentStyle?: React.CSSProperties
+}
+
+function getCouleurGroupe(nom: string, groupColor?: string | null): CouleurStyle {
+  if (groupColor) {
+    const hex = groupColor.startsWith('#') ? groupColor : `#${groupColor}`
+    return {
+      bg: '',
+      text: '',
+      border: '',
+      badge: '',
+      accent: '',
+      gradient: getCardGradient(hex),
+      textColor: '#ffffff',
+      textBorder: 'rgba(255,255,255,0.2)',
+      borderStyle: { borderLeftColor: hex },
+      badgeStyle: { backgroundColor: `${hex}1c`, color: hex },
+      accentStyle: { backgroundColor: hex }
+    }
+  }
   const n = nom || ''
    // 1. COMPÉTITIONS (Chaque groupe possède sa couleur et son identité propre)
   if (n.includes('Avenirs 1')) {
@@ -1210,7 +1241,7 @@ export default function PlanningFixeManager() {
                                   const heightPct = Math.max(5, ((endMin - startMin) / 840) * 100)
                                   
                                   const isDynamicallyAssigned = planning.lieu !== lane.key
-                                  const color = getCouleurGroupe(planning.groupe?.nom || '')
+                                  const color = getCouleurGroupe(planning.groupe?.nom || '', planning.groupe?.couleur)
 
                                   // Apply quick filters
                                   const isCoachFiltered = filterCoachId && !planning.coachs.some(c => c.coach.id === filterCoachId)

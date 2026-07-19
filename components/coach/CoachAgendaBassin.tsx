@@ -13,6 +13,7 @@ interface Session {
   groupe: string
   isMySession?: boolean
   coachName?: string | null
+  couleur?: string | null
 }
 
 interface CoachAgendaBassinProps {
@@ -35,7 +36,51 @@ const laneLabels = [
   { key: 'Petit Bassin', label: 'Petit Bassin' }
 ]
 
-function getCouleurGroupe(nom: string): { bg: string; text: string; border: string; badge: string; accent: string; gradient: string; textColor: string; textBorder: string } {
+interface CouleurStyle {
+  bg: string
+  text: string
+  border: string
+  badge: string
+  accent: string
+  gradient: string
+  textColor: string
+  textBorder: string
+  borderStyle?: React.CSSProperties
+  badgeStyle?: React.CSSProperties
+  accentStyle?: React.CSSProperties
+}
+
+const getCardGradient = (hexColor: string | null | undefined): string => {
+  const baseColor = hexColor || '#00bcd4'
+  switch(baseColor.toLowerCase()) {
+    case '#00bcd4': return 'linear-gradient(135deg, #00bcd4, #0097a7)' // Cyan
+    case '#2196f3': return 'linear-gradient(135deg, #2196f3, #1976d2)' // Bleu
+    case '#4caf50': return 'linear-gradient(135deg, #4caf50, #388e3c)' // Vert
+    case '#ff9800': return 'linear-gradient(135deg, #ff9800, #f57c00)' // Orange
+    case '#f44336': return 'linear-gradient(135deg, #f44336, #d32f2f)' // Rouge
+    case '#9c27b0': return 'linear-gradient(135deg, #9c27b0, #7b1fa2)' // Violet
+    case '#e91e63': return 'linear-gradient(135deg, #e91e63, #c2185b)' // Rose
+    default: return `linear-gradient(135deg, ${baseColor}, ${baseColor})`
+  }
+}
+
+function getCouleurGroupe(nom: string, groupColor?: string | null): CouleurStyle {
+  if (groupColor) {
+    const hex = groupColor.startsWith('#') ? groupColor : `#${groupColor}`
+    return {
+      bg: '',
+      text: '',
+      border: '',
+      badge: '',
+      accent: '',
+      gradient: getCardGradient(hex),
+      textColor: '#ffffff',
+      textBorder: 'rgba(255,255,255,0.2)',
+      borderStyle: { borderLeftColor: hex },
+      badgeStyle: { backgroundColor: `${hex}1c`, color: hex },
+      accentStyle: { backgroundColor: hex }
+    }
+  }
   const n = nom || ''
   
   // 1. COMPÉTITIONS (Chaque groupe possède sa couleur et son identité propre)
@@ -533,7 +578,7 @@ export default function CoachAgendaBassin({ sessions }: CoachAgendaBassinProps) 
                         const isShort = duration <= 50
 
                         const isMine = session.isMySession
-                        const color = getCouleurGroupe(session.titre)
+                        const color = getCouleurGroupe(session.titre, session.couleur)
 
                         // Calculate colSpan
                         let colSpan = 1

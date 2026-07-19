@@ -81,10 +81,10 @@ async function getCoachData(coachId: string) {
         select: { id: true, prenom: true, nom: true },
       },
       groupe: {
-        select: { id: true, nom: true },
+        select: { id: true, nom: true, couleur: true },
       },
       groupes: {
-        select: { id: true, nom: true },
+        select: { id: true, nom: true, couleur: true },
       },
     },
     orderBy: { date: 'asc' },
@@ -160,6 +160,7 @@ export default async function CoachDashboard() {
     groupe: string
     isMySession: boolean
     coachName: string | null
+    couleur: string | null
   }> = []
 
   // 1. Ajouter les tournants
@@ -179,6 +180,7 @@ export default async function CoachDashboard() {
       groupe: groupName,
       isMySession: evt.coachId === session.coachId,
       coachName: evt.coach ? `${evt.coach.prenom} ${evt.coach.nom || ''}`.trim() : null,
+      couleur: evt.groupe?.couleur || (evt.groupes && evt.groupes.length > 0 ? evt.groupes[0].couleur : null),
     })
   })
 
@@ -209,6 +211,7 @@ export default async function CoachDashboard() {
           groupe: p.nomSession || p.groupe?.nom || 'Groupe',
           isMySession,
           coachName: coachesText || null,
+          couleur: p.groupe?.couleur ?? null,
         })
       }
     })

@@ -47,7 +47,7 @@ export async function PUT(
           },
         },
         groupe: {
-          select: { id: true, nom: true },
+          select: { id: true, nom: true, couleur: true },
         },
       },
     })

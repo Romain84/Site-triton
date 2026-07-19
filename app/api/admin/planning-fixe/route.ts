@@ -31,6 +31,7 @@ export async function GET() {
           select: {
             id: true,
             nom: true,
+            couleur: true,
           },
         },
       },
@@ -49,7 +50,7 @@ export async function GET() {
       }),
       prisma.groupe.findMany({
         where: { actif: true },
-        select: { id: true, nom: true },
+        select: { id: true, nom: true, couleur: true },
         orderBy: { nom: 'asc' },
       }),
     ])
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
           },
         },
         groupe: {
-          select: { id: true, nom: true },
+          select: { id: true, nom: true, couleur: true },
         },
       },
     })
