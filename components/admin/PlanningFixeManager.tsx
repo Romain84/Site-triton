@@ -62,6 +62,25 @@ const timeToMinutes = (timeStr: string | null | undefined): number => {
   return h * 60 + m
 }
 
+const isLightColor = (hexColor: string | null | undefined): boolean => {
+  if (!hexColor) return false
+  const color = hexColor.startsWith('#') ? hexColor.slice(1) : hexColor
+  if (color.length !== 3 && color.length !== 6) return false
+  
+  let r = 0, g = 0, b = 0
+  if (color.length === 3) {
+    r = parseInt(color[0] + color[0], 16)
+    g = parseInt(color[1] + color[1], 16)
+    b = parseInt(color[2] + color[2], 16)
+  } else {
+    r = parseInt(color.substring(0, 2), 16)
+    g = parseInt(color.substring(2, 4), 16)
+    b = parseInt(color.substring(4, 6), 16)
+  }
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000
+  return brightness > 180
+}
+
 const getCardGradient = (hexColor: string | null | undefined): string => {
   const baseColor = hexColor || '#00bcd4'
   switch(baseColor.toLowerCase()) {
@@ -93,6 +112,7 @@ interface CouleurStyle {
 function getCouleurGroupe(nom: string, groupColor?: string | null): CouleurStyle {
   if (groupColor) {
     const hex = groupColor.startsWith('#') ? groupColor : `#${groupColor}`
+    const isLight = isLightColor(hex)
     return {
       bg: '',
       text: '',
@@ -100,8 +120,8 @@ function getCouleurGroupe(nom: string, groupColor?: string | null): CouleurStyle
       badge: '',
       accent: '',
       gradient: getCardGradient(hex),
-      textColor: '#ffffff',
-      textBorder: 'rgba(255,255,255,0.2)',
+      textColor: isLight ? '#0f172a' : '#ffffff',
+      textBorder: isLight ? 'rgba(15,23,42,0.15)' : 'rgba(255,255,255,0.2)',
       borderStyle: { borderLeftColor: hex },
       badgeStyle: { backgroundColor: `${hex}1c`, color: hex },
       accentStyle: { backgroundColor: hex }
@@ -1283,8 +1303,9 @@ export default function PlanningFixeManager() {
                                         left: `calc(${leftPct}% + 2px)`,
                                         width: `calc(${widthPct}% - 4px)`,
                                         background: planning.groupe?.couleur ? getCardGradient(planning.groupe.couleur) : (planning.couleur ? getCardGradient(planning.couleur) : color.gradient),
-                                        color: (planning.groupe?.couleur || planning.couleur) ? '#ffffff' : color.textColor,
-                                        borderColor: planning.groupe?.couleur ? 'rgba(255, 255, 255, 0.2)' : (planning.couleur ? 'rgba(255, 255, 255, 0.2)' : color.textBorder)
+                                        color: (planning.groupe?.couleur || planning.couleur) ? (isLightColor(planning.groupe?.couleur || planning.couleur) ? '#0f172a' : '#ffffff') : color.textColor,
+                                        borderColor: (planning.groupe?.couleur || planning.couleur) ? (isLightColor(planning.groupe?.couleur || planning.couleur) ? 'rgba(15, 23, 42, 0.15)' : 'rgba(255, 255, 255, 0.2)') : color.textBorder,
+                                        textShadow: (planning.groupe?.couleur || planning.couleur) && !isLightColor(planning.groupe?.couleur || planning.couleur) ? '0 1px 2px rgba(0, 0, 0, 0.35)' : 'none'
                                       }}
                                       className={`absolute rounded-xl shadow-md cursor-grab active:cursor-grabbing hover:scale-[1.03] hover:shadow-xl hover:z-30 transition-all duration-300 overflow-hidden flex flex-col justify-center group border select-none ${
                                         isShort ? 'p-1 gap-0' : 'p-2 gap-1'

@@ -80,6 +80,7 @@ interface CouleurStyle {
 function getCouleurGroupe(nom: string, groupColor?: string | null): CouleurStyle {
   if (groupColor) {
     const hex = groupColor.startsWith('#') ? groupColor : `#${groupColor}`
+    const isLight = isLightColor(hex)
     return {
       bg: '',
       text: '',
@@ -87,8 +88,8 @@ function getCouleurGroupe(nom: string, groupColor?: string | null): CouleurStyle
       badge: '',
       accent: '',
       gradient: getCardGradient(hex),
-      textColor: '#ffffff',
-      textBorder: 'rgba(255,255,255,0.2)',
+      textColor: isLight ? '#0f172a' : '#ffffff',
+      textBorder: isLight ? 'rgba(15,23,42,0.15)' : 'rgba(255,255,255,0.2)',
       borderStyle: { borderLeftColor: hex },
       badgeStyle: { backgroundColor: `${hex}1c`, color: hex },
       accentStyle: { backgroundColor: hex }
@@ -330,6 +331,25 @@ function getCouleurGroupe(nom: string, groupColor?: string | null): CouleurStyle
     textColor: '#ffffff',
     textBorder: 'rgba(255,255,255,0.2)'
   }
+}
+
+const isLightColor = (hexColor: string | null | undefined): boolean => {
+  if (!hexColor) return false
+  const color = hexColor.startsWith('#') ? hexColor.slice(1) : hexColor
+  if (color.length !== 3 && color.length !== 6) return false
+  
+  let r = 0, g = 0, b = 0
+  if (color.length === 3) {
+    r = parseInt(color[0] + color[0], 16)
+    g = parseInt(color[1] + color[1], 16)
+    b = parseInt(color[2] + color[2], 16)
+  } else {
+    r = parseInt(color.substring(0, 2), 16)
+    g = parseInt(color.substring(2, 4), 16)
+    b = parseInt(color.substring(4, 6), 16)
+  }
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000
+  return brightness > 180
 }
 
 const getCardGradient = (hexColor: string | null | undefined): string => {
@@ -611,6 +631,11 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                             }
                           }
                           const widthPct = (colSpan / totalCols) * 100
+                          const activeColorHex = planning.groupe?.couleur || planning.couleur
+                          const isLight = isLightColor(activeColorHex)
+                          const textColor = activeColorHex ? (isLight ? '#0f172a' : '#ffffff') : color.textColor
+                          const borderColor = activeColorHex ? (isLight ? 'rgba(15, 23, 42, 0.15)' : 'rgba(255, 255, 255, 0.2)') : color.textBorder
+                          const textShadow = activeColorHex && !isLight ? '0 1px 2px rgba(0, 0, 0, 0.35)' : 'none'
 
                           return (
                             <div
@@ -623,8 +648,9 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                 left: `calc(${leftPct}% + 2px)`,
                                 width: `calc(${widthPct}% - 4px)`,
                                 background: planning.groupe?.couleur ? getCardGradient(planning.groupe.couleur) : (planning.couleur ? getCardGradient(planning.couleur) : color.gradient),
-                                color: (planning.groupe?.couleur || planning.couleur) ? '#ffffff' : color.textColor,
-                                borderColor: planning.groupe?.couleur ? 'rgba(255, 255, 255, 0.2)' : (planning.couleur ? 'rgba(255, 255, 255, 0.2)' : color.textBorder)
+                                color: textColor,
+                                borderColor: borderColor,
+                                textShadow: textShadow
                               }}
                               className={`absolute rounded-xl flex flex-col justify-center border cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none overflow-hidden shadow-sm ${
                                 isShort ? 'p-1 md:p-1.5' : 'p-2 md:p-2.5'
