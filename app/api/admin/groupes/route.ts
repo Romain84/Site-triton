@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
         tarif1Cours: validatedData.tarif1Cours,
         libelleOption1: validatedData.libelleOption1,
         libelleOption2: validatedData.libelleOption2,
+        inscrits: validatedData.inscrits,
         inscrits1Cours: validatedData.inscrits1Cours,
         prixLicence: validatedData.prixLicence,
         caution: validatedData.caution,

@@ -146,6 +146,7 @@ export const groupeSchema = z.object({
   tarif1Cours: z.coerce.number().min(0).optional().nullable(),
   libelleOption1: z.string().optional().nullable(),
   libelleOption2: z.string().optional().nullable(),
+  inscrits: z.coerce.number().int().min(0).default(0),
   inscrits1Cours: z.coerce.number().int().min(0).default(0),
   prixLicence: z.coerce.number().min(0).optional().nullable(),
   caution: z.coerce.number().min(0).optional().nullable(),
