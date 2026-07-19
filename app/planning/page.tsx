@@ -51,7 +51,13 @@ async function getData() {
         },
       }),
     ])
-    return { plannings, groupes, settings }
+    const sortedGroupes = groupes.sort((a, b) => {
+      const ageA = a.ageMin ?? 999
+      const ageB = b.ageMin ?? 999
+      if (ageA !== ageB) return ageA - ageB
+      return (a.ordre || 0) - (b.ordre || 0)
+    })
+    return { plannings, groupes: sortedGroupes, settings }
   } catch (error) {
     logger.error('Error fetching planning', error)
     return { plannings: [], groupes: [], settings: null }

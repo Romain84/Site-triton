@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 async function getGroupes() {
   try {
-    return await prisma.groupe.findMany({
+    const list = await prisma.groupe.findMany({
       where: {
         actif: true,
         OR: [
@@ -25,7 +25,14 @@ async function getGroupes() {
         ageMin: true,
         ageMax: true,
         annule: true,
+        ordre: true,
       },
+    })
+    return list.sort((a, b) => {
+      const ageA = a.ageMin ?? 999
+      const ageB = b.ageMin ?? 999
+      if (ageA !== ageB) return ageA - ageB
+      return (a.ordre || 0) - (b.ordre || 0)
     })
   } catch {
     return []

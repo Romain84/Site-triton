@@ -29,6 +29,8 @@ interface Groupe {
   prixLicence: number | null
   caution: number | null
   annule: boolean
+  ageMin?: number | null
+  ordre?: number
 }
 
 // ─── Data Fetching ──────────────────────────────────────
@@ -45,7 +47,7 @@ async function getBlocks(): Promise<BlockData[]> {
 
 async function getGroupes(): Promise<Groupe[]> {
   try {
-    return await prisma.groupe.findMany({
+    const list = await prisma.groupe.findMany({
       where: {
         actif: true,
         OR: [
@@ -55,6 +57,12 @@ async function getGroupes(): Promise<Groupe[]> {
       },
       orderBy: { ordre: 'asc' },
     }) as unknown as Groupe[]
+    return list.sort((a, b) => {
+      const ageA = a.ageMin ?? 999
+      const ageB = b.ageMin ?? 999
+      if (ageA !== ageB) return ageA - ageB
+      return (a.ordre || 0) - (b.ordre || 0)
+    })
   } catch {
     return []
   }
