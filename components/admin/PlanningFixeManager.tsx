@@ -1205,6 +1205,8 @@ export default function PlanningFixeManager() {
                                 return col.map(planning => {
                                   const startMin = Math.max(480, Math.min(1320, timeToMinutes(planning.heureDebut)))
                                   const endMin = Math.max(480, Math.min(1320, timeToMinutes(planning.heureFin)))
+                                  const duration = endMin - startMin
+                                  const isShort = duration <= 50
                                   const topPct = ((startMin - 480) / 840) * 100
                                   const heightPct = Math.max(5, ((endMin - startMin) / 840) * 100)
                                   
@@ -1238,32 +1240,40 @@ export default function PlanningFixeManager() {
                                         color: planning.couleur ? '#ffffff' : color.textColor,
                                         borderColor: planning.couleur ? 'rgba(255, 255, 255, 0.2)' : color.textBorder
                                       }}
-                                      className={`absolute rounded-xl p-2 shadow-md cursor-grab active:cursor-grabbing hover:scale-[1.03] hover:shadow-xl hover:z-30 transition-all duration-300 overflow-hidden flex flex-col justify-between group border select-none ${
+                                      className={`absolute rounded-xl shadow-md cursor-grab active:cursor-grabbing hover:scale-[1.03] hover:shadow-xl hover:z-30 transition-all duration-300 overflow-hidden flex flex-col justify-center group border select-none ${
+                                        isShort ? 'p-1 gap-0' : 'p-2 gap-1'
+                                      } ${
                                         !planning.actif ? 'opacity-50 stripe-bg' : ''
                                       } ${
                                         isDimmed ? 'opacity-15 scale-[0.96] blur-[0.5px] pointer-events-none' : ''
                                       }`}
                                     >
-                                      <div className="leading-tight">
-                                        <p className="font-extrabold text-xs tracking-wide truncate drop-shadow-sm flex items-center gap-1">
+                                      <div className={`min-w-0 ${isShort ? 'space-y-0' : 'space-y-0.5'}`}>
+                                        <p className={`font-extrabold tracking-wide truncate drop-shadow-sm flex items-center gap-1 ${
+                                           isShort ? 'text-[8.5px] sm:text-[9.5px] md:text-[10px]' : 'text-[9.5px] sm:text-[11px] md:text-xs'
+                                         }`}>
                                           {planning.nomSession || planning.groupe?.nom}
                                           {isDynamicallyAssigned && (
                                             <span className="text-[9px] opacity-75" title="Assignation automatique au couloir">⚡</span>
                                           )}
                                         </p>
-                                        <p className="text-[9px] font-bold opacity-90 drop-shadow-sm mt-0.5">
+                                        <p className={`font-bold opacity-90 drop-shadow-sm mt-0.5 ${
+                                           isShort ? 'text-[7.5px] sm:text-[8px] md:text-[9px]' : 'text-[8.5px] sm:text-[9px] md:text-[10px]'
+                                         }`}>
                                           {planning.heureDebut} - {planning.heureFin}
                                         </p>
                                       </div>
                                       
-                                      <div className="text-[9px] truncate opacity-95 font-semibold mt-1 flex flex-wrap gap-0.5">
-                                        {planning.coachs.map(c => (
-                                          <span key={c.id} className="bg-white/20 px-1 py-0.5 rounded truncate max-w-full">
-                                            {c.coach.prenom}
-                                          </span>
-                                        ))}
-                                        {planning.coachs.length === 0 && <span className="italic text-[8px] opacity-75">Sans coach</span>}
-                                      </div>
+                                      {!isShort && (
+                                        <div className="text-[9px] truncate opacity-95 font-semibold mt-1 flex flex-wrap gap-0.5">
+                                          {planning.coachs.map(c => (
+                                            <span key={c.id} className="bg-white/20 px-1 py-0.5 rounded truncate max-w-full">
+                                              {c.coach.prenom}
+                                            </span>
+                                          ))}
+                                          {planning.coachs.length === 0 && <span className="italic text-[8px] opacity-75">Sans coach</span>}
+                                        </div>
+                                      )}
 
                                       {/* Tooltip on hover */}
                                       <div className="absolute inset-0 bg-slate-950/95 p-3 text-xs rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between pointer-events-none z-30 border border-slate-700">

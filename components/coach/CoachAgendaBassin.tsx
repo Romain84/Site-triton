@@ -530,6 +530,9 @@ export default function CoachAgendaBassin({ sessions }: CoachAgendaBassinProps) 
                         const topPct = ((startMin - 480) / 840) * 100
                         const heightPct = ((endMin - startMin) / 840) * 100
 
+                        const duration = endMin - startMin
+                        const isShort = duration <= 50
+
                         const isMine = session.isMySession
                         const color = getCouleurGroupe(session.titre)
 
@@ -548,20 +551,26 @@ export default function CoachAgendaBassin({ sessions }: CoachAgendaBassinProps) 
                                 borderColor: color.textBorder
                               })
                             }}
-                            className={`absolute rounded-lg p-1.5 flex flex-col justify-between border cursor-pointer hover:shadow-sm hover:-translate-y-0.25 transition-all duration-200 select-none overflow-hidden ${
+                            className={`absolute rounded-lg flex flex-col justify-center border cursor-pointer hover:shadow-sm hover:-translate-y-0.25 transition-all duration-200 select-none overflow-hidden ${
+                              isShort ? 'p-1 gap-0' : 'p-1.5 gap-0.5'
+                            } ${
                               isMine
                                 ? 'ring-2 ring-primary/30 z-30 shadow-sm'
                                 : 'bg-slate-50 text-slate-400 border-slate-200/80 border-dashed opacity-60 hover:opacity-80 z-20'
                             }`}
                           >
-                            <div className="min-w-0 space-y-0.5">
-                              <p className={`font-black text-[9px] truncate leading-tight ${isMine ? '' : 'text-slate-600 font-bold'}`}>
+                            <div className={`min-w-0 ${isShort ? 'space-y-0' : 'space-y-0.5'}`}>
+                              <p className={`font-black truncate leading-tight ${isMine ? '' : 'text-slate-600 font-bold'} ${
+                                isShort ? 'text-[8.5px] sm:text-[9.5px]' : 'text-[9px] sm:text-[10px]'
+                              }`}>
                                 {session.titre}
                               </p>
-                              <p className={`text-[8px] font-extrabold leading-none ${isMine ? 'opacity-85' : 'text-slate-550'}`}>
+                              <p className={`font-extrabold leading-none ${isMine ? 'opacity-85' : 'text-slate-550'} ${
+                                isShort ? 'text-[7.5px] sm:text-[8px]' : 'text-[8px] sm:text-[9px]'
+                              }`}>
                                 {session.heureDebut} - {session.heureFin}
                               </p>
-                              {!isMine && session.coachName && (
+                              {!isShort && !isMine && session.coachName && (
                                 <p className="text-[7.5px] text-slate-450 font-semibold truncate leading-none mt-0.5">
                                   👤 {session.coachName}
                                 </p>

@@ -592,6 +592,9 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                           const topPct = ((startMin - 480) / 840) * 100
                           const heightPct = ((endMin - startMin) / 840) * 100
                           
+                          const duration = endMin - startMin
+                          const isShort = duration <= 50
+
                           const color = getCouleurGroupe(planning.groupe?.nom || '', planning.groupe?.couleur)
                           
                           return (
@@ -608,13 +611,23 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                 color: planning.couleur ? '#ffffff' : color.textColor,
                                 borderColor: planning.couleur ? 'rgba(255, 255, 255, 0.2)' : color.textBorder
                               }}
-                              className="absolute rounded-xl p-2.5 print:p-1 flex flex-col justify-between border cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none overflow-hidden shadow-sm"
+                              className={`absolute rounded-xl flex flex-col justify-center border cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none overflow-hidden shadow-sm ${
+                                isShort ? 'p-1 md:p-1.5' : 'p-2 md:p-2.5'
+                              }`}
                             >
-                              <div className="min-w-0 space-y-0.5 print:space-y-0">
-                                <p className="font-black text-[10px] md:text-xs print:text-[8px] print:leading-tight print:whitespace-normal print:break-words truncate leading-tight">
+                              <div className={`min-w-0 ${isShort ? 'space-y-0' : 'space-y-0.5'} print:space-y-0`}>
+                                <p className={`font-black tracking-tight leading-tight truncate ${
+                                  isShort 
+                                    ? 'text-[8.5px] sm:text-[9.5px] md:text-[10px] print:text-[8px]' 
+                                    : 'text-[9.5px] sm:text-[11px] md:text-xs print:text-[9px]'
+                                }`}>
                                   {planning.nomSession || planning.groupe?.nom}
                                 </p>
-                                <p className="text-[9px] font-extrabold leading-none print:text-[7.5px] print:leading-none opacity-85">
+                                <p className={`font-extrabold leading-none opacity-85 print:leading-none ${
+                                  isShort 
+                                    ? 'text-[7.5px] sm:text-[8px] md:text-[9px] print:text-[7px]' 
+                                    : 'text-[8px] sm:text-[9px] md:text-[10px] print:text-[8px]'
+                                }`}>
                                   {planning.heureDebut} - {planning.heureFin}
                                 </p>
                               </div>
