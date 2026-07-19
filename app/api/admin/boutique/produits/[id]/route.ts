@@ -77,6 +77,7 @@ export async function PUT(
       personnalisable,
       prixFlocage,
       ordre,
+      lienExterne,
     } = body
 
     // Vérifier si le produit existe
@@ -150,6 +151,7 @@ export async function PUT(
         poids: poids !== undefined ? (poids ? parseInt(poids) : null) : existingProduit.poids,
         metaTitle: metaTitle !== undefined ? metaTitle : existingProduit.metaTitle,
         metaDescription: metaDescription !== undefined ? metaDescription : existingProduit.metaDescription,
+        lienExterne: lienExterne !== undefined ? lienExterne : existingProduit.lienExterne,
         actif: actif !== undefined ? actif : existingProduit.actif,
         enVedette: enVedette !== undefined ? enVedette : existingProduit.enVedette,
         personnalisable: personnalisable !== undefined ? personnalisable : existingProduit.personnalisable,

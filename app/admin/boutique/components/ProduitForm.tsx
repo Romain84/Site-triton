@@ -41,6 +41,7 @@ export default function ProduitForm({
     gererStock: produit?.gererStock ?? true,
     stockIllimite: produit?.stockIllimite ?? false,
     prixFlocage: produit?.prixFlocage || 0,
+    lienExterne: (produit as any)?.lienExterne || '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -193,6 +194,19 @@ export default function ProduitForm({
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
                 className="w-full px-4 py-2 border rounded-lg"
                 required
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-2">
+                Lien officiel (site fournisseur / fiche officielle)
+              </label>
+              <input
+                type="url"
+                value={(formData as any).lienExterne || ''}
+                onChange={(e) => setFormData({ ...formData, lienExterne: e.target.value })}
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20"
+                placeholder="https://www.joma-sport.com/... (ex: Joma, Arena, etc.)"
               />
             </div>
 

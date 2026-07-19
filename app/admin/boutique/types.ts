@@ -44,6 +44,7 @@ export interface Produit {
   fournisseurId?: string
   image?: string
   images?: string
+  lienExterne?: string
   actif: boolean
   enVedette: boolean
   personnalisable: boolean

@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
       personnalisable,
       prixFlocage,
       ordre,
+      lienExterne,
     } = body
 
     // Validation
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest) {
         poids: poids ? parseInt(poids) : null,
         metaTitle: metaTitle || null,
         metaDescription: metaDescription || null,
+        lienExterne: lienExterne || null,
         actif: actif !== undefined ? actif : true,
         enVedette: enVedette || false,
         personnalisable: personnalisable || false,

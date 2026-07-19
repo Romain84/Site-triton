@@ -86,6 +86,7 @@ export const produitSchema = z.object({
   categorieId: z.string().optional(),
   actif: z.boolean().default(true),
   enVedette: z.boolean().default(false),
+  lienExterne: z.string().optional().nullable(),
 })
 
 /**

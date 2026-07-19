@@ -34,6 +34,7 @@ interface Produit {
   images?: string
   tailles?: string
   couleurs?: string
+  lienExterne?: string
   categorie?: {
     nom: string
     slug: string
@@ -677,11 +678,11 @@ export default function ProduitDetailPage() {
             )}
 
             {/* Boutons d'action */}
-            <div className="flex gap-4 mb-8">
+            <div className="flex flex-col gap-3 mb-8">
               <button
                 onClick={handleAddToCart}
                 disabled={!combinaisonExiste() || !estDisponible() || addingToCart || !boutiqueOuverte}
-                className="flex-1 bg-primary text-white py-4 rounded-lg font-bold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-primary text-white py-4 rounded-lg font-bold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {!boutiqueOuverte
                   ? 'Boutique fermée'
@@ -693,6 +694,20 @@ export default function ProduitDetailPage() {
                   ? 'Rupture de stock'
                   : 'Ajouter au panier'}
               </button>
+
+              {produit.lienExterne && (
+                <a
+                  href={produit.lienExterne}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center gap-2 border border-slate-300 bg-white text-slate-700 py-3.5 rounded-lg font-semibold hover:bg-slate-50 transition-colors shadow-sm"
+                >
+                  <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Voir sur le site officiel
+                </a>
+              )}
             </div>
 
             {/* Description complète */}

@@ -535,6 +535,7 @@ model Produit {
   stockIllimite     Boolean           @default(false)
   image             String?
   images            String?
+  lienExterne       String?
   categorieId       String?
   fournisseurId     String?
   tailles           String?
