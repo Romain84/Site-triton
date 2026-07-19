@@ -1316,7 +1316,7 @@ export default function PlanningFixeManager() {
                                       }`}
                                     >
                                       <div className={`min-w-0 ${isShort ? 'space-y-0' : 'space-y-0.5'}`}>
-                                        <p className={`font-extrabold tracking-wide truncate drop-shadow-sm flex items-center gap-1 ${
+                                        <p className={`font-extrabold tracking-wide break-words whitespace-normal line-clamp-2 drop-shadow-sm flex items-center gap-1 ${
                                            isShort ? 'text-[8.5px] sm:text-[9.5px] md:text-[10px]' : 'text-[9.5px] sm:text-[11px] md:text-xs'
                                          }`}>
                                           {planning.nomSession || planning.groupe?.nom}

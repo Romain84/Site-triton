@@ -658,7 +658,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                             >
                               <div className={`min-w-0 ${isShort ? 'space-y-0' : 'space-y-0.5'} print:space-y-0`}>
                                 <div className="flex flex-wrap items-center gap-1 min-w-0">
-                                  <p className={`font-black tracking-tight leading-tight truncate ${
+                                  <p className={`font-black tracking-tight leading-tight break-words whitespace-normal line-clamp-2 ${
                                     isShort 
                                       ? 'text-[8.5px] sm:text-[9.5px] md:text-[10px] print:text-[8px]' 
                                       : 'text-[9.5px] sm:text-[11px] md:text-xs print:text-[9px]'
