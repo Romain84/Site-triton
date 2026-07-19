@@ -727,7 +727,7 @@ export default function GroupesManager() {
               className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
             />
             <label htmlFor="annule" className="ml-2 text-sm text-red-700 font-medium">
-              ⚠️ Pas de cours jusqu&apos;à nouvel ordre (Groupe annulé / suspendu)
+              ⚠️ Créneau temporairement suspendu (en attente d&apos;un coach). Réouverture possible à tout moment !
             </label>
           </div>
         </div>
