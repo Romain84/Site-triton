@@ -28,6 +28,7 @@ interface Groupe {
   tempsFacture: number | null
   isCompetition: boolean
   nbCompetitions: number | null
+  couleur: string | null
   membresBureau: number
   enfantsBureau: number
 }
@@ -63,6 +64,7 @@ export default function GroupesManager() {
   const [nbCompetitions, setNbCompetitions] = useState('')
   const [membresBureau, setMembresBureau] = useState('')
   const [enfantsBureau, setEnfantsBureau] = useState('')
+  const [couleur, setCouleur] = useState('')
 
   useEffect(() => {
     fetchGroupes()
@@ -105,6 +107,7 @@ export default function GroupesManager() {
     setNbCompetitions('')
     setMembresBureau('')
     setEnfantsBureau('')
+    setCouleur('')
     setEditingGroupe(null)
     setShowForm(false)
   }
@@ -133,6 +136,7 @@ export default function GroupesManager() {
     setNbCompetitions(groupe.nbCompetitions?.toString() || '')
     setMembresBureau(groupe.membresBureau?.toString() || '0')
     setEnfantsBureau(groupe.enfantsBureau?.toString() || '0')
+    setCouleur(groupe.couleur || '')
     setShowForm(false)
   }
 
@@ -174,6 +178,7 @@ export default function GroupesManager() {
           prixLicence: prixLicence || null,
           niveau: niveau || null,
           actif,
+          couleur: couleur || null,
           dateDebut: dateDebut || null,
           dateFin: dateFin || null,
           tempsFacture: tempsFacture || null,
@@ -248,7 +253,7 @@ export default function GroupesManager() {
         {/* Section Informations générales */}
         <div className="border-b pb-4">
           <h4 className="text-lg font-semibold mb-4 text-gray-700">Informations générales</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Nom du groupe *
@@ -279,6 +284,38 @@ export default function GroupesManager() {
                 <option value="competition">Compétition</option>
                 <option value="loisir">Loisir</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Couleur du groupe (planning)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={couleur || '#00bcd4'}
+                  onChange={(e) => setCouleur(e.target.value)}
+                  className="w-10 h-10 border border-gray-300 rounded-lg p-0.5 cursor-pointer shrink-0"
+                  title="Choisir une couleur personnalisée"
+                />
+                <select
+                  value={couleur}
+                  onChange={(e) => setCouleur(e.target.value)}
+                  className="flex-grow px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                >
+                  <option value="">-- Par défaut (automatique) --</option>
+                  <option value="#00bcd4">Cyan</option>
+                  <option value="#2196f3">Bleu</option>
+                  <option value="#4caf50">Vert</option>
+                  <option value="#ff9800">Orange</option>
+                  <option value="#f44336">Rouge</option>
+                  <option value="#9c27b0">Violet</option>
+                  <option value="#e91e63">Rose</option>
+                  {couleur && !['', '#00bcd4', '#2196f3', '#4caf50', '#ff9800', '#f44336', '#9c27b0', '#e91e63'].includes(couleur.toLowerCase()) && (
+                    <option value={couleur}>Personnalisé ({couleur})</option>
+                  )}
+                </select>
+              </div>
             </div>
           </div>
 

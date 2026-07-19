@@ -11,6 +11,7 @@ interface Planning {
   groupe: {
     id: string
     nom: string
+    couleur: string | null
   } | null
   coachs: Array<{
     id: string
@@ -30,6 +31,7 @@ interface Groupe {
   nom: string
   niveau: string | null
   tarif: number | null
+  couleur: string | null
 }
 
 interface PlanningInteractifProps {
@@ -61,7 +63,37 @@ function categoriseGroupe(nom: string): string {
   return 'autres'
 }
 
-function getCouleurGroupe(nom: string): { bg: string; text: string; border: string; badge: string; accent: string; gradient: string; textColor: string; textBorder: string } {
+interface CouleurStyle {
+  bg: string
+  text: string
+  border: string
+  badge: string
+  accent: string
+  gradient: string
+  textColor: string
+  textBorder: string
+  borderStyle?: React.CSSProperties
+  badgeStyle?: React.CSSProperties
+  accentStyle?: React.CSSProperties
+}
+
+function getCouleurGroupe(nom: string, groupColor?: string | null): CouleurStyle {
+  if (groupColor) {
+    const hex = groupColor.startsWith('#') ? groupColor : `#${groupColor}`
+    return {
+      bg: '',
+      text: '',
+      border: '',
+      badge: '',
+      accent: '',
+      gradient: getCardGradient(hex),
+      textColor: '#ffffff',
+      textBorder: 'rgba(255,255,255,0.2)',
+      borderStyle: { borderLeftColor: hex },
+      badgeStyle: { backgroundColor: `${hex}1c`, color: hex },
+      accentStyle: { backgroundColor: hex }
+    }
+  }
   const n = nom || ''
    // 1. COMPÉTITIONS (Chaque groupe possède sa couleur et son identité propre)
   if (n.includes('Avenirs 1')) {
@@ -560,7 +592,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                           const topPct = ((startMin - 480) / 840) * 100
                           const heightPct = ((endMin - startMin) / 840) * 100
                           
-                          const color = getCouleurGroupe(planning.groupe?.nom || '')
+                          const color = getCouleurGroupe(planning.groupe?.nom || '', planning.groupe?.couleur)
                           
                           return (
                             <div
@@ -754,7 +786,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
               }
 
               return dayPlannings.map((session) => {
-                const color = getCouleurGroupe(session.groupe?.nom || '')
+                const color = getCouleurGroupe(session.groupe?.nom || '', session.groupe?.couleur)
                 return (
                   <div key={session.id} className="relative pl-8 md:pl-0">
                     
@@ -765,17 +797,24 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                     </div>
 
                     {/* Bullet marker on timeline */}
-                    <div className={`absolute -left-1.5 top-3.5 w-3 h-3 rounded-full border-2 border-white shadow-xs ${color.accent}`} />
+                    <div 
+                      className={`absolute -left-1.5 top-3.5 w-3 h-3 rounded-full border-2 border-white shadow-xs ${color.accent}`} 
+                      style={color.accentStyle}
+                    />
 
                     {/* Spacious Card */}
                     <div
                       onClick={() => setSelectedPlanningDetails(session)}
                       className={`bg-white hover:bg-slate-50/50 border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-2xs hover:shadow-md transition-all duration-200 cursor-pointer ml-6 relative group border-l-4 ${color.border}`}
+                      style={color.borderStyle}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${color.badge}`}>
+                            <span 
+                              className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${color.badge}`}
+                              style={color.badgeStyle}
+                            >
                               {session.groupe ? categoriseGroupe(session.groupe.nom).toUpperCase() : 'AUTRE'}
                             </span>
                             <span className="md:hidden text-xs font-black text-slate-700">
@@ -834,7 +873,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                   {/* Timeline list */}
                   <div className="relative border-l border-slate-300 ml-28 py-2 space-y-4">
                     {dayPlannings.map((session) => {
-                      const color = getCouleurGroupe(session.groupe?.nom || '')
+                      const color = getCouleurGroupe(session.groupe?.nom || '', session.groupe?.couleur)
                       return (
                         <div key={session.id} className="relative">
                           {/* Time on left (always visible in print) */}
@@ -844,13 +883,22 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                           </div>
 
                           {/* Bullet marker on timeline */}
-                          <div className={`absolute -left-1.5 top-2.5 w-3 h-3 rounded-full border-2 border-white shadow-xs ${color.accent}`} />
+                          <div 
+                            className={`absolute -left-1.5 top-2.5 w-3 h-3 rounded-full border-2 border-white shadow-xs ${color.accent}`} 
+                            style={color.accentStyle}
+                          />
 
                           {/* Card */}
-                          <div className={`bg-white border border-slate-200 rounded-2xl p-4 ml-6 border-l-4 ${color.border}`}>
+                          <div 
+                            className={`bg-white border border-slate-200 rounded-2xl p-4 ml-6 border-l-4 ${color.border}`}
+                            style={color.borderStyle}
+                          >
                             <div className="flex justify-between items-center">
                               <div>
-                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${color.badge}`}>
+                                <span 
+                                  className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${color.badge}`}
+                                  style={color.badgeStyle}
+                                >
                                   {session.groupe ? categoriseGroupe(session.groupe.nom).toUpperCase() : 'AUTRE'}
                                 </span>
                                 <h3 className="text-sm font-black text-slate-900 mt-1">
@@ -902,13 +950,16 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                   </tr>
                 ) : (
                   groupesFiltres.map((groupe) => {
-                    const color = getCouleurGroupe(groupe.nom)
+                    const color = getCouleurGroupe(groupe.nom, groupe.couleur)
                     return (
                       <tr key={groupe.id} className="hover:bg-slate-50/30 transition-colors">
                         <td className="p-4 print:p-2 font-bold text-slate-900 sticky left-0 bg-white shadow-[2px_0_5px_rgba(0,0,0,0.03)] z-10 border-r border-slate-100">
                           <div className="flex flex-col gap-1 items-start">
                             <span className="text-xs font-black">{groupe.nom}</span>
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider mt-1 ${color.badge}`}>
+                            <span 
+                              className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider mt-1 ${color.badge}`}
+                              style={color.badgeStyle}
+                            >
                               {categoriseGroupe(groupe.nom)}
                             </span>
                           </div>
@@ -932,6 +983,11 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                       className="p-2 print:p-1 rounded-xl print:rounded-lg border text-[11px] print:text-[8.5px] font-black cursor-pointer shadow-2xs hover:shadow-xs transition-all"
                                     >
                                       <div>{session.heureDebut} - {session.heureFin}</div>
+                                      {session.nomSession && (
+                                        <div className="text-[9.5px] print:text-[7.5px] font-extrabold opacity-95 tracking-wide truncate max-w-[110px] mx-auto mt-0.5">
+                                          {session.nomSession}
+                                        </div>
+                                      )}
                                       <div className="text-[9px] print:text-[7px] print:leading-none font-bold mt-0.5 uppercase tracking-wide truncate max-w-[110px] print:max-w-none mx-auto opacity-75">
                                         {session.lieu || 'Piscine'}
                                       </div>

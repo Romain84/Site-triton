@@ -31,6 +31,7 @@ async function getData() {
             select: {
               id: true,
               nom: true,
+              couleur: true,
             },
           },
         },
