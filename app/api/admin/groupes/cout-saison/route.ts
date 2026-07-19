@@ -422,17 +422,19 @@ export async function POST(request: NextRequest) {
         const nbSemainesGroupe = calculerNombreSemaines(dateDebutGroupe, dateFinGroupe, vacancesGroupe)
 
         // ── Calcul standard ───────────────────────────────────────────────────
-        const isCompetition =
-          groupe.isCompetition ||
-          (groupe.niveau
-            ? niveauxCompetition.some(
-                (n) =>
-                  groupe.niveau!.toLowerCase().includes(n) ||
-                  groupe.nom.toLowerCase().includes(n)
-              )
-            : groupe.nom.toLowerCase().includes('compétition') ||
-              groupe.nom.toLowerCase().includes('benjamins') ||
-              groupe.nom.toLowerCase().includes('juniors'))
+        const nomLow = groupe.nom.toLowerCase();
+        const niveauLow = (groupe.niveau || '').toLowerCase();
+        
+        let isCompetition = groupe.isCompetition;
+        if (nomLow.includes('loisir') || niveauLow.includes('loisir') || nomLow.includes('ppg')) {
+          isCompetition = false;
+        } else if (!isCompetition) {
+          isCompetition = 
+            nomLow.includes('compétition') || 
+            nomLow.includes('competition') || 
+            niveauLow.includes('compet') || 
+            niveauLow.includes('compét');
+        }
 
         const nbCompetitionsGroupe = groupe.nbCompetitions ?? nbCompetitionsDefaut
         const prixLicence = groupe.prixLicence ?? 0
