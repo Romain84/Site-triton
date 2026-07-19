@@ -87,6 +87,7 @@ export const produitSchema = z.object({
   actif: z.boolean().default(true),
   enVedette: z.boolean().default(false),
   lienExterne: z.string().optional().nullable(),
+  guideTailles: z.string().optional().nullable(),
 })
 
 /**

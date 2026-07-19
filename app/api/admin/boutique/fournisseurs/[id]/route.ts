@@ -49,7 +49,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const { nom, contact, telephone, email, actif } = body
+    const { nom, contact, telephone, email, actif, guideTailles } = body
 
     // Vérifier si le fournisseur existe
     const existingFournisseur = await prisma.fournisseur.findUnique({
@@ -80,6 +80,7 @@ export async function PUT(
         contact: contact !== undefined ? contact : existingFournisseur.contact,
         telephone: telephone !== undefined ? telephone : existingFournisseur.telephone,
         email: email !== undefined ? email : existingFournisseur.email,
+        guideTailles: guideTailles !== undefined ? guideTailles : existingFournisseur.guideTailles,
         actif: actif !== undefined ? actif : existingFournisseur.actif,
       },
     })

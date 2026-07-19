@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { nom, contact, telephone, email, actif } = body
+    const { nom, contact, telephone, email, actif, guideTailles } = body
 
     // Validation
     if (!nom) {
@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
         contact: contact || null,
         telephone: telephone || null,
         email: email || null,
+        guideTailles: guideTailles || null,
         actif: actif !== undefined ? actif : true,
       },
     })

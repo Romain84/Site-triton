@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
       prixFlocage,
       ordre,
       lienExterne,
+      guideTailles,
     } = body
 
     // Validation
@@ -110,6 +111,7 @@ export async function POST(request: NextRequest) {
         metaTitle: metaTitle || null,
         metaDescription: metaDescription || null,
         lienExterne: lienExterne || null,
+        guideTailles: guideTailles || null,
         actif: actif !== undefined ? actif : true,
         enVedette: enVedette || false,
         personnalisable: personnalisable || false,

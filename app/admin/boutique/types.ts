@@ -19,6 +19,7 @@ export interface Fournisseur {
   contact?: string
   telephone?: string
   email?: string
+  guideTailles?: string
   actif: boolean
   _count?: {
     produits: number

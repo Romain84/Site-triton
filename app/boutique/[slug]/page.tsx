@@ -35,6 +35,7 @@ interface Produit {
   tailles?: string
   couleurs?: string
   lienExterne?: string
+  guideTailles?: string
   categorie?: {
     nom: string
     slug: string
@@ -58,6 +59,22 @@ export default function ProduitDetailPage() {
   const [quantite, setQuantite] = useState(1)
   const [addingToCart, setAddingToCart] = useState(false)
   const [activeImageIndex, setActiveImageIndex] = useState(0)
+  const [guideOpen, setGuideOpen] = useState(false)
+
+  const getGuideTailles = () => {
+    return produit?.guideTailles || (produit as any)?.fournisseur?.guideTailles || null
+  }
+
+  const handleShowGuide = () => {
+    const guide = getGuideTailles()
+    if (!guide) return
+    const isImage = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(guide) || guide.includes('blob.vercel-storage.com') || guide.startsWith('/uploads/')
+    if (isImage) {
+      setGuideOpen(true)
+    } else {
+      window.open(guide, '_blank', 'noopener,noreferrer')
+    }
+  }
 
   // Définition des variables dérivées en haut du composant
   const countTailles = useMemo(() => {
@@ -498,11 +515,21 @@ export default function ProduitDetailPage() {
 
           {/* Informations */}
           <div>
-            {produit.categorie && (
-              <p className="text-sm text-primary font-medium mb-2">
-                {produit.categorie.nom}
-              </p>
-            )}
+            <div className="flex flex-wrap items-center gap-2 text-sm mb-2">
+              {produit.categorie && (
+                <span className="text-primary font-semibold uppercase tracking-wider">
+                  {produit.categorie.nom}
+                </span>
+              )}
+              {(produit as any).fournisseur && (
+                <>
+                  {produit.categorie && <span className="text-gray-300">•</span>}
+                  <span className="text-slate-500 font-medium">
+                    Marque : <span className="text-slate-800 font-bold">{(produit as any).fournisseur.nom}</span>
+                  </span>
+                </>
+              )}
+            </div>
 
             <h1 className="text-4xl font-bold mb-4">{produit.nom}</h1>
 
@@ -536,9 +563,23 @@ export default function ProduitDetailPage() {
             {/* Sélection taille */}
             {tailles.length > 0 && (
               <div className="mb-6">
-                <label className="block text-sm font-medium mb-2">
-                  Taille : <span className="text-primary">{selectedTaille}</span>
-                </label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-medium">
+                    Taille : <span className="text-primary">{selectedTaille}</span>
+                  </label>
+                  {getGuideTailles() && (
+                    <button
+                      type="button"
+                      onClick={handleShowGuide}
+                      className="text-xs font-semibold text-primary hover:text-primary-dark inline-flex items-center gap-1 hover:underline focus:outline-none"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Guide des tailles
+                    </button>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {tailles.map((taille: string) => {
                     const available = isSizeAvailable(taille)
@@ -740,6 +781,38 @@ export default function ProduitDetailPage() {
             Retour à la boutique
           </Link>
         </div>
+
+        {/* Modal pour le guide des tailles */}
+        {guideOpen && getGuideTailles() && (
+          <div 
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-fade-in"
+            onClick={() => setGuideOpen(false)}
+          >
+            <div 
+              className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b flex justify-between items-center bg-slate-50">
+                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                  📏 Guide des tailles {(produit as any)?.fournisseur?.nom ? `- ${(produit as any).fournisseur.nom}` : ''}
+                </h3>
+                <button 
+                  onClick={() => setGuideOpen(false)}
+                  className="text-slate-400 hover:text-slate-700 text-2xl font-light w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors"
+                >
+                  &times;
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto flex items-center justify-center bg-slate-100/50">
+                <img 
+                  src={getGuideTailles()!} 
+                  alt="Guide des tailles" 
+                  className="max-w-full h-auto object-contain rounded-lg border shadow-sm"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

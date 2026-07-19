@@ -511,6 +511,7 @@ model Fournisseur {
   contact   String?
   telephone String?
   email     String?
+  guideTailles String?
   actif     Boolean   @default(true)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -536,6 +537,7 @@ model Produit {
   image             String?
   images            String?
   lienExterne       String?
+  guideTailles      String?
   categorieId       String?
   fournisseurId     String?
   tailles           String?

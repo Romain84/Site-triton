@@ -78,6 +78,7 @@ export async function PUT(
       prixFlocage,
       ordre,
       lienExterne,
+      guideTailles,
     } = body
 
     // Vérifier si le produit existe
@@ -152,6 +153,7 @@ export async function PUT(
         metaTitle: metaTitle !== undefined ? metaTitle : existingProduit.metaTitle,
         metaDescription: metaDescription !== undefined ? metaDescription : existingProduit.metaDescription,
         lienExterne: lienExterne !== undefined ? lienExterne : existingProduit.lienExterne,
+        guideTailles: guideTailles !== undefined ? guideTailles : existingProduit.guideTailles,
         actif: actif !== undefined ? actif : existingProduit.actif,
         enVedette: enVedette !== undefined ? enVedette : existingProduit.enVedette,
         personnalisable: personnalisable !== undefined ? personnalisable : existingProduit.personnalisable,

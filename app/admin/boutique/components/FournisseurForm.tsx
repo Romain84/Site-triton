@@ -19,6 +19,7 @@ export default function FournisseurForm({
     contact: fournisseur?.contact || '',
     telephone: fournisseur?.telephone || '',
     email: fournisseur?.email || '',
+    guideTailles: (fournisseur as any)?.guideTailles || '',
     actif: fournisseur?.actif ?? true,
   })
   const [loading, setLoading] = useState(false)
@@ -129,6 +130,19 @@ export default function FournisseurForm({
                   placeholder="commercial@fournisseur.fr"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                Lien du guide des tailles (URL de l&apos;image ou du fichier PDF)
+              </label>
+              <input
+                type="text"
+                value={(formData as any).guideTailles || ''}
+                onChange={(e) => setFormData({ ...formData, guideTailles: e.target.value })}
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm"
+                placeholder="https://example.com/guide-tailles-marque.jpg"
+              />
             </div>
 
             <div className="pt-2">

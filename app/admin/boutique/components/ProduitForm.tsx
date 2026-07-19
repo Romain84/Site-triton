@@ -42,6 +42,7 @@ export default function ProduitForm({
     stockIllimite: produit?.stockIllimite ?? false,
     prixFlocage: produit?.prixFlocage || 0,
     lienExterne: (produit as any)?.lienExterne || '',
+    guideTailles: (produit as any)?.guideTailles || '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -207,6 +208,19 @@ export default function ProduitForm({
                 onChange={(e) => setFormData({ ...formData, lienExterne: e.target.value })}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20"
                 placeholder="https://www.joma-sport.com/... (ex: Joma, Arena, etc.)"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-2">
+                Guide des tailles spécifique (optionnel - URL d&apos;image ou PDF)
+              </label>
+              <input
+                type="text"
+                value={(formData as any).guideTailles || ''}
+                onChange={(e) => setFormData({ ...formData, guideTailles: e.target.value })}
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20"
+                placeholder="https://example.com/guide.jpg (Surchargera le guide du fournisseur)"
               />
             </div>
 

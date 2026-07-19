@@ -14,6 +14,7 @@ export async function GET(
       where: { slug },
       include: {
         categorie: true,
+        fournisseur: true,
         variantes: {
           where: { actif: true },
         },
