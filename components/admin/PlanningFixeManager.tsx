@@ -1282,9 +1282,9 @@ export default function PlanningFixeManager() {
                                         height: `${heightPct}%`,
                                         left: `calc(${leftPct}% + 2px)`,
                                         width: `calc(${widthPct}% - 4px)`,
-                                        background: planning.couleur ? getCardGradient(planning.couleur) : color.gradient,
-                                        color: planning.couleur ? '#ffffff' : color.textColor,
-                                        borderColor: planning.couleur ? 'rgba(255, 255, 255, 0.2)' : color.textBorder
+                                        background: planning.groupe?.couleur ? getCardGradient(planning.groupe.couleur) : (planning.couleur ? getCardGradient(planning.couleur) : color.gradient),
+                                        color: (planning.groupe?.couleur || planning.couleur) ? '#ffffff' : color.textColor,
+                                        borderColor: planning.groupe?.couleur ? 'rgba(255, 255, 255, 0.2)' : (planning.couleur ? 'rgba(255, 255, 255, 0.2)' : color.textBorder)
                                       }}
                                       className={`absolute rounded-xl shadow-md cursor-grab active:cursor-grabbing hover:scale-[1.03] hover:shadow-xl hover:z-30 transition-all duration-300 overflow-hidden flex flex-col justify-center group border select-none ${
                                         isShort ? 'p-1 gap-0' : 'p-2 gap-1'

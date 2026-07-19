@@ -622,9 +622,9 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                 height: `${heightPct}%`,
                                 left: `calc(${leftPct}% + 2px)`,
                                 width: `calc(${widthPct}% - 4px)`,
-                                background: planning.couleur ? getCardGradient(planning.couleur) : color.gradient,
-                                color: planning.couleur ? '#ffffff' : color.textColor,
-                                borderColor: planning.couleur ? 'rgba(255, 255, 255, 0.2)' : color.textBorder
+                                background: planning.groupe?.couleur ? getCardGradient(planning.groupe.couleur) : (planning.couleur ? getCardGradient(planning.couleur) : color.gradient),
+                                color: (planning.groupe?.couleur || planning.couleur) ? '#ffffff' : color.textColor,
+                                borderColor: planning.groupe?.couleur ? 'rgba(255, 255, 255, 0.2)' : (planning.couleur ? 'rgba(255, 255, 255, 0.2)' : color.textBorder)
                               }}
                               className={`absolute rounded-xl flex flex-col justify-center border cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none overflow-hidden shadow-sm ${
                                 isShort ? 'p-1 md:p-1.5' : 'p-2 md:p-2.5'
@@ -1011,9 +1011,9 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                       onClick={() => setSelectedPlanningDetails(session)}
                                       title={`${session.nomSession || session.groupe?.nom || groupe.nom}\nHoraires : ${session.heureDebut} - ${session.heureFin}\nLieu : ${session.lieu || 'Piscine'}${session.coachs && session.coachs.length > 0 ? `\nCoach(s) : ${session.coachs.map(c => c.coach.prenom).join(', ')}` : ''}`}
                                       style={{
-                                        background: session.couleur ? getCardGradient(session.couleur) : color.gradient,
-                                        color: session.couleur ? '#ffffff' : color.textColor,
-                                        borderColor: session.couleur ? 'rgba(255, 255, 255, 0.1)' : color.textBorder
+                                        background: session.groupe?.couleur ? getCardGradient(session.groupe.couleur) : (session.couleur ? getCardGradient(session.couleur) : color.gradient),
+                                        color: (session.groupe?.couleur || session.couleur) ? '#ffffff' : color.textColor,
+                                        borderColor: session.groupe?.couleur ? 'rgba(255, 255, 255, 0.1)' : (session.couleur ? 'rgba(255, 255, 255, 0.1)' : color.textBorder)
                                       }}
                                       className="p-2 print:p-1 rounded-xl print:rounded-lg border text-[11px] print:text-[8.5px] font-black cursor-pointer shadow-2xs hover:shadow-xs transition-all"
                                     >
