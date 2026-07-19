@@ -28,6 +28,7 @@ interface Groupe {
   libelleOption2: string | null
   prixLicence: number | null
   caution: number | null
+  annule: boolean
 }
 
 // ─── Data Fetching ──────────────────────────────────────
@@ -375,15 +376,21 @@ function PricingBlock({ block, dbGroupes }: { block: BlockData; dbGroupes: Group
                   {category.groupes.map((groupe) => {
                     const totalTarif = (groupe.tarif || 0) + (groupe.prixLicence || 0)
                     return (
-                      <div key={groupe.id} className="p-4 border border-slate-200 rounded-xl space-y-1 bg-white hover:border-slate-400 hover:shadow-xs transition-all">
+                      <div key={groupe.id} className={`p-4 border border-slate-200 rounded-xl space-y-1 bg-white hover:border-slate-400 hover:shadow-xs transition-all ${groupe.annule ? 'border-red-200 bg-red-50/5' : ''}`}>
                         <div className="flex justify-between items-start">
                           <div className="space-y-0.5">
-                            <span className="font-extrabold text-sm text-slate-900 block">{groupe.nom}</span>
-                            {typeof groupe.prixLicence === 'number' && (
-                              <span className="text-xs text-slate-500 block italic">Licence FFN incluse ({groupe.prixLicence.toFixed(0)}€)</span>
+                            <span className={`font-extrabold text-sm text-slate-900 block ${groupe.annule ? 'line-through text-slate-400' : ''}`}>{groupe.nom}</span>
+                            {groupe.annule ? (
+                              <span className="text-[9px] sm:text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded-md font-bold inline-block uppercase tracking-wider mt-1 leading-relaxed max-w-xs">
+                                Créneau temporairement suspendu (en attente d&apos;un coach). Réouverture possible à tout moment !
+                              </span>
+                            ) : (
+                              typeof groupe.prixLicence === 'number' && (
+                                <span className="text-xs text-slate-500 block italic">Licence FFN incluse ({groupe.prixLicence.toFixed(0)}€)</span>
+                              )
                             )}
                           </div>
-                          <div className="text-right flex flex-col items-end">
+                          <div className={`text-right flex flex-col items-end ${groupe.annule ? 'opacity-35 line-through select-none pointer-events-none' : ''}`}>
                             {groupe.tarif1Cours ? (
                               <div className="space-y-0.5 text-xs text-slate-650 font-medium">
                                 <div>{groupe.libelleOption1 || '1 cours/sem'} : <span className="font-black text-slate-950 font-mono text-sm">{(groupe.tarif1Cours + (groupe.prixLicence || 0)).toFixed(0)} €</span></div>

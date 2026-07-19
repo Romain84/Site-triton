@@ -23,6 +23,7 @@ interface Groupe {
   prixLicence: number | null
   niveau: string | null
   actif: boolean
+  annule: boolean
   dateDebut: string | null
   dateFin: string | null
   tempsFacture: number | null
@@ -57,6 +58,7 @@ export default function GroupesManager() {
   const [prixLicence, setPrixLicence] = useState('')
   const [niveau, setNiveau] = useState('')
   const [actif, setActif] = useState(true)
+  const [annule, setAnnule] = useState(false)
   const [dateDebut, setDateDebut] = useState('')
   const [dateFin, setDateFin] = useState('')
   const [tempsFacture, setTempsFacture] = useState('')
@@ -100,6 +102,7 @@ export default function GroupesManager() {
     setPrixLicence('')
     setNiveau('')
     setActif(true)
+    setAnnule(false)
     setDateDebut('')
     setDateFin('')
     setTempsFacture('')
@@ -129,6 +132,7 @@ export default function GroupesManager() {
     setPrixLicence(groupe.prixLicence?.toString() || '')
     setNiveau(groupe.niveau || '')
     setActif(groupe.actif)
+    setAnnule(groupe.annule || false)
     setDateDebut(groupe.dateDebut ? groupe.dateDebut.split('T')[0] : '')
     setDateFin(groupe.dateFin ? groupe.dateFin.split('T')[0] : '')
     setTempsFacture(groupe.tempsFacture?.toString() || '')
@@ -178,6 +182,7 @@ export default function GroupesManager() {
           prixLicence: prixLicence || null,
           niveau: niveau || null,
           actif,
+          annule,
           couleur: couleur || null,
           dateDebut: dateDebut || null,
           dateFin: dateFin || null,
@@ -699,17 +704,32 @@ export default function GroupesManager() {
         </div>
 
         {/* Statut */}
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="actif"
-            checked={actif}
-            onChange={(e) => setActif(e.target.checked)}
-            className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-          />
-          <label htmlFor="actif" className="ml-2 text-sm text-gray-700">
-            Groupe actif (visible sur le site)
-          </label>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="actif"
+              checked={actif}
+              onChange={(e) => setActif(e.target.checked)}
+              className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+            />
+            <label htmlFor="actif" className="ml-2 text-sm text-gray-700">
+              Groupe actif (visible sur le site)
+            </label>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="annule"
+              checked={annule}
+              onChange={(e) => setAnnule(e.target.checked)}
+              className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+            />
+            <label htmlFor="annule" className="ml-2 text-sm text-red-700 font-medium">
+              ⚠️ Pas de cours jusqu&apos;à nouvel ordre (Groupe annulé / suspendu)
+            </label>
+          </div>
         </div>
 
         <div className="flex gap-4 pt-4">
@@ -899,15 +919,22 @@ export default function GroupesManager() {
                       ) : '-'}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <span
-                        className={`inline-block px-2 py-1 rounded-full text-xs ${
-                          groupe.actif
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {groupe.actif ? 'Actif' : 'Inactif'}
-                      </span>
+                      <div className="flex flex-col items-center justify-center gap-1">
+                        <span
+                          className={`inline-block px-2 py-1 rounded-full text-xs ${
+                            groupe.actif
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {groupe.actif ? 'Actif' : 'Inactif'}
+                        </span>
+                        {groupe.annule && (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800">
+                            Pas de cours
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center gap-2">

@@ -628,16 +628,23 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                               }}
                               className={`absolute rounded-xl flex flex-col justify-center border cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none overflow-hidden shadow-sm ${
                                 isShort ? 'p-1 md:p-1.5' : 'p-2 md:p-2.5'
-                              }`}
+                              } ${(planning.groupe as any)?.annule ? 'opacity-40 grayscale-[60%] border-red-300' : ''}`}
                             >
                               <div className={`min-w-0 ${isShort ? 'space-y-0' : 'space-y-0.5'} print:space-y-0`}>
-                                <p className={`font-black tracking-tight leading-tight truncate ${
-                                  isShort 
-                                    ? 'text-[8.5px] sm:text-[9.5px] md:text-[10px] print:text-[8px]' 
-                                    : 'text-[9.5px] sm:text-[11px] md:text-xs print:text-[9px]'
-                                }`}>
-                                  {planning.nomSession || planning.groupe?.nom}
-                                </p>
+                                <div className="flex flex-wrap items-center gap-1 min-w-0">
+                                  <p className={`font-black tracking-tight leading-tight truncate ${
+                                    isShort 
+                                      ? 'text-[8.5px] sm:text-[9.5px] md:text-[10px] print:text-[8px]' 
+                                      : 'text-[9.5px] sm:text-[11px] md:text-xs print:text-[9px]'
+                                  }`}>
+                                    {planning.nomSession || planning.groupe?.nom}
+                                  </p>
+                                  {(planning.groupe as any)?.annule && (
+                                    <span className="shrink-0 text-[7px] md:text-[8px] bg-red-650 text-white font-extrabold px-1 rounded-sm leading-tight print:hidden">
+                                      PAS DE COURS
+                                    </span>
+                                  )}
+                                </div>
                                 <p className={`font-extrabold leading-none opacity-85 print:leading-none ${
                                   isShort 
                                     ? 'text-[7.5px] sm:text-[8px] md:text-[9px] print:text-[7px]' 
@@ -1109,6 +1116,12 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
               {selectedPlanningDetails.nomSession && selectedPlanningDetails.groupe?.nom && (
                 <div className="text-xs text-slate-500 font-semibold mt-1">
                   Groupe : {selectedPlanningDetails.groupe.nom}
+                </div>
+              )}
+              {(selectedPlanningDetails.groupe as any)?.annule && (
+                <div className="bg-red-50 border border-red-200/50 rounded-xl p-3 flex items-start gap-2 mt-3 text-red-800 text-xs font-bold leading-relaxed">
+                  <span className="text-sm mt-0.5">⚠️</span>
+                  <span>Créneau temporairement suspendu (en attente d&apos;un coach). Réouverture possible à tout moment !</span>
                 </div>
               )}
             </div>

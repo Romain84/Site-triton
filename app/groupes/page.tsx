@@ -24,6 +24,7 @@ async function getGroupes() {
         prixLicence: true,
         ageMin: true,
         ageMax: true,
+        annule: true,
       },
     })
   } catch {
@@ -101,7 +102,7 @@ export default async function GroupesPage() {
                 const isAdult = groupe.ageMin !== null && groupe.ageMin >= 18
                 
                 return (
-                  <article key={groupe.id} className="border border-slate-200/80 p-6 md:p-8 flex flex-col justify-between space-y-6 rounded-xl bg-white hover:border-slate-350 transition-colors duration-200">
+                  <article key={groupe.id} className={`border p-6 md:p-8 flex flex-col justify-between space-y-6 rounded-xl bg-white hover:border-slate-350 transition-colors duration-200 ${groupe.annule ? 'border-red-200 bg-red-50/5' : 'border-slate-200/80'}`}>
                     <div className="space-y-4">
                       {/* Header: Title + Age Badge */}
                       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -122,6 +123,13 @@ export default async function GroupesPage() {
                         )}
                       </div>
 
+                      {groupe.annule && (
+                        <div className="bg-red-50 border border-red-200/60 rounded-xl p-3.5 flex items-center gap-2.5 text-red-800 text-xs font-bold shadow-xs">
+                          <span className="text-sm">⚠️</span>
+                          <span>Créneau temporairement suspendu (en attente d&apos;un coach). Réouverture possible à tout moment !</span>
+                        </div>
+                      )}
+
                       <p className="text-slate-500 text-sm md:text-base leading-relaxed font-light">
                         {groupe.description || 'Description à venir pour ce groupe de natation.'}
                       </p>
@@ -129,7 +137,7 @@ export default async function GroupesPage() {
 
                     {/* Pricing Box */}
                     {(typeof groupe.tarif === 'number' || typeof groupe.tarif1Cours === 'number' || typeof groupe.prixLicence === 'number') && (
-                      <div className="border-t border-slate-100 pt-4 space-y-2 mt-auto">
+                      <div className={`border-t border-slate-100 pt-4 space-y-2 mt-auto ${groupe.annule ? 'opacity-35 grayscale select-none pointer-events-none' : ''}`}>
                         {typeof groupe.tarif1Cours === 'number' ? (
                           <>
                             <div className="flex items-center justify-between gap-3 text-sm">

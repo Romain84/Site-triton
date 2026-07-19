@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
         enfantsBureau: validatedData.enfantsBureau,
         ordre: validatedData.ordre,
         actif: validatedData.actif,
+        annule: validatedData.annule,
       },
     })
 

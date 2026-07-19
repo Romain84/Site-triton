@@ -160,6 +160,7 @@ export const groupeSchema = z.object({
   enfantsBureau: z.coerce.number().int().min(0).default(0),
   ordre: z.coerce.number().int().default(0),
   actif: z.boolean().default(true),
+  annule: z.boolean().default(false),
 })
 
 /**
