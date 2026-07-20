@@ -22,6 +22,9 @@ async function getGroupes() {
         libelleOption1: true,
         libelleOption2: true,
         prixLicence: true,
+        caution: true,
+        isCompetition: true,
+        nbCompetitions: true,
         ageMin: true,
         ageMax: true,
         annule: true,
@@ -142,9 +145,9 @@ export default async function GroupesPage() {
                       </p>
                     </div>
 
-                    {/* Pricing Box */}
-                    {(typeof groupe.tarif === 'number' || typeof groupe.tarif1Cours === 'number' || typeof groupe.prixLicence === 'number') && (
-                      <div className={`border-t border-slate-100 pt-4 space-y-2 mt-auto ${groupe.annule ? 'opacity-35 grayscale select-none pointer-events-none' : ''}`}>
+                    {/* Pricing & Caution Box */}
+                    {(typeof groupe.tarif === 'number' || typeof groupe.tarif1Cours === 'number' || typeof groupe.prixLicence === 'number' || typeof groupe.caution === 'number') && (
+                      <div className={`border-t border-slate-100 pt-4 space-y-2.5 mt-auto ${groupe.annule ? 'opacity-35 grayscale select-none pointer-events-none' : ''}`}>
                         {typeof groupe.tarif1Cours === 'number' ? (
                           <>
                             <div className="flex items-center justify-between gap-3 text-sm">
@@ -169,13 +172,34 @@ export default async function GroupesPage() {
                           </div>
                         )}
 
-                        {typeof groupe.prixLicence === 'number' && (
+                        {typeof groupe.prixLicence === 'number' && groupe.prixLicence > 0 && (
                           <p className="text-[11px] text-slate-450 flex justify-between items-center">
                             <span>Dont licence fédérale FFN</span>
                             <span className="font-medium text-slate-500">
                               {groupe.prixLicence.toFixed(2)} €
                             </span>
                           </p>
+                        )}
+
+                        {typeof groupe.caution === 'number' && groupe.caution > 0 && (
+                          <div className="mt-2.5 pt-2.5 border-t border-dashed border-amber-200/90 bg-amber-50/60 rounded-xl p-3 text-xs space-y-1.5">
+                            <div className="flex items-center justify-between font-bold text-amber-950">
+                              <span className="flex items-center gap-1.5">
+                                <span>🏷️</span>
+                                <span>Caution demandée :</span>
+                              </span>
+                              <span className="font-mono text-sm">{groupe.caution.toFixed(2)} €</span>
+                            </div>
+                            {groupe.nbCompetitions && groupe.nbCompetitions > 0 ? (
+                              <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
+                                🔄 <strong>Condition de remboursement :</strong> Remboursable en fin de saison sur participation à au moins <strong>{groupe.nbCompetitions} compétition{groupe.nbCompetitions > 1 ? 's' : ''}</strong>.
+                              </p>
+                            ) : (
+                              <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
+                                🔄 <strong>Condition de remboursement :</strong> Restituée en fin de saison selon les conditions du club.
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}

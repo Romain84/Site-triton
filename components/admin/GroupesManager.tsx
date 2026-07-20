@@ -633,21 +633,21 @@ export default function GroupesManager() {
             </label>
           </div>
 
-          {isCompetition && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 bg-blue-50 rounded-lg">
+          {(isCompetition || (caution && parseFloat(caution) > 0)) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 bg-blue-50/70 border border-blue-100 rounded-lg">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nombre de compétitions / saison
+                <label className="block text-sm font-semibold text-slate-800 mb-1">
+                  Nombre de compétitions (remboursement caution & quota)
                 </label>
                 <input
                   type="number"
                   value={nbCompetitions}
                   onChange={(e) => setNbCompetitions(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="10"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+                  placeholder="ex: 5"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Utilisé pour le calcul du quota et des remboursements de caution
+                <p className="text-xs text-slate-600 mt-1">
+                  Nombre minimum de compétitions requis pour obtenir le remboursement de la caution (affiché sur la page publique des groupes).
                 </p>
               </div>
             </div>
