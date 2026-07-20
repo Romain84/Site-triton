@@ -8,10 +8,12 @@ import DOMPurify from 'isomorphic-dompurify'
 export function sanitizeHtml(dirty: string): string {
   return DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: [
-      'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'hr', 'img'
+      'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'sub', 'sup',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'hr', 'img', 'span', 'div',
+      'table', 'thead', 'tbody', 'tr', 'th', 'td', 'iframe'
     ],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class', 'style', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen'],
     ALLOW_DATA_ATTR: false,
   })
 }
@@ -27,20 +29,17 @@ export function nl2brSanitized(text: string): string {
 }
 
 /**
- * Convert Markdown to Sanitized HTML for rendering in actualités.
- * Supports headings, lists, bold, italics, links, and line breaks.
- * @param markdown - Markdown string
+ * Convert Markdown and HTML to Sanitized HTML for rendering in actualités.
+ * Supports HTML tags, headings, lists, bold, italics, links, and line breaks.
+ * @param markdown - Markdown or HTML string
  * @returns Sanitized HTML string safe for rendering
  */
 export function markdownSanitized(markdown: string): string {
   if (!markdown) return ''
 
-  // 1. Helper for inline parsing
+  // 1. Helper for inline parsing (preserves HTML tags for DOMPurify sanitization)
   const parseInline = (text: string): string => {
     let html = text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
 
     // Bold (**text** or __text__)
     html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -98,6 +97,11 @@ export function markdownSanitized(markdown: string): string {
         })
         .join('')
       return `<ol class="list-decimal list-inside space-y-1 my-3">${items}</ol>`
+    }
+
+    // If block is already an HTML block tag (like <p>, <div>, <h1>..<h6>, <ul>, <ol>, blockquote, table, section, etc.)
+    if (/^<(p|div|h[1-6]|ul|ol|blockquote|table|section|article|header|footer|figure|hr)\b/i.test(trimmed)) {
+      return parseInline(trimmed)
     }
 
     // Paragraph

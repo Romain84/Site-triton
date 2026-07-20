@@ -137,7 +137,7 @@ export default async function GroupesPage() {
                         </div>
                       )}
 
-                      <p className="text-slate-500 text-sm md:text-base leading-relaxed font-light">
+                      <p className="text-slate-600 text-xs md:text-sm leading-relaxed font-normal whitespace-pre-line">
                         {groupe.description || 'Description à venir pour ce groupe de natation.'}
                       </p>
                     </div>
