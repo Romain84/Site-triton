@@ -29,6 +29,7 @@ interface Groupe {
   prixLicence: number | null
   caution: number | null
   nbCompetitions?: number | null
+  nbCompetitionsCaution?: number | null
   annule: boolean
   ageMin?: number | null
   ordre?: number
@@ -409,8 +410,8 @@ function PricingBlock({ block, dbGroupes }: { block: BlockData; dbGroupes: Group
                               <span className="font-black text-slate-950 font-mono text-base">{totalTarif.toFixed(0)} €</span>
                             )}
                             {groupe.caution && (
-                              <span className="block text-xs text-amber-700 font-bold mt-0.5" title={groupe.nbCompetitions ? `Caution remboursable dès ${groupe.nbCompetitions} compétition(s)` : 'Caution remboursable en fin de saison'}>
-                                +{groupe.caution.toFixed(0)}€ caution* {groupe.nbCompetitions ? `(${groupe.nbCompetitions} compét. min.)` : ''}
+                              <span className="block text-xs text-amber-700 font-bold mt-0.5" title={groupe.nbCompetitionsCaution ? `Caution remboursable dès ${groupe.nbCompetitionsCaution} compétition(s)` : 'Caution remboursable en fin de saison'}>
+                                +{groupe.caution.toFixed(0)}€ caution* {groupe.nbCompetitionsCaution ? `(${groupe.nbCompetitionsCaution} compét. min.)` : ''}
                               </span>
                             )}
                           </div>

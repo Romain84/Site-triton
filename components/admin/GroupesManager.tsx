@@ -29,6 +29,7 @@ interface Groupe {
   tempsFacture: number | null
   isCompetition: boolean
   nbCompetitions: number | null
+  nbCompetitionsCaution: number | null
   couleur: string | null
   membresBureau: number
   enfantsBureau: number
@@ -64,6 +65,7 @@ export default function GroupesManager() {
   const [tempsFacture, setTempsFacture] = useState('')
   const [isCompetition, setIsCompetition] = useState(false)
   const [nbCompetitions, setNbCompetitions] = useState('')
+  const [nbCompetitionsCaution, setNbCompetitionsCaution] = useState('')
   const [membresBureau, setMembresBureau] = useState('')
   const [enfantsBureau, setEnfantsBureau] = useState('')
   const [couleur, setCouleur] = useState('')
@@ -108,6 +110,7 @@ export default function GroupesManager() {
     setTempsFacture('')
     setIsCompetition(false)
     setNbCompetitions('')
+    setNbCompetitionsCaution('')
     setMembresBureau('')
     setEnfantsBureau('')
     setCouleur('')
@@ -138,6 +141,7 @@ export default function GroupesManager() {
     setTempsFacture(groupe.tempsFacture?.toString() || '')
     setIsCompetition(groupe.isCompetition || false)
     setNbCompetitions(groupe.nbCompetitions?.toString() || '')
+    setNbCompetitionsCaution(groupe.nbCompetitionsCaution?.toString() || '')
     setMembresBureau(groupe.membresBureau?.toString() || '0')
     setEnfantsBureau(groupe.enfantsBureau?.toString() || '0')
     setCouleur(groupe.couleur || '')
@@ -189,6 +193,7 @@ export default function GroupesManager() {
           tempsFacture: tempsFacture || null,
           isCompetition,
           nbCompetitions: nbCompetitions || null,
+          nbCompetitionsCaution: nbCompetitionsCaution || null,
           membresBureau: parseInt(membresBureau || '0', 10),
           enfantsBureau: parseInt(enfantsBureau || '0', 10),
         }),
@@ -523,7 +528,23 @@ export default function GroupesManager() {
                 placeholder="50"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Remboursée si quota atteint
+                Montant de la caution demandée
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nb compétitions (caution)
+              </label>
+              <input
+                type="number"
+                value={nbCompetitionsCaution}
+                onChange={(e) => setNbCompetitionsCaution(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="ex: 5"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Nb min. de compétitions requis pour remboursement caution (affiché sur le site)
               </p>
             </div>
           </div>
@@ -633,21 +654,21 @@ export default function GroupesManager() {
             </label>
           </div>
 
-          {(isCompetition || (caution && parseFloat(caution) > 0)) && (
+          {isCompetition && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 p-4 bg-blue-50/70 border border-blue-100 rounded-lg">
               <div>
                 <label className="block text-sm font-semibold text-slate-800 mb-1">
-                  Nombre de compétitions (remboursement caution & quota)
+                  Nombre de compétitions / saison (budget & quota)
                 </label>
                 <input
                   type="number"
                   value={nbCompetitions}
                   onChange={(e) => setNbCompetitions(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
-                  placeholder="ex: 5"
+                  placeholder="10"
                 />
                 <p className="text-xs text-slate-600 mt-1">
-                  Nombre minimum de compétitions requis pour obtenir le remboursement de la caution (affiché sur la page publique des groupes).
+                  Utilisé pour le calcul du budget et du quota annuel du groupe.
                 </p>
               </div>
             </div>

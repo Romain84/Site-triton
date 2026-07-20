@@ -25,6 +25,7 @@ async function getGroupes() {
         caution: true,
         isCompetition: true,
         nbCompetitions: true,
+        nbCompetitionsCaution: true,
         ageMin: true,
         ageMax: true,
         annule: true,
@@ -190,9 +191,9 @@ export default async function GroupesPage() {
                               </span>
                               <span className="font-mono text-sm">{groupe.caution.toFixed(2)} €</span>
                             </div>
-                            {groupe.nbCompetitions && groupe.nbCompetitions > 0 ? (
+                            {groupe.nbCompetitionsCaution && groupe.nbCompetitionsCaution > 0 ? (
                               <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
-                                🔄 <strong>Condition de remboursement :</strong> Remboursable en fin de saison sur participation à au moins <strong>{groupe.nbCompetitions} compétition{groupe.nbCompetitions > 1 ? 's' : ''}</strong>.
+                                🔄 <strong>Condition de remboursement :</strong> Remboursable en fin de saison sur participation à au moins <strong>{groupe.nbCompetitionsCaution} compétition{groupe.nbCompetitionsCaution > 1 ? 's' : ''}</strong>.
                               </p>
                             ) : (
                               <p className="text-[11px] text-amber-900 font-medium leading-relaxed">

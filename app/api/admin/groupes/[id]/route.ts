@@ -40,6 +40,7 @@ export async function PUT(
         tempsFacture: validatedData.tempsFacture,
         isCompetition: validatedData.isCompetition,
         nbCompetitions: validatedData.nbCompetitions,
+        nbCompetitionsCaution: validatedData.nbCompetitionsCaution,
         couleur: validatedData.couleur,
         membresBureau: validatedData.membresBureau,
         enfantsBureau: validatedData.enfantsBureau,
