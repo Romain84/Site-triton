@@ -47,13 +47,13 @@ export default function ActualitesManager() {
     if (!file) return
 
     setUploading(true)
-    const formData = new FormData()
-    formData.append('file', file)
+    const formDataPayload = new FormData()
+    formDataPayload.append('file', file)
 
     try {
       const response = await fetch('/api/admin/upload-image', {
         method: 'POST',
-        body: formData,
+        body: formDataPayload,
       })
 
       if (response.ok) {
@@ -61,14 +61,15 @@ export default function ActualitesManager() {
         setFormData((prev) => ({ ...prev, image: data.url }))
         toast.success('Image uploadée avec succès')
       } else {
-        const error = await response.json()
-        toast.error('Erreur: ' + error.error)
+        const error = await response.json().catch(() => ({ error: 'Réponse serveur invalide' }))
+        toast.error('Erreur: ' + (error.error || 'Erreur lors de l\'upload'))
       }
     } catch (error) {
       console.error('Erreur upload:', error)
-      toast.error('Erreur lors de l\'upload')
+      toast.error('Erreur réseau lors de l\'upload')
     } finally {
       setUploading(false)
+      e.target.value = ''
     }
   }
 
@@ -277,7 +278,7 @@ export default function ActualitesManager() {
                 {uploading ? 'Upload...' : 'Uploader'}
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  accept="image/*"
                   onChange={handleImageUpload}
                   disabled={uploading}
                   className="hidden"

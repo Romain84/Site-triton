@@ -16,6 +16,13 @@ export async function POST(request: NextRequest) {
   try {
     session = await getAdminSession()
     if (!session) {
+      logAdminAudit({
+        action: 'upload.image.error',
+        actorId: 'anonymous',
+        actorRole: 'unauthenticated',
+        targetType: 'actualites',
+        details: { error: 'Non authentifié' },
+      })
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
 
@@ -33,18 +40,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Aucun fichier fourni' }, { status: 400 })
     }
 
-    // Validation du type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    if (!validTypes.includes(file.type)) {
+    const fileExtLower = path.extname(file.name).toLowerCase()
+    const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.svg', '.bmp', '.tiff', '.avif']
+    const isImageMime = file.type ? file.type.startsWith('image/') : false
+    const isImageExt = validExtensions.includes(fileExtLower)
+
+    // Validation du type flexible (MIME ou extension)
+    if (!isImageMime && !isImageExt) {
       logAdminAudit({
         action: 'upload.image.error',
         actorId: session.user.id,
         actorRole: session.user.role,
         targetType: 'actualites',
-        details: { fileName: file.name, size: file.size, error: `Format non supporté: ${file.type}` },
+        details: { fileName: file.name, size: file.size, mimeType: file.type, error: `Format non supporté: ${file.type || fileExtLower}` },
       })
       return NextResponse.json(
-        { error: 'Format non supporté (JPG, PNG, WEBP, GIF)' },
+        { error: `Format d'image non supporté (${file.type || fileExtLower})` },
         { status: 400 }
       )
     }
