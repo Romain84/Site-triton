@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
     if (!file) {
       logAdminAudit({
         action: 'upload.image.error',
-        actorId: session.user.id,
-        actorRole: session.user.role,
+        actorId: session.userId,
+        actorRole: session.role,
         targetType: 'actualites',
         details: { error: 'Aucun fichier fourni' },
       })
@@ -49,8 +49,8 @@ export async function POST(request: NextRequest) {
     if (!isImageMime && !isImageExt) {
       logAdminAudit({
         action: 'upload.image.error',
-        actorId: session.user.id,
-        actorRole: session.user.role,
+        actorId: session.userId,
+        actorRole: session.role,
         targetType: 'actualites',
         details: { fileName: file.name, size: file.size, mimeType: file.type, error: `Format non supporté: ${file.type || fileExtLower}` },
       })
@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
       uploadLogger.warn(`Upload refusé : fichier trop volumineux (${(file.size / 1024 / 1024).toFixed(2)}MB > 15MB)`)
       logAdminAudit({
         action: 'upload.image.error',
-        actorId: session.user.id,
-        actorRole: session.user.role,
+        actorId: session.userId,
+        actorRole: session.role,
         targetType: 'actualites',
         details: { fileName: file.name, size: file.size, error: 'Fichier trop volumineux (Max 15MB)' },
       })
@@ -121,8 +121,8 @@ export async function POST(request: NextRequest) {
 
     logAdminAudit({
       action: 'upload.image.success',
-      actorId: session.user.id,
-      actorRole: session.user.role,
+      actorId: session.userId,
+      actorRole: session.role,
       targetType: 'actualites',
       details: { url, fileName: file.name, size: file.size, convertedToWebp: fileExt === '.webp' },
     })
@@ -133,11 +133,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     uploadLogger.error('Erreur upload image', error)
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
-    if (session?.user) {
+    if (session?.userId) {
       logAdminAudit({
         action: 'upload.image.error',
-        actorId: session.user.id,
-        actorRole: session.user.role,
+        actorId: session.userId,
+        actorRole: session.role,
         targetType: 'actualites',
         details: { error: errorMessage },
       })
