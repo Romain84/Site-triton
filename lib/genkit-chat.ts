@@ -78,12 +78,10 @@ function getModelRef(modelName: string | null | undefined) {
     case 'mistral-large':
       return openMistralLarge
     case 'mistral-small':
-      return openMistralSmall
     case 'ministral-8b':
-      return openMinistral8B
     case 'mistral-7b':
     default:
-      return openMistral7B
+      return openMistralSmall
   }
 }
 
@@ -182,15 +180,30 @@ ${faqDataStatique}
     content: [{ text: userMessage }]
   })
 
-  const response = await ai.generate({
-    model: activeModel,
-    system: systemInstructions,
-    messages: messages,
-    tools: [getContactInfo, getPlanningInfo, getGroupesInfo, getFAQAnswers, getCorrectedSuggestions],
-    config: {
-      temperature: 0.3, // Basse température pour éviter les hallucinations
-    },
-  })
+  let response: any
+  try {
+    response = await ai.generate({
+      model: activeModel,
+      system: systemInstructions,
+      messages: messages,
+      tools: [getContactInfo, getPlanningInfo, getGroupesInfo, getFAQAnswers, getCorrectedSuggestions],
+      config: {
+        temperature: 0.3,
+      },
+    })
+  } catch (err: any) {
+    // Si le modèle configuré échoue ou n'est plus supporté par l'API Mistral, tenter avec openMistralSmall
+    console.warn('Erreur modèle chatbot, repli automatique sur openMistralSmall:', err?.message || err)
+    response = await ai.generate({
+      model: openMistralSmall,
+      system: systemInstructions,
+      messages: messages,
+      tools: [getContactInfo, getPlanningInfo, getGroupesInfo, getFAQAnswers, getCorrectedSuggestions],
+      config: {
+        temperature: 0.3,
+      },
+    })
+  }
 
   // Enregistrer la consommation de tokens
   try {
