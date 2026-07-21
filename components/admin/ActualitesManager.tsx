@@ -42,15 +42,62 @@ export default function ActualitesManager() {
     fetchActualites()
   }, [])
 
+  // Compression légère côté client pour garantir un transfert rapide et contourner les limites d'upload Nginx (413)
+  const compressImageIfNeeded = async (file: File): Promise<Blob | File> => {
+    if (file.size <= 1.5 * 1024 * 1024 || file.type === 'image/gif' || file.type === 'image/svg+xml') {
+      return file
+    }
+    return new Promise((resolve) => {
+      const img = document.createElement('img')
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        let { width, height } = img
+        const maxWidth = 1920
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width)
+          width = maxWidth
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height)
+          canvas.toBlob(
+            (blob) => {
+              if (blob && blob.size < file.size) {
+                const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp"
+                resolve(new File([blob], newFileName, { type: 'image/webp' }))
+              } else {
+                resolve(file)
+              }
+            },
+            'image/webp',
+            0.85
+          )
+        } else {
+          resolve(file)
+        }
+      }
+      img.onerror = () => {
+        URL.revokeObjectURL(url)
+        resolve(file)
+      }
+      img.src = url
+    })
+  }
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     setUploading(true)
-    const formDataPayload = new FormData()
-    formDataPayload.append('file', file)
-
     try {
+      const fileToUpload = await compressImageIfNeeded(file)
+      const formDataPayload = new FormData()
+      formDataPayload.append('file', fileToUpload)
+
       const response = await fetch('/api/admin/upload-image', {
         method: 'POST',
         body: formDataPayload,
@@ -61,8 +108,23 @@ export default function ActualitesManager() {
         setFormData((prev) => ({ ...prev, image: data.url }))
         toast.success('Image uploadée avec succès')
       } else {
-        const error = await response.json().catch(() => ({ error: 'Réponse serveur invalide' }))
-        toast.error('Erreur: ' + (error.error || 'Erreur lors de l\'upload'))
+        const rawText = await response.text().catch(() => '')
+        let errorMsg = 'Erreur lors de l\'upload'
+        try {
+          const parsed = JSON.parse(rawText)
+          errorMsg = parsed.error || errorMsg
+        } catch {
+          if (response.status === 413) {
+            errorMsg = 'Fichier trop volumineux (Limite serveur Nginx HTTP 413). Veuillez utiliser un fichier plus léger.'
+          } else if (response.status === 401) {
+            errorMsg = 'Session expirée. Veuillez vous reconnecter.'
+          } else if (response.status >= 500) {
+            errorMsg = `Erreur serveur HTTP ${response.status} (${response.statusText || 'Erreur interne'})`
+          } else {
+            errorMsg = `Erreur HTTP ${response.status}: ${rawText.slice(0, 100)}`
+          }
+        }
+        toast.error('Erreur: ' + errorMsg)
       }
     } catch (error) {
       console.error('Erreur upload:', error)
