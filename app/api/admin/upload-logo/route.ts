@@ -5,26 +5,43 @@ import { logger } from '@/lib/logger'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import sharp from 'sharp'
+import { logAdminAudit } from '@/lib/admin-audit'
 
 const uploadLogger = logger.withContext('Upload')
 
 export async function POST(request: NextRequest) {
+  let session: any = null
+  let file: File | null = null
   try {
-    const session = await getAdminSession()
+    session = await getAdminSession()
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
 
     const formData = await request.formData()
-    const file = formData.get('file') as File
+    file = formData.get('file') as File
 
     if (!file) {
+      logAdminAudit({
+        action: 'upload.logo.error',
+        actorId: session.user.id,
+        actorRole: session.user.role,
+        targetType: 'logos',
+        details: { error: 'Aucun fichier fourni' },
+      })
       return NextResponse.json({ error: 'Aucun fichier fourni' }, { status: 400 })
     }
 
     // Validation du type
     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']
     if (!validTypes.includes(file.type)) {
+      logAdminAudit({
+        action: 'upload.logo.error',
+        actorId: session.user.id,
+        actorRole: session.user.role,
+        targetType: 'logos',
+        details: { fileName: file.name, size: file.size, error: `Format non supporté: ${file.type}` },
+      })
       return NextResponse.json(
         { error: 'Format non supporté (JPG, PNG, WEBP, SVG)' },
         { status: 400 }
@@ -33,6 +50,13 @@ export async function POST(request: NextRequest) {
 
     // Validation de la taille (10MB max)
     if (file.size > 10 * 1024 * 1024) {
+      logAdminAudit({
+        action: 'upload.logo.error',
+        actorId: session.user.id,
+        actorRole: session.user.role,
+        targetType: 'logos',
+        details: { fileName: file.name, size: file.size, error: 'Fichier trop volumineux (Max 10MB)' },
+      })
       return NextResponse.json(
         { error: 'Fichier trop volumineux (Max 10MB)' },
         { status: 400 }
@@ -85,10 +109,27 @@ export async function POST(request: NextRequest) {
       uploadLogger.info(`Logo sauvegardé localement sous : ${url}`)
     }
 
+    logAdminAudit({
+      action: 'upload.logo.success',
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      targetType: 'logos',
+      details: { url, fileName: file.name, size: file.size, convertedToWebp: fileExt === '.webp' },
+    })
+
     return NextResponse.json({ url })
   } catch (error) {
     uploadLogger.error('Erreur upload', error)
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
+    if (session?.user) {
+      logAdminAudit({
+        action: 'upload.logo.error',
+        actorId: session.user.id,
+        actorRole: session.user.role,
+        targetType: 'logos',
+        details: { error: errorMessage },
+      })
+    }
     return NextResponse.json(
       { error: `Erreur lors de l'upload: ${errorMessage}` },
       { status: 500 }

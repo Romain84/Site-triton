@@ -114,11 +114,16 @@ export default function AuditLogsManager() {
             className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
           >
             <option value="">Tous les types d'actions</option>
+            <option value="upload.image.success">Upload Image (Réussi)</option>
+            <option value="upload.image.error">Upload Image (Échec / Erreur)</option>
+            <option value="upload.logo.success">Upload Logo (Réussi)</option>
+            <option value="upload.logo.error">Upload Logo (Échec / Erreur)</option>
             <option value="seance_annulee.create">Création Séance Annulée</option>
             <option value="seance_annulee.delete">Suppression Séance Annulée</option>
             <option value="facture.auto_generate_all">Génération Factures Coachs (Masse)</option>
             <option value="facture.workflow.update">Mise à jour Statut Facture Coach</option>
-            <option value="chatbot.training. FAQ_integrate">Intégration FAQ depuis Chatbot</option>
+            <option value="don.create">Création Don</option>
+            <option value="don.cancel">Annulation Don</option>
           </select>
         </div>
 
