@@ -92,13 +92,35 @@ export default async function GroupesPage() {
 
         <div className={interSaison ? "opacity-55 grayscale-[50%] blur-[0.6px] pointer-events-auto" : ""}>
           {/* HEADER */}
-          <div className="text-center space-y-3 mb-12">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
+          <div className="text-center space-y-4 mb-14">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/60 text-primary text-xs font-bold uppercase tracking-wider mx-auto shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span>Saison 2025 - 2026 · Triton Club Cavaillon</span>
+            </div>
+
+            <h1 className="text-4xl md:text-5xl font-black text-slate-950 tracking-tight">
               Nos Groupes d&apos;Entraînement
             </h1>
-            <p className="text-slate-500 font-light text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
-              Du niveau éveil (sauv&apos;nage) au perfectionnement et à la compétition nationale, trouvez la catégorie qui correspond à vos objectifs sportifs.
+
+            <p className="text-slate-600 font-normal text-base md:text-lg max-w-3xl mx-auto leading-relaxed">
+              Du niveau <strong>Éveil & Sauv&apos;nage</strong> à l&apos;école de natation, jusqu&apos;au <strong>perfectionnement adultes</strong> et à la <strong>compétition nationale</strong> : découvrez la catégorie adaptée à l&apos;âge, au niveau et aux objectifs sportifs de chacun.
             </p>
+
+            {/* Quick Categories Bar */}
+            <div className="flex flex-wrap justify-center items-center gap-2 pt-2 text-xs font-semibold text-slate-600">
+              <span className="bg-slate-100 border border-slate-200/80 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                <span>🏊‍♀️</span> École de Natation & Sauv&apos;nage
+              </span>
+              <span className="bg-slate-100 border border-slate-200/80 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                <span>🏆</span> Compétition Avenirs à Juniors
+              </span>
+              <span className="bg-slate-100 border border-slate-200/80 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                <span>💪</span> Perfectionnement & Masters Adultes
+              </span>
+              <span className="bg-slate-100 border border-slate-200/80 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                <span>✨</span> Préparation Physique & PPG
+              </span>
+            </div>
           </div>
 
           {groupes.length === 0 ? (
