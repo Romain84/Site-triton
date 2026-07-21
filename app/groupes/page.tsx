@@ -43,12 +43,7 @@ async function getGroupes() {
   }
 }
 
-function getCurrentSeasonLabel(date: Date = new Date()): string {
-  const year = date.getFullYear()
-  const month = date.getMonth() // 0-indexed: Septembre = 8
-  const startYear = month >= 8 ? year : year - 1
-  return `Saison ${startYear} - ${startYear + 1}`
-}
+import { getCurrentSeasonLabel, isInterSaisonActive } from '@/lib/season-utils'
 
 function getWatermarkSvgBase64(text: string) {
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='300' height='180' viewBox='0 0 300 180'><text x='150' y='90' fill='black' font-size='13' font-family='system-ui, -apple-system, sans-serif' font-weight='800' letter-spacing='0.1em' text-anchor='middle' transform='rotate(-25 150 90)'>${text}</text></svg>`
@@ -66,7 +61,7 @@ export default async function GroupesPage() {
     }),
   ])
 
-  const interSaison = settings?.interSaisonActif ?? false
+  const interSaison = isInterSaisonActive(settings?.interSaisonActif)
   const texteFiligrane = settings?.texteFiligrane || getCurrentSeasonLabel()
 
   return (

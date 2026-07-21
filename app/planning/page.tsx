@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import PlanningInteractif from '@/components/PlanningInteractif'
 import { generatePageMetadata } from '@/lib/metadata'
+import { getCurrentSeasonLabel, isInterSaisonActive } from '@/lib/season-utils'
 
 export const metadata = generatePageMetadata({
   title: 'Planning des Entraînements',
@@ -21,8 +22,10 @@ async function getData() {
             include: {
               coach: {
                 select: {
+                  id: true,
                   prenom: true,
                   nom: true,
+                  photo: true,
                 },
               },
             },
@@ -31,7 +34,15 @@ async function getData() {
             select: {
               id: true,
               nom: true,
+              description: true,
+              niveau: true,
+              ageMin: true,
+              ageMax: true,
+              tarif: true,
               couleur: true,
+              total: true,
+              inscrits: true,
+              ordre: true,
             },
           },
         },
@@ -42,7 +53,19 @@ async function getData() {
       }),
       prisma.groupe.findMany({
         where: { actif: true },
-        orderBy: { ordre: 'asc' },
+        select: {
+          id: true,
+          nom: true,
+          description: true,
+          niveau: true,
+          ageMin: true,
+          ageMax: true,
+          tarif: true,
+          couleur: true,
+          total: true,
+          inscrits: true,
+          ordre: true,
+        },
       }),
       prisma.settings.findFirst({
         select: {
@@ -51,15 +74,17 @@ async function getData() {
         },
       }),
     ])
+
     const sortedGroupes = groupes.sort((a, b) => {
       const ageA = a.ageMin ?? 999
       const ageB = b.ageMin ?? 999
       if (ageA !== ageB) return ageA - ageB
       return (a.ordre || 0) - (b.ordre || 0)
     })
+
     return { plannings, groupes: sortedGroupes, settings }
   } catch (error) {
-    logger.error('Error fetching planning', error)
+    logger.error('Erreur chargement données planning', error)
     return { plannings: [], groupes: [], settings: null }
   }
 }
@@ -71,8 +96,8 @@ function getWatermarkSvgBase64(text: string) {
 
 export default async function PlanningPage() {
   const { plannings, groupes, settings } = await getData()
-  const interSaison = settings?.interSaisonActif ?? false
-  const texteFiligrane = settings?.texteFiligrane || 'Saison 2025 - 2026'
+  const interSaison = isInterSaisonActive(settings?.interSaisonActif)
+  const texteFiligrane = settings?.texteFiligrane || getCurrentSeasonLabel()
 
   return (
     <div className={`min-h-screen pt-40 pb-20 relative overflow-hidden transition-colors print:pt-2 print:pb-2 print:bg-white ${interSaison ? 'bg-slate-50/80' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>

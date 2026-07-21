@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
+import { getCurrentSeasonLabel, isInterSaisonActive } from '@/lib/season-utils'
 import DOMPurify from 'isomorphic-dompurify'
 
 export const dynamic = 'force-dynamic'
@@ -109,8 +110,8 @@ export default async function InscriptionPage() {
   const bnssaBlocks = blocks.filter(b => b.type === 'bnssa')
   const contactBlocks = blocks.filter(b => b.type === 'contact')
 
-  const interSaison = settings?.interSaisonActif ?? false
-  const texteFiligrane = settings?.texteFiligrane || 'Saison 2025 - 2026'
+  const interSaison = isInterSaisonActive(settings?.interSaisonActif)
+  const texteFiligrane = settings?.texteFiligrane || getCurrentSeasonLabel()
 
   return (
     <main className={`min-h-screen pt-36 pb-20 relative overflow-hidden transition-colors ${interSaison ? 'bg-slate-50/80' : 'bg-slate-50/50'}`}>
