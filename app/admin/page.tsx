@@ -25,6 +25,7 @@ const ChatbotStatsManager = lazy(() => import('@/components/admin/ChatbotStatsMa
 const DatabaseManager = lazy(() => import('@/components/admin/DatabaseManager'))
 const InscriptionPageBuilder = lazy(() => import('@/components/admin/InscriptionPageBuilder'))
 const DonsManager = lazy(() => import('@/components/admin/DonsManager'))
+const SystemVersionsManager = lazy(() => import('@/components/admin/SystemVersionsManager'))
 
 // Loading component
 const TabLoading = () => (
@@ -36,7 +37,7 @@ const TabLoading = () => (
   </div>
 )
 
-type Tab = 'dashboard' | 'profils' | 'factures' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page'
+type Tab = 'dashboard' | 'profils' | 'factures' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
 
 const CATEGORIES = [
   {
@@ -47,6 +48,7 @@ const CATEGORIES = [
       { id: 'finances', label: 'Finances', icon: '📈' },
       { id: 'dons', label: 'Dons & Reçus', icon: '🎗️' },
       { id: 'database', label: 'Sauvegardes & Base de données', icon: '💾' },
+      { id: 'system-versions', label: 'Versions & Composants', icon: '📦' },
       { id: 'parametres', label: 'Paramètres', icon: '⚙️' },
       { id: 'audit-logs', label: 'Journal d\'Audit', icon: '🕵️‍♂️' }
     ]
@@ -335,6 +337,7 @@ const CATEGORIES = [
             {activeTab === 'parametres' && <ParametresTab />}
             {activeTab === 'database' && <DatabaseTab />}
             {activeTab === 'inscription-page' && <InscriptionPageTab />}
+            {activeTab === 'system-versions' && <SystemVersionsTab />}
           </Suspense>
         </main>
       </div>
@@ -768,4 +771,9 @@ function InscriptionPageTab() {
 // Dons Tab
 function DonsTab({ currentUser }: { currentUser: { id: string; email: string; role: string } | null }) {
   return <DonsManager currentUser={currentUser} />
+}
+
+// System Versions Tab
+function SystemVersionsTab() {
+  return <SystemVersionsManager />
 }
