@@ -3,6 +3,7 @@ import { getAdminSession } from '@/lib/auth/session'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
+import sharp from 'sharp'
 import { logger } from '@/lib/logger'
 
 const uploadLogger = logger.withContext('Upload')
@@ -38,15 +39,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const fileExt = path.extname(file.name).toLowerCase()
+    const bytes = await file.arrayBuffer()
+    let buffer = Buffer.from(bytes)
+    let fileExt = '.webp'
+
+    try {
+      buffer = await sharp(buffer)
+        .webp({ quality: 88, alphaQuality: 100 })
+        .toBuffer()
+    } catch (err) {
+      uploadLogger.warn('Erreur lors de la conversion sharp en WebP, conservation de l\'extension d\'origine', err)
+      fileExt = path.extname(file.name).toLowerCase() || '.png'
+    }
+
     const safeFileName = `${crypto.randomUUID()}${fileExt}`
 
     // Créer le dossier s'il n'existe pas
     const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'actualites')
     await mkdir(uploadDir, { recursive: true })
-
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
 
     const filePath = path.join(uploadDir, safeFileName)
     await writeFile(filePath, buffer)

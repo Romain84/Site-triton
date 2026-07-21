@@ -4,6 +4,7 @@ import { put } from '@vercel/blob'
 import { logger } from '@/lib/logger'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
+import sharp from 'sharp'
 
 const uploadLogger = logger.withContext('Upload')
 
@@ -30,21 +31,42 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validation de la taille (2MB)
-    if (file.size > 2 * 1024 * 1024) {
+    // Validation de la taille (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json(
-        { error: 'Fichier trop volumineux (Max 2MB)' },
+        { error: 'Fichier trop volumineux (Max 10MB)' },
         { status: 400 }
       )
     }
 
+    const bytes = await file.arrayBuffer()
+    let buffer = Buffer.from(bytes)
+    let contentType = file.type
+    let fileExt = path.extname(file.name).toLowerCase()
+    let originalName = path.basename(file.name, fileExt).replace(/[^a-zA-Z0-9.-]/g, '_')
+
+    // Convertir en WebP si ce n'est pas un SVG (conserve la transparence pour les PNGs)
+    if (file.type !== 'image/svg+xml') {
+      try {
+        buffer = await sharp(buffer)
+          .webp({ quality: 90, alphaQuality: 100 })
+          .toBuffer()
+        contentType = 'image/webp'
+        fileExt = '.webp'
+      } catch (err) {
+        uploadLogger.warn('Erreur lors de la conversion sharp en WebP, utilisation du buffer d\'origine', err)
+      }
+    }
+
     let url = ''
+    const fileName = `logo-${Date.now()}-${originalName}${fileExt}`
 
     // Upload vers Vercel Blob si configuré
     if (process.env.BLOB_READ_WRITE_TOKEN) {
       try {
-        const blob = await put(`logo-${Date.now()}-${file.name}`, file, {
+        const blob = await put(fileName, buffer, {
           access: 'public',
+          contentType,
         })
         url = blob.url
       } catch (err) {
@@ -56,14 +78,8 @@ export async function POST(request: NextRequest) {
     if (!url) {
       const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'logos')
       await mkdir(uploadDir, { recursive: true })
-
-      const fileExt = path.extname(file.name).toLowerCase()
-      const originalName = path.basename(file.name, fileExt).replace(/[^a-zA-Z0-9.-]/g, '_')
-      const fileName = `logo-${Date.now()}-${originalName}${fileExt}`
       const filePath = path.join(uploadDir, fileName)
 
-      const bytes = await file.arrayBuffer()
-      const buffer = Buffer.from(bytes)
       await writeFile(filePath, buffer)
       url = `/uploads/logos/${fileName}`
       uploadLogger.info(`Logo sauvegardé localement sous : ${url}`)
