@@ -527,8 +527,8 @@ export default function GroupesManager() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="50"
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Montant de la caution demandée
+              <p className="text-xs text-amber-800 font-semibold mt-1">
+                Montant en supplément au tarif global (à régler séparément)
               </p>
             </div>
 

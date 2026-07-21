@@ -187,9 +187,9 @@ export default async function GroupesPage() {
                             <div className="flex items-center justify-between font-bold text-amber-950">
                               <span className="flex items-center gap-1.5">
                                 <span>🏷️</span>
-                                <span>Caution demandée :</span>
+                                <span>Caution demandée (en supplément au tarif global) :</span>
                               </span>
-                              <span className="font-mono text-sm">{groupe.caution.toFixed(2)} €</span>
+                              <span className="font-mono text-sm bg-amber-100/90 px-2 py-0.5 rounded border border-amber-200 text-amber-950 font-black">{groupe.caution.toFixed(2)} €</span>
                             </div>
                             {groupe.nbCompetitionsCaution && groupe.nbCompetitionsCaution > 0 ? (
                               <p className="text-[11px] text-amber-900 font-medium leading-relaxed">

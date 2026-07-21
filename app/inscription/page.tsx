@@ -410,8 +410,8 @@ function PricingBlock({ block, dbGroupes }: { block: BlockData; dbGroupes: Group
                               <span className="font-black text-slate-950 font-mono text-base">{totalTarif.toFixed(0)} €</span>
                             )}
                             {groupe.caution && (
-                              <span className="block text-xs text-amber-700 font-bold mt-0.5" title={groupe.nbCompetitionsCaution ? `Caution remboursable dès ${groupe.nbCompetitionsCaution} compétition(s)` : 'Caution remboursable en fin de saison'}>
-                                +{groupe.caution.toFixed(0)}€ caution* {groupe.nbCompetitionsCaution ? `(${groupe.nbCompetitionsCaution} compét. min.)` : ''}
+                              <span className="block text-xs text-amber-800 font-bold mt-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200" title={groupe.nbCompetitionsCaution ? `Caution remboursable dès ${groupe.nbCompetitionsCaution} compétition(s)` : 'Caution remboursable en fin de saison'}>
+                                +{groupe.caution.toFixed(0)}€ caution (en supplément au tarif global)* {groupe.nbCompetitionsCaution ? `(${groupe.nbCompetitionsCaution} compét. min.)` : ''}
                               </span>
                             )}
                           </div>
