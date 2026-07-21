@@ -128,8 +128,15 @@ export async function getChatResponse(
     throw new Error('MISTRAL_API_KEY not configured')
   }
 
-  // Récupérer les paramètres uniquement
-  const settings = await prisma.settings.findFirst({ select: { chatbotModel: true } })
+  // Récupérer les paramètres et charger toutes les bases de connaissances en parallèle (Ultra-rapide avec cache TTL 5min)
+  const [settings, planningKnowledge, groupesKnowledge, faqKnowledge, suggestionsKnowledge] = await Promise.all([
+    prisma.settings.findFirst({ select: { chatbotModel: true, emailClub: true } }),
+    getPlanningKnowledgeBase(),
+    getGroupesKnowledgeBase(),
+    getCustomKnowledgeBase(),
+    getCorrectedSuggestionsKnowledgeBase(),
+  ])
+
   const activeModel = getModelRef(settings?.chatbotModel)
 
   const now = new Date()
@@ -137,6 +144,11 @@ export async function getChatResponse(
   const formattedDate = now.toLocaleDateString('fr-FR', dateOptions)
   const formattedTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   const dayOfWeek = now.toLocaleDateString('fr-FR', { weekday: 'long' })
+
+  const contactInfo = `Triton Club Cavaillon
+Adresse : Piscine Municipale Alphonse Roudière, Avenue Jean Moulin, Quartier La Clède, 84300 Cavaillon
+Email : ${settings?.emailClub || 'tritoncavaillon@gmail.com'}
+Secrétariat : Ouvert du Lundi au Vendredi de 17h00 à 19h00 et le Samedi de 9h00 à 12h00.`
 
   const systemInstructions = `Tu es l'assistant virtuel officiel du Triton Club Cavaillon (club de natation). Ton but est d'aider les utilisateurs, adhérents et parents en répondant à leurs questions de manière polie, précise et chaleureuse.
 
@@ -146,21 +158,36 @@ INFORMATIONS TEMPORELLES EN TEMPS RÉEL (CRITIQUE) :
 - Heure actuelle : ${formattedTime}
 Utilise TOUJOURS ces informations pour situer les demandes temporelles (ex. "ce soir", "aujourd'hui", "demain", "ce week-end", "lundi prochain"). Par exemple, si l'utilisateur demande "les cours de ce soir", base-toi sur le jour de la semaine actuel (${dayOfWeek}) pour lui indiquer les cours de ce jour-là.
 
-RÈGLES D'UTILISATION DES OUTILS :
-1. Si l'utilisateur pose une question spécifique sur le club (planning, tarifs, adhésions, contact, règlements), utilise l'un des outils mis à ta disposition (getPlanningInfo, getGroupesInfo, getContactInfo, getFAQAnswers, getCorrectedSuggestions) pour obtenir l'information exacte et à jour.
-2. Si la réponse ne figure pas dans le retour des outils, dis gentiment et honnêtement : "Je ne dispose pas de cette information précise. Je vous invite à contacter notre secrétariat via notre [formulaire de contact](/contact) ou par e-mail à tritoncavaillon@gmail.com pour obtenir une réponse personnalisée."
-3. Ne JAMAIS inventer d'informations.
-4. Salue poliment l'utilisateur s'il dit "bonjour", "salut" ou formule une politesse, et remercie-le chaleureusement s'il te remercie, de manière naturelle et fluide.
-5. Structure tes réponses de façon aérée et lisible en Markdown (listes à puces, gras pour les éléments importants, paragraphes clairs, emojis pour le côté convivial).
-6. Propose des liens clairs vers les pages du site lorsque c'est pertinent :
+INFORMATIONS OFFICIELLES DU CLUB (CONNAISSANCES EN TEMPS RÉEL) :
+
+--- INFORMATIONS DE CONTACT ---
+${contactInfo}
+
+--- PLANNING HEBDOMADAIRE & VACANCES ---
+${planningKnowledge}
+
+--- GROUPES & TARIFS ---
+${groupesKnowledge}
+
+--- FOIRE AUX QUESTIONS & CONNAISSANCES ---
+${faqKnowledge}
+
+--- EXEMPLES & CONSIGNES ADMIN ---
+${suggestionsKnowledge}
+
+RÈGLES STRICTES DE RÉPONSE :
+1. Réponds aux questions sur le club en te basant RIGOUREUSEMENT sur les informations officielles ci-dessus.
+2. Si la question de l'utilisateur est hors-sujet ou ne concerne pas le Triton Club Cavaillon, réponds poliment que tu es l'assistant virtuel du Triton Club Cavaillon et invite-le à poser une question concernant la natation, les cours ou le club.
+3. Si une information spécifique sur le club n'est pas présente dans les données ci-dessus, dis gentiment : "Je ne dispose pas de cette information précise. Je vous invite à contacter notre secrétariat via notre [formulaire de contact](/contact) ou par e-mail à ${settings?.emailClub || 'tritoncavaillon@gmail.com'} pour obtenir une réponse personnalisée."
+4. Ne JAMAIS inventer d'informations.
+5. Salue poliment l'utilisateur s'il dit "bonjour", "salut" ou formule une politesse.
+6. Structure tes réponses de façon aérée et lisible en Markdown (listes à puces, gras pour les éléments importants, paragraphes clairs, emojis).
+7. Propose des liens clairs vers les pages du site lorsque c'est pertinent :
    - Pour s'inscrire en ligne : [page d'inscription](/inscription) ou la plateforme partenaire [MonClub](https://tritoncavaillon.monclub.app/login)
    - Pour nous écrire ou envoyer un message : [formulaire de contact](/contact)
    - Pour voir le planning : [planning des cours](/horaires)
    - Pour consulter les tarifs : [tarifs d'adhésion](/tarifs)
    - Pour les documents officiels : [page des téléchargements](/telechargements)
-
-INFORMATIONS STATIQUES GÉNÉRALES :
-${faqDataStatique}
 `
 
   // Mapper l'historique au format attendu par Genkit
@@ -186,19 +213,16 @@ ${faqDataStatique}
       model: activeModel,
       system: systemInstructions,
       messages: messages,
-      tools: [getContactInfo, getPlanningInfo, getGroupesInfo, getFAQAnswers, getCorrectedSuggestions],
       config: {
         temperature: 0.3,
       },
     })
   } catch (err: any) {
-    // Si le modèle configuré échoue ou n'est plus supporté par l'API Mistral, tenter avec openMistralSmall
     console.warn('Erreur modèle chatbot, repli automatique sur openMistralSmall:', err?.message || err)
     response = await ai.generate({
       model: openMistralSmall,
       system: systemInstructions,
       messages: messages,
-      tools: [getContactInfo, getPlanningInfo, getGroupesInfo, getFAQAnswers, getCorrectedSuggestions],
       config: {
         temperature: 0.3,
       },
