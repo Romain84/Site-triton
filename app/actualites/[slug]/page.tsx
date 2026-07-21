@@ -76,14 +76,12 @@ export default async function ActualiteDetailPage({ params }: Props) {
 
         <div className="card overflow-hidden mb-8 bg-white/90 shadow-lg">
           {actualite.image && (
-            <div className="relative h-96 w-full">
-              <Image
+            <div className="w-full bg-slate-900/5 flex justify-center items-center overflow-hidden border-b border-slate-100 p-3 md:p-6">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={actualite.image}
                 alt={actualite.titre}
-                fill
-                className="object-cover"
-                priority
-                unoptimized={actualite.image.includes('blob.vercel-storage.com') || actualite.image.startsWith('/uploads/')}
+                className="w-auto h-auto max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xs"
               />
             </div>
           )}

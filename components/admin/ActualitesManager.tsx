@@ -354,7 +354,7 @@ export default function ActualitesManager() {
                     src={formData.image}
                     alt="Aperçu"
                     fill
-                    className="rounded-lg object-cover"
+                    className="rounded-lg object-contain bg-slate-100 p-1"
                     unoptimized={formData.image.includes('blob.vercel-storage.com') || formData.image.startsWith('/uploads/')}
                   />
                 </div>
