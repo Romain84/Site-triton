@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminSession } from '@/lib/auth/session'
+import { put } from '@vercel/blob'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     let buffer = Buffer.from(bytes)
     let fileExt = '.webp'
+    let contentType = 'image/webp'
 
     try {
       buffer = await sharp(buffer)
@@ -51,28 +53,45 @@ export async function POST(request: NextRequest) {
     } catch (err) {
       uploadLogger.warn('Erreur lors de la conversion sharp en WebP, conservation de l\'extension d\'origine', err)
       fileExt = path.extname(file.name).toLowerCase() || '.png'
+      contentType = file.type
     }
 
     const safeFileName = `${crypto.randomUUID()}${fileExt}`
+    let url = ''
 
-    // Créer le dossier s'il n'existe pas
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'actualites')
-    await mkdir(uploadDir, { recursive: true })
+    // Upload vers Vercel Blob si configuré
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        const blob = await put(`actualites/${safeFileName}`, buffer, {
+          access: 'public',
+          contentType,
+        })
+        url = blob.url
+        uploadLogger.info(`Image d'actualité sauvegardée sur Vercel Blob : ${url}`)
+      } catch (err) {
+        uploadLogger.error('Erreur stockage Blob, tentative de fallback local', err)
+      }
+    }
 
-    const filePath = path.join(uploadDir, safeFileName)
-    await writeFile(filePath, buffer)
+    // Fallback local si Blob non configuré ou ayant échoué
+    if (!url) {
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'actualites')
+      await mkdir(uploadDir, { recursive: true })
 
-    const publicPath = `/uploads/actualites/${safeFileName}`
-    uploadLogger.info(`Image d'actualité enregistrée avec succès sous : ${publicPath}`)
+      const filePath = path.join(uploadDir, safeFileName)
+      await writeFile(filePath, buffer)
+      url = `/uploads/actualites/${safeFileName}`
+      uploadLogger.info(`Image d'actualité enregistrée localement sous : ${url}`)
+    }
 
     return NextResponse.json({
-      url: publicPath,
+      url,
     })
   } catch (error) {
     uploadLogger.error('Erreur upload image', error)
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
     return NextResponse.json(
-      { error: `Erreur lors de l'upload local: ${errorMessage}` },
+      { error: `Erreur lors de l'upload: ${errorMessage}` },
       { status: 500 }
     )
   }
