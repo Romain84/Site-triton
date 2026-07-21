@@ -31,10 +31,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validation de la taille (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
+    // Validation de la taille (15MB max)
+    if (file.size > 15 * 1024 * 1024) {
+      uploadLogger.warn(`Upload refusé : fichier trop volumineux (${(file.size / 1024 / 1024).toFixed(2)}MB > 15MB)`)
       return NextResponse.json(
-        { error: 'Fichier trop volumineux (Max 5MB)' },
+        { error: 'Fichier trop volumineux (Max 15MB)' },
         { status: 400 }
       )
     }
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
     await writeFile(filePath, buffer)
 
     const publicPath = `/uploads/actualites/${safeFileName}`
+    uploadLogger.info(`Image d'actualité enregistrée avec succès sous : ${publicPath}`)
 
     return NextResponse.json({
       url: publicPath,
