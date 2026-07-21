@@ -26,6 +26,38 @@ function formatMessage(level: LogLevel, message: string, options?: LoggerOptions
   return `${timestamp} ${level.toUpperCase()} ${context} ${message}`
 }
 
+function persistSystemLog(level: LogLevel, message: string, context?: string, data?: unknown) {
+  if (typeof window === 'undefined') {
+    try {
+      const payload: Record<string, unknown> = { message }
+      if (context) payload.context = context
+      if (data !== undefined) {
+        if (data instanceof Error) {
+          payload.error = data.message
+          payload.stack = data.stack
+        } else {
+          payload.data = data
+        }
+      }
+
+      import('@/lib/prisma').then(({ prisma }) => {
+        prisma.adminAuditLog.create({
+          data: {
+            action: `system.${level}`,
+            actorId: null,
+            actorRole: 'system',
+            targetType: context || 'application',
+            targetId: null,
+            details: JSON.stringify(payload),
+          }
+        }).catch(() => {})
+      }).catch(() => {})
+    } catch {
+      // Ignore write errors to prevent logger crashing
+    }
+  }
+}
+
 export const logger = {
   /**
    * Log de debug - uniquement en développement
@@ -37,32 +69,27 @@ export const logger = {
   },
 
   /**
-   * Log d'information - uniquement en développement
+   * Log d'information - affiché et enregistré dans le journal d'audit
    */
   info: (message: string, data?: unknown) => {
-    if (isDev) {
-      console.info(formatMessage('info', message), data !== undefined ? data : '')
-    }
+    console.info(formatMessage('info', message), data !== undefined ? data : '')
+    persistSystemLog('info', message, undefined, data)
   },
 
   /**
-   * Log d'avertissement - toujours affiché
+   * Log d'avertissement - toujours affiché et enregistré
    */
   warn: (message: string, data?: unknown) => {
     console.warn(formatMessage('warn', message), data !== undefined ? data : '')
+    persistSystemLog('warn', message, undefined, data)
   },
 
   /**
-   * Log d'erreur - toujours affiché
-   * En production, on pourrait envoyer à un service de monitoring (Sentry, etc.)
+   * Log d'erreur - toujours affiché et enregistré dans le journal d'audit
    */
   error: (message: string, error?: unknown) => {
     console.error(formatMessage('error', message), error !== undefined ? error : '')
-
-    // TODO: En production, envoyer à un service de monitoring
-    // if (!isDev && typeof window === 'undefined') {
-    //   // Envoyer à Sentry, LogRocket, etc.
-    // }
+    persistSystemLog('error', message, undefined, error)
   },
 
   /**
@@ -75,15 +102,16 @@ export const logger = {
       }
     },
     info: (message: string, data?: unknown) => {
-      if (isDev) {
-        console.info(formatMessage('info', message, { context }), data !== undefined ? data : '')
-      }
+      console.info(formatMessage('info', message, { context }), data !== undefined ? data : '')
+      persistSystemLog('info', message, context, data)
     },
     warn: (message: string, data?: unknown) => {
       console.warn(formatMessage('warn', message, { context }), data !== undefined ? data : '')
+      persistSystemLog('warn', message, context, data)
     },
     error: (message: string, error?: unknown) => {
       console.error(formatMessage('error', message, { context }), error !== undefined ? error : '')
+      persistSystemLog('error', message, context, error)
     },
   }),
 }

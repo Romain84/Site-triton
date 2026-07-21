@@ -114,10 +114,13 @@ export default function AuditLogsManager() {
             className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
           >
             <option value="">Tous les types d'actions</option>
-            <option value="upload.image.success">Upload Image (Réussi)</option>
-            <option value="upload.image.error">Upload Image (Échec / Erreur)</option>
-            <option value="upload.logo.success">Upload Logo (Réussi)</option>
-            <option value="upload.logo.error">Upload Logo (Échec / Erreur)</option>
+            <option value="system.error">🔴 Erreurs Système (system.error)</option>
+            <option value="system.warn">🟡 Avertissements Système (system.warn)</option>
+            <option value="system.info">🔵 Infos Système (system.info)</option>
+            <option value="upload.image.success">🟢 Upload Image (Réussi)</option>
+            <option value="upload.image.error">🔴 Upload Image (Échec / Erreur)</option>
+            <option value="upload.logo.success">🟢 Upload Logo (Réussi)</option>
+            <option value="upload.logo.error">🔴 Upload Logo (Échec / Erreur)</option>
             <option value="seance_annulee.create">Création Séance Annulée</option>
             <option value="seance_annulee.delete">Suppression Séance Annulée</option>
             <option value="facture.auto_generate_all">Génération Factures Coachs (Masse)</option>
@@ -152,16 +155,28 @@ export default function AuditLogsManager() {
                 </tr>
               </thead>
               <tbody>
-                {logs.map((log) => (
-                  <tr key={log.id} className="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
-                    <td className="py-3.5 px-4 text-slate-600 text-sm font-medium">
-                      {new Date(log.timestamp).toLocaleString('fr-FR')}
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-900 text-sm">
-                      <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-slate-800 font-mono text-xs">
-                        {log.action}
-                      </span>
-                    </td>
+                {logs.map((log) => {
+                  let badgeStyle = "bg-slate-100 border-slate-200 text-slate-800"
+                  if (log.action.includes('error')) {
+                    badgeStyle = "bg-red-50 border-red-200 text-red-700 font-bold"
+                  } else if (log.action.includes('warn')) {
+                    badgeStyle = "bg-amber-50 border-amber-200 text-amber-800 font-bold"
+                  } else if (log.action.includes('success') || log.action.includes('create')) {
+                    badgeStyle = "bg-emerald-50 border-emerald-200 text-emerald-800 font-semibold"
+                  } else if (log.action.startsWith('system.')) {
+                    badgeStyle = "bg-sky-50 border-sky-200 text-sky-800 font-semibold"
+                  }
+
+                  return (
+                    <tr key={log.id} className="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
+                      <td className="py-3.5 px-4 text-slate-600 text-sm font-medium">
+                        {new Date(log.timestamp).toLocaleString('fr-FR')}
+                      </td>
+                      <td className="py-3.5 px-4 text-sm">
+                        <span className={`border px-2 py-0.5 rounded font-mono text-xs ${badgeStyle}`}>
+                          {log.action}
+                        </span>
+                      </td>
                     <td className="py-3.5 px-4 text-sm">
                       <div className="font-semibold text-slate-800">
                         {log.actorId ? `ID: ${log.actorId.slice(-6).toUpperCase()}` : 'Système'}
@@ -184,16 +199,17 @@ export default function AuditLogsManager() {
                         <span className="text-slate-400 italic">Aucune</span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => setSelectedLog(log)}
-                        className="text-primary hover:text-primary-dark hover:bg-primary-50 border border-primary/20 bg-primary/5 px-3 py-1 rounded-lg text-xs font-bold transition-colors"
-                      >
-                        Inspecter
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      <td className="py-3.5 px-4 text-center">
+                        <button
+                          onClick={() => setSelectedLog(log)}
+                          className="text-primary hover:text-primary-dark hover:bg-primary-50 border border-primary/20 bg-primary/5 px-3 py-1 rounded-lg text-xs font-bold transition-colors"
+                        >
+                          Inspecter
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
