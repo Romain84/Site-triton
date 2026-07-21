@@ -43,6 +43,13 @@ async function getGroupes() {
   }
 }
 
+function getCurrentSeasonLabel(date: Date = new Date()): string {
+  const year = date.getFullYear()
+  const month = date.getMonth() // 0-indexed: Septembre = 8
+  const startYear = month >= 8 ? year : year - 1
+  return `Saison ${startYear} - ${startYear + 1}`
+}
+
 function getWatermarkSvgBase64(text: string) {
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='300' height='180' viewBox='0 0 300 180'><text x='150' y='90' fill='black' font-size='13' font-family='system-ui, -apple-system, sans-serif' font-weight='800' letter-spacing='0.1em' text-anchor='middle' transform='rotate(-25 150 90)'>${text}</text></svg>`
   return Buffer.from(svg).toString('base64')
@@ -60,7 +67,7 @@ export default async function GroupesPage() {
   ])
 
   const interSaison = settings?.interSaisonActif ?? false
-  const texteFiligrane = settings?.texteFiligrane || 'Saison 2025 - 2026'
+  const texteFiligrane = settings?.texteFiligrane || getCurrentSeasonLabel()
 
   return (
     <main className={`min-h-screen pt-32 md:pt-40 pb-20 relative overflow-hidden transition-colors ${interSaison ? 'bg-slate-50/80' : 'bg-white'}`}>
@@ -96,8 +103,8 @@ export default async function GroupesPage() {
             <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
               Nos Groupes d&apos;Entraînement
             </h1>
-            <p className="text-slate-500 font-light text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
-              Du niveau éveil (sauv&apos;nage) au perfectionnement et à la compétition nationale, trouvez la catégorie qui correspond à vos objectifs sportifs.
+            <p className="text-slate-600 font-medium text-base md:text-lg max-w-3xl mx-auto leading-relaxed">
+              Apprentissage (ENF), perfectionnement ou compétition nationale : nous accompagnons chaque nageur vers ses objectifs. Découvrez la catégorie adaptée à votre profil.
             </p>
           </div>
 
