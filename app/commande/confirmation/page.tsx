@@ -110,18 +110,12 @@ function ConfirmationContent() {
               </p>
             </div>
 
-            <div className="space-y-4">
-              <Link
-                href="/boutique"
-                className="block bg-primary text-white px-8 py-3 rounded-lg font-bold hover:bg-primary-dark transition-colors"
-              >
-                Continuer mes achats
-              </Link>
+            <div>
               <Link
                 href="/"
-                className="block text-primary hover:underline font-medium"
+                className="inline-block bg-primary text-white px-8 py-3.5 rounded-xl font-bold hover:bg-primary-dark transition-colors shadow-xs"
               >
-                Retour à l&apos;accueil
+                🏠 Retour à l&apos;accueil
               </Link>
             </div>
 
