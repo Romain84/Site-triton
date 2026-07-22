@@ -13,12 +13,12 @@ export function getCurrentSeasonLabel(date: Date = new Date()): string {
 }
 
 /**
- * Activation automatique du Mode Inter-saison :
- * - S'active automatiquement le 30 juin de chaque année (month 5, day 30)
- *   jusqu me mi-septembre (reprise des cours),
- * - Ou reste actif si coché manuellement dans les paramètres d'administration.
+ * Activation du Mode Inter-saison :
+ * - Si manualSetting est défini (true/false) dans l'administration, sa valeur est strictement respectée.
+ * - Si manualSetting est null ou undefined, le mode automatique s'active le 30 juin de chaque année jusqu'à mi-septembre.
  */
 export function isInterSaisonActive(manualSetting?: boolean | null, date: Date = new Date()): boolean {
+  if (manualSetting === false) return false
   if (manualSetting === true) return true
 
   const month = date.getMonth() // 0-indexed: 5 = Juin, 6 = Juillet, 7 = Août, 8 = Septembre
