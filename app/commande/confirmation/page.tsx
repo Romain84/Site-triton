@@ -111,12 +111,12 @@ function ConfirmationContent() {
             </div>
 
             <div>
-              <Link
+              <a
                 href="/"
-                className="inline-block bg-primary text-white px-8 py-3.5 rounded-xl font-bold hover:bg-primary-dark transition-colors shadow-xs"
+                className="inline-block bg-primary text-white px-8 py-3.5 rounded-xl font-bold hover:bg-primary-dark transition-colors shadow-xs cursor-pointer"
               >
                 🏠 Retour à l&apos;accueil
-              </Link>
+              </a>
             </div>
 
             {/* Informations supplémentaires */}
