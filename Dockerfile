@@ -34,7 +34,7 @@ ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 RUN npx prisma generate
 RUN npx tsc prisma/seed.ts --target es2022 --module commonjs --moduleResolution node --esModuleInterop --skipLibCheck --ignoreConfig --ignoreDeprecations 6.0
 RUN npm run build
-RUN npm prune --production
+RUN npm prune --omit=dev
 
 
 # Etape 3 : Image finale de production (ultra-légère)
