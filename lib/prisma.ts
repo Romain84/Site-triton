@@ -15,9 +15,9 @@ function createPrismaClient() {
 
   const pool = new Pool({
     connectionString,
-    max: 20, // Ajustez cette valeur selon la capacité de la base de données
+    max: 10, // Pool de 10 connexions max pour éviter d'atteindre la limite max_connections de Postgres
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 10000,
   })
 
   const adapter = new PrismaPg(pool)
@@ -30,6 +30,8 @@ function createPrismaClient() {
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient()
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+// Conserver l'instance unique dans globalThis (y compris en production)
+// pour éviter la multiplication des pools de connexions et la saturation de PostgreSQL
+globalForPrisma.prisma = prisma
 
 export default prisma
