@@ -52,6 +52,25 @@ interface ProcessedItem {
   textePersonnalise: string | null
 }
 
+function getCleanBaseUrl(): string {
+  let url = process.env.NEXT_PUBLIC_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = `https://${url}`
+  }
+  return url.replace(/\/$/, '')
+}
+
+function getAbsoluteImageUrls(imagePath: string | null | undefined, baseUrl: string): string[] {
+  if (!imagePath) return []
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return [imagePath]
+  }
+  if (imagePath.startsWith('/')) {
+    return [`${baseUrl}${imagePath}`]
+  }
+  return []
+}
+
 export async function POST(request: NextRequest) {
   try {
     const ip = getClientIp(request)
@@ -74,6 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { items, customerInfo } = validationResult.data
+    const baseUrl = getCleanBaseUrl()
 
     // Générer un numéro de commande unique
     const numeroCommande = `CMD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
@@ -120,13 +140,10 @@ export async function POST(request: NextRequest) {
       // SÉCURITÉ: Calculer le prix UNIQUEMENT depuis la base de données (pas depuis le client)
       let prixUnitaire: number
       if (variante && variante.prix !== null) {
-        // Prix de la variante si défini
         prixUnitaire = variante.prix
       } else if (produit.enPromo && produit.prixPromo !== null) {
-        // Prix promo du produit
         prixUnitaire = produit.prixPromo
       } else {
-        // Prix normal du produit
         prixUnitaire = produit.prix
       }
 
@@ -146,14 +163,14 @@ export async function POST(request: NextRequest) {
       }
       const description = descriptionParts.length > 0 ? descriptionParts.join(', ') : undefined
 
-      // Ajouter l'article à Stripe avec le prix serveur
+      // Ajouter l'article à Stripe avec le prix serveur et une URL d'image valide
       lineItems.push({
         price_data: {
           currency: 'eur',
           product_data: {
             name: produit.nom,
             description,
-            images: produit.image ? [produit.image] : [],
+            images: getAbsoluteImageUrls(produit.image, baseUrl),
           },
           unit_amount: Math.round(prixUnitaire * 100), // Stripe utilise des centimes
         },
@@ -216,12 +233,13 @@ export async function POST(request: NextRequest) {
           prenomNageur: customerInfo.prenomNageur,
           nomNageur: customerInfo.nomNageur,
         },
-        success_url: `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/commande/confirmation?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/panier`,
+        success_url: `${baseUrl}/commande/confirmation?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/panier`,
         locale: 'fr',
       })
-    } catch (stripeError) {
+    } catch (stripeError: any) {
       await cancelCommandePayment(commande.id)
+      checkoutLogger.error('Erreur Stripe Checkout:', stripeError)
       throw stripeError
     }
 
@@ -235,8 +253,9 @@ export async function POST(request: NextRequest) {
       sessionId: session.id,
       url: session.url,
     })
-  } catch (error) {
+  } catch (error: any) {
+    const errorMsg = error?.message || 'Erreur lors de la création de la session de paiement'
     checkoutLogger.error('Erreur lors de la création de la session Stripe', error)
-    return apiError('Erreur lors de la création de la session de paiement', 500, undefined, 'CHECKOUT_FAILED')
+    return apiError(errorMsg, 500, undefined, 'CHECKOUT_FAILED')
   }
 }
