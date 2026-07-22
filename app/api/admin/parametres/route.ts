@@ -42,6 +42,8 @@ const updateSettingsSchema = z.object({
   datesTests: z.array(z.string()).optional().default([]),
   interSaisonActif: z.boolean().optional().default(false),
   texteFiligrane: z.string().max(255).optional().default('Saison 2025 - 2026'),
+  instagramAccountId: z.string().max(255).nullable().optional(),
+  instagramAccessToken: z.string().max(2000).nullable().optional(),
 })
 
 const settingsSelect = {
@@ -79,6 +81,8 @@ const settingsSelect = {
   datesTests: true,
   interSaisonActif: true,
   texteFiligrane: true,
+  instagramAccountId: true,
+  instagramAccessToken: true,
   createdAt: true,
   updatedAt: true,
 } as const
@@ -202,6 +206,8 @@ export async function PUT(request: NextRequest) {
       datesTests,
       interSaisonActif,
       texteFiligrane,
+      instagramAccountId,
+      instagramAccessToken,
     } = validation.data
 
     // Get existing settings id or create new
@@ -248,6 +254,8 @@ export async function PUT(request: NextRequest) {
           datesTests,
           interSaisonActif,
           texteFiligrane,
+          instagramAccountId: instagramAccountId || null,
+          instagramAccessToken: instagramAccessToken || null,
           // Only update password if provided
           ...(encryptedSmtpPassword && { smtpPassword: encryptedSmtpPassword }),
         },

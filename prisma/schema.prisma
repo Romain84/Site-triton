@@ -355,6 +355,8 @@ model Settings {
   ovhApplicationSecret         String?
   ovhConsumerKey               String?
   ovhServiceName               String?  @default("vps-248c64f5.vps.ovh.net")
+  instagramAccountId           String?
+  instagramAccessToken         String?
 
   @@map("settings")
 }
