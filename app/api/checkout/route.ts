@@ -52,12 +52,35 @@ interface ProcessedItem {
   textePersonnalise: string | null
 }
 
-function getCleanBaseUrl(): string {
-  let url = process.env.NEXT_PUBLIC_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = `https://${url}`
+function getCleanBaseUrl(request?: NextRequest): string {
+  if (request) {
+    const origin = request.headers.get('origin')
+    if (origin && origin.startsWith('http')) {
+      return origin.replace(/\/$/, '')
+    }
+    const referer = request.headers.get('referer')
+    if (referer) {
+      try {
+        const u = new URL(referer)
+        return `${u.protocol}//${u.host}`
+      } catch {}
+    }
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host')
+    const proto = request.headers.get('x-forwarded-proto') || 'https'
+    if (host) {
+      return `${proto}://${host}`.replace(/\/$/, '')
+    }
   }
-  return url.replace(/\/$/, '')
+
+  let url = process.env.NEXT_PUBLIC_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || ''
+  if (url) {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `https://${url}`
+    }
+    return url.replace(/\/$/, '')
+  }
+
+  return 'http://localhost:3000'
 }
 
 function getAbsoluteImageUrls(imagePath: string | null | undefined, baseUrl: string): string[] {
@@ -93,7 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { items, customerInfo } = validationResult.data
-    const baseUrl = getCleanBaseUrl()
+    const baseUrl = getCleanBaseUrl(request)
 
     // Générer un numéro de commande unique
     const numeroCommande = `CMD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`

@@ -77,7 +77,14 @@ export async function POST(request: NextRequest) {
       throw createError
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+    const origin = request.headers.get('origin')
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host')
+    const proto = request.headers.get('x-forwarded-proto') || 'https'
+    const baseUrl = (origin && origin.startsWith('http'))
+      ? origin.replace(/\/$/, '')
+      : host
+      ? `${proto}://${host}`.replace(/\/$/, '')
+      : (process.env.NEXT_PUBLIC_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
 
     const dateStr = new Date(seance.dateSeance).toLocaleDateString('fr-FR', {
       weekday: 'long',
