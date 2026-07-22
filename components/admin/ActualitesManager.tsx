@@ -7,6 +7,8 @@ import { useConfirmDialog } from '@/components/ConfirmDialog'
 import RichTextEditor from './RichTextEditor'
 import { formatLongDateFr } from '@/lib/date'
 
+import InstagramShareModal from '@/components/InstagramShareModal'
+
 interface Actualite {
   id: string
   titre: string
@@ -27,6 +29,7 @@ export default function ActualitesManager() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [selectedInstagramArticle, setSelectedInstagramArticle] = useState<Actualite | null>(null)
   const [formData, setFormData] = useState({
     titre: '',
     slug: '',
@@ -500,6 +503,13 @@ export default function ActualitesManager() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <button
+                          onClick={() => setSelectedInstagramArticle(actualite)}
+                          className="px-2.5 py-1 bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white rounded-lg text-xs font-bold hover:opacity-90 transition-opacity mr-3 inline-flex items-center gap-1 shadow-2xs cursor-pointer"
+                          title="Publier / Partager sur Instagram"
+                        >
+                          <span>📸 Instagram</span>
+                        </button>
+                        <button
                           onClick={() => handleEdit(actualite)}
                           className="text-blue-600 hover:text-blue-800 mr-3"
                         >
@@ -529,6 +539,14 @@ export default function ActualitesManager() {
           </table>
         </div>
       </div>
+
+      {selectedInstagramArticle && (
+        <InstagramShareModal
+          isOpen={!!selectedInstagramArticle}
+          onClose={() => setSelectedInstagramArticle(null)}
+          article={selectedInstagramArticle}
+        />
+      )}
     </div>
   )
 }

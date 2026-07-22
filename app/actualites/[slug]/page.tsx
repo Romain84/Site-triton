@@ -92,7 +92,7 @@ export default async function ActualiteDetailPage({ params }: Props) {
             {actualite.auteur && <p className="text-gray-500 mb-4">Par {actualite.auteur}</p>}
 
             {/* Boutons de partage */}
-            <ShareButtons title={actualite.titre} />
+            <ShareButtons title={actualite.titre} slug={actualite.slug} image={actualite.image} />
 
             <div
               className="prose prose-lg max-w-none mt-6 text-gray-700 leading-relaxed"
