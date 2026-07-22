@@ -2,9 +2,35 @@
 
 import { useState, useEffect } from 'react'
 
+interface SystemHealth {
+  memory: {
+    totalMb: number
+    usedMb: number
+    freeMb: number
+    usagePercent: number
+  }
+  cpu: {
+    cores: number
+    model: string
+    loadAvg: number[]
+  }
+  uptime: {
+    seconds: number
+    formatted: string
+  }
+  disk: {
+    totalGb: string
+    usedGb: string
+    freeGb: string
+    usagePercent: number
+    warning: boolean
+  } | null
+}
+
 interface SystemVersionsData {
   name: string
   version: string
+  health?: SystemHealth | null
   runtime: {
     node: string
     platform: string
@@ -52,10 +78,10 @@ export default function SystemVersionsManager() {
           }
         })
       } else {
-        setError('Impossible de charger les versions des composants')
+        setError('Impossible de charger les versions et la santé du système')
       }
     } catch {
-      setError('Erreur lors du chargement des versions')
+      setError('Erreur lors du chargement de la santé du système')
     } finally {
       setLoading(false)
       setCheckingUpdates(false)
@@ -66,7 +92,7 @@ export default function SystemVersionsManager() {
     return (
       <div className="flex justify-center items-center py-16">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="ml-3 text-slate-600 font-medium text-sm">Chargement des versions des composants...</span>
+        <span className="ml-3 text-slate-600 font-medium text-sm">Chargement de la santé et des versions du système...</span>
       </div>
     )
   }
@@ -90,7 +116,6 @@ export default function SystemVersionsManager() {
       item.type.toLowerCase().includes(searchFilter.toLowerCase())
   )
 
-  // Nombre de mises à jour disponibles
   const updateCount = data.latestVersions
     ? allDeps.filter((item) => {
         const latest = data.latestVersions?.[item.name]
@@ -146,13 +171,15 @@ export default function SystemVersionsManager() {
     },
   ]
 
+  const health = data.health
+
   return (
     <div className="space-y-8 max-w-6xl">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Catalogue des Composants & Librairies</h2>
+          <h2 className="text-2xl font-bold text-slate-900">Santé du VPS & Catalogue des Composants</h2>
           <p className="text-sm text-slate-500 mt-1">
-            Visualisez la version exacte de chaque module et vérifiez les mises à jour disponibles sur NPM Registry.
+            Surveillance en temps réel des ressources du VPS (RAM, Disque, CPU) et statut des librairies du projet.
           </p>
         </div>
 
@@ -178,12 +205,111 @@ export default function SystemVersionsManager() {
           <button
             onClick={() => fetchVersions(false)}
             className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
-            title="Rafraîchir les données"
+            title="Rafraîchir les métriques"
           >
             🔄
           </button>
         </div>
       </div>
+
+      {/* DASHBOARD SANTÉ DU SERVEUR VPS (RAM, DISQUE, CPU) */}
+      {health && (
+        <div className="card p-6 bg-slate-950 text-white rounded-3xl shadow-xl space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-3 w-3 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+              </span>
+              <h3 className="font-extrabold text-base tracking-wide text-slate-100">
+                🖥️ Télémétrie en Temps Réel du Serveur VPS
+              </h3>
+            </div>
+            <div className="text-xs font-mono text-slate-400 bg-slate-900/80 px-3 py-1 rounded-full border border-slate-800">
+              Uptime : <strong className="text-emerald-400">{health.uptime.formatted}</strong>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* 1. STOCKAGE DISQUE */}
+            <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <span className="flex items-center gap-1.5">
+                  <span>💾</span> Stockage Disque VPS
+                </span>
+                <span className={health.disk?.warning ? 'text-rose-400 font-black' : 'text-emerald-400 font-mono'}>
+                  {health.disk ? `${health.disk.usagePercent}%` : 'N/A'}
+                </span>
+              </div>
+              {health.disk ? (
+                <>
+                  <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-500 ${
+                        health.disk.warning ? 'bg-rose-500 animate-pulse' : health.disk.usagePercent > 70 ? 'bg-amber-500' : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${health.disk.usagePercent}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1">
+                    <span>Occupé : <strong className="text-slate-200">{health.disk.usedGb} Go</strong></span>
+                    <span>Libre : <strong className="text-slate-200">{health.disk.freeGb} Go</strong></span>
+                    <span>Total : <strong className="text-slate-200">{health.disk.totalGb} Go</strong></span>
+                  </div>
+                  {health.disk.warning && (
+                    <div className="bg-rose-950/80 border border-rose-800/80 text-rose-300 p-2 rounded-xl text-[11px] font-semibold flex items-center gap-2 mt-2">
+                      <span>⚠️</span>
+                      <span>Disque bientôt saturé ! Lancez <code>docker system prune -a</code> sur le VPS.</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-slate-500">Statistiques de disque non disponibles</p>
+              )}
+            </div>
+
+            {/* 2. MÉMOIRE RAM */}
+            <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <span className="flex items-center gap-1.5">
+                  <span>🧠</span> Mémoire RAM Utilisée
+                </span>
+                <span className="text-emerald-400 font-mono">{health.memory.usagePercent}%</span>
+              </div>
+              <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 ${
+                    health.memory.usagePercent > 85 ? 'bg-rose-500' : health.memory.usagePercent > 70 ? 'bg-amber-500' : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${health.memory.usagePercent}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1">
+                <span>Utilisé : <strong className="text-slate-200">{(health.memory.usedMb / 1024).toFixed(2)} Go</strong></span>
+                <span>Libre : <strong className="text-slate-200">{(health.memory.freeMb / 1024).toFixed(2)} Go</strong></span>
+                <span>Total : <strong className="text-slate-200">{(health.memory.totalMb / 1024).toFixed(2)} Go</strong></span>
+              </div>
+            </div>
+
+            {/* 3. PROCESSEUR CPU */}
+            <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <span className="flex items-center gap-1.5">
+                  <span>⚡</span> Charge Processeur CPU
+                </span>
+                <span className="text-slate-300 font-mono">{health.cpu.cores} cœur{health.cpu.cores > 1 ? 's' : ''}</span>
+              </div>
+              <p className="text-[11px] font-mono text-slate-400 truncate" title={health.cpu.model}>
+                {health.cpu.model}
+              </p>
+              <div className="flex items-center justify-between text-[11px] font-mono text-slate-300 bg-slate-950 p-2 rounded-xl border border-slate-850">
+                <span className="text-slate-400">Charge moyenne (1m, 5m, 15m) :</span>
+                <span className="font-bold text-emerald-400">{health.cpu.loadAvg.join(' · ')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Banner des Mises à jour */}
       {data.latestVersions && (
