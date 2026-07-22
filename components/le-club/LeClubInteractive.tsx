@@ -114,7 +114,7 @@ function getInitials(name: string) {
 }
 
 export default function LeClubInteractive() {
-  const [statutsUrl, setStatutsUrl] = useState('https://www.tritoncavaillon.fr/wp-content/uploads/2017/07/20150616statut.pdf')
+  const [statutsUrl, setStatutsUrl] = useState<string | null>(null)
   const [reglementPiscineUrl, setReglementPiscineUrl] = useState<string | null>(null)
   const [reglementClubUrl, setReglementClubUrl] = useState<string | null>(null)
 
@@ -122,18 +122,14 @@ export default function LeClubInteractive() {
     fetch('/api/settings/public')
       .then(res => res.json())
       .then(data => {
-        if (data.statutsUrl) {
-          setStatutsUrl(data.statutsUrl)
-        }
-        if (data.reglementPiscineUrl) {
-          setReglementPiscineUrl(data.reglementPiscineUrl)
-        }
-        if (data.reglementClubUrl) {
-          setReglementClubUrl(data.reglementClubUrl)
-        }
+        setStatutsUrl(data.statutsUrl || null)
+        setReglementPiscineUrl(data.reglementPiscineUrl || null)
+        setReglementClubUrl(data.reglementClubUrl || null)
       })
       .catch(err => console.error('Error fetching settings:', err))
   }, [])
+
+  const hasDocuments = Boolean(statutsUrl || reglementClubUrl || reglementPiscineUrl)
 
   return (
     <div className="space-y-24">
@@ -281,7 +277,7 @@ export default function LeClubInteractive() {
       <section className="grid lg:grid-cols-12 gap-8 items-stretch">
         
         {/* Contacts & Adresse */}
-        <article className="border border-slate-200/60 bg-white rounded-3xl p-8 lg:col-span-7 flex flex-col justify-between space-y-8 shadow-3xs">
+        <article className={`border border-slate-200/60 bg-white rounded-3xl p-8 ${hasDocuments ? 'lg:col-span-7' : 'lg:col-span-12'} flex flex-col justify-between space-y-8 shadow-3xs`}>
           <div className="space-y-2">
             <span className="text-xs uppercase font-extrabold tracking-widest text-primary">Repères Officiels</span>
             <h3 className="text-2xl font-black text-slate-950 tracking-tight">Siège & Informations Pratiques</h3>
@@ -338,14 +334,15 @@ export default function LeClubInteractive() {
         </article>
 
         {/* Documents Officiels & Règlements */}
-        <article className="border border-slate-200/60 bg-white rounded-3xl p-8 lg:col-span-5 flex flex-col justify-between space-y-6 shadow-3xs">
-          <div className="space-y-3">
-            <span className="text-xs uppercase font-extrabold tracking-widest text-primary">Cadre Juridique & Règlements</span>
-            <h3 className="text-2xl font-black text-slate-950 tracking-tight leading-none">Documents Officiels</h3>
-            <p className="text-sm text-slate-550 leading-relaxed font-normal">
-              Retrouvez en libre accès les statuts de l&apos;association ainsi que les règlements intérieurs du club et de la piscine.
-            </p>
-          </div>
+        {hasDocuments && (
+          <article className="border border-slate-200/60 bg-white rounded-3xl p-8 lg:col-span-5 flex flex-col justify-between space-y-6 shadow-3xs">
+            <div className="space-y-3">
+              <span className="text-xs uppercase font-extrabold tracking-widest text-primary">Cadre Juridique & Règlements</span>
+              <h3 className="text-2xl font-black text-slate-950 tracking-tight leading-none">Documents Officiels</h3>
+              <p className="text-sm text-slate-550 leading-relaxed font-normal">
+                Retrouvez en libre accès les statuts de l&apos;association ainsi que les règlements intérieurs du club et de la piscine.
+              </p>
+            </div>
 
           <div className="space-y-3">
             {/* Statuts */}
@@ -433,6 +430,7 @@ export default function LeClubInteractive() {
             )}
           </div>
         </article>
+        )}
       </section>
 
       {/* 6. [EN BAS] GOUVERNANCE & ORGANIGRAMME */}
