@@ -21,6 +21,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_URL=${NEXT_PUBLIC_URL:-https://www.tritoncavaillon.fr}
+        - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://www.tritoncavaillon.fr}
+        - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-https://www.tritoncavaillon.fr}
+        - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-pk_test_51S5tcrLOxXo6f8ZWtiePJopwWZaEGqSY0fFHLVOaT9QqBWeqAIDc3Ja6kElSGFCr9aiCm9UEGJZA5CIgthQauulC00ygGM69UN}
     container_name: triton-web-prod
     restart: always
     depends_on:
@@ -37,7 +42,9 @@ services:
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-sk_test_51S5tcrLOxXo6f8ZWuQHkJXvPWPQ1lDFb7tYzGFPRw7h244rE1YNdvjiNCaeL44bDrwZqpiHhIN3sldG6RyK0Z2nF00kNH3hHbv}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-pk_test_51S5tcrLOxXo6f8ZWtiePJopwWZaEGqSY0fFHLVOaT9QqBWeqAIDc3Ja6kElSGFCr9aiCm9UEGJZA5CIgthQauulC00ygGM69UN}
-      - NEXT_PUBLIC_URL=${NEXT_PUBLIC_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_URL=${NEXT_PUBLIC_URL:-https://www.tritoncavaillon.fr}
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://www.tritoncavaillon.fr}
+      - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-https://www.tritoncavaillon.fr}
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:-lJrBYMfUx2uZAOWYkKswSZjdzsCa7wc4}
     command: >
       sh -c "
