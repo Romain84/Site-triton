@@ -126,7 +126,10 @@ export default function Header() {
           <hr className="my-2 border-slate-100" />
           <div className="grid grid-cols-1 gap-1.5 pt-1">
             <Link href="/inscription" className="block py-2.5 px-3 text-center rounded-lg bg-slate-900 text-white font-bold text-xs" onClick={() => setIsMobileMenuOpen(false)}>Accéder à MonClub.fr</Link>
-            <Link href="/boutique" className="block py-2.5 px-3 text-center rounded-lg bg-white border border-slate-200 text-slate-700 font-bold text-xs" onClick={() => setIsMobileMenuOpen(false)}>Boutique</Link>
+            <div className="grid grid-cols-2 gap-2">
+              <Link href="/boutique" className="block py-2.5 px-3 text-center rounded-lg bg-white border border-slate-200 text-slate-700 font-bold text-xs" onClick={() => setIsMobileMenuOpen(false)}>Boutique</Link>
+              <a href="https://tritonapp.fr" target="_blank" rel="noopener noreferrer" className="block py-2.5 px-3 text-center rounded-lg bg-white border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-all" onClick={() => setIsMobileMenuOpen(false)}>Performance</a>
+            </div>
             <hr className="my-1.5 border-slate-100" />
             <div className="grid grid-cols-2 gap-2">
               <Link href="/coach/login" className="block py-2 px-3 text-center rounded-lg bg-slate-50 border border-slate-150 text-slate-500 font-semibold text-xs hover:bg-slate-100" onClick={() => setIsMobileMenuOpen(false)}>Coach</Link>
