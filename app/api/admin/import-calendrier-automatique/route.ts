@@ -141,11 +141,10 @@ function makePagerender() {
     }
 
     const pageText = [...buckets.entries()]
-      .sort(([a], [b]) => b - a) // haut → bas
+      .sort(([a], [b]) => b - a) // haut → bas (Y descendant)
       .map(([, items]) => {
-        // Page calendrier : trier gauche → droite pour reconstruire les colonnes
-        // Autres pages : ordre naturel du PDF (déjà correct)
-        if (isCalendarPage) items.sort((a, b) => a.x - b.x);
+        // Toujours trier gauche → droite (X ascendant) pour reconstruire les colonnes et lignes
+        items.sort((a, b) => a.x - b.x);
         return items.map(i => i.text).join(' ');
       })
       .join('\n');
