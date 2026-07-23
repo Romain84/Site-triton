@@ -622,16 +622,13 @@ export function parseCalendarEventsFromText(
   let currentYear = new Date().getFullYear()
 
   for (const line of lines) {
-    if (!/^\d{1,2}\b/.test(line)) {
-      const monthMatch = line.match(MONTH_HEADER_RE)
-      if (monthMatch) {
-        const monthKey = normalizeAccents(monthMatch[1].toUpperCase())
-        if (MONTH_MAP[monthKey]) {
-          currentMonth = MONTH_MAP[monthKey]
-          if (monthMatch[2]) {
-            currentYear = parseInt(monthMatch[2], 10)
-          }
-          continue
+    const monthMatch = line.match(MONTH_HEADER_RE)
+    if (monthMatch) {
+      const monthKey = normalizeAccents(monthMatch[1].toUpperCase())
+      if (MONTH_MAP[monthKey]) {
+        currentMonth = MONTH_MAP[monthKey]
+        if (monthMatch[2]) {
+          currentYear = parseInt(monthMatch[2], 10)
         }
       }
     }
