@@ -159,14 +159,20 @@ export function createSmtpTransport(settings: SmtpSettings) {
   const isGmailUser = /@gmail\.com$/i.test(settings.smtpUser) || /@googlemail\.com$/i.test(settings.smtpUser)
   const isGmail = isGmailHost || isGmailUser
 
- const transportOptions: SMTPTransport.Options & { family?: number } = {
+  // Si c'est un compte Gmail, nettoyer automatiquement les espaces éventuels du mot de passe d'application (ex: "abcd efgh ijkl mnop")
+  let cleanPassword = settings.smtpPassword || ''
+  if (isGmail && cleanPassword) {
+    cleanPassword = cleanPassword.replace(/\s+/g, '')
+  }
+
+  const transportOptions: SMTPTransport.Options & { family?: number } = {
     host: isGmail ? 'smtp.gmail.com' : settings.smtpHost,
-    port: settings.smtpPort,
+    port: settings.smtpPort || 587,
     secure: settings.smtpPort === 465,
     requireTLS: settings.smtpPort !== 465,
     auth: {
-      user: settings.smtpUser,
-      pass: settings.smtpPassword,
+      user: settings.smtpUser?.trim(),
+      pass: cleanPassword,
     },
     family: 4,
     connectionTimeout: 30000,
@@ -176,12 +182,8 @@ export function createSmtpTransport(settings: SmtpSettings) {
     tls: {
       minVersion: 'TLSv1.2',
       servername: isGmail ? 'smtp.gmail.com' : settings.smtpHost,
+      rejectUnauthorized: false,
     },
-  }
-
-  if (isGmail) {
-    // Gmail: force le mode de service pour fiabiliser l'authentification
-    transportOptions.service = 'gmail'
   }
 
   return nodemailer.createTransport(transportOptions)
