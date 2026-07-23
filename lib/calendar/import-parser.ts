@@ -708,22 +708,27 @@ export function parseCalendarEventsFromText(
 
   // Fallback if no events were parsed sequentially (e.g. because month headers are grouped at the bottom)
   if (events.length === 0) {
-    const FALLBACK_MONTHS = [
-      1, 1, 1,                   // Jan (Indices 0-2)
-      2, 2, 2, 2,                // Feb (Indices 3-6)
-      3, 3, 3, 3,                // Mar (Indices 7-10)
-      4, 4, 4, 4,                // Apr (Indices 11-14)
-      5, 5, 5, 5, 5, 5, 5, 5, 5, // May (Indices 15-23)
-      6, 6, 6, 6, 6, 6, 6,       // Jun (Indices 24-30)
-      7, 7,                      // Jul (Indices 31-32)
-      8,                         // Aug (Index 33)
-      9,                         // Sep (Index 34)
-      10                         // Oct (Index 35)
-    ]
+    // Dynamic fallback: detect months from text + day-decrease grouping
+    // instead of a fragile static index→month mapping
 
+    // 1. Collect month headers from the text
+    const detectedMonths: number[] = []
+    for (const line of lines) {
+      const mm = line.match(MONTH_HEADER_RE)
+      if (mm) {
+        const monthClean = mm[1].replace(/\s+/g, '')
+        const monthKey = normalizeAccents(monthClean.toUpperCase())
+        const m = MONTH_MAP[monthKey]
+        if (m && !detectedMonths.includes(m)) detectedMonths.push(m)
+      }
+    }
+    detectedMonths.sort((a, b) => a - b)
+
+    // 2. Collect event lines (excluding headers, skip lines, etc.)
     const eventLines: string[] = []
     for (const line of lines) {
       if (SKIP_LINE_RE.test(line)) continue
+      if (line.match(MONTH_HEADER_RE)) continue
       const evMatch = line.match(EVENT_LINE_RE)
       if (!evMatch) continue
       const day1 = parseInt(evMatch[1], 10)
@@ -733,25 +738,52 @@ export function parseCalendarEventsFromText(
       eventLines.push(line)
     }
 
-    eventLines.forEach((line, index) => {
+    // 3. Group events by day-number decrease (= month boundary)
+    const groups: string[][] = []
+    let curGroup: string[] = []
+    let prevD = 0
+    for (const evLine of eventLines) {
+      const d = parseInt(evLine.match(EVENT_LINE_RE)![1], 10)
+      if (d < prevD && curGroup.length > 0) {
+        groups.push(curGroup)
+        curGroup = []
+      }
+      curGroup.push(evLine)
+      prevD = d
+    }
+    if (curGroup.length > 0) groups.push(curGroup)
+
+    // 4. Build complete month sequence (fill gaps between detected months)
+    const monthSequence: number[] = []
+    if (detectedMonths.length >= 2) {
+      for (let m = detectedMonths[0]; m <= detectedMonths[detectedMonths.length - 1]; m++) {
+        monthSequence.push(m)
+      }
+    } else {
+      for (let m = 1; m <= 12; m++) monthSequence.push(m)
+    }
+
+    // 5. Map groups to months and emit events
+    const year = currentYear || new Date().getFullYear()
+    let mIdx = 0
+
+    function emitEvent(line: string, evYear: number, month: number) {
       const evMatch = line.match(EVENT_LINE_RE)!
       const day1 = parseInt(evMatch[1], 10)
       const rawRest = evMatch[3]
 
-      const month = FALLBACK_MONTHS[index] || 12
-      const year = currentYear || new Date().getFullYear()
-
-      const dateDebut = buildDate(year, month, day1)
+      const dateDebut = buildDate(evYear, month, day1)
 
       let dateFin: string | null = null
       if (evMatch[2]) {
         const part2 = evMatch[2]
         if (part2.includes('/')) {
           const [d, m] = part2.split('/').map(Number)
-          dateFin = buildDate(year, m, d)
+          const finYear = m < month ? evYear + 1 : evYear
+          dateFin = buildDate(finYear, m, d)
         } else {
           const day2 = parseInt(part2, 10)
-          if (day2 >= day1 && day2 <= 31) dateFin = buildDate(year, month, day2)
+          if (day2 >= day1 && day2 <= 31) dateFin = buildDate(evYear, month, day2)
         }
       }
 
@@ -791,7 +823,30 @@ export function parseCalendarEventsFromText(
       }
 
       events.push(event)
-    })
+    }
+
+    for (let gi = 0; gi < groups.length; gi++) {
+      if (mIdx >= monthSequence.length) break
+      const group = groups[gi]
+      const isLastGroup = gi === groups.length - 1
+      const remainingMonths = monthSequence.length - mIdx
+
+      // For the last group with few events and many remaining months,
+      // each event likely belongs to its own month (e.g. Aug, Sep, Oct events)
+      if (isLastGroup && group.length > 1 && group.length <= remainingMonths && group.length <= 4) {
+        for (const line of group) {
+          if (mIdx >= monthSequence.length) break
+          emitEvent(line, year, monthSequence[mIdx])
+          mIdx++
+        }
+      } else {
+        const month = monthSequence[mIdx]
+        for (const line of group) {
+          emitEvent(line, year, month)
+        }
+        mIdx++
+      }
+    }
   }
 
   return events.slice(0, 200)

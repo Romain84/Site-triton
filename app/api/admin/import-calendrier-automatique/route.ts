@@ -18,18 +18,7 @@ const LOCATIONS = [
   'Tarbes', 'Aix en Provence', 'Saint Etienne', 'Martigues', 'Cannet-en-Roussillon', 'Cavaillon ?', 'Cavaillon'
 ];
 
-// Exact month mapping by event index (0 to 35) for 2026 season
-const INDEX_TO_MONTH: Record<number, number> = {
-  0: 1, 1: 1, 2: 1, // Janvier
-  3: 2, 4: 2, 5: 2, 6: 2, // Février
-  7: 3, 8: 3, 9: 3, 10: 3, // Mars
-  11: 4, 12: 4, 13: 4, 14: 4, // Avril
-  15: 5, 16: 5, 17: 5, 18: 5, 19: 5, 20: 5, 21: 5, 22: 5, 23: 5, // Mai
-  24: 6, 25: 6, 26: 6, 27: 6, 28: 6, 29: 6, 30: 6, // Juin
-  31: 7, 32: 7, // Juillet
-  33: 9, 34: 9, // Septembre
-  35: 10 // Octobre
-};
+
 
 // Maps categories to database groups
 function getGroupIdsForCategories(categories: string, dbGroups: any[]): string[] {
@@ -110,22 +99,32 @@ function makeReglementPagerender() {
   };
 }
 
-function makePagerender() {
-  let currentPage = 0;
+/**
+ * Extrait le texte du PDF calendrier en utilisant pdfjs-dist directement.
+ * Utilise les coordonnées Y des éléments PDF pour trier les lignes de haut en bas,
+ * garantissant que les en-têtes de mois apparaissent AVANT leurs événements.
+ *
+ * Le PDFParse.getText() standard ne préserve pas l'ordre visuel Y, ce qui causait
+ * les en-têtes de mois à apparaître APRÈS les événements dans le texte extrait,
+ * forçant un fallback statique index→mois fragile et incorrect.
+ */
+async function extractCalendarTextFromPdf(buffer: Buffer): Promise<string> {
+  // Import dynamique de pdfjs-dist (module ESM)
+  // pathToFileURL nécessaire pour compatibilité Windows avec les imports ESM
+  const { pathToFileURL } = await import('url');
+  const path = await import('path');
+  const pdfjsPath = path.join(process.cwd(), 'node_modules', 'pdfjs-dist', 'legacy', 'build', 'pdf.mjs');
+  const pdfjsLib: any = await import(pathToFileURL(pdfjsPath).href);
 
-  return async function pagerender(pageData: any): Promise<string> {
-    currentPage++;
-    const content = await pageData.getTextContent();
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
 
-    // Détecter si cette page contient le titre unique du calendrier
-    const isCalendarPage = content.items.some((item: any) =>
-      (item.str ?? '').includes('CALENDRIER COMPÉTITIONS')
-    );
+  let fullText = '';
 
-    if (isCalendarPage) {
-      importLogger.info(`Page calendrier détectée dynamiquement à la page ${currentPage}`);
-    }
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const content = await page.getTextContent();
 
+    // Grouper les éléments par position Y (tolérance ±3 pour même alignement visuel)
     const buckets = new Map<number, Array<{ x: number; text: string }>>();
     for (const item of content.items as any[]) {
       const str: string = item.str ?? '';
@@ -140,17 +139,19 @@ function makePagerender() {
       buckets.get(key)!.push({ x, text: str });
     }
 
+    // Trier par Y décroissant (haut → bas) puis X croissant (gauche → droite)
     const pageText = [...buckets.entries()]
-      .sort(([a], [b]) => b - a) // haut → bas (Y descendant)
+      .sort(([a], [b]) => b - a)
       .map(([, items]) => {
-        // Toujours trier gauche → droite (X ascendant) pour reconstruire les colonnes et lignes
         items.sort((a, b) => a.x - b.x);
         return items.map(i => i.text).join(' ');
       })
       .join('\n');
 
-    return `${pageText}\n__PAGE_NUMBER__:${currentPage}\n`;
-  };
+    fullText += pageText + '\n';
+  }
+
+  return fullText;
 }
 
 async function parsePdfText(buffer: Buffer, options?: Record<string, unknown>): Promise<string> {
@@ -242,7 +243,16 @@ export async function POST(request: NextRequest) {
     const allSheets = [...sheets, ...regionalSheets];
 
     // 3. Extraire le texte du PDF calendrier et parser les événements de manière robuste
-    const calendarText = await parsePdfText(calendarBuffer, { pagerender: makePagerender() });
+    // Extraction du texte calendrier avec tri par position Y (pdfjs-dist direct)
+    // Fallback sur PDFParse si pdfjs-dist échoue
+    let calendarText: string;
+    try {
+      calendarText = await extractCalendarTextFromPdf(calendarBuffer);
+      importLogger.info('Texte calendrier extrait avec tri par position Y (pdfjs-dist).');
+    } catch (extractErr) {
+      importLogger.warn('Extraction positionnelle échouée, fallback sur extraction par défaut:', extractErr);
+      calendarText = await parsePdfText(calendarBuffer, {});
+    }
     const events = parseCalendarEventsFromText(calendarText, allSheets);
     importLogger.info(`Parsed ${events.length} events from calendar PDF using robust regex parser.`);
 
