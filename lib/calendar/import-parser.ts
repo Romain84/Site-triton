@@ -65,7 +65,7 @@ const MONTH_MAP: Record<string, number> = {
 }
 
 const MONTH_HEADER_RE =
-  /\b(JANVIER|FEVRIER|FÉVRIER|MARS|AVRIL|MAI|JUIN|JUILLET|AO[ÛU]T|SEPTEMBRE|OCTOBRE|NOVEMBRE|D[ÉE]CEMBRE)(?:\s+(\d{4}))?\b/i
+  /\b(J\s*A\s*N\s*V\s*I\s*E\s*R|F\s*[EÉ]\s*V\s*R\s*I\s*E\s*R|M\s*A\s*R\s*S|A\s*V\s*R\s*I\s*L|M\s*A\s*I|J\s*U\s*I\s*N|J\s*U\s*I\s*L\s*L\s*E\s*T|A\s*O\s*[ÛU]\s*T|S\s*E\s*P\s*T\s*E\s*M\s*B\s*R\s*E|O\s*C\s*T\s*O\s*B\s*R\s*E|N\s*O\s*V\s*E\s*M\s*B\s*R\s*E|D\s*[EÉ]\s*C\s*E\s*M\s*B\s*R\s*E)(?:\s*([\d\s]{4,7}))?\b/i
 
 const EVENT_LINE_RE = /^(\d{1,2})(?:\s+(\d{1,2}(?:\/\d{2})?))?(?:\s+(.+))?$/
 
@@ -624,11 +624,15 @@ export function parseCalendarEventsFromText(
   for (const line of lines) {
     const monthMatch = line.match(MONTH_HEADER_RE)
     if (monthMatch) {
-      const monthKey = normalizeAccents(monthMatch[1].toUpperCase())
+      const monthClean = monthMatch[1].replace(/\s+/g, '')
+      const monthKey = normalizeAccents(monthClean.toUpperCase())
       if (MONTH_MAP[monthKey]) {
         currentMonth = MONTH_MAP[monthKey]
         if (monthMatch[2]) {
-          currentYear = parseInt(monthMatch[2], 10)
+          const yrClean = monthMatch[2].replace(/\s+/g, '')
+          if (/^\d{4}$/.test(yrClean)) {
+            currentYear = parseInt(yrClean, 10)
+          }
         }
       }
     }
