@@ -85,11 +85,13 @@ function getCleanBaseUrl(request?: NextRequest): string {
 
 function getAbsoluteImageUrls(imagePath: string | null | undefined, baseUrl: string): string[] {
   if (!imagePath) return []
-  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    return [imagePath]
-  }
+  let fullUrl = imagePath
   if (imagePath.startsWith('/')) {
-    return [`${baseUrl}${imagePath}`]
+    fullUrl = `${baseUrl}${imagePath}`
+  }
+  // Stripe exige une URL HTTPS publique valide reachable depuis Internet (pas de http://localhost ou 127.0.0.1)
+  if (fullUrl.startsWith('https://') && !fullUrl.includes('localhost') && !fullUrl.includes('127.0.0.1')) {
+    return [fullUrl]
   }
   return []
 }
