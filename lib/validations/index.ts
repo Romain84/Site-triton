@@ -6,8 +6,8 @@ import { z } from 'zod'
  * Valide une date au format string (YYYY-MM-DD ou ISO)
  */
 export const dateString = z
-  .string()
-  .refine((val) => !isNaN(Date.parse(val)), {
+  .union([z.string(), z.date()])
+  .refine((val) => !isNaN(Date.parse(val instanceof Date ? val.toISOString() : val)), {
     message: 'Date invalide',
   })
 
@@ -15,9 +15,10 @@ export const dateString = z
  * Date optionnelle
  */
 export const optionalDateString = z
-  .string()
+  .union([z.string(), z.date()])
   .optional()
-  .refine((val) => !val || !isNaN(Date.parse(val)), {
+  .nullable()
+  .refine((val) => !val || !isNaN(Date.parse(val instanceof Date ? val.toISOString() : val)), {
     message: 'Date invalide',
   })
 
