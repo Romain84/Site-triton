@@ -65,7 +65,7 @@ const MONTH_MAP: Record<string, number> = {
 }
 
 const MONTH_HEADER_RE =
-  /^(JANVIER|FEVRIER|MARS|AVRIL|MAI|JUIN|JUILLET|AO[ÛU]T|SEPTEMBRE|OCTOBRE|NOVEMBRE|D[ÉE]CEMBRE)\s+(\d{4})\s*$/i
+  /\b(JANVIER|FEVRIER|FÉVRIER|MARS|AVRIL|MAI|JUIN|JUILLET|AO[ÛU]T|SEPTEMBRE|OCTOBRE|NOVEMBRE|D[ÉE]CEMBRE)(?:\s+(\d{4}))?\b/i
 
 const EVENT_LINE_RE = /^(\d{1,2})(?:\s+(\d{1,2}(?:\/\d{2})?))?(?:\s+(.+))?$/
 
@@ -622,12 +622,18 @@ export function parseCalendarEventsFromText(
   let currentYear = new Date().getFullYear()
 
   for (const line of lines) {
-    const monthMatch = line.match(MONTH_HEADER_RE)
-    if (monthMatch) {
-      const monthKey = normalizeAccents(monthMatch[1].toUpperCase())
-      currentMonth = MONTH_MAP[monthKey] ?? currentMonth
-      currentYear  = parseInt(monthMatch[2], 10)
-      continue
+    if (!/^\d{1,2}\b/.test(line)) {
+      const monthMatch = line.match(MONTH_HEADER_RE)
+      if (monthMatch) {
+        const monthKey = normalizeAccents(monthMatch[1].toUpperCase())
+        if (MONTH_MAP[monthKey]) {
+          currentMonth = MONTH_MAP[monthKey]
+          if (monthMatch[2]) {
+            currentYear = parseInt(monthMatch[2], 10)
+          }
+          continue
+        }
+      }
     }
 
     if (SKIP_LINE_RE.test(line)) continue
