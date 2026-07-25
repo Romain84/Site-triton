@@ -24,6 +24,8 @@ async function submitContactAction(prevState: ActionState | null, formData: Form
   const sujet = (formData.get('sujet') as string) || ''
   const message = (formData.get('message') as string) || ''
 
+  const website = (formData.get('website') as string) || ''
+
   // Validation
   const errors: NonNullable<ActionState['fieldErrors']> = {}
   if (nom.trim().length < 2) errors.nom = 'Le nom doit contenir au moins 2 caractères.'
@@ -40,7 +42,7 @@ async function submitContactAction(prevState: ActionState | null, formData: Form
     const response = await fetch('/api/contact', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nom, email, telephone, sujet, message }),
+      body: JSON.stringify({ nom, email, telephone, sujet, message, website }),
     })
 
     if (response.ok) {
@@ -93,6 +95,12 @@ export default function ContactForm() {
 
   return (
     <form ref={formRef} action={formAction} className="space-y-5">
+      {/* Honeypot Anti-Bot (invisible pour les humains, rempli par les spambots) */}
+      <div className="sr-only" aria-hidden="true" style={{ display: 'none' }}>
+        <label htmlFor="website">Ne pas remplir ce champ</label>
+        <input type="text" id="website" name="website" tabIndex={-1} autoComplete="off" />
+      </div>
+
       {state?.message && (
         <FormStatus type={state.success ? 'success' : 'error'} message={state.message} />
       )}
