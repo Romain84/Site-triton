@@ -22,17 +22,75 @@ export const metadata: Metadata = defaultMetadata
 
 const jsonLd = {
   '@context': 'https://schema.org',
-  '@type': 'SportsClub',
+  '@type': ['SportsClub', 'SportsActivityLocation'],
   name: 'Triton Club Cavaillon',
+  alternateName: ['TRITON CLUB CAVAILLON', 'Triton Club Natation'],
   url: 'https://tritoncavaillon.fr',
   logo: 'https://tritoncavaillon.fr/images/logo.png',
-  image: 'https://tritoncavaillon.fr/images/logo.png',
-  description: 'Club de natation à Cavaillon (84). Natation compétition FFN, loisir, artistique, aquagym.',
+  image: [
+    'https://tritoncavaillon.fr/images/logo.png',
+    'https://tritoncavaillon.fr/images/hero-background.JPG',
+  ],
+  description: 'Club de natation affilié FFN à Cavaillon (84). Natation compétition, école de natation, loisirs, natation artistique, aquagym et BNSSA pour tous les âges.',
   address: {
     '@type': 'PostalAddress',
+    streetAddress: 'Piscine Alphonse Maureau, Avenue Raoul Follereau',
     addressLocality: 'Cavaillon',
     postalCode: '84300',
+    addressRegion: 'Vaucluse',
     addressCountry: 'FR',
+  },
+  geo: {
+    '@type': 'GeoCoordinates',
+    latitude: 43.8344,
+    longitude: 5.0381,
+  },
+  telephone: '+33 4 90 71 00 00',
+  priceRange: '€€',
+  sameAs: [
+    'https://www.ffnatation.fr',
+    'https://tritonapp.fr',
+  ],
+  offerCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Activités et Cours de Natation',
+    itemListElement: [
+      {
+        '@type': 'Offer',
+        itemOffered: {
+          '@type': 'Service',
+          name: 'École de Natation & Avenirs (Enfants)',
+        },
+      },
+      {
+        '@type': 'Offer',
+        itemOffered: {
+          '@type': 'Service',
+          name: 'Natation Compétition FFN (Benjamins, Juniors, Seniors)',
+        },
+      },
+      {
+        '@type': 'Offer',
+        itemOffered: {
+          '@type': 'Service',
+          name: 'Natation Maîtres & Adultes',
+        },
+      },
+      {
+        '@type': 'Offer',
+        itemOffered: {
+          '@type': 'Service',
+          name: 'Aquagym & Forme',
+        },
+      },
+      {
+        '@type': 'Offer',
+        itemOffered: {
+          '@type': 'Service',
+          name: 'Natation Artistique',
+        },
+      },
+    ],
   },
 }
 
