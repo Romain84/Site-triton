@@ -31,13 +31,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Articles d'actualités dynamiques depuis la base de données
   try {
     const articles = await prisma.actualite.findMany({
-      where: { publiee: true },
-      select: { id: true, slug: true, updatedAt: true, datePublication: true },
+      where: { publie: true },
+      select: { id: true, slug: true, updatedAt: true, datePubli: true },
     })
 
     const articleEntries: MetadataRoute.Sitemap = articles.map((article) => ({
       url: `${baseUrl}/actualites/${article.slug || article.id}`,
-      lastModified: article.updatedAt || article.datePublication || new Date(),
+      lastModified: article.updatedAt || article.datePubli || new Date(),
       changeFrequency: 'monthly',
       priority: 0.7,
     }))
