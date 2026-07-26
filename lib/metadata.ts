@@ -9,7 +9,7 @@ export const defaultMetadata: Metadata = {
     template: '%s | Triton Club Cavaillon',
   },
   description:
-    'Club de natation à Cavaillon (84). Natation compétition FFN, loisir, artistique, aquagym et aquaphobie pour tous les âges. Inscriptions ouvertes.',
+    'Club de natation à Cavaillon (84). Natation compétition FFN, loisir, artistique et aquagym pour tous les âges. Inscriptions ouvertes.',
   keywords: [
     'natation',
     'club natation',
@@ -40,7 +40,7 @@ export const defaultMetadata: Metadata = {
     siteName: 'Triton Club Cavaillon',
     title: 'Triton Club Cavaillon - Club de natation',
     description:
-      'Club de natation à Cavaillon (84). Natation compétition FFN, loisir, artistique, aquagym et aquaphobie pour tous les âges.',
+      'Club de natation à Cavaillon (84). Natation compétition FFN, loisir, artistique et aquagym pour tous les âges.',
     images: [
       {
         url: '/images/hero-background.JPG',
@@ -54,7 +54,7 @@ export const defaultMetadata: Metadata = {
     card: 'summary_large_image',
     title: 'Triton Club Cavaillon - Club de natation',
     description:
-      'Club de natation à Cavaillon (84). Natation compétition FFN, loisir, artistique, aquagym et aquaphobie.',
+      'Club de natation à Cavaillon (84). Natation compétition FFN, loisir, artistique et aquagym.',
     images: ['/images/hero-background.JPG'],
   },
   robots: {
