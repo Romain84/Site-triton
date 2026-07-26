@@ -68,6 +68,18 @@ export const defaultMetadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  icons: {
+    icon: [
+      { url: '/images/logo.png', type: 'image/png' },
+      { url: '/favicon.ico' },
+    ],
+    shortcut: '/images/logo.png',
+    apple: [
+      { url: '/apple-touch-icon.png' },
+      { url: '/images/logo.png' },
+    ],
+  },
+  manifest: '/manifest.json',
   verification: {
     google: 'your-google-verification-code', // À remplacer par le vrai code
   },

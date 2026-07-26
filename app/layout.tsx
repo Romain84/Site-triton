@@ -20,6 +20,22 @@ const outfit = Outfit({
 
 export const metadata: Metadata = defaultMetadata
 
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SportsClub',
+  name: 'Triton Club Cavaillon',
+  url: 'https://tritoncavaillon.fr',
+  logo: 'https://tritoncavaillon.fr/images/logo.png',
+  image: 'https://tritoncavaillon.fr/images/logo.png',
+  description: 'Club de natation à Cavaillon (84). Natation compétition FFN, loisir, artistique, aquagym.',
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'Cavaillon',
+    postalCode: '84300',
+    addressCountry: 'FR',
+  },
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,6 +43,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${plusJakarta.variable} ${outfit.variable}`}>
+      <head>
+        <link rel="icon" href="/images/logo.png" type="image/png" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/images/logo.png" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className="font-sans antialiased">
         <AppProviders>
           <Header />
