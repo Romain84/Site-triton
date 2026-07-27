@@ -1,119 +1,11 @@
-import { genkit, z } from 'genkit'
-import mistral, { openMistral7B, openMistralSmall, openMistralLarge, openMinistral8B } from 'genkitx-mistral'
 import { getPlanningKnowledgeBase, getGroupesKnowledgeBase, getCustomKnowledgeBase, getCorrectedSuggestionsKnowledgeBase, getCalendrierKnowledgeBase } from './chatbot-knowledge'
 import { prisma } from './prisma'
+import { logger } from './logger'
 
-// Initialize Genkit with Mistral AI plugin
-const ai = genkit({
-  plugins: [
-    mistral({
-      apiKey: process.env.MISTRAL_API_KEY,
-    }),
-  ],
-})
-
-// --- DEFINITION DES OUTILS GENKIT 1.X ---
-
-const getContactInfo = ai.defineTool(
-  {
-    name: 'getContactInfo',
-    description: 'Récupère les informations de contact officielles du Triton Club Cavaillon (email, adresse de la piscine, horaires secrétariat).',
-    inputSchema: z.object({}),
-  },
-  async () => {
-    const settings = await prisma.settings.findFirst({ select: { emailClub: true } })
-    return `Triton Club Cavaillon
-Adresse : Piscine Municipale Alphonse Roudière, Avenue Jean Moulin, Quartier La Clède, 84300 Cavaillon
-Email : ${settings?.emailClub || 'tritoncavaillon@gmail.com'}
-Secrétariat : Ouvert du Lundi au Vendredi de 17h00 à 19h00 et le Samedi de 9h00 à 12h00.`
-  }
-)
-
-const getPlanningInfo = ai.defineTool(
-  {
-    name: 'getPlanningInfo',
-    description: 'Récupère les horaires des cours et des entraînements de natation du club.',
-    inputSchema: z.object({}),
-  },
-  async () => {
-    return getPlanningKnowledgeBase()
-  }
-)
-
-const getGroupesInfo = ai.defineTool(
-  {
-    name: 'getGroupesInfo',
-    description: 'Récupère la liste des groupes de natation, leurs tarifs (cotisations) et le nombre de places disponibles.',
-    inputSchema: z.object({}),
-  },
-  async () => {
-    return getGroupesKnowledgeBase()
-  }
-)
-
-const getFAQAnswers = ai.defineTool(
-  {
-    name: 'getFAQAnswers',
-    description: 'Recherche des réponses aux questions fréquentes sur le club (inscriptions, documents requis, règlements).',
-    inputSchema: z.object({}),
-  },
-  async () => {
-    return getCustomKnowledgeBase()
-  }
-)
-
-const getCorrectedSuggestions = ai.defineTool(
-  {
-    name: 'getCorrectedSuggestions',
-    description: 'Récupère des réponses spécifiques ou corrections personnalisées configurées par les administrateurs.',
-    inputSchema: z.object({}),
-  },
-  async () => {
-    return getCorrectedSuggestionsKnowledgeBase()
-  }
-)
-
-function getModelRef(modelName: string | null | undefined) {
-  switch (modelName?.toLowerCase()) {
-    case 'mistral-large':
-      return openMistralLarge
-    case 'mistral-small':
-    case 'ministral-8b':
-    case 'mistral-7b':
-    default:
-      return openMistralSmall
-  }
-}
-
-// FAQ data structure - Informations générales statiques
-const faqDataStatique = `
-**Informations générales :**
-- Le Triton Club Cavaillon est un club de natation situé à Cavaillon.
-- Nous proposons des cours pour tous les âges et tous les niveaux.
-- Nos entraîneurs sont qualifiés et expérimentés.
-
-**Contact :**
-- Adresse : Piscine Municipale, Avenue Pierre de Coubertin, 84300 Cavaillon
-- Email : tritoncavaillon@gmail.com
-
-**Horaires du secrétariat :**
-- Lundi - Vendredi : 17h00 - 19h00
-- Samedi : 9h00 - 12h00
-- Dimanche : Fermé
-(Horaires susceptibles de varier pendant les vacances scolaires)
-
-**Inscriptions :**
-- Les inscriptions se font en ligne via le formulaire de contact ou directement à la piscine pendant les heures d'ouverture du secrétariat.
-- Documents nécessaires : Certificat médical de non contre-indication à la pratique de la natation, photo d'identité, et formulaire d'inscription complété.
-
-**Compétitions :**
-- Le club participe à des compétitions régionales et nationales.
-- Les nageurs sont répartis en catégories : Avenirs, Benjamins, Juniors, Adultes.
-- Le calendrier des compétitions est disponible dans la section Calendrier du site.
-`
+const chatLogger = logger.withContext('GenkitChat')
 
 /**
- * Get response from Mistral AI chatbot using Genkit
+ * Get response from Mistral AI chatbot
  * @param userMessage The user's message
  * @param history Historique de conversation optionnel pour le contexte
  * @returns The chatbot's response
@@ -138,7 +30,8 @@ export async function getChatResponse(
     getCalendrierKnowledgeBase(),
   ])
 
-  const activeModel = getModelRef(settings?.chatbotModel)
+  const activeModelName = settings?.chatbotModel || 'mistral-small-latest'
+  const modelToUse = activeModelName === 'mistral-large' ? 'mistral-large-latest' : 'mistral-small-latest'
 
   const now = new Date()
   const dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
@@ -157,7 +50,7 @@ INFORMATIONS TEMPORELLES EN TEMPS RÉEL (CRITIQUE) :
 - Date aujourd'hui : ${formattedDate}
 - Jour actuel de la semaine : ${dayOfWeek}
 - Heure actuelle : ${formattedTime}
-Utilise TOUJOURS ces informations pour situer les demandes temporelles (ex. "ce soir", "aujourd'hui", "demain", "ce week-end", "lundi prochain"). Par exemple, si l'utilisateur demande "les cours de ce soir", base-toi sur le jour de la semaine actuel (${dayOfWeek}) pour lui indiquer les cours de ce jour-là.
+Utilise TOUJOURS ces informations pour situer les demandes temporelles (ex. "ce soir", "aujourd'hui", "demain", "ce week-end", "lundi prochain").
 
 INFORMATIONS OFFICIELLES DU CLUB (CONNAISSANCES EN TEMPS RÉEL) :
 
@@ -194,63 +87,73 @@ RÈGLES STRICTES DE RÉPONSE :
    - Pour les documents officiels : [page des téléchargements](/telechargements)
 `
 
-  // Mapper l'historique au format attendu par Genkit
-  const messages: any[] = []
+  const messagesPayload: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+    { role: 'system', content: systemInstructions },
+  ]
+
   if (history && history.length > 0) {
     for (const msg of history) {
-      messages.push({
-        role: msg.role === 'user' ? 'user' : 'model',
-        content: [{ text: msg.content }]
+      messagesPayload.push({
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.content,
       })
     }
   }
 
-  // Ajouter la nouvelle question de l'utilisateur
-  messages.push({
+  messagesPayload.push({
     role: 'user',
-    content: [{ text: userMessage }]
+    content: userMessage,
   })
 
-  let response: any
-  try {
-    response = await ai.generate({
-      model: activeModel,
-      system: systemInstructions,
-      messages: messages,
-      config: {
-        temperature: 0.3,
+  let res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: modelToUse,
+      messages: messagesPayload,
+      temperature: 0.3,
+    }),
+  })
+
+  if (!res.ok) {
+    chatLogger.warn(`Repli modèle sur mistral-small-latest après HTTP ${res.status}`)
+    res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
       },
-    })
-  } catch (err: any) {
-    console.warn('Erreur modèle chatbot, repli automatique sur openMistralSmall:', err?.message || err)
-    response = await ai.generate({
-      model: openMistralSmall,
-      system: systemInstructions,
-      messages: messages,
-      config: {
+      body: JSON.stringify({
+        model: 'mistral-small-latest',
+        messages: messagesPayload,
         temperature: 0.3,
-      },
+      }),
     })
   }
 
+  const data = await res.json()
+  const textResponse = data.choices?.[0]?.message?.content || 'Désolé, je n\'ai pas pu obtenir de réponse. Veuillez réessayer.'
+
   // Enregistrer la consommation de tokens
   try {
-    const promptTokens = response.usage?.inputTokens || 0
-    const completionTokens = response.usage?.outputTokens || 0
-    const totalTokens = response.usage?.totalTokens || 0
-    const modelName = settings?.chatbotModel || 'mistral-small'
+    const promptTokens = data.usage?.prompt_tokens || 0
+    const completionTokens = data.usage?.completion_tokens || 0
+    const totalTokens = data.usage?.total_tokens || 0
 
     await prisma.chatbotTokenLog.create({
       data: {
-        modelName,
+        modelName: activeModelName,
         promptTokens,
         completionTokens,
         totalTokens,
       },
     })
   } catch (error) {
-    console.error('Erreur lors de l\'enregistrement des tokens chatbot:', error)
+    chatLogger.error('Erreur lors de l\'enregistrement des tokens chatbot:', error)
   }
 
-  return response.text
+  return textResponse
 }
