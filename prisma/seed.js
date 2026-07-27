@@ -1,11 +1,15 @@
 let PrismaClient
 try {
   PrismaClient = require('@prisma/client').PrismaClient
-} catch (e) {
+} catch (e1) {
   try {
     PrismaClient = require('../node_modules/@prisma/client').PrismaClient
   } catch (e2) {
-    PrismaClient = require('.prisma/client').PrismaClient
+    try {
+      PrismaClient = require('/app/node_modules/@prisma/client').PrismaClient
+    } catch (e3) {
+      PrismaClient = require('.prisma/client').PrismaClient
+    }
   }
 }
 
