@@ -164,6 +164,80 @@ export default function EvenementsManager() {
     if (saved) setLastImport(saved)
   }, [])
 
+  // Import calendrier
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importLoading, setImportLoading] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [extractedEvents, setExtractedEvents] = useState<ExtractedEvent[]>([])
+  const [importingEvents, setImportingEvents] = useState(false)
+  const calendarPdfInputRef = useRef<HTMLInputElement>(null)
+  
+  // États pour déplier les lignes d'importation PDF
+  const [expandedImportIds, setExpandedImportIds] = useState<Record<string, boolean>>({})
+  const [importSynthesis, setImportSynthesis] = useState<GeneralRegulationsSynthesis | null>(null)
+
+  // Import règlement (étape 2 : enrichissement)
+  const reglementPdfInputRef = useRef<HTMLInputElement>(null)
+  const [reglementLoading, setReglementLoading] = useState(false)
+  const [showEnrichModal, setShowEnrichModal] = useState(false)
+  const [enrichResult, setEnrichResult] = useState<EnrichResult | null>(null)
+
+  // Importation Automatique Calendrier + Règlement en 1 étape
+  const [showAutoImportModal, setShowAutoImportModal] = useState(false)
+  const [autoImportLoading, setAutoImportLoading] = useState(false)
+  const [calendarFile, setCalendarFile] = useState<File | null>(null)
+  const [reglementFile, setReglementFile] = useState<File | null>(null)
+  const [regionalFile, setRegionalFile] = useState<File | null>(null)
+
+  const handleAutoImport = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!calendarFile || !reglementFile) {
+      toast.error('Veuillez sélectionner les deux fichiers PDF')
+      return
+    }
+    setAutoImportLoading(true)
+    try {
+      const fd = new FormData()
+      fd.append('calendar', calendarFile)
+      fd.append('reglement', reglementFile)
+      if (regionalFile) {
+        fd.append('regional', regionalFile)
+      }
+
+      const res = await fetch('/api/admin/import-calendrier-automatique', {
+        method: 'POST',
+        body: fd,
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error ?? 'Erreur lors de l\'importation automatique')
+      }
+
+      const data = await res.json()
+      toast.success(`Importation réussie : ${data.insertionsCount} compétitions créées et distribuées sur les plannings !`)
+
+      const now = new Date().toISOString()
+      localStorage.setItem(LAST_IMPORT_KEY, now)
+      setLastImport(now)
+
+      await fetchData()
+      setShowAutoImportModal(false)
+      setCalendarFile(null)
+      setReglementFile(null)
+      setRegionalFile(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de l\'importation')
+    } finally {
+      setAutoImportLoading(false)
+    }
+  }
+
+  const toggleExpandImport = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setExpandedImportIds(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
   const emptyForm = {
     title: '', date: '', dateFin: '', heureDebut: '', heureFin: '',
     description: '', lieu: '', type: 'competition', coachId: '',
