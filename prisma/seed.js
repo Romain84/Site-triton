@@ -1,19 +1,6 @@
-let PrismaClient
-try {
-  PrismaClient = require('@prisma/client').PrismaClient
-} catch (e1) {
-  try {
-    PrismaClient = require('../node_modules/@prisma/client').PrismaClient
-  } catch (e2) {
-    try {
-      PrismaClient = require('/app/node_modules/@prisma/client').PrismaClient
-    } catch (e3) {
-      PrismaClient = require('.prisma/client').PrismaClient
-    }
-  }
-}
+const { Client } = require('pg')
 
-const prisma = new PrismaClient()
+const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:TritonNewSite84@db:5432/postgres?schema=public'
 
 const rawData = {
   "coach": [
@@ -900,58 +887,63 @@ const rawData = {
   ]
 }
 
-function parseDates(item) {
-  const result = { ...item }
-  for (const key of Object.keys(result)) {
-    if (typeof result[key] === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(result[key])) {
-      result[key] = new Date(result[key])
-    }
-  }
-  return result
-}
-
 async function main() {
-  console.log('🌱 Démarrage de l\'injection complète des données du Triton Club Cavaillon...')
+  const client = new Client({ connectionString })
+  await client.connect()
 
-  await prisma.coachPlanning.deleteMany({})
-  await prisma.planning.deleteMany({})
-  await prisma.coach.deleteMany({})
-  await prisma.evenementCalendrier.deleteMany({})
-  await prisma.actualite.deleteMany({})
-  await prisma.groupe.deleteMany({})
-  await prisma.settings.deleteMany({})
-  await prisma.user.deleteMany({})
+  console.log('🌱 Injection directe SQL PostgreSQL du Triton Club Cavaillon...')
 
-  console.log('✅ Anciennes données purgées.')
+  try {
+    // Nettoyage complet dans l'ordre des FK
+    await client.query('TRUNCATE TABLE "coach_plannings", "plannings", "coaches", "evenements_calendrier", "actualites", "groupes", "settings", "users" RESTART IDENTITY CASCADE;')
+    console.log('✅ Tables purgées.')
 
-  for (const item of rawData.coach) {
-    await prisma.coach.create({ data: parseDates(item) })
+    // Insertion des coaches
+    for (const c of rawData.coach) {
+      await client.query(
+        `INSERT INTO "coaches" (id, prenom, nom, email, password, telephone, photo, bio, specialites, siret, adresse, actif, "createdAt", "updatedAt")
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`,
+        [c.id, c.prenom, c.nom, c.email, c.password, c.telephone, c.photo, c.bio, c.specialites, c.siret, c.adresse, c.actif, c.createdAt, c.updatedAt]
+      )
+    }
+    console.log(`✅ ${rawData.coach.length} coaches insérés.`)
+
+    // Insertion des groupes
+    for (const g of rawData.groupe) {
+      await client.query(
+        `INSERT INTO "groupes" (id, nom, description, total, inscrits, "inscrits1Cours", "ageMin", "ageMax", niveau, tarif, "tarif1Cours", "libelleOption1", "libelleOption2", caution, "prixLicence", actif, annule, ordre, "isCompetition", "nbCompetitions", "nbCompetitionsCaution", couleur, "createdAt", "updatedAt", "enfantsBureau", "membresBureau")
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26);`,
+        [g.id, g.nom, g.description, g.total, g.inscrits, g.inscrits1Cours, g.ageMin, g.ageMax, g.niveau, g.tarif, g.tarif1Cours, g.libelleOption1, g.libelleOption2, g.caution, g.prixLicence, g.actif, g.annule, g.ordre, g.isCompetition, g.nbCompetitions, g.nbCompetitionsCaution, g.couleur, g.createdAt, g.updatedAt, g.enfantsBureau, g.membresBureau]
+      )
+    }
+    console.log(`✅ ${rawData.groupe.length} groupes insérés.`)
+
+    // Insertion des utilisateurs
+    for (const u of rawData.user) {
+      await client.query(
+        `INSERT INTO "users" (id, email, password, nom, prenom, role, actif, "createdAt", "updatedAt")
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`,
+        [u.id, u.email, u.password, u.nom, u.prenom, u.role, u.actif, u.createdAt, u.updatedAt]
+      )
+    }
+    console.log(`✅ ${rawData.user.length} comptes administrateurs insérés.`)
+
+    // Insertion des paramètres (settings)
+    for (const s of rawData.settings) {
+      await client.query(
+        `INSERT INTO "settings" (id, "tauxHoraire", "forfaitCompetition", "nbCompetitionsAnnee", "nbDemiJourneesParCompetition", "forfaitRegionalActif", "montantForfaitRegional", "boutiqueOuverte", "emailClub", "emailNotification", "logoUrl", "smtpHost", "smtpPort", "smtpUser", "smtpPassword", "inscriptionUrl", "createdAt", "updatedAt", "reductionEnfantBureau", "nomClub", "soldeDepartSaison", "chatbotModel", "debutCoursNormal", "debutCoursBnssa", "datesTests", "interSaisonActif", "texteFiligrane")
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27);`,
+        [s.id, s.tauxHoraire, s.forfaitCompetition, s.nbCompetitionsAnnee, s.nbDemiJourneesParCompetition, s.forfaitRegionalActif, s.montantForfaitRegional, s.boutiqueOuverte, s.emailClub, s.emailNotification, s.logoUrl, s.smtpHost, s.smtpPort, s.smtpUser, s.smtpPassword, s.inscriptionUrl, s.createdAt, s.updatedAt, s.reductionEnfantBureau, s.nomClub, s.soldeDepartSaison, s.chatbotModel, s.debutCoursNormal, s.debutCoursBnssa, s.datesTests, s.interSaisonActif, s.texteFiligrane]
+      )
+    }
+    console.log(`✅ Paramètres du club insérés.`)
+
+    console.log('🎉 Restauration SQL réussie à 100% !')
+  } catch (err) {
+    console.error('❌ Erreur lors du seed PostgreSQL:', err)
+  } finally {
+    await client.end()
   }
-  console.log(`✅ ${rawData.coach.length} coaches insérés.`)
-
-  for (const item of rawData.groupe) {
-    await prisma.groupe.create({ data: parseDates(item) })
-  }
-  console.log(`✅ ${rawData.groupe.length} groupes insérés.`)
-
-  for (const item of rawData.user) {
-    await prisma.user.create({ data: parseDates(item) })
-  }
-  console.log(`✅ ${rawData.user.length} utilisateurs admin insérés.`)
-
-  for (const item of rawData.settings) {
-    await prisma.settings.create({ data: parseDates(item) })
-  }
-  console.log(`✅ Paramètres généraux insérés.`)
-
-  console.log('🎉 Seed exécuté avec succès !')
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Erreur lors du seed:', e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
