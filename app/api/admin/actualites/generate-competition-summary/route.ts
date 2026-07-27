@@ -80,16 +80,15 @@ Tu dois répondre STRICTEMENT sous la forme d'un objet JSON valide contenant exa
 {
   "titre": "Un titre percutant avec emojis (ex: 🏆 PLUIE DE MÉDAILLES ET RECORDS POUR LE TRITON CLUB À AVIGNON !)",
   "slug": "un-slug-propres-sans-accents-et-tirets",
-  "contenu": "L'article complet au format HTML pour l'éditeur du site. Il doit contenir des balises HTML (<h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>). Structure l'article avec :\\n- Une introduction enthousiaste et dynamique\\n- Section Podiums & Faits marquants généraux\\n- Section 📊 Classements & Perfs par Année de Naissance / Sous-catégories (Seniors, J17, J16, J15, J14, Avenirs...)\\n- Section 🎯 Qualifications & Minima décrochés (détecte si des nageurs décrochent leur qualification pour les Championnats Régionaux, Interrégionaux ou de France)\\n- Un mot de félicitations du club aux nageurs, aux entraîneurs et aux parents supporters.",
-  "instagramText": "Un texte court (max 1500 caractères) spécialement rédigé pour Instagram/Facebook avec des emojis, les temps forts par année d'âge, les qualifications décrochées et des hashtags populaires (#TritonClubCavaillon #Natation #FFN #LiveFFN #Cavaillon #Vaucluse #EspritTriton)."
+  "contenu": "L'article complet au format HTML pour l'éditeur du site. Il doit contenir des balises HTML (<h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>). Structure l'article avec :\\n- Une introduction enthousiaste et dynamique\\n- Section Podiums & Faits marquants généraux\\n- Section 📊 Classements & Perfs par Année de Naissance / Sous-catégories (Seniors, J17, J16, J15, J14, Avenirs...)\\n- Un mot de félicitations du club aux nageurs, aux entraîneurs et aux parents supporters.",
+  "instagramText": "Un texte court (max 1500 caractères) spécialement rédigé pour Instagram/Facebook avec des emojis, les temps forts par année d'âge et des hashtags populaires (#TritonClubCavaillon #Natation #FFN #LiveFFN #Cavaillon #Vaucluse #EspritTriton)."
 }
 
 RÈGLES IMPORTANTES ET GESTION DES ANNÉES D'ÂGE (CRITIQUE) :
 1. CLASSEMENT PAR ANNÉE D'ÂGE : Dans les résultats officiels de la FFN, les catégories comme 'Juniors' mélangent des nageurs d'âges différents (ex: J14, J15, J16, J17). Un nageur J14 ou J15 (14/15 ans) peut être super performant pour son âge tout en étant placé plus bas dans le classement général mélangé avec des J17 de 17 ans.
 2. DÉGAGE ET METS EN VALEUR LE CLASSEMENT PAR ANNÉE DE NAISSANCE / SOUS-CATÉGORIE : Analyse la date/année de naissance ou la sous-catégorie d'âge de chaque nageur et mets en évidence ses meilleures performances DANS SA TRANCHE D'ÂGE D'ORIGINE (ex: "1er des J15", "Meilleure performance 2011", "Top 3 des 14 ans").
-3. QUALIFICATIONS & MINIMA : Repère toute mention de qualification ou minima réalisés (ex. qualifications Régionales, Championnats de France) et célèbre chaleureusement ces réussites sportives.
-4. Garde un ton très positif, motivant et rassembleur ("Allez les Tritons !").
-5. Ne réponds rien d'autre que du JSON brut valide (pas de markdown \`\`\`json avant ou après).`
+3. Garde un ton très positif, motivant et rassembleur ("Allez les Tritons !").
+4. Ne réponds rien d'autre que du JSON brut valide (pas de markdown \`\`\`json avant ou après).`
 
     const response = await ai.generate({
       model: openMistralSmall,
