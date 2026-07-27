@@ -26,6 +26,7 @@ const DatabaseManager = lazy(() => import('@/components/admin/DatabaseManager'))
 const InscriptionPageBuilder = lazy(() => import('@/components/admin/InscriptionPageBuilder'))
 const DonsManager = lazy(() => import('@/components/admin/DonsManager'))
 const SystemVersionsManager = lazy(() => import('@/components/admin/SystemVersionsManager'))
+const PodiumsManager = lazy(() => import('@/components/admin/PodiumsManager'))
 
 // Loading component
 const TabLoading = () => (
@@ -37,7 +38,7 @@ const TabLoading = () => (
   </div>
 )
 
-type Tab = 'dashboard' | 'profils' | 'factures' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
+type Tab = 'dashboard' | 'profils' | 'podiums' | 'factures' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
 
 const CATEGORIES = [
   {
@@ -57,6 +58,7 @@ const CATEGORIES = [
     title: 'Sportif',
     items: [
       { id: 'profils', label: 'Profils', icon: '👥' },
+      { id: 'podiums', label: 'Podiums & Bilan Saison', icon: '🏅' },
       { id: 'groupes', label: 'Groupes / Jauges', icon: '👥' },
       { id: 'remplacements', label: 'Remplacements', icon: '🔄' },
       { id: 'cout-groupes', label: 'Coût Groupes', icon: '💶' }
@@ -318,6 +320,7 @@ const CATEGORIES = [
           <Suspense fallback={<TabLoading />}>
             {activeTab === 'dashboard' && <DashboardTab currentUser={currentUser} />}
             {activeTab === 'profils' && <ProfilsTab currentUser={currentUser} />}
+            {activeTab === 'podiums' && <PodiumsTab />}
             {activeTab === 'factures' && <FacturesTab />}
             {activeTab === 'finances' && <FinancesTab />}
             {activeTab === 'dons' && <DonsTab currentUser={currentUser} />}
@@ -776,4 +779,9 @@ function DonsTab({ currentUser }: { currentUser: { id: string; email: string; ro
 // System Versions Tab
 function SystemVersionsTab() {
   return <SystemVersionsManager />
+}
+
+// Podiums Tab
+function PodiumsTab() {
+  return <PodiumsManager />
 }

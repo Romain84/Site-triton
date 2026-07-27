@@ -795,3 +795,22 @@ model InscriptionBlock {
 
   @@map("inscription_blocks")
 }
+
+model PodiumSaison {
+  id           String    @id @default(cuid())
+  nageurNom    String
+  categorie    String?   // "J14", "J15", "J16", "J17", "Benjamins", "Toutes catégories"
+  epreuve      String?   // "100m NL", "50m Papillon"
+  place        Int       // 1 (Or/1er), 2 (Argent/2e), 3 (Bronze/3e)
+  estVirtuel   Boolean   @default(false) // true si podium par année d'âge, false si officiel
+  competition  String
+  date         DateTime  @default(now())
+  temps        String?
+  actualiteId  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([nageurNom])
+  @@index([date])
+  @@map("podiums_saison")
+}
