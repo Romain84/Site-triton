@@ -106,7 +106,7 @@ RÈGLES IMPORTANTES ET GESTION DES ANNÉES D'ÂGE (CRITIQUE) :
       const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').trim()
       parsed = JSON.parse(jsonText)
     } catch (parseErr) {
-      aiLogger.error('Erreur parsing JSON IA:', parseErr, 'Texte reçu:', text)
+      aiLogger.error('Erreur parsing JSON IA', { parseErr, text })
       return apiError('L\'IA n\'a pas généré un format JSON valide. Réessayez.', 500)
     }
 
