@@ -1,6 +1,6 @@
 import { genkit, z } from 'genkit'
 import mistral, { openMistral7B, openMistralSmall, openMistralLarge, openMinistral8B } from 'genkitx-mistral'
-import { getPlanningKnowledgeBase, getGroupesKnowledgeBase, getCustomKnowledgeBase, getCorrectedSuggestionsKnowledgeBase } from './chatbot-knowledge'
+import { getPlanningKnowledgeBase, getGroupesKnowledgeBase, getCustomKnowledgeBase, getCorrectedSuggestionsKnowledgeBase, getCalendrierKnowledgeBase } from './chatbot-knowledge'
 import { prisma } from './prisma'
 
 // Initialize Genkit with Mistral AI plugin
