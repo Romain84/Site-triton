@@ -17,7 +17,31 @@ const contactSchema = z.object({
   sujet: z.string().min(3, 'Le sujet doit contenir au moins 3 caractères').max(200),
   message: z.string().min(10, 'Le message doit contenir au moins 10 caractères').max(5000),
   website: z.string().optional(),
+  turnstileToken: z.string().optional(),
 })
+
+async function verifyTurnstileToken(token: string, ip: string): Promise<boolean> {
+  const secretKey = process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA'
+  try {
+    const formData = new URLSearchParams()
+    formData.append('secret', secretKey)
+    formData.append('response', token)
+    if (ip && ip !== 'unknown') {
+      formData.append('remoteip', ip)
+    }
+
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: formData,
+    })
+
+    const data = await res.json()
+    return data.success === true
+  } catch (err) {
+    contactLogger.error('Erreur lors de la validation Turnstile', err)
+    return !process.env.TURNSTILE_SECRET_KEY
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,10 +55,22 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
-    // Protection Honeypot : si le champ piège website est rempli, bloquer le spam silencieusement
+    // 1. Protection Honeypot : si le champ piège website est rempli, bloquer le spam silencieusement
     if (body.website && typeof body.website === 'string' && body.website.trim().length > 0) {
       contactLogger.warn('Spam bot détecté et bloqué via Honeypot', { ip, userAgent, email: body.email })
       return apiSuccess({ message: 'Message envoyé avec succès' })
+    }
+
+    // 2. Protection Cloudflare Turnstile : validation du token anti-robot
+    const turnstileToken = body.turnstileToken || body['cf-turnstile-response'] || ''
+    if (turnstileToken) {
+      const isHuman = await verifyTurnstileToken(turnstileToken, ip)
+      if (!isHuman) {
+        contactLogger.warn('Vérification Turnstile échouée', { ip, userAgent, email: body.email })
+        return apiError('La vérification anti-robot a échoué. Veuillez réessayer.', 400, undefined, 'TURNSTILE_FAILED')
+      }
+    } else if (process.env.TURNSTILE_SECRET_KEY) {
+      return apiError('Veuillez valider le test de sécurité anti-robot (Turnstile).', 400, undefined, 'TURNSTILE_REQUIRED')
     }
 
     const validatedData = contactSchema.parse(body)

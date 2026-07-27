@@ -2,6 +2,7 @@
 
 import { useActionState, useRef, useState } from 'react'
 import { FormStatus } from '@/components/ui/FormStatus'
+import TurnstileWidget from '@/components/TurnstileWidget'
 
 interface ActionState {
   success?: boolean
@@ -25,6 +26,7 @@ async function submitContactAction(prevState: ActionState | null, formData: Form
   const message = (formData.get('message') as string) || ''
 
   const website = (formData.get('website') as string) || ''
+  const turnstileToken = (formData.get('turnstileToken') as string) || ''
 
   // Validation
   const errors: NonNullable<ActionState['fieldErrors']> = {}
@@ -42,7 +44,7 @@ async function submitContactAction(prevState: ActionState | null, formData: Form
     const response = await fetch('/api/contact', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nom, email, telephone, sujet, message, website }),
+      body: JSON.stringify({ nom, email, telephone, sujet, message, website, turnstileToken }),
     })
 
     if (response.ok) {
@@ -83,12 +85,17 @@ async function submitContactAction(prevState: ActionState | null, formData: Form
 export default function ContactForm() {
   const formRef = useRef<HTMLFormElement>(null)
   const [messageLength, setMessageLength] = useState(0)
+  const [turnstileToken, setTurnstileToken] = useState<string>('')
 
   const [state, formAction, isPending] = useActionState(async (prevState: ActionState | null, formData: FormData) => {
+    if (turnstileToken) {
+      formData.set('turnstileToken', turnstileToken)
+    }
     const result = await submitContactAction(prevState, formData)
     if (result.success) {
       formRef.current?.reset()
       setMessageLength(0)
+      setTurnstileToken('')
     }
     return result
   }, null)
@@ -189,6 +196,13 @@ export default function ContactForm() {
           </p>
         </div>
       </div>
+
+      {/* Widget Anti-Bot Cloudflare Turnstile */}
+      <TurnstileWidget
+        onVerify={(token) => setTurnstileToken(token)}
+        onExpire={() => setTurnstileToken('')}
+        onError={() => setTurnstileToken('')}
+      />
 
       <button
         type="submit"

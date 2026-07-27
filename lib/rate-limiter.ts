@@ -196,8 +196,8 @@ class FormRateLimiter {
   private requests = new Map<string, RateLimitEntry>()
 
   // Stricter limits for forms to prevent spam
-  private readonly maxRequestsPerMinute = 3 // 3 submissions per minute
-  private readonly maxRequestsPerHour = 10 // 10 submissions per hour
+  private readonly maxRequestsPerMinute = 2 // 2 submissions per minute max per IP
+  private readonly maxRequestsPerHour = 5 // 5 submissions per hour max per IP
   private readonly windowMs = 60 * 1000 // 1 minute
   private readonly hourMs = 60 * 60 * 1000 // 1 hour
 
