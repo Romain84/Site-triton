@@ -36,6 +36,7 @@ export default function GenerateAiArticleModal({
   const [lieu, setLieu] = useState<string>('')
   const [liveffnUrl, setLiveffnUrl] = useState<string>('')
   const [rawNotes, setRawNotes] = useState<string>('')
+  const [groupByBirthYear, setGroupByBirthYear] = useState<boolean>(true)
   const [generatedInstagramText, setGeneratedInstagramText] = useState<string>('')
   const [copiedInstagram, setCopiedInstagram] = useState(false)
 
@@ -82,6 +83,7 @@ export default function GenerateAiArticleModal({
           competitionName,
           lieu,
           liveffnUrl,
+          groupByBirthYear,
         }),
       })
 
@@ -207,12 +209,25 @@ export default function GenerateAiArticleModal({
               📝 Résultats bruts / Notes du coach ou export FFN *
             </label>
             <textarea
-              rows={6}
+              rows={5}
               value={rawNotes}
               onChange={(e) => setRawNotes(e.target.value)}
               placeholder="Collez ici les résultats ou vos notes du week-end (ex: Lucas 1er au 100 NL 54s2, Emma 2e 50 dos, 4x50 NL benjamins en or, 15 records personnels battus)..."
               className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-sans focus:ring-2 focus:ring-slate-900 outline-none"
             />
+          </div>
+
+          <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl flex items-start gap-2.5">
+            <input
+              type="checkbox"
+              id="groupByBirthYear"
+              checked={groupByBirthYear}
+              onChange={(e) => setGroupByBirthYear(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 cursor-pointer"
+            />
+            <label htmlFor="groupByBirthYear" className="text-xs text-amber-950 font-medium cursor-pointer leading-tight">
+              <strong>📊 Re-classer & valoriser par année de naissance / sous-catégories d'âge</strong> (ex: séparer J14, J15, J16, J17 afin de valoriser un J15 qui est bas dans le classement général Juniors).
+            </label>
           </div>
 
           {generatedInstagramText && (
