@@ -956,23 +956,17 @@ export default function PlanningFixeManager() {
           {/* Day Switcher */}
           <div className="flex flex-wrap gap-2 mb-4 bg-slate-100 p-2 rounded-xl border border-slate-200">
             {JOURS_SEMAINE.map(day => {
-              const count = plannings.filter(p => p.jourSemaine === day).length
               return (
                 <button
                   key={day}
                   onClick={() => setSelectedDayBassin(day)}
-                  className={`px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
                     selectedDayBassin === day
                       ? 'bg-primary text-white shadow-md'
                       : 'text-slate-600 hover:bg-slate-200'
                   }`}
                 >
                   {day}
-                  <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
-                    selectedDayBassin === day ? 'bg-white text-primary' : 'bg-slate-200 text-slate-700'
-                  }`}>
-                    {count}
-                  </span>
                 </button>
               )
             })}

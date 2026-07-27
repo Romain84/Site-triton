@@ -1077,24 +1077,18 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
           {/* Day Switcher */}
           <div className="flex flex-wrap justify-center gap-2 mb-6 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200/40 print:hidden">
             {JOURS_ORDRE.map(day => {
-              const count = planningsFiltres.filter(p => p.jourSemaine === day).length
               return (
                 <button
                   key={day}
                   type="button"
                   onClick={() => setSelectedDayBassin(day)}
-                  className={`px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                  className={`px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
                     selectedDayBassin === day
                       ? 'bg-slate-900 text-white shadow-sm'
                       : 'text-slate-655 hover:text-slate-950 hover:bg-slate-55/10'
                   }`}
                 >
                   {day}
-                  <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
-                    selectedDayBassin === day ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}>
-                    {count}
-                  </span>
                 </button>
               )
             })}
