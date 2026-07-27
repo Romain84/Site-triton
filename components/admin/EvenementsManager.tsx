@@ -924,7 +924,7 @@ export default function EvenementsManager() {
                                 if (!isSelected) {
                                   toast.success(`Groupe "${g.nom}" associé à l'événement !`)
                                 } else {
-                                  toast.info(`Groupe "${g.nom}" retiré de la sélection`)
+                                  toast(`Groupe "${g.nom}" retiré de la sélection`)
                                 }
                               }}
                               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 shadow-sm ${
