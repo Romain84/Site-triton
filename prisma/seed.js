@@ -1,5 +1,7 @@
 const { Client } = require('pg')
 
+console.log('🚀 Démarrage du script de seed natif PostgreSQL v2...')
+
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:TritonNewSite84@db:5432/postgres?schema=public'
 
 const rawData = {
