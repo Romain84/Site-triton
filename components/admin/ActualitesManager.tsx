@@ -244,33 +244,6 @@ export default function ActualitesManager() {
     }
   }
 
-  const handleNotifyMembers = async (actualiteId: string) => {
-    const isConfirmed = await confirm({
-      title: 'Envoyer une notification aux membres ?',
-      message: 'Un e-mail récapitulatif de cet article sera envoyé aux adhérents enregistrés. Souhaitez-vous continuer ?',
-      confirmText: 'Oui, envoyer les e-mails',
-      cancelText: 'Annuler',
-    })
-
-    if (!isConfirmed) return
-
-    try {
-      const res = await fetch('/api/admin/actualites/notify-members', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actualiteId }),
-      })
-      const data = await res.json()
-      if (res.ok && data.success) {
-        toast.success(data.data?.message || 'Notifications envoyées avec succès !')
-      } else {
-        toast.error(data.error || 'Erreur lors de l\'envoi des notifications.')
-      }
-    } catch (err) {
-      toast.error('Erreur réseau lors de l\'envoi des notifications.')
-    }
-  }
-
   const resetForm = () => {
     setFormData({
       titre: '',
@@ -540,13 +513,6 @@ export default function ActualitesManager() {
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleNotifyMembers(actualite.id)}
-                          className="px-2.5 py-1 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors mr-2 inline-flex items-center gap-1 cursor-pointer"
-                          title="Envoyer un e-mail de notification aux membres"
-                        >
-                          <span>📧 Notifier</span>
-                        </button>
                         <button
                           onClick={() => setSelectedInstagramArticle(actualite)}
                           className="px-2.5 py-1 bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white rounded-lg text-xs font-bold hover:opacity-90 transition-opacity mr-3 inline-flex items-center gap-1 shadow-2xs cursor-pointer"
