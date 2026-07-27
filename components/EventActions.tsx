@@ -1,6 +1,6 @@
 'use client'
 
-import { parseFicheDescription } from '@/lib/calendar/import-parser'
+import { parseFicheDescription, cleanPublicDescription } from '@/lib/calendar/import-parser'
 
 interface EventActionsProps {
   event: {
@@ -50,7 +50,7 @@ export default function EventActions({ event }: EventActionsProps) {
       action: 'TEMPLATE',
       text: event.title,
       dates: `${startDateTime}/${endDateTime}`,
-      details: event.description || '',
+      details: cleanPublicDescription(event.description),
       location: event.lieu || '',
     })
 

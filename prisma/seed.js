@@ -938,7 +938,13 @@ async function main() {
         [s.id, s.tauxHoraire, s.forfaitCompetition, s.nbCompetitionsAnnee, s.nbDemiJourneesParCompetition, s.forfaitRegionalActif, s.montantForfaitRegional, s.boutiqueOuverte, s.emailClub, s.emailNotification, s.logoUrl, s.smtpHost, s.smtpPort, s.smtpUser, s.smtpPassword, s.inscriptionUrl, s.createdAt, s.updatedAt, s.reductionEnfantBureau, s.nomClub, s.soldeDepartSaison, s.chatbotModel, s.debutCoursNormal, s.debutCoursBnssa, s.datesTests, s.interSaisonActif, s.texteFiligrane]
       )
     }
-    console.log(`✅ Paramètres du club insérés.`)
+    // Nettoyage automatique des descriptions d'événements (suppression des tags __TARGET_GROUPS__)
+    await client.query(`
+      UPDATE "evenements_calendrier"
+      SET description = REGEXP_REPLACE(description, '\\s*__TARGET_GROUPS__:.*$', '', 'g')
+      WHERE description LIKE '%__TARGET_GROUPS__:%';
+    `)
+    console.log(`✅ Descriptions d'événements nettoyées (suppression des identifiants techniques __TARGET_GROUPS__).`)
 
     console.log('🎉 Restauration SQL réussie à 100% !')
   } catch (err) {

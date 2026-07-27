@@ -605,6 +605,28 @@ export function parseFicheDescription(description: string | null | undefined): C
   }
 }
 
+/**
+ * Nettoie une description d'événement pour n'afficher que du texte 100% humain et lisible.
+ * Supprime les tags techniques __TARGET_GROUPS__: et le JSON brut __FICHE__:.
+ */
+export function cleanPublicDescription(description: string | null | undefined): string {
+  if (!description) return ''
+  const cleaned = description.split('__TARGET_GROUPS__:')[0].trim()
+  if (cleaned.startsWith('__FICHE__:')) {
+    try {
+      const sheet = JSON.parse(cleaned.slice('__FICHE__:'.length)) as CompetitionSheet
+      const parts: string[] = []
+      if (sheet.genre) parts.push(`Genre : ${sheet.genre}`)
+      if (sheet.conditions) parts.push(`Conditions : ${sheet.conditions}`)
+      if (sheet.recompense && sheet.recompense !== 'Aucune') parts.push(`Récompenses : ${sheet.recompense}`)
+      return parts.join('\n') || ''
+    } catch {
+      return ''
+    }
+  }
+  return cleaned
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main calendar parser (page with month + event rows)
 // ─────────────────────────────────────────────────────────────────────────────

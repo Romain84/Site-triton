@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         dateFin:      ev.dateFin ? new Date(ev.dateFin) : null,
         heureDebut:   ev.heureDebut ?? null,
         heureFin:     ev.heureFin ?? null,
-        description:  ev.description ?? null,
+        description:  ev.description ? ev.description.split('__TARGET_GROUPS__:')[0].trim() : null,
         lieu:         ev.lieu ?? null,
         type:         ev.type,
         couleur:      ev.couleur,
