@@ -242,6 +242,7 @@ export default function EvenementsManager() {
     title: '', date: '', dateFin: '', heureDebut: '', heureFin: '',
     description: '', lieu: '', type: 'competition', coachId: '',
     couleur: '#3b82f6', pdfReglement: '', actif: true,
+    targetGroupIds: [] as string[],
   }
   const [formData, setFormData] = useState(emptyForm)
 
@@ -321,17 +322,28 @@ export default function EvenementsManager() {
     e.preventDefault()
     const url = editingId ? `/api/admin/evenements/${editingId}` : '/api/admin/evenements'
     const method = editingId ? 'PUT' : 'POST'
+
+    // Construction de la description finale incluant __TARGET_GROUPS__ si des groupes sont cochés
+    let finalDescription = (formData.description || '').split('__TARGET_GROUPS__:')[0].trim()
+    if (formData.targetGroupIds.length > 0) {
+      finalDescription = `${finalDescription}\n__TARGET_GROUPS__:${JSON.stringify(formData.targetGroupIds)}`
+    }
+
     try {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
+          title:       formData.title,
+          date:        formData.date,
+          type:        formData.type,
+          couleur:     formData.couleur,
+          actif:       formData.actif,
           coachId:     formData.coachId || null,
           dateFin:     formData.dateFin || null,
           heureDebut:  formData.heureDebut || null,
           heureFin:    formData.heureFin || null,
-          description: formData.description || null,
+          description: finalDescription || null,
           lieu:        formData.lieu || null,
           pdfReglement: formData.pdfReglement || null,
         }),
@@ -355,19 +367,33 @@ export default function EvenementsManager() {
 
   const handleEdit = (ev: Evenement) => {
     setEditingId(ev.id)
+
+    let extractedGroupIds: string[] = []
+    let cleanDesc = ev.description || ''
+    if (cleanDesc.includes('__TARGET_GROUPS__:')) {
+      const parts = cleanDesc.split('__TARGET_GROUPS__:')
+      cleanDesc = parts[0].trim()
+      try {
+        extractedGroupIds = JSON.parse(parts[1].trim())
+      } catch {
+        extractedGroupIds = []
+      }
+    }
+
     setFormData({
       title:       ev.title,
       date:        new Date(ev.date).toISOString().split('T')[0],
       dateFin:     ev.dateFin ? new Date(ev.dateFin).toISOString().split('T')[0] : '',
       heureDebut:  ev.heureDebut || '',
       heureFin:    ev.heureFin || '',
-      description: ev.description || '',
+      description: cleanDesc,
       lieu:        ev.lieu || '',
       type:        ev.type || 'competition',
       coachId:     ev.coachId || '',
       couleur:     ev.couleur || '#3b82f6',
       pdfReglement: ev.pdfReglement || '',
       actif:       ev.actif,
+      targetGroupIds: extractedGroupIds,
     })
     setShowForm(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -914,18 +940,26 @@ export default function EvenementsManager() {
                       </p>
                       <div className="flex flex-wrap gap-2 pt-1">
                         {groupes.map(g => {
-                          const isSelected = formData.description.includes(g.id) || formData.title.toLowerCase().includes(g.nom.toLowerCase())
+                          const isSelected = formData.targetGroupIds.includes(g.id)
                           return (
                             <button
                               key={g.id}
                               type="button"
                               onClick={() => {
-                                // Toggle le groupe dans la description / tags si besoin
-                                if (!isSelected) {
-                                  toast.success(`Groupe "${g.nom}" associé à l'événement !`)
-                                } else {
-                                  toast(`Groupe "${g.nom}" retiré de la sélection`)
-                                }
+                                setFormData(prev => {
+                                  const exists = prev.targetGroupIds.includes(g.id)
+                                  const nextIds = exists
+                                    ? prev.targetGroupIds.filter(id => id !== g.id)
+                                    : [...prev.targetGroupIds, g.id]
+                                  
+                                  if (!exists) {
+                                    toast.success(`Groupe "${g.nom}" associé !`)
+                                  } else {
+                                    toast(`Groupe "${g.nom}" retiré`)
+                                  }
+
+                                  return { ...prev, targetGroupIds: nextIds }
+                                })
                               }}
                               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 shadow-sm ${
                                 isSelected
