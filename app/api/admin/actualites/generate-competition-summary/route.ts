@@ -15,13 +15,44 @@ const ai = genkit({
   ],
 })
 
+import { fetchLiveFFNData } from '@/lib/liveffn-parser'
+
+const aiLogger = logger.withContext('CompetitionSummaryAI')
+
+const ai = genkit({
+  plugins: [
+    mistral({
+      apiKey: process.env.MISTRAL_API_KEY,
+    }),
+  ],
+})
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { rawNotes, competitionName, lieu } = body
+    const { rawNotes, competitionName, lieu, liveffnUrl } = body
 
-    if (!rawNotes || typeof rawNotes !== 'string' || rawNotes.trim().length < 5) {
-      return apiError('Veuillez fournir les résultats ou notes de la compétition.', 400)
+    let effectiveNotes = rawNotes || ''
+    let effectiveTitle = competitionName || ''
+    let effectiveLieu = lieu || ''
+
+    // 1. Si une URL LiveFFN est fournie, extraire les données depuis LiveFFN
+    if (liveffnUrl && typeof liveffnUrl === 'string' && liveffnUrl.includes('liveffn.com')) {
+      const liveData = await fetchLiveFFNData(liveffnUrl)
+      if (liveData) {
+        if (!effectiveTitle && liveData.title) effectiveTitle = liveData.title
+        if (!effectiveLieu && liveData.location) effectiveLieu = liveData.location
+
+        const tritonText = liveData.tritonResults.length > 0
+          ? liveData.tritonResults.join('\n')
+          : liveData.rawTextContent
+
+        effectiveNotes = `RÉSULTATS IMPORTÉS DIRECTEMENT DE LIVEFFN (${liveffnUrl}) :\n${tritonText}\n\nNOTES COMPLÉMENTAIRES DU COACH :\n${rawNotes || 'Aucune'}`
+      }
+    }
+
+    if (!effectiveNotes || typeof effectiveNotes !== 'string' || effectiveNotes.trim().length < 5) {
+      return apiError('Veuillez fournir une URL LiveFFN ou saisir les résultats de la compétition.', 400)
     }
 
     const apiKey = process.env.MISTRAL_API_KEY
@@ -30,15 +61,18 @@ export async function POST(request: NextRequest) {
     }
 
     const prompt = `Tu es le responsable de communication et coach du Triton Club Cavaillon (club de natation FFN à Cavaillon, 84).
-Ton rôle est de transformer les notes brutes ou résultats d'une compétition de natation en un superbe article d'actualité captivant, dynamique et chaleureux pour le site web du club et ses réseaux sociaux.
+Ton rôle est de transformer les résultats officiels LiveFFN ou notes brutes d'une compétition de natation en un superbe article d'actualité captivant, dynamique et chaleureux pour le site web du club et ses réseaux sociaux.
 
-DONNÉES EN ENTRÉE :
-${competitionName ? `- Nom de la compétition : ${competitionName}` : ''}
-${lieu ? `- Lieu : ${lieu}` : ''}
-- Notes et résultats bruts fournis :
+DONNÉES EN ENTRÉE (COMPÉTITION & RÉSULTATS LIVEFFN) :
+${effectiveTitle ? `- Nom de la compétition : ${effectiveTitle}` : ''}
+${effectiveLieu ? `- Lieu : ${effectiveLieu}` : ''}
+${liveffnUrl ? `- URL officielle LiveFFN : ${liveffnUrl}` : ''}
+- Résultats & Notes fournies :
 """
-${rawNotes}
-"""
+${effectiveNotes}
+"""`
+
+    const finalPrompt = `${prompt}
 
 CONSIGNES DE RÉDACTION ET FORMAT DE SORTIE :
 Tu dois répondre STRICTEMENT sous la forme d'un objet JSON valide contenant exactement les clés suivantes :
@@ -46,13 +80,13 @@ Tu dois répondre STRICTEMENT sous la forme d'un objet JSON valide contenant exa
 {
   "titre": "Un titre percutant avec emojis (ex: 🏆 PLUIE DE MÉDAILLES ET RECORDS POUR LE TRITON CLUB À AVIGNON !)",
   "slug": "un-slug-propres-sans-accents-et-tirets",
-  "contenu": "L'article complet au format HTML pour l'éditeur du site. Il doit contenir des balises HTML (<h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>). Structure l'article avec :\\n- Une introduction enthousiaste et dynamique\\n- Section Podiums et Médailles\\n- Section Faits marquants & Records personnels battus\\n- Un mot de félicitations du club aux nageurs, aux entraîneurs et aux parents supporters.",
-  "instagramText": "Un texte court (max 1500 caractères) spécialement rédigé pour Instagram/Facebook avec des emojis, les temps forts et des hashtags populaires (#TritonClubCavaillon #Natation #FFN #Cavaillon #Vaucluse #EspritTriton)."
+  "contenu": "L'article complet au format HTML pour l'éditeur du site. Il doit contenir des balises HTML (<h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>). Structure l'article avec :\\n- Une introduction enthousiaste et dynamique\\n- Section Podiums et Médailles du Triton Club Cavaillon\\n- Section Faits marquants & Records personnels battus\\n- Un mot de félicitations du club aux nageurs, aux entraîneurs et aux parents supporters.",
+  "instagramText": "Un texte court (max 1500 caractères) spécialement rédigé pour Instagram/Facebook avec des emojis, les temps forts et des hashtags populaires (#TritonClubCavaillon #Natation #FFN #LiveFFN #Cavaillon #Vaucluse #EspritTriton)."
 }
 
 RÈGLES IMPORTANTES :
 - Garde un ton très positif, motivant et rassembleur ("Allez les Tritons !").
-- Valorise les efforts de tous les nageurs.
+- Si des résultats LiveFFN sont fournis, mets à l'honneur les nageurs du TRITON CLUB CAVAILLON et leurs meilleures places/performances.
 - Ne réponds rien d'autre que du JSON brut valide (pas de markdown \`\`\`json avant ou après).`
 
     const response = await ai.generate({

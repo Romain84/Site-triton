@@ -34,6 +34,7 @@ export default function GenerateAiArticleModal({
   const [selectedEventId, setSelectedEventId] = useState<string>('')
   const [competitionName, setCompetitionName] = useState<string>('')
   const [lieu, setLieu] = useState<string>('')
+  const [liveffnUrl, setLiveffnUrl] = useState<string>('')
   const [rawNotes, setRawNotes] = useState<string>('')
   const [generatedInstagramText, setGeneratedInstagramText] = useState<string>('')
   const [copiedInstagram, setCopiedInstagram] = useState(false)
@@ -64,8 +65,8 @@ export default function GenerateAiArticleModal({
   }
 
   const handleGenerate = async () => {
-    if (!rawNotes.trim()) {
-      toast.error('Veuillez saisir ou coller les résultats de la compétition.')
+    if (!rawNotes.trim() && !liveffnUrl.trim()) {
+      toast.error('Veuillez coller une URL LiveFFN ou saisir les résultats de la compétition.')
       return
     }
 
@@ -80,6 +81,7 @@ export default function GenerateAiArticleModal({
           rawNotes,
           competitionName,
           lieu,
+          liveffnUrl,
         }),
       })
 
@@ -182,6 +184,22 @@ export default function GenerateAiArticleModal({
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">
+              🔗 URL officielle LiveFFN (recommandé)
+            </label>
+            <input
+              type="url"
+              value={liveffnUrl}
+              onChange={(e) => setLiveffnUrl(e.target.value)}
+              placeholder="Ex: https://www.liveffn.com/cgi-bin/resultats.php?competition=94240&langue=fra"
+              className="w-full px-3.5 py-2.5 border border-blue-300 bg-blue-50/50 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-600 outline-none font-mono text-xs"
+            />
+            <p className="text-[11px] text-slate-500 mt-1">
+              💡 Collez simplement le lien de la compétition LiveFFN : l'IA en tirera automatiquement les podiums et temps de nos nageurs !
+            </p>
           </div>
 
           <div>
