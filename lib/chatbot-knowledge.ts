@@ -247,6 +247,39 @@ export async function getGroupesKnowledgeBase(): Promise<string> {
 }
 
 /**
+ * Récupère le calendrier des compétitions et événements du club pour alimenter la base de connaissances du chatbot.
+ */
+export async function getCalendrierKnowledgeBase(): Promise<string> {
+  try {
+    const events = await prisma.evenementCalendrier.findMany({
+      where: { actif: true },
+      orderBy: { date: 'asc' },
+      take: 40,
+    })
+
+    if (events.length === 0) return ''
+
+    let texte = '\n**CALENDRIER DES ÉVÉNEMENTS ET COMPÉTITIONS :**\n\n'
+    events.forEach((ev) => {
+      const d1 = new Date(ev.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+      const d2 = ev.dateFin ? new Date(ev.dateFin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : null
+      const datesStr = d2 ? `du ${d1} au ${d2}` : `le ${d1}`
+
+      texte += `• **${ev.title}** (${datesStr})\n`
+      if (ev.lieu) texte += `  Lieu : ${ev.lieu}\n`
+      if (ev.type) texte += `  Type : ${ev.type}\n`
+      if (ev.description) texte += `  Détails : ${ev.description.substring(0, 150)}\n`
+      texte += '\n'
+    })
+
+    return texte
+  } catch (error) {
+    logger.error('Erreur lors de la récupération des événements du calendrier pour le chatbot', error)
+    return ''
+  }
+}
+
+/**
  * Récupère les suggestions d'entraînement corrigées et validées par l'administrateur
  * afin de servir d'exemples/inspirations de réponses au chatbot (few-shot prompting).
  */

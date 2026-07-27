@@ -129,12 +129,13 @@ export async function getChatResponse(
   }
 
   // Récupérer les paramètres et charger toutes les bases de connaissances en parallèle (Ultra-rapide avec cache TTL 5min)
-  const [settings, planningKnowledge, groupesKnowledge, faqKnowledge, suggestionsKnowledge] = await Promise.all([
+  const [settings, planningKnowledge, groupesKnowledge, faqKnowledge, suggestionsKnowledge, calendrierKnowledge] = await Promise.all([
     prisma.settings.findFirst({ select: { chatbotModel: true, emailClub: true } }),
     getPlanningKnowledgeBase(),
     getGroupesKnowledgeBase(),
     getCustomKnowledgeBase(),
     getCorrectedSuggestionsKnowledgeBase(),
+    getCalendrierKnowledgeBase(),
   ])
 
   const activeModel = getModelRef(settings?.chatbotModel)
@@ -168,6 +169,9 @@ ${planningKnowledge}
 
 --- GROUPES & TARIFS ---
 ${groupesKnowledge}
+
+--- CALENDRIER DES COMPÉTITIONS & ÉVÉNEMENTS ---
+${calendrierKnowledge}
 
 --- FOIRE AUX QUESTIONS & CONNAISSANCES ---
 ${faqKnowledge}

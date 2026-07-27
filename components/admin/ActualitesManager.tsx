@@ -8,6 +8,7 @@ import RichTextEditor from './RichTextEditor'
 import { formatLongDateFr } from '@/lib/date'
 
 import InstagramShareModal from '@/components/InstagramShareModal'
+import GenerateAiArticleModal from './GenerateAiArticleModal'
 
 interface Actualite {
   id: string
@@ -30,6 +31,7 @@ export default function ActualitesManager() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [selectedInstagramArticle, setSelectedInstagramArticle] = useState<Actualite | null>(null)
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false)
   const [formData, setFormData] = useState({
     titre: '',
     slug: '',
@@ -426,15 +428,24 @@ export default function ActualitesManager() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Gestion des actualités</h2>
-        <button
-          onClick={() => {
-            setEditingId(null)
-            setShowForm(!showForm)
-          }}
-          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-        >
-          {showForm && !editingId ? 'Annuler' : '+ Nouvelle actualité'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsAiModalOpen(true)}
+            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:opacity-90 font-bold text-sm transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>✨</span>
+            <span>Générer avec l'IA (Compétition)</span>
+          </button>
+          <button
+            onClick={() => {
+              setEditingId(null)
+              setShowForm(!showForm)
+            }}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm"
+          >
+            {showForm && !editingId ? 'Annuler' : '+ Nouvelle actualité'}
+          </button>
+        </div>
       </div>
 
       {/* Formulaire */}
@@ -547,6 +558,25 @@ export default function ActualitesManager() {
           article={selectedInstagramArticle}
         />
       )}
+
+      <GenerateAiArticleModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        onArticleGenerated={(articleData) => {
+          setEditingId(null)
+          setFormData({
+            titre: articleData.titre,
+            slug: articleData.slug,
+            contenu: articleData.contenu,
+            datePubli: articleData.datePubli,
+            auteur: articleData.auteur,
+            image: '',
+            publie: true,
+          })
+          setShowForm(true)
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }}
+      />
     </div>
   )
 }
