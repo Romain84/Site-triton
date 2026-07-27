@@ -1,20 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { genkit } from 'genkit'
 import mistral, { openMistralSmall } from 'genkitx-mistral'
 import { apiError, apiSuccess } from '@/lib/api/response'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
-
-const aiLogger = logger.withContext('CompetitionSummaryAI')
-
-const ai = genkit({
-  plugins: [
-    mistral({
-      apiKey: process.env.MISTRAL_API_KEY,
-    }),
-  ],
-})
-
 import { fetchLiveFFNData } from '@/lib/liveffn-parser'
 
 const aiLogger = logger.withContext('CompetitionSummaryAI')
