@@ -1,20 +1,10 @@
 import { NextRequest } from 'next/server'
-import { genkit } from 'genkit'
-import mistral, { openMistralSmall } from 'genkitx-mistral'
 import { apiError, apiSuccess } from '@/lib/api/response'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
 import { fetchLiveFFNData } from '@/lib/liveffn-parser'
 
 const aiLogger = logger.withContext('CompetitionSummaryAI')
-
-const ai = genkit({
-  plugins: [
-    mistral({
-      apiKey: process.env.MISTRAL_API_KEY,
-    }),
-  ],
-})
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,7 +39,7 @@ export async function POST(request: NextRequest) {
       return apiError('La clé MISTRAL_API_KEY n\'est pas configurée.', 500)
     }
 
-    const prompt = `Tu es le responsable de communication et coach du Triton Club Cavaillon (club de natation FFN à Cavaillon, 84).
+    const systemPrompt = `Tu es le responsable de communication et coach du Triton Club Cavaillon (club de natation FFN à Cavaillon, 84).
 Ton rôle est de transformer les résultats officiels LiveFFN ou notes brutes d'une compétition de natation en un superbe article d'actualité captivant, dynamique et chaleureux pour le site web du club et ses réseaux sociaux.
 
 DONNÉES EN ENTRÉE (COMPÉTITION & RÉSULTATS LIVEFFN) :
@@ -59,9 +49,7 @@ ${liveffnUrl ? `- URL officielle LiveFFN : ${liveffnUrl}` : ''}
 - Résultats & Notes fournies :
 """
 ${effectiveNotes}
-"""`
-
-    const finalPrompt = `${prompt}
+"""
 
 CONSIGNES DE RÉDACTION ET FORMAT DE SORTIE :
 Tu dois répondre STRICTEMENT sous la forme d'un objet JSON valide contenant exactement les clés suivantes :
@@ -90,19 +78,31 @@ RÈGLES IMPORTANTES ET GESTION DES ANNÉES D'ÂGE (CRITIQUE) :
 4. Garde un ton très positif, motivant et rassembleur ("Allez les Tritons !").
 5. Ne réponds rien d'autre que du JSON brut valide (pas de markdown \`\`\`json avant ou après).`
 
-    const response = await ai.generate({
-      model: openMistralSmall,
-      prompt: prompt,
-      config: {
-        temperature: 0.4,
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
       },
+      body: JSON.stringify({
+        model: 'mistral-small-latest',
+        messages: [{ role: 'user', content: systemPrompt }],
+        temperature: 0.3,
+        response_format: { type: 'json_object' },
+      }),
     })
 
-    const text = response.text.trim()
-    let parsed: any
+    if (!response.ok) {
+      const errText = await response.text()
+      aiLogger.error('Erreur API Mistral HTTP ' + response.status, { errText })
+      return apiError('Erreur de communication avec l\'API Mistral AI.', 502)
+    }
 
+    const resData = await response.json()
+    const text = resData.choices?.[0]?.message?.content?.trim() || ''
+
+    let parsed: any
     try {
-      // Nettoyer les balises éventuelles ```json
       const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').trim()
       parsed = JSON.parse(jsonText)
     } catch (parseErr) {
