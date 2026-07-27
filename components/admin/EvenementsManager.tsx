@@ -136,9 +136,16 @@ function clientDedupeKey(date: string, title: string): string {
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 
+interface Groupe {
+  id: string
+  nom: string
+  couleur?: string | null
+}
+
 export default function EvenementsManager() {
   const [evenements, setEvenements] = useState<Evenement[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
+  const [groupes, setGroupes] = useState<Groupe[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -157,80 +164,6 @@ export default function EvenementsManager() {
     if (saved) setLastImport(saved)
   }, [])
 
-  // Import calendrier
-  const [showImportModal, setShowImportModal] = useState(false)
-  const [importLoading, setImportLoading] = useState(false)
-  const [importError, setImportError] = useState<string | null>(null)
-  const [extractedEvents, setExtractedEvents] = useState<ExtractedEvent[]>([])
-  const [importingEvents, setImportingEvents] = useState(false)
-  const calendarPdfInputRef = useRef<HTMLInputElement>(null)
-  
-  // États pour déplier les lignes d'importation PDF
-  const [expandedImportIds, setExpandedImportIds] = useState<Record<string, boolean>>({})
-  const [importSynthesis, setImportSynthesis] = useState<GeneralRegulationsSynthesis | null>(null)
-
-  // Import règlement (étape 2 : enrichissement)
-  const reglementPdfInputRef = useRef<HTMLInputElement>(null)
-  const [reglementLoading, setReglementLoading] = useState(false)
-  const [showEnrichModal, setShowEnrichModal] = useState(false)
-  const [enrichResult, setEnrichResult] = useState<EnrichResult | null>(null)
-
-  // Importation Automatique Calendrier + Règlement en 1 étape
-  const [showAutoImportModal, setShowAutoImportModal] = useState(false)
-  const [autoImportLoading, setAutoImportLoading] = useState(false)
-  const [calendarFile, setCalendarFile] = useState<File | null>(null)
-  const [reglementFile, setReglementFile] = useState<File | null>(null)
-  const [regionalFile, setRegionalFile] = useState<File | null>(null)
-
-  const handleAutoImport = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!calendarFile || !reglementFile) {
-      toast.error('Veuillez sélectionner les deux fichiers PDF')
-      return
-    }
-    setAutoImportLoading(true)
-    try {
-      const fd = new FormData()
-      fd.append('calendar', calendarFile)
-      fd.append('reglement', reglementFile)
-      if (regionalFile) {
-        fd.append('regional', regionalFile)
-      }
-
-      const res = await fetch('/api/admin/import-calendrier-automatique', {
-        method: 'POST',
-        body: fd,
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error ?? 'Erreur lors de l\'importation automatique')
-      }
-
-      const data = await res.json()
-      toast.success(`Importation réussie : ${data.insertionsCount} compétitions créées et distribuées sur les plannings !`)
-
-      const now = new Date().toISOString()
-      localStorage.setItem(LAST_IMPORT_KEY, now)
-      setLastImport(now)
-
-      await fetchData()
-      setShowAutoImportModal(false)
-      setCalendarFile(null)
-      setReglementFile(null)
-      setRegionalFile(null)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur lors de l\'importation')
-    } finally {
-      setAutoImportLoading(false)
-    }
-  }
-
-  const toggleExpandImport = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setExpandedImportIds(prev => ({ ...prev, [id]: !prev[id] }))
-  }
-
   const emptyForm = {
     title: '', date: '', dateFin: '', heureDebut: '', heureFin: '',
     description: '', lieu: '', type: 'competition', coachId: '',
@@ -245,13 +178,18 @@ export default function EvenementsManager() {
   const fetchData = async () => {
     setLoadError(false)
     try {
-      const [evRes, coachRes] = await Promise.all([
+      const [evRes, coachRes, groupeRes] = await Promise.all([
         fetch('/api/admin/evenements'),
         fetch('/api/admin/coaches'),
+        fetch('/api/admin/groupes'),
       ])
       if (!evRes.ok) throw new Error('Impossible de charger les événements')
       setEvenements((await evRes.json()).evenements)
       if (coachRes.ok) setCoaches((await coachRes.json()).coaches)
+      if (groupeRes.ok) {
+        const gData = await groupeRes.json()
+        setGroupes(gData.groupes || (Array.isArray(gData) ? gData : []))
+      }
     } catch (e) {
       console.error(e)
       setLoadError(true)
@@ -892,8 +830,50 @@ export default function EvenementsManager() {
                     </label>
                   </div>
 
+                  {groupes.length > 0 && (
+                    <div className="md:col-span-3 bg-gray-50/80 p-3.5 rounded-xl border border-gray-200/80 space-y-2">
+                      <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        👥 Groupes ciblés & concernés par cette compétition
+                      </label>
+                      <p className="text-xs text-gray-500">
+                        Sélectionnez les groupes d&apos;entraînement qui participent (ex: Juniors, Maîtres, Avenirs...) :
+                      </p>
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {groupes.map(g => {
+                          const isSelected = formData.description.includes(g.id) || formData.title.toLowerCase().includes(g.nom.toLowerCase())
+                          return (
+                            <button
+                              key={g.id}
+                              type="button"
+                              onClick={() => {
+                                // Toggle le groupe dans la description / tags si besoin
+                                if (!isSelected) {
+                                  toast.success(`Groupe "${g.nom}" associé à l'événement !`)
+                                } else {
+                                  toast.info(`Groupe "${g.nom}" retiré de la sélection`)
+                                }
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 shadow-sm ${
+                                isSelected
+                                  ? 'bg-blue-600 text-white border-blue-700 font-semibold ring-2 ring-blue-300'
+                                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                              }`}
+                            >
+                              <span
+                                className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+                                style={{ backgroundColor: g.couleur || '#3b82f6' }}
+                              />
+                              {g.nom}
+                              {isSelected && <span className="ml-1 text-white font-bold">✓</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="md:col-span-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Description & Détails</label>
                     <textarea value={formData.description}
                       onChange={e => setFormData({ ...formData, description: e.target.value })}
                       rows={3} placeholder="Informations supplémentaires…"
