@@ -46,11 +46,11 @@ const CATEGORIES = [
     title: 'Général',
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-      { id: 'visiteurs', label: 'Carte & Visiteurs', icon: '🌍' },
+      { id: 'visiteurs', label: 'Statistiques visiteurs', icon: '🌍' },
       { id: 'factures', label: 'Factures', icon: '💰' },
       { id: 'finances', label: 'Finances', icon: '📈' },
       { id: 'dons', label: 'Dons & Reçus', icon: '🎗️' },
-      { id: 'database', label: 'Sauvegardes & Base de données', icon: '💾' },
+      { id: 'database', label: 'Sauvegarde BDD', icon: '💾' },
       { id: 'system-versions', label: 'Versions & Composants', icon: '📦' },
       { id: 'parametres', label: 'Paramètres', icon: '⚙️' },
       { id: 'audit-logs', label: 'Journal d\'Audit', icon: '🕵️‍♂️' }
