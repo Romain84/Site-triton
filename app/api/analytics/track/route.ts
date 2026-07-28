@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 
 // Permet un test rapide en ouvrant l'URL dans le navigateur mobile
 export async function GET(request: NextRequest) {
-  const page = request.nextUrl.searchParams.get('page') || '/test'
+  const page = request.nextUrl.searchParams.get('page') || '/'
   const userAgent = request.headers.get('user-agent') || ''
   let appareil = 'Desktop'
   if (/mobile/i.test(userAgent)) appareil = 'Mobile'
