@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatCompactDateFr } from '@/lib/date'
+import VisiteursMapGoogleStyle from './VisiteursMapGoogleStyle'
 
 interface LocationPoint {
   lat: number
@@ -47,7 +48,33 @@ function latLngToSvg(lat: number, lng: number, width: number = 800, height: numb
   return { x, y }
 }
 
-import VisiteursMapGoogleStyle from './VisiteursMapGoogleStyle'
+function formatDateHeureFr(dateInput: string | Date) {
+  try {
+    const d = new Date(dateInput)
+    if (isNaN(d.getTime())) return String(dateInput)
+    const dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const timeStr = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    return `${dateStr} à ${timeStr}`
+  } catch {
+    return String(dateInput)
+  }
+}
+
+function formatTimeAgoFr(dateInput: string | Date) {
+  try {
+    const d = new Date(dateInput)
+    const diffSec = Math.floor((Date.now() - d.getTime()) / 1000)
+    if (diffSec < 15) return 'À l\'instant'
+    if (diffSec < 60) return `Il y a ${diffSec}s`
+    const diffMin = Math.floor(diffSec / 60)
+    if (diffMin < 60) return `Il y a ${diffMin} min`
+    const diffHours = Math.floor(diffMin / 60)
+    if (diffHours < 24) return `Il y a ${diffHours}h`
+    return `${Math.floor(diffHours / 24)}j`
+  } catch {
+    return ''
+  }
+}
 
 export default function VisiteursManager() {
   const [data, setData] = useState<AnalyticsData | null>(null)
@@ -254,7 +281,12 @@ export default function VisiteursManager() {
                 .map((v) => (
                   <tr key={v.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-3.5 font-medium whitespace-nowrap text-slate-900">
-                      {formatCompactDateFr(v.createdAt)}
+                      <div className="flex items-center gap-2">
+                        <span>{formatDateHeureFr(v.createdAt)}</span>
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                          {formatTimeAgoFr(v.createdAt)}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-3.5 whitespace-nowrap">
                       <span className="font-semibold text-slate-800">{v.ville}</span>, <span className="text-slate-500">{v.pays}</span>
