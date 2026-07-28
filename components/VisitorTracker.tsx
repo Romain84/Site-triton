@@ -7,17 +7,22 @@ export default function VisitorTracker() {
   const pathname = usePathname()
 
   useEffect(() => {
-    // Ne pas enregistrer les pages d'administration internes
-    if (!pathname || pathname.startsWith('/admin') || pathname.startsWith('/api')) return
+    if (!pathname) return
+    // Ignorer uniquement les appels API internes
+    if (pathname.startsWith('/api')) return
 
-    // Envoyer la visite au serveur
-    fetch('/api/analytics/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ page: pathname }),
-    }).catch((err) => {
-      console.warn('Analytics track notice:', err)
-    })
+    try {
+      fetch('/api/analytics/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page: pathname }),
+        keepalive: true,
+      }).catch((e) => {
+        console.warn('Track notice:', e)
+      })
+    } catch {
+      // Ignorer silencieusement
+    }
   }, [pathname])
 
   return null

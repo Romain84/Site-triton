@@ -56,25 +56,41 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch {
-        // Fallback discret en cas de timeout ou hors-ligne
+        // Fallback discret en cas de timeout
       }
     }
 
-    // Enregistrement dans la base de données
-    await prisma.visite.create({
-      data: {
-        ip: cleanIp,
-        pays,
-        codePays,
-        region,
-        ville,
-        latitude,
-        longitude,
-        page,
-        appareil,
-        navigateur,
-      },
-    })
+    // Auto-création de la table si elle n'existe pas encore dans PostgreSQL
+    try {
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "visites" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "ip" TEXT,
+          "pays" TEXT DEFAULT 'France',
+          "codePays" TEXT DEFAULT 'FR',
+          "region" TEXT,
+          "ville" TEXT DEFAULT 'Inconnu',
+          "latitude" DOUBLE PRECISION DEFAULT 43.8333,
+          "longitude" DOUBLE PRECISION DEFAULT 5.0333,
+          "page" TEXT DEFAULT '/',
+          "appareil" TEXT DEFAULT 'Desktop',
+          "navigateur" TEXT DEFAULT 'Navigateur',
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `)
+    } catch {
+      // Ignorer si déjà existante
+    }
+
+    // Génération ID CUID natif rapide
+    const id = `v_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+
+    // Insérer la visite
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "visites" ("id", "ip", "pays", "codePays", "region", "ville", "latitude", "longitude", "page", "appareil", "navigateur", "createdAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW());`,
+      id, cleanIp, pays, codePays, region, ville, latitude, longitude, page, appareil, navigateur
+    )
 
     return NextResponse.json({ success: true })
   } catch (error) {

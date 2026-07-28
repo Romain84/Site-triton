@@ -47,7 +47,7 @@ function latLngToSvg(lat: number, lng: number, width: number = 800, height: numb
   return { x, y }
 }
 
-import VisiteursMapSVG from './VisiteursMapSVG'
+import VisiteursMapGoogleStyle from './VisiteursMapGoogleStyle'
 
 export default function VisiteursManager() {
   const [data, setData] = useState<AnalyticsData | null>(null)
@@ -143,8 +143,8 @@ export default function VisiteursManager() {
         </div>
       </div>
 
-      {/* Carte Mondiale Vectorielle HD */}
-      <VisiteursMapSVG locations={data?.locations || []} />
+      {/* Carte Mondiale Style Google Maps */}
+      <VisiteursMapGoogleStyle locations={data?.locations || []} />
 
       {/* Top Villes et Top Pays */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
