@@ -8,20 +8,26 @@ export default function VisitorTracker() {
 
   useEffect(() => {
     if (!pathname) return
-    // Ignorer uniquement les appels API internes
-    if (pathname.startsWith('/api')) return
+    if (pathname.startsWith('/admin') || pathname.startsWith('/api')) return
 
     try {
-      fetch('/api/analytics/track', {
+      const endpoint = '/api/analytics/track'
+      const payload = JSON.stringify({ page: pathname })
+
+      // Tentative POST avec fetch keepalive
+      fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ page: pathname }),
+        body: payload,
         keepalive: true,
-      }).catch((e) => {
-        console.warn('Track notice:', e)
+      }).catch(() => {
+        // Fallback Beacon pour navigateurs mobiles restreints (Safari / Chrome Mobile)
+        if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+          navigator.sendBeacon(endpoint, payload)
+        }
       })
     } catch {
-      // Ignorer silencieusement
+      // Erreur silencieuse
     }
   }, [pathname])
 

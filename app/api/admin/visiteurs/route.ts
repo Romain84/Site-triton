@@ -36,21 +36,20 @@ export async function GET(request: NextRequest) {
       console.warn('Notice verification table visites:', e)
     }
 
-    const now = new Date()
-    const todayStartStr = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
-    const sevenDaysAgoStr = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    const thirtyDaysAgoStr = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
-
-    // 1. Compteurs globaux via SQL natif robuste
+    // Compteurs globaux avec filtrage SQL direct (indépendant des fuseaux horaires)
     let totalToday = 0
     let totalWeek = 0
     let totalMonth = 0
     let totalAll = 0
 
     try {
-      const todayRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites" WHERE "createdAt" >= $1::timestamp`, todayStartStr)
-      const weekRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites" WHERE "createdAt" >= $1::timestamp`, sevenDaysAgoStr)
-      const monthRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites" WHERE "createdAt" >= $1::timestamp`, thirtyDaysAgoStr)
+      // Visites des dernières 24h
+      const todayRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites" WHERE "createdAt" >= NOW() - INTERVAL '24 hours'`)
+      // Visites des 7 derniers jours
+      const weekRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites" WHERE "createdAt" >= NOW() - INTERVAL '7 days'`)
+      // Visites des 30 derniers jours
+      const monthRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites" WHERE "createdAt" >= NOW() - INTERVAL '30 days'`)
+      // Total de toutes les visites
       const totalRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites"`)
 
       totalToday = Number(todayRes[0]?.count || 0)
@@ -61,7 +60,7 @@ export async function GET(request: NextRequest) {
       console.error('Erreur SQL counts visites:', err)
     }
 
-    // 2. Top Pays
+    // Top Pays
     let topCountries: any[] = []
     try {
       topCountries = await prisma.$queryRawUnsafe(`
@@ -75,7 +74,7 @@ export async function GET(request: NextRequest) {
       console.error('Erreur SQL topCountries:', e)
     }
 
-    // 3. Top Villes
+    // Top Villes
     let topCities: any[] = []
     try {
       topCities = await prisma.$queryRawUnsafe(`
@@ -89,7 +88,7 @@ export async function GET(request: NextRequest) {
       console.error('Erreur SQL topCities:', e)
     }
 
-    // 4. Coordonnées géographiques pour la carte
+    // Coordonnées pour la carte
     let locations: any[] = []
     try {
       locations = await prisma.$queryRawUnsafe(`
@@ -105,7 +104,7 @@ export async function GET(request: NextRequest) {
       console.error('Erreur SQL locations:', e)
     }
 
-    // 5. Répartition Appareils
+    // Appareils
     let devices: any[] = []
     try {
       devices = await prisma.$queryRawUnsafe(`
@@ -117,7 +116,7 @@ export async function GET(request: NextRequest) {
       console.error('Erreur SQL devices:', e)
     }
 
-    // 6. 50 Dernières Visites
+    // 50 Dernières Visites
     let recentVisits: any[] = []
     try {
       recentVisits = await prisma.$queryRawUnsafe(`
