@@ -1,18 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getAdminSession } from '@/lib/auth/session'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { isSameOriginRequest } from '@/lib/security/origin'
+import { requireAdmin, handleRouteError } from '@/lib/api/guards'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    if (!isSameOriginRequest(request)) {
-      return NextResponse.json({ error: 'Origine non autorisée' }, { status: 403 })
-    }
-
-    const session = await getAdminSession()
-    if (!session) {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
-    }
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
 
     // Auto-création de la table si absente dans PostgreSQL
     try {
@@ -36,20 +29,16 @@ export async function GET(request: NextRequest) {
       console.warn('Notice verification table visites:', e)
     }
 
-    // Compteurs globaux avec filtrage SQL direct (indépendant des fuseaux horaires)
+    // Compteurs globaux via SQL direct
     let totalToday = 0
     let totalWeek = 0
     let totalMonth = 0
     let totalAll = 0
 
     try {
-      // Visites des dernières 24h
       const todayRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites" WHERE "createdAt" >= NOW() - INTERVAL '24 hours'`)
-      // Visites des 7 derniers jours
       const weekRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites" WHERE "createdAt" >= NOW() - INTERVAL '7 days'`)
-      // Visites des 30 derniers jours
       const monthRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites" WHERE "createdAt" >= NOW() - INTERVAL '30 days'`)
-      // Total de toutes les visites
       const totalRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites"`)
 
       totalToday = Number(todayRes[0]?.count || 0)
@@ -166,14 +155,6 @@ export async function GET(request: NextRequest) {
       recentVisits,
     })
   } catch (error) {
-    console.error('Erreur API admin visiteurs GET:', error)
-    return NextResponse.json({
-      stats: { today: 0, week: 0, month: 0, total: 0, uniqueCountries: 0 },
-      topCountries: [],
-      topCities: [],
-      locations: [],
-      devices: [],
-      recentVisits: [],
-    })
+    return handleRouteError(error, 'Erreur lors de la récupération des statistiques visiteurs')
   }
 }
