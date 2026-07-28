@@ -94,6 +94,8 @@ const jsonLd = {
   },
 }
 
+import VisitorTracker from '@/components/VisitorTracker'
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -112,6 +114,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <AppProviders>
+          <VisitorTracker />
           <Header />
           {children}
           <Footer />

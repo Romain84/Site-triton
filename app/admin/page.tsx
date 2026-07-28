@@ -27,6 +27,7 @@ const InscriptionPageBuilder = lazy(() => import('@/components/admin/Inscription
 const DonsManager = lazy(() => import('@/components/admin/DonsManager'))
 const SystemVersionsManager = lazy(() => import('@/components/admin/SystemVersionsManager'))
 const PodiumsManager = lazy(() => import('@/components/admin/PodiumsManager'))
+const VisiteursManager = lazy(() => import('@/components/admin/VisiteursManager'))
 
 // Loading component
 const TabLoading = () => (
@@ -38,13 +39,14 @@ const TabLoading = () => (
   </div>
 )
 
-type Tab = 'dashboard' | 'profils' | 'podiums' | 'factures' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
+type Tab = 'dashboard' | 'visiteurs' | 'profils' | 'podiums' | 'factures' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
 
 const CATEGORIES = [
   {
     title: 'Général',
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+      { id: 'visiteurs', label: 'Carte & Visiteurs', icon: '🌍' },
       { id: 'factures', label: 'Factures', icon: '💰' },
       { id: 'finances', label: 'Finances', icon: '📈' },
       { id: 'dons', label: 'Dons & Reçus', icon: '🎗️' },
@@ -319,6 +321,7 @@ const CATEGORIES = [
         <main className="flex-1 min-h-screen p-6 md:p-10 max-w-6xl mx-auto w-full">
           <Suspense fallback={<TabLoading />}>
             {activeTab === 'dashboard' && <DashboardTab currentUser={currentUser} />}
+            {activeTab === 'visiteurs' && <VisiteursTab />}
             {activeTab === 'profils' && <ProfilsTab currentUser={currentUser} />}
             {activeTab === 'podiums' && <PodiumsTab />}
             {activeTab === 'factures' && <FacturesTab />}
@@ -784,4 +787,9 @@ function SystemVersionsTab() {
 // Podiums Tab
 function PodiumsTab() {
   return <PodiumsManager />
+}
+
+// Visiteurs Tab
+function VisiteursTab() {
+  return <VisiteursManager />
 }

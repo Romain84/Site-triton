@@ -814,3 +814,22 @@ model PodiumSaison {
   @@index([date])
   @@map("podiums_saison")
 }
+
+model Visite {
+  id         String   @id @default(cuid())
+  ip         String?
+  pays       String?  @default("France")
+  codePays   String?  @default("FR")
+  region     String?
+  ville      String?  @default("Inconnu")
+  latitude   Float?   @default(43.8333)
+  longitude  Float?   @default(5.0333)
+  page       String?  @default("/")
+  appareil   String?  @default("Desktop")
+  navigateur String?  @default("Navigateur")
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([codePays])
+  @@map("visites")
+}
