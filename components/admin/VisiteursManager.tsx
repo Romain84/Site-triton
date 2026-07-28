@@ -47,7 +47,7 @@ function latLngToSvg(lat: number, lng: number, width: number = 800, height: numb
   return { x, y }
 }
 
-import VisiteursMapLeaflet from './VisiteursMapLeaflet'
+import VisiteursMapSVG from './VisiteursMapSVG'
 
 export default function VisiteursManager() {
   const [data, setData] = useState<AnalyticsData | null>(null)
@@ -71,7 +71,7 @@ export default function VisiteursManager() {
 
   useEffect(() => {
     fetchAnalytics()
-    const interval = setInterval(fetchAnalytics, 30000) // Rafraîchissement automatique toutes les 30s
+    const interval = setInterval(fetchAnalytics, 15000) // Rafraîchissement automatique toutes les 15s
     return () => clearInterval(interval)
   }, [])
 
@@ -80,7 +80,7 @@ export default function VisiteursManager() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center space-y-3">
           <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
-          <p className="text-sm font-medium text-slate-500">Chargement de la Carte Mondiale & Statistiques Visiteurs...</p>
+          <p className="text-sm font-medium text-slate-500">Chargement des Statistiques Visiteurs...</p>
         </div>
       </div>
     )
@@ -97,8 +97,8 @@ export default function VisiteursManager() {
           <div className="flex items-center gap-3">
             <span className="text-3xl">🌍</span>
             <div>
-              <h1 className="text-xl font-bold text-slate-900">Carte Mondiale & Trafic des Visiteurs</h1>
-              <p className="text-xs text-slate-500 mt-0.5">Géolocalisation en temps réel et analyse de provenance des visiteurs du Triton Club</p>
+              <h1 className="text-xl font-bold text-slate-900">Statistiques & Géolocalisation des Visiteurs</h1>
+              <p className="text-xs text-slate-500 mt-0.5">Trafic en temps réel et analyse de provenance des visiteurs du Triton Club</p>
             </div>
           </div>
         </div>
@@ -143,18 +143,8 @@ export default function VisiteursManager() {
         </div>
       </div>
 
-      {/* Carte Mondiale Interactive OpenStreetMap / CartoDB */}
-      <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
-        <div>
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-            Carte Mondiale & Géolocalisation Temps Réel
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">Carte OpenStreetMap détaillée. Zoomez et cliquez sur les cercles pour voir les visiteurs par ville.</p>
-        </div>
-
-        <VisiteursMapLeaflet locations={data?.locations || []} />
-      </div>
+      {/* Carte Mondiale Vectorielle HD */}
+      <VisiteursMapSVG locations={data?.locations || []} />
 
       {/* Top Villes et Top Pays */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
