@@ -12,6 +12,7 @@ interface CoachProfil {
   email: string | null
   siret: string | null
   adresse: string | null
+  abbyApiKey: string | null
 }
 
 export default function ProfilPage() {
@@ -25,6 +26,7 @@ export default function ProfilPage() {
   const [siret, setSiret] = useState('')
   const [adresse, setAdresse] = useState('')
   const [email, setEmail] = useState('')
+  const [abbyApiKey, setAbbyApiKey] = useState('')
 
   // États pour le changement de mot de passe
   const [showPasswordForm, setShowPasswordForm] = useState(false)
@@ -54,6 +56,7 @@ export default function ProfilPage() {
       setSiret(data.coach.siret || '')
       setAdresse(data.coach.adresse || '')
       setEmail(data.coach.email || '')
+      setAbbyApiKey(data.coach.abbyApiKey || '')
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -79,6 +82,7 @@ export default function ProfilPage() {
           siret,
           adresse,
           email,
+          abbyApiKey,
         }),
       })
 
@@ -271,6 +275,23 @@ export default function ProfilPage() {
                   />
                   <p className="text-[10px] text-slate-400 font-medium mt-1.5 flex items-center gap-1 select-none">
                     <span>ℹ️</span> Requis pour la génération automatique de factures.
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="abbyApiKey" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Clé API Abby (Facturation Électronique)
+                  </label>
+                  <input
+                    type="password"
+                    id="abbyApiKey"
+                    value={abbyApiKey}
+                    onChange={(e) => setAbbyApiKey(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 hover:bg-slate-50/80 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm font-semibold text-slate-800 outline-none"
+                    placeholder="suk-********************************"
+                  />
+                  <p className="text-[10px] text-slate-400 font-medium mt-1.5 flex items-center gap-1 select-none">
+                    <span>ℹ️</span> Requis pour l&apos;exportation automatique des factures vers Abby (my.app-abby.com).
                   </p>
                 </div>
               </div>

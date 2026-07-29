@@ -11,6 +11,7 @@ const updateCoachProfileSchema = z.object({
   adresse: z.string().max(500).optional().nullable(),
   telephone: z.string().max(20).optional().nullable(),
   email: z.string().email('Email invalide').optional().nullable(),
+  abbyApiKey: z.string().max(200).optional().nullable(),
 })
 
 export async function GET() {
@@ -33,6 +34,7 @@ export async function GET() {
         specialites: true,
         siret: true,
         adresse: true,
+        abbyApiKey: true,
         photo: true,
         bio: true,
         lastLogin: true,
@@ -68,7 +70,7 @@ export async function PUT(request: NextRequest) {
       return apiError('Données invalides', 400, validation.error.flatten())
     }
 
-    const { siret, adresse, telephone, email } = validation.data
+    const { siret, adresse, telephone, email, abbyApiKey } = validation.data
 
     // Mettre à jour le profil
     const updatedCoach = await prisma.coach.update({
@@ -78,6 +80,7 @@ export async function PUT(request: NextRequest) {
         ...(adresse !== undefined && { adresse: adresse || null }),
         ...(telephone !== undefined && { telephone: telephone || null }),
         ...(email !== undefined && { email: email || null }),
+        ...(abbyApiKey !== undefined && { abbyApiKey: abbyApiKey || null }),
       },
       select: {
         id: true,
@@ -87,6 +90,7 @@ export async function PUT(request: NextRequest) {
         telephone: true,
         siret: true,
         adresse: true,
+        abbyApiKey: true,
       },
     })
 

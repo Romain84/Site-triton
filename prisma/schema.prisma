@@ -18,6 +18,7 @@ model Coach {
   specialites            String?
   siret                  String?
   adresse                String?
+  abbyApiKey             String?
   actif                  Boolean               @default(true)
   lastLogin              DateTime?
   createdAt              DateTime              @default(now())

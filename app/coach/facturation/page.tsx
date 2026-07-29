@@ -106,6 +106,18 @@ function FacturationContent() {
   const [editingLigne, setEditingLigne] = useState<LigneFacture | null>(null)
   const [conflictWarning, setConflictWarning] = useState<string | null>(null)
 
+  // État export Abby & Popups
+  const [loadingAbby, setLoadingAbby] = useState(false)
+  const [abbyModal, setAbbyModal] = useState<{
+    open: boolean
+    type: 'missing_key' | 'error' | 'success'
+    title: string
+    message: string
+    code?: string
+    status?: number
+    details?: string
+  } | null>(null)
+
   // Formulaire absence
   const [absenceDate, setAbsenceDate] = useState('')
   const [absenceHeures, setAbsenceHeures] = useState('')
@@ -822,6 +834,76 @@ function FacturationContent() {
     }
   }
 
+  const handleExportAbby = async () => {
+    setLoadingAbby(true)
+    setError('')
+
+    try {
+      // 1. S'assurer que la facture/PDF existe ou est générée
+      const pdfResponse = await fetch('/api/coach/facturation/generer-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mois: selectedMois, annee: selectedAnnee }),
+      })
+
+      if (!pdfResponse.ok) {
+        const result = await pdfResponse.json()
+        throw new Error(result.error || 'Erreur lors de la génération du PDF préalable')
+      }
+
+      // 2. Tenter l'exportation vers Abby
+      const response = await fetch('/api/coach/facturation/exporter-abby', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mois: selectedMois, annee: selectedAnnee }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        if (result.code === 'MISSING_API_KEY') {
+          setAbbyModal({
+            open: true,
+            type: 'missing_key',
+            title: 'Clé API Abby non renseignée',
+            message: 'La facture ne sera pas exportée vers la plateforme Abby.',
+            code: 'MISSING_API_KEY',
+            details: 'Aucune clé API Abby n\'a été configurée sur votre profil coach. Pour synchroniser vos factures électroniques, veuillez d\'abord renseigner votre clé API dans vos paramètres de profil.',
+          })
+          return
+        }
+
+        setAbbyModal({
+          open: true,
+          type: 'error',
+          title: 'Erreur lors de l\'exportation vers Abby',
+          message: result.error || 'Une erreur est survenue lors de la communication avec l\'API Abby.',
+          code: result.code,
+          status: response.status,
+        })
+        return
+      }
+
+      setAbbyModal({
+        open: true,
+        type: 'success',
+        title: 'Exportation réussie !',
+        message: 'La facture a été transmise avec succès à la plateforme Abby.',
+        details: result.invoiceNumber ? `Numéro de pièce sur Abby : ${result.invoiceNumber}` : undefined,
+      })
+    } catch (err) {
+      setAbbyModal({
+        open: true,
+        type: 'error',
+        title: 'Erreur d\'exportation',
+        message: getErrorMessage(err),
+        code: 'CLIENT_ERROR',
+      })
+    } finally {
+      setLoadingAbby(false)
+    }
+  }
+
   const handleDayClick = (day: { dateStr: string }, sessions: CalendarSession[]) => {
     if (data?.isBlocked) {
       toast.dismiss()
@@ -1519,13 +1601,23 @@ function FacturationContent() {
               </button>
               <button
                 onClick={handleSendEmail}
-                disabled={loading}
+                disabled={loading || loadingAbby}
                 className="flex-1 min-w-[200px] px-6 py-3 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 active:scale-[0.99] shadow-sm flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
                 {loading ? 'Envoi...' : 'Demander le paiement'}
+              </button>
+              <button
+                onClick={handleExportAbby}
+                disabled={loading || loadingAbby}
+                className="flex-1 min-w-[200px] px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 active:scale-[0.99] shadow-sm flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                {loadingAbby ? 'Exportation Abby...' : 'Exporter vers Abby'}
               </button>
             </div>
           </>
@@ -2104,6 +2196,94 @@ function FacturationContent() {
                 >
                   {editingLigne ? 'Modifier' : 'Ajouter'}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal d'alerte / Erreur Abby */}
+        {abbyModal?.open && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl animate-fade-in-up border border-slate-100 relative overflow-hidden">
+              {/* Header Icon */}
+              <div className="flex items-center gap-4 mb-5">
+                <div
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                    abbyModal.type === 'missing_key'
+                      ? 'bg-amber-100 text-amber-600'
+                      : abbyModal.type === 'error'
+                      ? 'bg-red-100 text-red-600'
+                      : 'bg-emerald-100 text-emerald-600'
+                  }`}
+                >
+                  {abbyModal.type === 'missing_key' && (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  )}
+                  {abbyModal.type === 'error' && (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
+                  {abbyModal.type === 'success' && (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900 leading-tight">
+                    {abbyModal.title}
+                  </h3>
+                  {abbyModal.code && (
+                    <span className="inline-block mt-1 px-2.5 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-mono font-bold rounded-md uppercase">
+                      Code: {abbyModal.code} {abbyModal.status ? `(${abbyModal.status})` : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Body message */}
+              <div className="space-y-3 mb-6">
+                <p className="text-slate-900 font-bold text-sm leading-relaxed">
+                  {abbyModal.message}
+                </p>
+                {abbyModal.details && (
+                  <p className="text-slate-600 text-xs leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                    {abbyModal.details}
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                {abbyModal.type === 'missing_key' ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setAbbyModal(null)
+                        router.push('/coach/profil')
+                      }}
+                      className="flex-1 px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-[0.98]"
+                    >
+                      Configurer mon profil
+                    </button>
+                    <button
+                      onClick={() => setAbbyModal(null)}
+                      className="px-5 py-3 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-bold text-xs uppercase tracking-wider"
+                    >
+                      Fermer
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setAbbyModal(null)}
+                    className="w-full px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-[0.98]"
+                  >
+                    Fermer
+                  </button>
+                )}
               </div>
             </div>
           </div>
