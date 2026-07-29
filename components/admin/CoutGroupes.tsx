@@ -279,6 +279,7 @@ export default function CoutGroupes() {
   // NOUVEAU: états de simulation interactive client
   const [simTarifPercent, setSimTarifPercent]             = useState<number>(0)
   const [simRemplissageTarget, setSimRemplissageTarget]   = useState<number>(0)
+  const [simInscritsByGroupe, setSimInscritsByGroupe]     = useState<Record<string, number>>({})
 
   // ── Persistance localStorage (préférences) ─────────────────────────────────
   useEffect(() => {
@@ -417,13 +418,16 @@ export default function CoutGroupes() {
   // NOUVEAU : Calculateur de simulation dynamique côté client
   const displayData = (() => {
     if (!rawResultat) return null
-    if (simTarifPercent === 0 && simRemplissageTarget === 0) return rawResultat
+    const hasCustomInscrits = Object.keys(simInscritsByGroupe).length > 0
+    if (simTarifPercent === 0 && simRemplissageTarget === 0 && !hasCustomInscrits) return rawResultat
 
     const coeffTarif = 1 + simTarifPercent / 100
 
     const simulateurGroupe = (g: GroupeCout): GroupeCout => {
       let inscritsSimules = g.inscrits
-      if (simRemplissageTarget > 0) {
+      if (simInscritsByGroupe[g.groupeId] !== undefined) {
+        inscritsSimules = Math.max(0, simInscritsByGroupe[g.groupeId])
+      } else if (simRemplissageTarget > 0) {
         const inscritsCibles = Math.ceil((simRemplissageTarget / 100) * g.placesTotal)
         if (inscritsCibles > g.inscrits) {
           inscritsSimules = inscritsCibles
@@ -605,7 +609,8 @@ export default function CoutGroupes() {
             Analyse Financière des Groupes
             <HelpTooltip title="Outil d'analyse financière">
               <p>Calculez le coût, les revenus et la rentabilité de chaque groupe sur une saison.</p>
-              <p className="mt-1">Les données sont basées sur les plannings actifs, les inscriptions et les paramètres du club.</p>
+              <p className="mt-1">Prend en compte les plannings actifs, le &quot;Temps à facturer&quot; (ex: 60 min = 1h), les vacances, les séances annulées et l&apos;exclusion PPG/Petit Bassin.</p>
+              <p className="mt-1 text-xs text-indigo-300">💡 Conseil : vous pouvez modifier en temps réel le nombre d&apos;inscrits dans les tableaux pour simuler différents scénarios.</p>
             </HelpTooltip>
           </h2>
         </div>
@@ -659,9 +664,9 @@ export default function CoutGroupes() {
           <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
             Mode de calcul
             <HelpTooltip title="Modes de calcul">
-              <p><strong>Simple :</strong> chaque groupe porte ses coûts complets.</p>
-              <p className="mt-1"><strong>Optimisé :</strong> un coach partagé sur plusieurs groupes au même créneau est réparti proportionnellement.</p>
-              <p className="mt-1 text-xs text-gray-500">Exemple : 1 coach sur 2 groupes = 0,5 coach imputé par groupe.</p>
+              <p><strong>Simple :</strong> chaque groupe porte ses coûts complets sans partage.</p>
+              <p className="mt-1"><strong>Optimisé :</strong> un coach partagé sur plusieurs groupes au même créneau voit son coût réparti entre ces groupes.</p>
+              <p className="mt-1 text-xs text-amber-300">🏊 Note : Les créneaux PPG et Petit Bassin ne sont jamais optimisés/partagés et restent facturés à 100 %.</p>
             </HelpTooltip>
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -800,7 +805,7 @@ export default function CoutGroupes() {
                 <p className="text-[10px] text-slate-400 mt-1 font-normal uppercase">Ajustement en temps réel des variables tarifaires et de recrutement</p>
               </div>
               <button
-                onClick={() => { setSimTarifPercent(0); setSimRemplissageTarget(0); }}
+                onClick={() => { setSimTarifPercent(0); setSimRemplissageTarget(0); setSimInscritsByGroupe({}); }}
                 className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-3 py-1 rounded-lg transition-all cursor-pointer"
               >
                 🔄 Réinitialiser
@@ -857,9 +862,15 @@ export default function CoutGroupes() {
                 </div>
               </div>
             </div>
-            {(simTarifPercent !== 0 || simRemplissageTarget !== 0) && (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-[10px] font-bold uppercase tracking-wider text-center">
-                ⚠️ Mode simulation actif : Les données ci-dessous intègrent vos ajustements virtuels.
+            {(simTarifPercent !== 0 || simRemplissageTarget !== 0 || Object.keys(simInscritsByGroupe).length > 0) && (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-[10px] font-bold uppercase tracking-wider text-center flex items-center justify-between">
+                <span>⚠️ Mode simulation actif : Les données ci-dessous intègrent vos ajustements d&apos;inscrits ou de tarifs en temps réel.</span>
+                <button
+                  onClick={() => { setSimTarifPercent(0); setSimRemplissageTarget(0); setSimInscritsByGroupe({}); }}
+                  className="underline hover:text-white cursor-pointer ml-2 text-[10px]"
+                >
+                  Réinitialiser tout
+                </button>
               </div>
             )}
           </div>
@@ -956,7 +967,7 @@ export default function CoutGroupes() {
                     <CalculationTooltip
                       title="Formule du coût total"
                       formula="Coaching + Compétitions + Licences + Marge sécu."
-                      explanation="Coaching = Heures × Taux horaire | Compétitions = Nb × Forfait × Demi-journées | Licences = Prix × Inscrits"
+                      explanation="Coaching = Heures × Taux. Chaque cours prend la valeur de 'Temps à facturer' (ex: 60 min = 1h) ou la durée réelle si non renseignée. La PPG et le Petit Bassin ne sont jamais réduits en mode optimisé."
                       example="200h × 35€ + 5 × 150€ × 2 + 80€ × 20 = 10 100€"
                     />
                   </span>
@@ -1177,7 +1188,14 @@ export default function CoutGroupes() {
                         <th className="px-3 py-3 text-left   text-xs font-bold text-slate-700 uppercase tracking-wider">Groupe</th>
                         <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Type</th>
                         <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">H/sem</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Inscrits</th>
+                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
+                          <span className="flex items-center justify-center gap-1">
+                            Inscrits
+                            <HelpTooltip title="Saisie d'inscrits interactive">
+                              <p>Modifiez le nombre d&apos;inscrits dans la case pour simuler en temps réel l&apos;impact financier et le taux de remplissage.</p>
+                            </HelpTooltip>
+                          </span>
+                        </th>
                         <th className="px-3 py-3 text-right  text-xs font-bold text-slate-700 uppercase tracking-wider">Coût Total</th>
                         <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Planning</th>
                       </tr>
@@ -1226,7 +1244,27 @@ export default function CoutGroupes() {
                                 <div className="text-[10px] text-slate-400">{groupe.totalHeures.toFixed(0)}h/an</div>
                               </td>
                               <td className="px-3 py-3 text-sm text-center text-slate-700">
-                                {groupe.inscrits} / {groupe.placesTotal}
+                                <div className="flex items-center justify-center gap-1">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={groupe.inscrits}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value, 10)
+                                      setSimInscritsByGroupe((prev) => ({
+                                        ...prev,
+                                        [groupe.groupeId]: isNaN(val) ? 0 : Math.max(0, val),
+                                      }))
+                                    }}
+                                    className={`w-14 px-1.5 py-0.5 text-center text-xs font-bold rounded border transition-all cursor-pointer ${
+                                      simInscritsByGroupe[groupe.groupeId] !== undefined
+                                        ? 'bg-indigo-50 border-indigo-400 text-indigo-900 ring-2 ring-indigo-200/50'
+                                        : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-slate-300'
+                                    }`}
+                                    title="Modifier le nombre d'inscrits pour ce groupe (calcul instantané)"
+                                  />
+                                  <span className="text-slate-400 text-xs font-medium">/ {groupe.placesTotal}</span>
+                                </div>
                                 {groupe.inscrits1Cours > 0 && (
                                   <div className="text-[10px] text-slate-500 font-normal mt-0.5">
                                     dont {groupe.inscrits1Cours} à {groupe.libelleOption1 || '1 cours'}
@@ -1317,7 +1355,14 @@ export default function CoutGroupes() {
                     <thead>
                       <tr className="border-b border-slate-300">
                         <th className="px-3 py-3 text-left   text-xs font-bold text-slate-700 uppercase tracking-wider">Groupe</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Inscrits</th>
+                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
+                          <span className="flex items-center justify-center gap-1">
+                            Inscrits
+                            <HelpTooltip title="Saisie d'inscrits interactive">
+                              <p>Modifiez le nombre d&apos;inscrits dans la case pour simuler en temps réel le chiffre d&apos;affaires, le bénéfice et le seuil de rentabilité.</p>
+                            </HelpTooltip>
+                          </span>
+                        </th>
                         <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Capacité</th>
                         <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Taux</th>
                         <th className="px-3 py-3 text-right  text-xs font-bold text-slate-700 uppercase tracking-wider">Tarif</th>
@@ -1347,7 +1392,26 @@ export default function CoutGroupes() {
                               )}
                             </td>
                             <td className="px-3 py-3 text-sm text-center font-semibold text-slate-800">
-                              {groupe.inscrits}
+                              <div className="flex items-center justify-center gap-1">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={groupe.inscrits}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value, 10)
+                                    setSimInscritsByGroupe((prev) => ({
+                                      ...prev,
+                                      [groupe.groupeId]: isNaN(val) ? 0 : Math.max(0, val),
+                                    }))
+                                  }}
+                                  className={`w-14 px-1.5 py-0.5 text-center text-xs font-bold rounded border transition-all cursor-pointer ${
+                                    simInscritsByGroupe[groupe.groupeId] !== undefined
+                                      ? 'bg-indigo-50 border-indigo-400 text-indigo-900 ring-2 ring-indigo-200/50'
+                                      : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-slate-300'
+                                  }`}
+                                  title="Modifier le nombre d'inscrits pour ce groupe (calcul instantané)"
+                                />
+                              </div>
                               {groupe.inscrits1Cours > 0 && (
                                 <div className="text-[10px] text-slate-500 font-normal mt-0.5">
                                   dont {groupe.inscrits1Cours} à {groupe.libelleOption1 || '1 cours'}

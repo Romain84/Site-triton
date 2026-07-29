@@ -173,6 +173,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     groupes: string[]
     planningIds: string[]
     groupeIds: string[]
+    tempsFacture?: number | null
   }>()
 
   for (const planning of planningsFixe) {
@@ -191,6 +192,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
         groupes: [],
         planningIds: [],
         groupeIds: [],
+        tempsFacture: planning.groupe?.tempsFacture,
       })
     }
     creneauxMap.get(key)!.groupes.push(planning.groupe?.nom || 'Groupe')
@@ -214,7 +216,9 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     const occurences = dates.length
 
     if (occurences > 0) {
-      const dureeHeures = calculerDuree(creneau.heureDebut, creneau.heureFin)
+      const dureeHeures = (creneau.tempsFacture && creneau.tempsFacture > 0)
+        ? creneau.tempsFacture / 60
+        : calculerDuree(creneau.heureDebut, creneau.heureFin)
       const totalHrs = dureeHeures * occurences
       heuresPlanningFixe += totalHrs
       const groupesStr = creneau.groupes.join(', ')

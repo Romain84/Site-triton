@@ -610,7 +610,7 @@ export default function GroupesManager() {
           <h4 className="text-lg font-semibold mb-4 text-gray-700 flex items-center gap-2">
             Facturation coach
             <HelpTooltip title="Temps facturé">
-              Permet de facturer un temps différent de la durée réelle du cours. Utile pour les cours courts qui nécessitent un temps de préparation.
+              Permet de fixer la durée facturée (en minutes) pour chaque cours de ce groupe. Exemple: 60 min = 1h00 facturée par cours. Laisser vide = facturation de la durée réelle.
             </HelpTooltip>
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

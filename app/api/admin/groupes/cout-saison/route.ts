@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
               coach: { select: { id: true, prenom: true, nom: true } },
             },
           },
-          groupe: { select: { id: true, nom: true } },
+          groupe: { select: { id: true, nom: true, niveau: true, tempsFacture: true } },
         },
       }),
       minDate && maxDate
@@ -250,15 +250,19 @@ export async function POST(request: NextRequest) {
     const planningsParGroupe = new Map<string, PlanningDetail[]>()
     const coachSlotMap = new Map<string, number>()
     for (const p of plannings) {
+      const pExcluded = isPPGouPetitBassin(p)
       for (const c of p.coachs) {
         const key = `${c.coachId}|${p.jourSemaine}|${p.heureDebut}|${p.heureFin}`
-        const count = plannings.filter(op =>
-          op.jourSemaine === p.jourSemaine &&
-          op.coachs.some(oc => oc.coachId === c.coachId) &&
-          parseTimeToMinutes(op.heureDebut) < parseTimeToMinutes(p.heureFin) &&
-          parseTimeToMinutes(op.heureFin) > parseTimeToMinutes(p.heureDebut)
-        ).length
-        coachSlotMap.set(key, count)
+        const count = pExcluded
+          ? 1
+          : plannings.filter(op =>
+              op.jourSemaine === p.jourSemaine &&
+              !isPPGouPetitBassin(op) &&
+              op.coachs.some(oc => oc.coachId === c.coachId) &&
+              parseTimeToMinutes(op.heureDebut) < parseTimeToMinutes(p.heureFin) &&
+              parseTimeToMinutes(op.heureFin) > parseTimeToMinutes(p.heureDebut)
+            ).length
+        coachSlotMap.set(key, Math.max(1, count))
       }
     }
     const coachStats = new Map<string, {
@@ -275,7 +279,7 @@ export async function POST(request: NextRequest) {
     for (const planning of plannings) {
       if (!planning.groupeId) continue
 
-      const duree = Math.max(0, calculerDuree(planning.heureDebut, planning.heureFin))
+      const duree = getPlanningDuree(planning)
       if (duree === 0) continue
 
       const coachIds = planning.coachs.map((c) => c.coachId)
@@ -287,9 +291,7 @@ export async function POST(request: NextRequest) {
         const totalHeuresEffectivesOptimise = coachIds.reduce((sum, coachId) => {
           const effHrs = calculerHeuresEffectivesCoach(
             coachId,
-            planning.jourSemaine,
-            planning.heureDebut,
-            planning.heureFin,
+            planning,
             plannings
           )
           return sum + effHrs
@@ -331,9 +333,7 @@ export async function POST(request: NextRequest) {
         stat.heuresSimple += duree
         stat.heuresOptimise += calculerHeuresEffectivesCoach(
           coachId,
-          planning.jourSemaine,
-          planning.heureDebut,
-          planning.heureFin,
+          planning,
           plannings
         )
         if (planning.groupeId) stat.groupeIds.add(planning.groupeId)
@@ -789,6 +789,38 @@ function buildCoachSlotKey(
   return `${coachId}|${planning.jourSemaine}|${planning.heureDebut}|${planning.heureFin}`
 }
 
+function isPPGouPetitBassin(planning: {
+  lieu?: string | null
+  groupe?: { nom?: string | null; niveau?: string | null } | null
+}): boolean {
+  const lieuLow = (planning.lieu || '').toLowerCase()
+  const groupeNomLow = (planning.groupe?.nom || '').toLowerCase()
+  const groupeNiveauLow = (planning.groupe?.niveau || '').toLowerCase()
+
+  return (
+    lieuLow.includes('ppg') ||
+    lieuLow.includes('petit bassin') ||
+    groupeNomLow.includes('ppg') ||
+    groupeNomLow.includes('petit bassin') ||
+    groupeNiveauLow.includes('ppg') ||
+    groupeNiveauLow.includes('petit bassin')
+  )
+}
+
+function getPlanningDuree(planning: {
+  heureDebut: string
+  heureFin: string
+  groupe?: { tempsFacture?: number | null } | null
+}): number {
+  const tempsFacture = planning.groupe?.tempsFacture
+  if (tempsFacture && tempsFacture > 0) {
+    return tempsFacture / 60
+  }
+  const start = parseTimeToMinutes(planning.heureDebut)
+  const end = parseTimeToMinutes(planning.heureFin)
+  return Math.max(0, (end - start) / 60)
+}
+
 function parseTimeToMinutes(t: string): number {
   const [h, m] = t.split(':').map(Number)
   return h * 60 + m
@@ -796,18 +828,33 @@ function parseTimeToMinutes(t: string): number {
 
 function calculerHeuresEffectivesCoach(
   coachId: string,
-  jourSemaine: string,
-  heureDebut: string,
-  heureFin: string,
+  targetPlanning: {
+    jourSemaine: string
+    heureDebut: string
+    heureFin: string
+    lieu?: string | null
+    groupe?: { nom?: string | null; niveau?: string | null; tempsFacture?: number | null } | null
+  },
   plannings: any[]
 ): number {
-  const start = parseTimeToMinutes(heureDebut)
-  const end = parseTimeToMinutes(heureFin)
+  const dureeFacturee = getPlanningDuree(targetPlanning)
+
+  // En mode optimisé, PPG et Petit Bassin ne sont pas optimisés -> facturés à 100% de leur durée
+  if (isPPGouPetitBassin(targetPlanning)) {
+    return dureeFacturee
+  }
+
+  const start = parseTimeToMinutes(targetPlanning.heureDebut)
+  const end = parseTimeToMinutes(targetPlanning.heureFin)
   if (end <= start) return 0
 
-  // Récupérer tous les créneaux de ce coach ce même jour de la semaine
+  // Récupérer uniquement les créneaux optimisables (non PPG / non Petit Bassin) de ce coach ce même jour de la semaine
   const coachSlotsDuJour = plannings
-    .filter((p) => p.jourSemaine === jourSemaine && p.coachs.some((c: any) => c.coachId === coachId))
+    .filter((p) =>
+      p.jourSemaine === targetPlanning.jourSemaine &&
+      !isPPGouPetitBassin(p) &&
+      p.coachs.some((c: any) => c.coachId === coachId)
+    )
     .map((p) => ({
       start: parseTimeToMinutes(p.heureDebut),
       end: parseTimeToMinutes(p.heureFin),
@@ -816,12 +863,14 @@ function calculerHeuresEffectivesCoach(
   let totalMinutesEffectives = 0
 
   for (let m = start; m < end; m++) {
-    // Compter combien de créneaux de ce coach couvrent la minute m
+    // Compter combien de créneaux optimisables de ce coach couvrent la minute m
     const k = coachSlotsDuJour.filter((s) => m >= s.start && m < s.end).length
     totalMinutesEffectives += 1 / Math.max(1, k)
   }
 
-  return totalMinutesEffectives / 60
+  const dureeReelle = (end - start) / 60
+  const ratio = dureeReelle > 0 ? dureeFacturee / dureeReelle : 1
+  return (totalMinutesEffectives / 60) * ratio
 }
 
 /**
