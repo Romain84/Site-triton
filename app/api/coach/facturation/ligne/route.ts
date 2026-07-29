@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCoachSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { genererNumeroFacture } from '@/lib/facture-utils'
+import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
 
 const coachLogger = logger.withContext('Coach')
 
@@ -68,8 +68,8 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Générer un numéro de facture
-      const numero = genererNumeroFacture(coach.prenom, coach.nom, mois, annee, session.coachId)
+      // Générer un numéro de facture séquentiel continu
+      const numero = await genererNumeroFactureSequentiel(session.coachId, annee)
 
       const settings = await prisma.settings.findFirst()
       const tauxHoraire = settings?.tauxHoraire || 35
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
           })
 
           if (coachRemplace) {
-            const numeroRemplace = genererNumeroFacture(coachRemplace.prenom, coachRemplace.nom, mois, annee, coachRemplaceId)
+            const numeroRemplace = await genererNumeroFactureSequentiel(coachRemplaceId, annee)
 
             const settings = await prisma.settings.findFirst()
             const tauxHoraireRemplace = settings?.tauxHoraire || 35

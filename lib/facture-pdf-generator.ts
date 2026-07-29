@@ -3,7 +3,7 @@ import { logger } from '@/lib/logger'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
-import { genererNumeroFacture } from '@/lib/facture-utils'
+import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
 
 const pdfLogger = logger.withContext('FacturePDFGenerator')
 
@@ -28,7 +28,7 @@ export async function genererFacturePDF(
   // 2. Calculer les détails unifiés via le helper partagé
   const details = await calculerFactureCoach(coachId, mois, annee)
 
-  // 3. Récupérer la facture ou générer un numéro si elle n'existe pas encore
+  // 3. Récupérer la facture ou générer un numéro séquentiel continu si elle n'existe pas encore
   let facture = await prisma.factureCoach.findUnique({
     where: {
       coachId_mois_annee: {
@@ -41,7 +41,7 @@ export async function genererFacturePDF(
 
   let numero = facture?.numero
   if (!numero) {
-    numero = genererNumeroFacture(coach.prenom, coach.nom, mois, annee, coachId)
+    numero = await genererNumeroFactureSequentiel(coachId, annee)
   }
 
   // 4. Récupérer les vacances du mois

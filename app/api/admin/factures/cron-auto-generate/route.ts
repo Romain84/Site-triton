@@ -3,7 +3,7 @@ import { getAdminSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
-import { genererNumeroFacture } from '@/lib/facture-utils'
+import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
 import { notifyCoach } from '@/lib/notifications'
 import { logAdminAudit } from '@/lib/admin-audit'
 
@@ -87,8 +87,8 @@ export async function POST(request: NextRequest) {
         continue
       }
 
-      // Générer le numéro de facture unique
-      const numero = genererNumeroFacture(coach.prenom, coach.nom, mois, annee, coach.id)
+      // Générer le numéro de facture unique et séquentiel
+      const numero = await genererNumeroFactureSequentiel(coach.id, annee)
 
       // Créer la facture en brouillon
       const facture = await prisma.factureCoach.create({

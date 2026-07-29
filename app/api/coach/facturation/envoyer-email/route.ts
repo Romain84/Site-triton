@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCoachSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { genererNumeroFacture } from '@/lib/facture-utils'
+import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
 import { sanitizeEmailHeader, queueEmail } from '@/lib/email'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import { genererFacturePDF } from '@/lib/facture-pdf-generator'
@@ -72,8 +72,8 @@ export async function POST(request: NextRequest) {
     })
 
     if (!facture) {
-      // Générer un numéro unique avec le suffixe du coachId pour éviter les collisions de base de données
-      const numero = genererNumeroFacture(coach.prenom, coach.nom, mois, annee, session.coachId)
+      // Générer un numéro unique séquentiel continu
+      const numero = await genererNumeroFactureSequentiel(session.coachId, annee)
 
       facture = await prisma.factureCoach.create({
         data: {

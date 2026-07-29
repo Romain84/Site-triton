@@ -1,14 +1,31 @@
+import { prisma } from '@/lib/prisma'
+
 export const STATUTS_FACTURE_COACH = ['brouillon', 'generee', 'envoyee', 'payee'] as const
 
 export type StatutFactureCoach = typeof STATUTS_FACTURE_COACH[number]
 
 /**
- * Génère un numéro de facture au format FACT-PNJJ-MM-AAAA
- * @param prenom Prénom du coach
- * @param nom Nom du coach
- * @param mois Mois de la facture (1-12)
- * @param annee Année de la facture
- * @returns Numéro de facture formaté
+ * Génère un numéro de facture unique, séquentiel et chronologique continu (conforme art. 242 nonies A du CGI)
+ * Format : F-AAAA-0001, F-AAAA-0002, etc. pour chaque coach et année
+ */
+export async function genererNumeroFactureSequentiel(
+  coachId: string,
+  annee: number
+): Promise<string> {
+  // Compter le nombre de factures existantes pour ce coach cette année-là
+  const count = await prisma.factureCoach.count({
+    where: {
+      coachId,
+      annee,
+    },
+  })
+
+  const index = String(count + 1).padStart(4, '0')
+  return `F-${annee}-${index}`
+}
+
+/**
+ * Générateur synchrone de secours pour numéro de facture au format séquentiel
  */
 export function genererNumeroFacture(
   prenom: string,
@@ -17,23 +34,8 @@ export function genererNumeroFacture(
   annee: number,
   coachId?: string
 ): string {
-  // Première lettre du nom (ou X si pas de nom)
-  const N = nom ? nom.charAt(0).toUpperCase() : 'X'
-
-  // Première lettre du prénom
-  const P = prenom.charAt(0).toUpperCase()
-
-  const NP = `${N}${P}`
-
-  // Date et heure actuelles de génération
-  const now = new Date()
-  const JJ = String(now.getDate()).padStart(2, '0')
-  const MM = String(now.getMonth() + 1).padStart(2, '0')
-  const AAAA = String(now.getFullYear())
-  const HH = String(now.getHours()).padStart(2, '0')
-  const MinMin = String(now.getMinutes()).padStart(2, '0')
-
-  return `FACT_${NP}_${JJ}_${MM}_${AAAA}_${HH}_${MinMin}`
+  const mm = String(mois).padStart(2, '0')
+  return `F-${annee}${mm}-0001`
 }
 
 // Vérifie qu'un statut de facture coach est valide.
