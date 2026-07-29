@@ -142,8 +142,8 @@ export async function genererFacturePDF(
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(71, 85, 105)
-  doc.text('Piscine municipale', 120, 48)
-  doc.text('Avenue Pierre de Coubertin', 120, 53)
+  doc.text('Piscine couverte Alphonse Roudière', 120, 48)
+  doc.text('Avenue Jean Moulin, quartier La Clède', 120, 53)
   doc.text('84300 Cavaillon', 120, 58)
   doc.text('Email : tritoncavaillon@gmail.com', 120, 63)
 

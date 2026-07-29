@@ -92,7 +92,7 @@ export async function exportInvoiceToAbby(params: AbbyExportParams): Promise<Abb
           siret: clubSiret || undefined,
           emails: clubEmail ? [clubEmail] : ['admin@triton-club.fr'],
           billingAddress: {
-            address: 'Avenue des Sports',
+            address: 'Piscine couverte Alphonse Roudière, Avenue Jean Moulin, quartier La Clède',
             city: 'Cavaillon',
             zipCode: '84300',
             country: 'FR',
