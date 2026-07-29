@@ -21,7 +21,7 @@ export async function genererNumeroFactureSequentiel(
   })
 
   const index = String(count + 1).padStart(4, '0')
-  return `F-${annee}-${index}`
+  return `F-TCC-${annee}-${index}`
 }
 
 /**
