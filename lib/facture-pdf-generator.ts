@@ -301,20 +301,21 @@ export async function genererFacturePDF(
   doc.setFontSize(11)
   doc.text(`${details.totalMontant.toFixed(2)} €`, rightAlignX - 4, currentY + 20, { align: 'right' })
 
-  // Conditions
+  // Conditions & Mentions Légales
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(8)
   doc.setTextColor(15, 23, 42)
-  doc.text('CONDITIONS & PARAMÈTRES', 20, currentY + 10)
+  doc.text('CONDITIONS & MENTIONS LÉGALES', 20, currentY + 10)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7.5)
   doc.setTextColor(100, 116, 139)
-  doc.text(`• Taux horaire de base : ${details.tauxHoraire.toFixed(2)} €/h`, 20, currentY + 15)
-  doc.text(`• Forfait compétition : ${details.forfaitDemiJournee.toFixed(2)} € / demi-journée`, 20, currentY + 19)
-  doc.text(`• T.V.A. non applicable, art. 293 B du CGI`, 20, currentY + 23)
+  doc.text(`• Taux horaire de base : ${details.tauxHoraire.toFixed(2)} €/h  •  Forfait compétition : ${details.forfaitDemiJournee.toFixed(2)} € / demi-journée`, 20, currentY + 15)
+  doc.text(`• T.V.A. non applicable, art. 293 B du CGI`, 20, currentY + 19)
+  doc.text(`• Règlement à réception. En cas de retard de paiement, pénalités au taux de 3 fois le taux d'intérêt légal.`, 20, currentY + 23)
+  doc.text(`• Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 € (art. D. 441-5 du Code de Commerce).`, 20, currentY + 27)
 
-  currentY += 30
+  currentY += 34
 
   // Vacances
   if (vacances.length > 0) {
