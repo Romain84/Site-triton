@@ -191,6 +191,7 @@ export async function POST(request: NextRequest) {
             },
           },
           groupe: { select: { id: true, nom: true, niveau: true, tempsFacture: true } },
+          semaineImpaire: true,
         },
       }),
       minDate && maxDate
@@ -810,15 +811,19 @@ function isPPGouPetitBassin(planning: {
 function getPlanningDuree(planning: {
   heureDebut: string
   heureFin: string
+  semaineImpaire?: boolean | null
   groupe?: { tempsFacture?: number | null } | null
 }): number {
   const tempsFacture = planning.groupe?.tempsFacture
+  let dureeBase = 0
   if (tempsFacture && tempsFacture > 0) {
-    return tempsFacture / 60
+    dureeBase = tempsFacture / 60
+  } else {
+    const start = parseTimeToMinutes(planning.heureDebut)
+    const end = parseTimeToMinutes(planning.heureFin)
+    dureeBase = Math.max(0, (end - start) / 60)
   }
-  const start = parseTimeToMinutes(planning.heureDebut)
-  const end = parseTimeToMinutes(planning.heureFin)
-  return Math.max(0, (end - start) / 60)
+  return planning.semaineImpaire ? dureeBase / 2 : dureeBase
 }
 
 function parseTimeToMinutes(t: string): number {

@@ -23,6 +23,7 @@ interface Planning {
   lieu: string | null
   couleur: string | null
   nomSession: string | null
+  semaineImpaire?: boolean
   actif: boolean
 }
 
@@ -665,6 +666,11 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                   }`}>
                                     {planning.nomSession || planning.groupe?.nom}
                                   </p>
+                                  {planning.semaineImpaire && (
+                                     <span className="shrink-0 text-[7px] md:text-[8px] bg-amber-400 text-amber-950 font-black px-1 py-0.2 rounded-xs leading-tight print:inline-block shadow-xs uppercase tracking-tighter" title="Cours dispensé les semaines impaires uniquement (1 semaine sur 2)">
+                                       🗓️ Sem. impaire
+                                     </span>
+                                   )}
                                   {(planning.groupe as any)?.annule && (
                                     <span className="shrink-0 text-[7px] md:text-[8px] bg-red-650 text-white font-extrabold px-1 rounded-sm leading-tight print:hidden">
                                       PAS DE COURS
@@ -1149,6 +1155,11 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
             <div className="space-y-3.5 mb-6">
               <div className="flex items-center gap-3 text-slate-600 font-semibold text-sm">
                 <span>📅 {selectedPlanningDetails.jourSemaine}</span>
+                {selectedPlanningDetails.semaineImpaire && (
+                  <span className="bg-amber-100 text-amber-900 border border-amber-300 text-xs font-black px-2 py-0.5 rounded-md">
+                    🗓️ Semaines impaires (1 sem. / 2)
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-3 text-slate-600 font-semibold text-sm">

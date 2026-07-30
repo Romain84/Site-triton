@@ -19,7 +19,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const { jourSemaine, heureDebut, heureFin, groupeId, coachIds = [], lieu, couleur, actif, nomSession } = body
+    const { jourSemaine, heureDebut, heureFin, groupeId, coachIds = [], lieu, couleur, actif, nomSession, semaineImpaire } = body
 
     // Update planning and replace coach assignments
     const planning = await prisma.planning.update({
@@ -32,6 +32,7 @@ export async function PUT(
         lieu,
         couleur,
         nomSession: nomSession || null,
+        semaineImpaire: semaineImpaire !== undefined ? Boolean(semaineImpaire) : false,
         actif,
         coachs: {
           deleteMany: {}, // Remove all existing coach assignments

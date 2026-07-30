@@ -32,6 +32,7 @@ interface Planning {
   lieu: string | null
   couleur: string | null
   nomSession: string | null
+  semaineImpaire?: boolean
   actif: boolean
 }
 
@@ -395,6 +396,7 @@ export default function PlanningFixeManager() {
   const [lieuCustom, setLieuCustom] = useState('')
   
   const [couleur, setCouleur] = useState('#00bcd4')
+  const [semaineImpaire, setSemaineImpaire] = useState(false)
   const [actif, setActif] = useState(true)
 
   useEffect(() => {
@@ -427,6 +429,7 @@ export default function PlanningFixeManager() {
     setLieuType('Grand Bassin - Ligne 1')
     setLieuCustom('')
     setCouleur('#00bcd4')
+    setSemaineImpaire(false)
     setActif(true)
     setEditingPlanning(null)
     setShowForm(false)
@@ -451,6 +454,7 @@ export default function PlanningFixeManager() {
     }
     
     setCouleur(planning.couleur || '#00bcd4')
+    setSemaineImpaire(planning.semaineImpaire || false)
     setActif(planning.actif)
     setShowForm(false)
   }
@@ -478,6 +482,7 @@ export default function PlanningFixeManager() {
           lieu: finalLieu,
           couleur,
           nomSession: nomSession || null,
+          semaineImpaire,
           actif,
         }),
       })
@@ -742,17 +747,32 @@ export default function PlanningFixeManager() {
           </div>
         </div>
 
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="actif"
-            checked={actif}
-            onChange={(e) => setActif(e.target.checked)}
-            className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-          />
-          <label htmlFor="actif" className="ml-2 text-sm text-gray-700">
-            Créneau actif
-          </label>
+        <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="semaineImpaire"
+              checked={semaineImpaire}
+              onChange={(e) => setSemaineImpaire(e.target.checked)}
+              className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500 cursor-pointer"
+            />
+            <label htmlFor="semaineImpaire" className="ml-2 text-sm text-gray-800 font-bold cursor-pointer flex items-center gap-1.5">
+              🗓️ Créneau semaine impaire (1 semaine / 2)
+            </label>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="actif"
+              checked={actif}
+              onChange={(e) => setActif(e.target.checked)}
+              className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
+            />
+            <label htmlFor="actif" className="ml-2 text-sm text-gray-700 cursor-pointer">
+              Créneau actif
+            </label>
+          </div>
         </div>
 
         <div className="flex gap-4">
@@ -885,6 +905,13 @@ export default function PlanningFixeManager() {
                               {planning.nomSession && (
                                 <div className="text-xs text-gray-500 italic">
                                   Séance : {planning.nomSession}
+                                </div>
+                              )}
+                              {planning.semaineImpaire && (
+                                <div className="mt-1">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-[11px] font-extrabold shadow-xs">
+                                    🗓️ Semaine impaire (1/2)
+                                  </span>
                                 </div>
                               )}
                             </td>
@@ -1318,6 +1345,11 @@ export default function PlanningFixeManager() {
                                             <span className="text-[9px] opacity-75" title="Assignation automatique au couloir">⚡</span>
                                           )}
                                         </p>
+                                        {planning.semaineImpaire && (
+                                          <span className="inline-flex items-center gap-0.5 px-1 py-0.2 bg-amber-400 text-amber-950 font-black rounded text-[7.5px] sm:text-[8.5px] uppercase tracking-tight shadow-xs w-max max-w-full truncate" title="Semaine impaire uniquement (1 sem. sur 2)">
+                                            🗓️ Sem. impaire
+                                          </span>
+                                        )}
                                         <p className={`font-bold opacity-90 drop-shadow-sm mt-0.5 ${
                                            isShort ? 'text-[7.5px] sm:text-[8px] md:text-[9px]' : 'text-[8.5px] sm:text-[9px] md:text-[10px]'
                                          }`}>
@@ -1339,7 +1371,14 @@ export default function PlanningFixeManager() {
                                       {/* Tooltip on hover */}
                                       <div className="absolute inset-0 bg-slate-950/95 p-3 text-xs rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between pointer-events-none z-30 border border-slate-700">
                                         <div>
-                                          <p className="font-bold text-cyan-400 text-xs mb-0.5">{planning.nomSession || planning.groupe?.nom}</p>
+                                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                                            <p className="font-bold text-cyan-400 text-xs truncate">{planning.nomSession || planning.groupe?.nom}</p>
+                                            {planning.semaineImpaire && (
+                                              <span className="bg-amber-500/30 text-amber-300 text-[9px] px-1.5 py-0.5 rounded font-bold border border-amber-500/40 shrink-0">
+                                                Semaine impaire
+                                              </span>
+                                            )}
+                                          </div>
                                           {planning.nomSession && (
                                             <p className="text-[9px] text-slate-450 font-medium mb-1">Groupe: {planning.groupe?.nom}</p>
                                           )}

@@ -14,6 +14,7 @@ interface Session {
   isMySession?: boolean
   coachName?: string | null
   couleur?: string | null
+  semaineImpaire?: boolean
 }
 
 interface CoachAgendaBassinProps {
@@ -625,6 +626,11 @@ export default function CoachAgendaBassin({ sessions }: CoachAgendaBassinProps) 
                               }`}>
                                 {session.titre}
                               </p>
+                              {session.semaineImpaire && (
+                                <span className="inline-flex items-center gap-0.5 px-1 py-0.2 bg-amber-400 text-amber-950 font-black rounded text-[7.5px] uppercase tracking-tight shadow-xs w-max max-w-full truncate" title="Semaine impaire (1 sem. sur 2)">
+                                  🗓️ Sem. impaire
+                                </span>
+                              )}
                               <p className={`font-extrabold leading-none ${isMine ? 'opacity-85' : 'text-slate-550'} ${
                                 isShort ? 'text-[7.5px] sm:text-[8px]' : 'text-[8px] sm:text-[9px]'
                               }`}>

@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { jourSemaine, heureDebut, heureFin, groupeId, coachIds = [], lieu, couleur, nomSession } = body
+    const { jourSemaine, heureDebut, heureFin, groupeId, coachIds = [], lieu, couleur, nomSession, semaineImpaire } = body
 
     if (!jourSemaine || !heureDebut || !heureFin || !groupeId) {
       return NextResponse.json(
@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
         lieu: lieu || 'Piscine de Cavaillon',
         couleur: couleur || '#00bcd4',
         nomSession: nomSession || null,
+        semaineImpaire: Boolean(semaineImpaire),
         actif: true,
         coachs: {
           create: coachIds.map((coachId: string) => ({ coachId })),

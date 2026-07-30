@@ -23,6 +23,7 @@ interface Planning {
   coach: Coach | null
   lieu: string | null
   couleur: string | null
+  semaineImpaire?: boolean
   actif: boolean
 }
 

@@ -174,11 +174,12 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     planningIds: string[]
     groupeIds: string[]
     tempsFacture?: number | null
+    semaineImpaire?: boolean
   }>()
 
   for (const planning of planningsFixe) {
     const jourSemaine = planning.jourSemaine
-    const key = `${jourSemaine}-${planning.heureDebut}-${planning.heureFin}`
+    const key = `${jourSemaine}-${planning.heureDebut}-${planning.heureFin}-${planning.semaineImpaire ? 'impaire' : 'toutes'}`
 
     if (joursMapRef[jourSemaine] !== undefined) {
       joursTravailles.add(joursMapRef[jourSemaine])
@@ -193,6 +194,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
         planningIds: [],
         groupeIds: [],
         tempsFacture: planning.groupe?.tempsFacture,
+        semaineImpaire: planning.semaineImpaire,
       })
     }
     creneauxMap.get(key)!.groupes.push(planning.groupe?.nom || 'Groupe')
@@ -211,7 +213,8 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       seancesAnnulees,
       coachId,
       creneau.planningIds,
-      creneau.groupeIds
+      creneau.groupeIds,
+      creneau.semaineImpaire
     )
     const occurences = dates.length
 
@@ -401,6 +404,14 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 }
 
 // Helpers
+function getWeekNumber(d: Date): number {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  const dayNum = date.getUTCDay() || 7
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+  return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+}
+
 function obtenirDatesJour(
   jourSemaine: string,
   dateDebut: Date,
@@ -409,7 +420,8 @@ function obtenirDatesJour(
   seancesAnnulees: any[] = [],
   coachId?: string,
   planningIds: string[] = [],
-  groupeIds: string[] = []
+  groupeIds: string[] = [],
+  semaineImpaire?: boolean
 ): Date[] {
   const joursMap: { [key: string]: number } = {
     Dimanche: 0, Lundi: 1, Mardi: 2, Mercredi: 3, Jeudi: 4, Vendredi: 5, Samedi: 6
@@ -423,6 +435,11 @@ function obtenirDatesJour(
 
   while (current <= dateFin) {
     if (current.getDay() === jourCible) {
+      if (semaineImpaire && getWeekNumber(current) % 2 === 0) {
+        current.setDate(current.getDate() + 1)
+        continue
+      }
+
       // 1. Vérifier si cette date tombe pendant une période de vacances
       const estEnVacances = periodesVacances.some((periode) => {
         const debut = new Date(periode.dateDebut)

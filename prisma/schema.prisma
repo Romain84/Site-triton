@@ -65,6 +65,7 @@ model Planning {
   lieu        String?
   couleur     String?
   nomSession  String?
+  semaineImpaire Boolean       @default(false)
   actif       Boolean         @default(true)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt

@@ -118,36 +118,6 @@ export default function GroupesManager() {
     setShowForm(false)
   }
 
-  const handleSetTempsFactureAll = async () => {
-    const confirmed = await confirm({
-      title: 'Mettre à jour tous les groupes ?',
-      message: 'Voulez-vous définir "Temps à facturer" à 60 minutes pour l\'ensemble des groupes ?',
-      confirmText: 'Appliquer 60 min',
-      cancelText: 'Annuler',
-    })
-    if (!confirmed) return
-
-    setLoading(true)
-    try {
-      const res = await fetch('/api/admin/groupes/set-temps-facture-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ valeur: 60 }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        toast.success(data.message || 'Tous les groupes ont été mis à jour.')
-        fetchGroupes()
-      } else {
-        toast.error(data.error || 'Erreur lors de la mise à jour')
-      }
-    } catch (err) {
-      toast.error('Erreur serveur lors de la mise à jour')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleEdit = (groupe: Groupe) => {
     setEditingGroupe(groupe)
     setNom(groupe.nom)
@@ -810,24 +780,15 @@ export default function GroupesManager() {
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h2 className="text-2xl font-bold">Gestion des Groupes/Jauges</h2>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleSetTempsFactureAll}
-            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-            title="Définir 60 minutes de temps à facturer pour l'ensemble des groupes"
-          >
-            ⏱️ 60 min pour tous les groupes
-          </button>
-          <button
-            onClick={() => {
-              setEditingGroupe(null)
-              setShowForm(!showForm)
-            }}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors cursor-pointer"
-          >
-            {showForm && !editingGroupe ? 'Annuler' : '+ Nouveau groupe'}
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            setEditingGroupe(null)
+            setShowForm(!showForm)
+          }}
+          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors cursor-pointer"
+        >
+          {showForm && !editingGroupe ? 'Annuler' : '+ Nouveau groupe'}
+        </button>
       </div>
 
       {error && (
