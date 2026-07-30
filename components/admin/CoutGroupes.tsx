@@ -602,157 +602,104 @@ export default function CoutGroupes() {
   return (
     <div className="space-y-6">
 
-      {/* ── Formulaire ────────────────────────────────────────────────────── */}
-      <div className="card p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-5 mb-6">
-          <h2 className="text-lg font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            Analyse Financière des Groupes
-            <HelpTooltip title="Outil d'analyse financière">
-              <p>Calculez le coût, les revenus et la rentabilité de chaque groupe sur une saison.</p>
-              <p className="mt-1">Prend en compte les plannings actifs, le &quot;Temps à facturer&quot; (ex: 60 min = 1h), les vacances, les séances annulées et l&apos;exclusion PPG/Petit Bassin.</p>
-              <p className="mt-1 text-xs text-indigo-300">💡 Conseil : vous pouvez modifier en temps réel le nombre d&apos;inscrits dans les tableaux pour simuler différents scénarios.</p>
-            </HelpTooltip>
-          </h2>
-        </div>
+      {/* ── Formulaire Épuré ────────────────────────────────────────────────── */}
+      <div className="card p-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+              Analyse Financière des Groupes
+              <HelpTooltip title="Outil d'analyse financière">
+                <p>Calculez le coût, les revenus et la rentabilité de chaque groupe sur une saison.</p>
+                <p className="mt-1">Prend en compte les plannings actifs, le &quot;Temps à facturer&quot; (ex: 60 min = 1h), les vacances, les séances annulées et l&apos;exclusion PPG/Petit Bassin.</p>
+                <p className="mt-1 text-xs text-indigo-300">💡 Vous pouvez modifier en temps réel le nombre d&apos;inscrits dans les tableaux pour simuler différents scénarios.</p>
+              </HelpTooltip>
+            </h2>
+          </div>
 
-        {/* Dates */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-              Début de saison
-              <span className="ml-1 text-[10px] text-slate-400 lowercase font-normal">(optionnel)</span>
-            </label>
-            <input
-              type="date" value={dateDebut}
-              onChange={(e) => setDateDebut(e.target.value)}
-              className="input w-full focus:border-primary focus:ring-0 rounded-xl"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-              Fin de saison
-              <span className="ml-1 text-[10px] text-slate-400 lowercase font-normal">(optionnel)</span>
-            </label>
-            <input
-              type="date" value={dateFin}
-              onChange={(e) => setDateFin(e.target.value)}
-              className="input w-full focus:border-primary focus:ring-0 rounded-xl"
-            />
-          </div>
-          <div className="flex items-end">
-            <button onClick={handleCalculer} disabled={loading} className="btn-primary w-full py-2.5 rounded-xl shadow-xs hover:shadow-md transition-all font-bold text-sm cursor-pointer">
-              {loading
-                ? <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                    </svg>
-                    Calcul en cours…
-                  </span>
-                : '📊 Calculer'
-              }
+          {/* Toggle Mode Segmenté */}
+          <div className="inline-flex p-1 bg-slate-100/80 rounded-xl border border-slate-200/60 self-start lg:self-auto">
+            <button
+              onClick={() => setMode('simple')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                mode === 'simple' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Mode Simple
+            </button>
+            <button
+              onClick={() => setMode('optimise')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                mode === 'optimise' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Mode Optimisé
             </button>
           </div>
         </div>
 
-        <p className="text-[11px] text-slate-400 font-medium mb-4">
-          💡 Si aucune date n&apos;est saisie, chaque groupe utilisera ses propres dates de saison.
-        </p>
-
-        {/* Mode de calcul */}
-        <div className="mb-6">
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-            Mode de calcul
-            <HelpTooltip title="Modes de calcul">
-              <p><strong>Simple :</strong> chaque groupe porte ses coûts complets sans partage.</p>
-              <p className="mt-1"><strong>Optimisé :</strong> un coach partagé sur plusieurs groupes au même créneau voit son coût réparti entre ces groupes.</p>
-              <p className="mt-1 text-xs text-amber-300">🏊 Note : Les créneaux PPG et Petit Bassin ne sont jamais optimisés/partagés et restent facturés à 100 %.</p>
-            </HelpTooltip>
-          </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {(['simple', 'optimise'] as const).map((m) => (
-              <label key={m} className={`flex items-start gap-3 cursor-pointer rounded-2xl border p-4 transition-all ${
-                mode === m ? 'border-primary bg-primary/5 shadow-xs' : 'border-slate-200 hover:border-slate-350 hover:bg-slate-50/30'
-              }`}>
-                <input type="radio" name="mode" value={m} checked={mode === m}
-                  onChange={() => setMode(m)}
-                  className="w-4 h-4 mt-0.5 text-primary border-slate-300 focus:ring-primary cursor-pointer" />
-                <div>
-                  <span className="font-bold text-slate-900 text-sm">
-                    {m === 'simple' ? 'Mode Simple' : 'Mode Optimisé'}
-                  </span>
-                  <p className="text-xs text-slate-500 mt-1 leading-normal font-medium">
-                    {m === 'simple'
-                      ? 'Chaque créneau est facturé entièrement à son groupe.'
-                      : 'Répartit le coût d\'un coach partagé entre groupes sur le même créneau.'}
-                  </p>
-                </div>
-              </label>
-            ))}
+        {/* Barre de contrôle inline */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-slate-100 items-end">
+          <div>
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+              Début de saison
+            </label>
+            <input
+              type="date" value={dateDebut}
+              onChange={(e) => setDateDebut(e.target.value)}
+              className="input w-full rounded-xl text-xs py-2 focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+              Fin de saison
+            </label>
+            <input
+              type="date" value={dateFin}
+              onChange={(e) => setDateFin(e.target.value)}
+              className="input w-full rounded-xl text-xs py-2 focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <button onClick={handleCalculer} disabled={loading} className="btn-primary w-full py-2.5 rounded-xl shadow-xs hover:shadow-md transition-all font-bold text-xs cursor-pointer">
+              {loading ? 'Calcul en cours…' : '📊 Recalculer'}
+            </button>
           </div>
         </div>
 
-        {/* Options avancées */}
-        <details className="group mb-4 border border-slate-100 rounded-xl p-3 bg-slate-50/50">
-          <summary className="cursor-pointer select-none text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5 list-none outline-none">
-            <span className="inline-block transition-transform duration-200 group-open:rotate-90 text-[10px]">▶</span>
-            OPTIONS AVANCÉES
+        {/* Options avancées épurées */}
+        <details className="group mt-3 pt-2 border-t border-slate-100">
+          <summary className="cursor-pointer select-none text-[11px] font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1.5 list-none outline-none">
+            <span className="inline-block transition-transform duration-200 group-open:rotate-90 text-[9px]">▶</span>
+            Options de simulation avancée
           </summary>
-          <div className="mt-4 pt-3 border-t border-slate-200/60 grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Marge de sécurité */}
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
-                Marge de sécurité (%)
-                <HelpTooltip title="Marge de sécurité">
-                  Ajoute un buffer en % sur coaching + compétitions pour anticiper les imprévus.
-                  Tracé séparément pour transparence. 0 = désactivé.
-                </HelpTooltip>
-              </label>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Marge de sécurité (%)</label>
               <input
                 type="number" min={0} max={100} step={5}
                 value={margeSecurite}
                 onChange={(e) => setMargeSecurite(Number(e.target.value))}
-                className="input w-full" placeholder="0"
+                className="input w-full text-xs py-1.5" placeholder="0"
               />
             </div>
-
-            {/* Simulation taux horaire */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
-                Simuler taux horaire (€/h)
-                <HelpTooltip title="Simulation taux horaire">
-                  Remplace temporairement le taux horaire des paramètres pour simuler l&apos;impact
-                  d&apos;une augmentation ou baisse sur les coûts. Laissez vide pour utiliser la valeur réelle.
-                </HelpTooltip>
-              </label>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Simuler taux horaire (€/h)</label>
               <input
                 type="number" min={0} step={1}
                 value={tauxOverride}
                 onChange={(e) => setTauxOverride(e.target.value)}
-                className="input w-full"
-                placeholder={`Taux réel`}
+                className="input w-full text-xs py-1.5"
+                placeholder="Taux réel"
               />
-              {tauxOverride !== '' && (
-                <p className="text-[10px] text-amber-600 font-bold mt-1 uppercase tracking-wider">
-                  ⚠️ Simulation active
-                </p>
-              )}
             </div>
-
-            {/* Comparer les modes */}
-            <div className="flex items-end pb-1">
-              <label className="flex items-start gap-2 cursor-pointer text-sm">
+            <div className="flex items-center pt-4">
+              <label className="flex items-center gap-2 cursor-pointer text-xs">
                 <input
                   type="checkbox" checked={includeComparaison}
                   onChange={(e) => setIncludeComparaison(e.target.checked)}
-                  className="w-4 h-4 mt-0.5 text-primary border-slate-300 rounded focus:ring-primary"
+                  className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary"
                 />
-                <span>
-                  <span className="font-semibold text-slate-700">Comparer Simple vs Optimisé</span>
-                  <span className="block text-[10px] text-slate-400 mt-0.5 font-medium leading-normal">
-                    Calcule les deux modes en un seul appel et affiche l&apos;économie réalisée.
-                  </span>
-                </span>
+                <span className="font-semibold text-slate-700">Comparer Simple vs Optimisé</span>
               </label>
             </div>
           </div>
