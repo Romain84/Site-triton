@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface LocationPoint {
   lat: number
@@ -11,90 +11,265 @@ interface LocationPoint {
   count: number
 }
 
-interface VisiteursMapGoogleStyleProps {
+interface VisiteursMapProps {
   locations: LocationPoint[]
 }
 
-export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapGoogleStyleProps) {
-  const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap')
+declare global {
+  interface Window {
+    L: any
+  }
+}
 
-  // Coordonnées du centre (Cavaillon par défaut)
-  const defaultLat = locations.length > 0 ? locations[0].lat : 43.8333
-  const defaultLng = locations.length > 0 ? locations[0].lng : 5.0333
+export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps) {
+  const [mapStyle, setMapStyle] = useState<'dark' | 'light' | 'satellite'>('dark')
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<any>(null)
+  const markersRef = useRef<any[]>([])
+  const [leafletLoaded, setLeafletLoaded] = useState(false)
+  const [selectedCity, setSelectedCity] = useState<LocationPoint | null>(null)
 
-  // URL Google Maps Embed directe garantie à 100% sans aucun script JS externe
-  const mapUrl = mapType === 'satellite'
-    ? `https://maps.google.com/maps?q=${defaultLat},${defaultLng}&t=k&z=6&ie=UTF8&iwloc=&output=embed`
-    : `https://maps.google.com/maps?q=${defaultLat},${defaultLng}&t=m&z=5&ie=UTF8&iwloc=&output=embed`
+  // Total visits across all locations for percentage calculation
+  const totalVisits = locations.reduce((sum, l) => sum + l.count, 0) || 1
+
+  // Load Leaflet dynamically
+  useEffect(() => {
+    if (window.L) {
+      setLeafletLoaded(true)
+      return
+    }
+
+    const cssLink = document.createElement('link')
+    cssLink.rel = 'stylesheet'
+    cssLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+    document.head.appendChild(cssLink)
+
+    const jsScript = document.createElement('script')
+    jsScript.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    jsScript.onload = () => setLeafletLoaded(true)
+    document.body.appendChild(jsScript)
+  }, [])
+
+  // Initialize and update map
+  useEffect(() => {
+    if (!leafletLoaded || !mapContainerRef.current) return
+    const L = window.L
+
+    // Initialize Map if not created yet
+    if (!mapInstanceRef.current) {
+      const initialLat = locations.length > 0 ? locations[0].lat : 43.8333
+      const initialLng = locations.length > 0 ? locations[0].lng : 5.0333
+
+      const map = L.map(mapContainerRef.current, {
+        center: [initialLat, initialLng],
+        zoom: 5,
+        zoomControl: false,
+      })
+
+      L.control.zoom({ position: 'topleft' }).addTo(map)
+      mapInstanceRef.current = map
+    }
+
+    const map = mapInstanceRef.current
+
+    // Tile Layer based on mapStyle
+    let tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    let attribution = '&copy; OpenStreetMap &copy; CARTO'
+
+    if (mapStyle === 'light') {
+      tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+    } else if (mapStyle === 'satellite') {
+      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      attribution = '&copy; Esri World Imagery'
+    }
+
+    // Remove existing tile layers & markers
+    map.eachLayer((layer: any) => {
+      if (layer instanceof L.TileLayer) {
+        map.removeLayer(layer)
+      }
+    })
+
+    L.tileLayer(tileUrl, { attribution, maxZoom: 19 }).addTo(map)
+
+    // Clear existing markers
+    markersRef.current.forEach((m) => map.removeLayer(m))
+    markersRef.current = []
+
+    if (locations.length === 0) return
+
+    // Find max count for scaling circle size
+    const maxCount = Math.max(...locations.map((l) => l.count), 1)
+
+    // Add Proportional Circle Markers
+    locations.forEach((loc) => {
+      // Radius grows dynamically from 8px to 48px based on count
+      const sizeRatio = loc.count / maxCount
+      const radius = Math.max(8, Math.min(48, Math.sqrt(loc.count) * 6.5 + 4))
+
+      let color = '#10b981' // emerald for few visits
+      let fillColor = '#10b981'
+
+      if (loc.count >= 15 || sizeRatio > 0.4) {
+        color = '#f43f5e' // red for high visits
+        fillColor = '#ef4444'
+      } else if (loc.count >= 5 || sizeRatio > 0.15) {
+        color = '#f59e0b' // amber for medium visits
+        fillColor = '#f59e0b'
+      }
+
+      const pct = Math.round((loc.count / totalVisits) * 100)
+
+      const marker = L.circleMarker([loc.lat, loc.lng], {
+        radius,
+        color,
+        weight: 2,
+        opacity: 0.9,
+        fillColor,
+        fillOpacity: mapStyle === 'dark' ? 0.65 : 0.5,
+      }).addTo(map)
+
+      const popupContent = `
+        <div style="font-family: sans-serif; padding: 4px; text-align: center;">
+          <div style="font-weight: 800; font-size: 13px; color: #0f172a;">${loc.ville} (${loc.codePays})</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${loc.pays}</div>
+          <div style="margin-top: 6px; display: inline-block; padding: 3px 8px; background: #3b82f6; color: white; border-radius: 9999px; font-weight: 800; font-size: 11px;">
+            ${loc.count} visite${loc.count > 1 ? 's' : ''} (${pct}%)
+          </div>
+        </div>
+      `
+
+      marker.bindPopup(popupContent)
+
+      marker.on('click', () => {
+        setSelectedCity(loc)
+      })
+
+      markersRef.current.push(marker)
+    })
+
+    // Fit bounds to fit all locations if more than 1
+    if (locations.length > 1) {
+      const bounds = L.latLngBounds(locations.map((l) => [l.lat, l.lng]))
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 8 })
+    }
+  }, [leafletLoaded, locations, mapStyle])
+
+  const flyToLocation = (loc: LocationPoint) => {
+    setSelectedCity(loc)
+    if (mapInstanceRef.current && window.L) {
+      mapInstanceRef.current.flyTo([loc.lat, loc.lng], 10, { duration: 1.2 })
+    }
+  }
 
   return (
-    <div className="w-full bg-white rounded-2xl border border-slate-200 p-4 shadow-lg space-y-3 relative overflow-hidden">
-      {/* En-tête de la carte */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-          <h2 className="text-sm font-bold text-slate-900">Carte Géographique des Visiteurs (Google Maps HD)</h2>
+    <div className="w-full bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-xl space-y-3 relative text-white overflow-hidden">
+      {/* En-tête de la Carte */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div className="flex items-center gap-2.5">
+          <span className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
+          <div>
+            <h2 className="text-sm font-extrabold text-white flex items-center gap-2">
+              Carte des Visiteurs & Taille Proportionnelle des Villes
+            </h2>
+            <p className="text-[11px] text-slate-400 font-medium">
+              La taille des cercles grandit en fonction du nombre de connexions détectées dans chaque ville
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 self-start sm:self-auto">
+
+        {/* Boutons de style de carte */}
+        <div className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/80 self-start sm:self-auto">
           <button
-            onClick={() => setMapType('roadmap')}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-              mapType === 'roadmap'
-                ? 'bg-primary text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            onClick={() => setMapStyle('dark')}
+            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              mapStyle === 'dark' ? 'bg-primary text-white shadow-xs' : 'text-slate-400 hover:text-white'
             }`}
           >
-            🗺️ Google Plan
+            🌙 Mode Sombre
           </button>
           <button
-            onClick={() => setMapType('satellite')}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-              mapType === 'satellite'
-                ? 'bg-primary text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            onClick={() => setMapStyle('light')}
+            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              mapStyle === 'light' ? 'bg-primary text-white shadow-xs' : 'text-slate-400 hover:text-white'
             }`}
           >
-            🛰️ Google Satellite
+            🗺️ Plan Clair
+          </button>
+          <button
+            onClick={() => setMapStyle('satellite')}
+            className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              mapStyle === 'satellite' ? 'bg-primary text-white shadow-xs' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            🛰️ Satellite HD
           </button>
         </div>
       </div>
 
-      {/* Conteneur Iframe Google Maps */}
-      <div className="relative w-full h-[450px] rounded-xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-inner">
-        <iframe
-          key={mapType + defaultLat + defaultLng}
-          title="Google Maps Visiteurs Triton"
-          width="100%"
-          height="100%"
-          style={{ border: 0 }}
-          loading="lazy"
-          allowFullScreen
-          src={mapUrl}
-          className="w-full h-full"
-        />
+      {/* Conteneur de la Carte Leaflet */}
+      <div className="relative w-full h-[500px] rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
+        {!leafletLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-slate-400 text-xs font-bold">
+            <span className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2" />
+            Chargement de la carte interactive…
+          </div>
+        )}
 
-        {/* Panneau latéral flottant de géolocalisation */}
-        <div className="absolute top-3 right-3 z-20 max-w-xs bg-white/95 backdrop-blur border border-slate-200 p-3 rounded-xl shadow-xl max-h-48 overflow-y-auto hidden sm:block">
-          <h3 className="text-xs font-bold text-slate-800 border-b border-slate-100 pb-1.5 mb-2 flex items-center justify-between">
-            <span>📍 Villes Détectées</span>
-            <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
-              {locations.length > 0 ? locations.length : 1}
-            </span>
-          </h3>
-          <div className="space-y-1.5 text-xs">
+        <div ref={mapContainerRef} className="w-full h-full z-10" />
+
+        {/* Tiroir / Liste latérale interactive des villes */}
+        <div className="absolute top-3 right-3 z-20 max-w-xs w-64 bg-slate-900/95 backdrop-blur-md border border-slate-800 p-3 rounded-xl shadow-2xl max-h-80 overflow-y-auto hidden sm:block">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+            <span className="text-xs font-extrabold text-slate-200">📍 Villes ({locations.length})</span>
+            <span className="text-[10px] text-slate-400 font-semibold">Taille cercle = Visites</span>
+          </div>
+          <div className="space-y-1.5">
             {locations.length > 0 ? (
-              locations.map((loc, idx) => (
-                <div key={idx} className="flex items-center justify-between text-[11px] py-1 border-b border-slate-50 last:border-0">
-                  <span className="font-semibold text-slate-700 truncate">{loc.ville} <span className="text-slate-400 font-normal">({loc.codePays})</span></span>
-                  <span className="font-extrabold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{loc.count} v.</span>
-                </div>
-              ))
+              locations.map((loc, idx) => {
+                const isSelected = selectedCity?.ville === loc.ville
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => flyToLocation(loc)}
+                    className={`w-full flex items-center justify-between text-[11px] p-2 rounded-lg transition-all text-left cursor-pointer ${
+                      isSelected
+                        ? 'bg-primary/20 border border-primary/40 text-white font-bold'
+                        : 'bg-slate-800/40 hover:bg-slate-800 text-slate-300 border border-transparent'
+                    }`}
+                  >
+                    <div className="truncate pr-1">
+                      <span className="font-bold text-white">{loc.ville}</span>
+                      <span className="text-slate-400 text-[10px] ml-1">({loc.codePays})</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                        {loc.count} v.
+                      </span>
+                    </div>
+                  </button>
+                )
+              })
             ) : (
-              <div className="flex items-center justify-between text-[11px] py-1 text-slate-500 italic">
-                <span>Cavaillon (Siège Club)</span>
-                <span className="font-bold text-primary">En attente</span>
-              </div>
+              <p className="text-xs text-slate-500 italic text-center py-2">En attente de connexions…</p>
             )}
+          </div>
+        </div>
+
+        {/* Légende d'échelle des tailles de cercles */}
+        <div className="absolute bottom-3 left-3 z-20 bg-slate-900/90 backdrop-blur-md border border-slate-800 px-3 py-2 rounded-xl shadow-lg flex items-center gap-4 text-[10px] text-slate-300">
+          <span className="font-bold text-white uppercase tracking-wider text-[9px]">Échelle des cercles :</span>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+            <span>1-3 visites</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-4 h-4 rounded-full bg-amber-500 inline-block" />
+            <span>4-14 visites</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-6 h-6 rounded-full bg-rose-500 inline-block" />
+            <span>15+ visites</span>
           </div>
         </div>
       </div>

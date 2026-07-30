@@ -76,10 +76,41 @@ function formatTimeAgoFr(dateInput: string | Date) {
   }
 }
 
+function getCountryFlag(codePays: string): string {
+  if (!codePays || codePays.length !== 2) return '🌐'
+  const codePoints = codePays
+    .toUpperCase()
+    .split('')
+    .map(char => 127397 + char.charCodeAt(0))
+  return String.fromCodePoint(...codePoints)
+}
+
 export default function VisiteursManager() {
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [filterPage, setFilterPage] = useState<string>('all')
+
+  const exportVisitsCSV = () => {
+    if (!data?.recentVisits || data.recentVisits.length === 0) return
+    const headers = ['Horodatage', 'Ville', 'Pays', 'Page', 'Appareil', 'Navigateur', 'IP']
+    const rows = data.recentVisits.map(v => [
+      formatDateHeureFr(v.createdAt),
+      `"${v.ville}"`,
+      `"${v.pays}"`,
+      `"${v.page}"`,
+      `"${v.appareil}"`,
+      `"${v.navigateur}"`,
+      `"${v.ip}"`,
+    ])
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `visites-triton-club-${new Date().toISOString().slice(0,10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   const fetchAnalytics = async () => {
     setLoading(true)
@@ -225,7 +256,7 @@ export default function VisiteursManager() {
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-medium text-slate-700 flex items-center gap-2">
                       <span className="w-5 text-center font-bold text-slate-400">{i + 1}.</span>
-                      {country.pays}
+                      <span>{getCountryFlag(country.codePays)} {country.pays}</span>
                     </span>
                     <span className="font-bold text-slate-900">{country.count} <span className="text-slate-400 font-normal">({pct}%)</span></span>
                   </div>
@@ -251,15 +282,23 @@ export default function VisiteursManager() {
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">Historique des 50 dernières connexions enregistrées</p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-medium">Filtrer page :</span>
-            <input
-              type="text"
-              placeholder="Ex: /planning..."
-              value={filterPage === 'all' ? '' : filterPage}
-              onChange={e => setFilterPage(e.target.value || 'all')}
-              className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
-            />
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={exportVisitsCSV}
+              className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              📥 Exporter CSV
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-medium">Filtrer page :</span>
+              <input
+                type="text"
+                placeholder="Ex: /planning..."
+                value={filterPage === 'all' ? '' : filterPage}
+                onChange={e => setFilterPage(e.target.value || 'all')}
+                className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
           </div>
         </div>
 
