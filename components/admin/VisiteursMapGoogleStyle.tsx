@@ -21,143 +21,195 @@ declare global {
   }
 }
 
+// Projection équirectangulaire pour carte vectorielle de secours (sans CDN externe)
+function latLngToSvgCoords(lat: number, lng: number, width: number = 800, height: number = 400) {
+  const x = ((lng + 180) * (width / 360))
+  const y = (((-1 * lat) + 90) * (height / 180))
+  return { x, y }
+}
+
 export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps) {
   const [mapStyle, setMapStyle] = useState<'dark' | 'light' | 'satellite'>('dark')
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])
   const [leafletLoaded, setLeafletLoaded] = useState(false)
+  const [useFallbackMap, setUseFallbackMap] = useState(false)
   const [selectedCity, setSelectedCity] = useState<LocationPoint | null>(null)
 
-  // Total visits across all locations for percentage calculation
   const totalVisits = locations.reduce((sum, l) => sum + l.count, 0) || 1
+  const maxCount = Math.max(...locations.map((l) => l.count), 1)
 
-  // Load Leaflet dynamically
+  // Chargeur de script Leaflet résilient avec timeout et fallback automatique
   useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    // 1. Déjà disponible dans la fenêtre
     if (window.L) {
       setLeafletLoaded(true)
       return
     }
 
-    const cssLink = document.createElement('link')
-    cssLink.rel = 'stylesheet'
-    cssLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-    document.head.appendChild(cssLink)
+    // 2. Vérifier si un tag script existe déjà
+    const existingScript = document.querySelector('script[src*="leaflet"]') as HTMLScriptElement
+    if (existingScript) {
+      const checkInterval = setInterval(() => {
+        if (window.L) {
+          setLeafletLoaded(true)
+          clearInterval(checkInterval)
+        }
+      }, 100)
 
+      const timer = setTimeout(() => {
+        clearInterval(checkInterval)
+        if (!window.L) setUseFallbackMap(true)
+      }, 2500)
+
+      return () => {
+        clearInterval(checkInterval)
+        clearTimeout(timer)
+      }
+    }
+
+    // 3. Injecter Leaflet CSS
+    if (!document.querySelector('link[href*="leaflet"]')) {
+      const cssLink = document.createElement('link')
+      cssLink.rel = 'stylesheet'
+      cssLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'
+      document.head.appendChild(cssLink)
+    }
+
+    // 4. Injecter Leaflet JS avec fallback
     const jsScript = document.createElement('script')
-    jsScript.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-    jsScript.onload = () => setLeafletLoaded(true)
+    jsScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'
+    jsScript.async = true
+
+    jsScript.onload = () => {
+      if (window.L) setLeafletLoaded(true)
+    }
+
+    jsScript.onerror = () => {
+      const fallbackScript = document.createElement('script')
+      fallbackScript.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+      fallbackScript.onload = () => {
+        if (window.L) setLeafletLoaded(true)
+        else setUseFallbackMap(true)
+      }
+      fallbackScript.onerror = () => setUseFallbackMap(true)
+      document.body.appendChild(fallbackScript)
+    }
+
     document.body.appendChild(jsScript)
+
+    // Timeout de sécurité : si le CDN est bloqué par le navigateur / adblocker après 2.5s -> Basculer sur la carte vectorielle
+    const timeout = setTimeout(() => {
+      if (!window.L) {
+        setUseFallbackMap(true)
+      }
+    }, 2500)
+
+    return () => clearTimeout(timeout)
   }, [])
 
-  // Initialize and update map
+  // Initialisation et mise à jour de la carte Leaflet
   useEffect(() => {
-    if (!leafletLoaded || !mapContainerRef.current) return
+    if (!leafletLoaded || useFallbackMap || !mapContainerRef.current) return
     const L = window.L
 
-    // Initialize Map if not created yet
-    if (!mapInstanceRef.current) {
-      const initialLat = locations.length > 0 ? locations[0].lat : 43.8333
-      const initialLng = locations.length > 0 ? locations[0].lng : 5.0333
+    try {
+      if (!mapInstanceRef.current) {
+        const initialLat = locations.length > 0 ? locations[0].lat : 43.8333
+        const initialLng = locations.length > 0 ? locations[0].lng : 5.0333
 
-      const map = L.map(mapContainerRef.current, {
-        center: [initialLat, initialLng],
-        zoom: 5,
-        zoomControl: false,
-      })
+        const map = L.map(mapContainerRef.current, {
+          center: [initialLat, initialLng],
+          zoom: 5,
+          zoomControl: false,
+        })
 
-      L.control.zoom({ position: 'topleft' }).addTo(map)
-      mapInstanceRef.current = map
-    }
-
-    const map = mapInstanceRef.current
-
-    // Tile Layer based on mapStyle
-    let tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    let attribution = '&copy; OpenStreetMap &copy; CARTO'
-
-    if (mapStyle === 'light') {
-      tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-    } else if (mapStyle === 'satellite') {
-      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-      attribution = '&copy; Esri World Imagery'
-    }
-
-    // Remove existing tile layers & markers
-    map.eachLayer((layer: any) => {
-      if (layer instanceof L.TileLayer) {
-        map.removeLayer(layer)
-      }
-    })
-
-    L.tileLayer(tileUrl, { attribution, maxZoom: 19 }).addTo(map)
-
-    // Clear existing markers
-    markersRef.current.forEach((m) => map.removeLayer(m))
-    markersRef.current = []
-
-    if (locations.length === 0) return
-
-    // Find max count for scaling circle size
-    const maxCount = Math.max(...locations.map((l) => l.count), 1)
-
-    // Add Proportional Circle Markers
-    locations.forEach((loc) => {
-      // Radius grows dynamically from 8px to 48px based on count
-      const sizeRatio = loc.count / maxCount
-      const radius = Math.max(8, Math.min(48, Math.sqrt(loc.count) * 6.5 + 4))
-
-      let color = '#10b981' // emerald for few visits
-      let fillColor = '#10b981'
-
-      if (loc.count >= 15 || sizeRatio > 0.4) {
-        color = '#f43f5e' // red for high visits
-        fillColor = '#ef4444'
-      } else if (loc.count >= 5 || sizeRatio > 0.15) {
-        color = '#f59e0b' // amber for medium visits
-        fillColor = '#f59e0b'
+        L.control.zoom({ position: 'topleft' }).addTo(map)
+        mapInstanceRef.current = map
       }
 
-      const pct = Math.round((loc.count / totalVisits) * 100)
+      const map = mapInstanceRef.current
 
-      const marker = L.circleMarker([loc.lat, loc.lng], {
-        radius,
-        color,
-        weight: 2,
-        opacity: 0.9,
-        fillColor,
-        fillOpacity: mapStyle === 'dark' ? 0.65 : 0.5,
-      }).addTo(map)
+      let tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      let attribution = '&copy; OpenStreetMap &copy; CARTO'
 
-      const popupContent = `
-        <div style="font-family: sans-serif; padding: 4px; text-align: center;">
-          <div style="font-weight: 800; font-size: 13px; color: #0f172a;">${loc.ville} (${loc.codePays})</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${loc.pays}</div>
-          <div style="margin-top: 6px; display: inline-block; padding: 3px 8px; background: #3b82f6; color: white; border-radius: 9999px; font-weight: 800; font-size: 11px;">
-            ${loc.count} visite${loc.count > 1 ? 's' : ''} (${pct}%)
-          </div>
-        </div>
-      `
+      if (mapStyle === 'light') {
+        tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+      } else if (mapStyle === 'satellite') {
+        tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        attribution = '&copy; Esri World Imagery'
+      }
 
-      marker.bindPopup(popupContent)
-
-      marker.on('click', () => {
-        setSelectedCity(loc)
+      map.eachLayer((layer: any) => {
+        if (layer instanceof L.TileLayer) {
+          map.removeLayer(layer)
+        }
       })
 
-      markersRef.current.push(marker)
-    })
+      L.tileLayer(tileUrl, { attribution, maxZoom: 19 }).addTo(map)
 
-    // Fit bounds to fit all locations if more than 1
-    if (locations.length > 1) {
-      const bounds = L.latLngBounds(locations.map((l) => [l.lat, l.lng]))
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 8 })
+      markersRef.current.forEach((m) => map.removeLayer(m))
+      markersRef.current = []
+
+      if (locations.length > 0) {
+        locations.forEach((loc) => {
+          const sizeRatio = loc.count / maxCount
+          const radius = Math.max(8, Math.min(48, Math.sqrt(loc.count) * 6.5 + 4))
+
+          let color = '#10b981'
+          let fillColor = '#10b981'
+
+          if (loc.count >= 15 || sizeRatio > 0.4) {
+            color = '#f43f5e'
+            fillColor = '#ef4444'
+          } else if (loc.count >= 5 || sizeRatio > 0.15) {
+            color = '#f59e0b'
+            fillColor = '#f59e0b'
+          }
+
+          const pct = Math.round((loc.count / totalVisits) * 100)
+
+          const marker = L.circleMarker([loc.lat, loc.lng], {
+            radius,
+            color,
+            weight: 2,
+            opacity: 0.9,
+            fillColor,
+            fillOpacity: mapStyle === 'dark' ? 0.65 : 0.5,
+          }).addTo(map)
+
+          const popupContent = `
+            <div style="font-family: sans-serif; padding: 4px; text-align: center;">
+              <div style="font-weight: 800; font-size: 13px; color: #0f172a;">${loc.ville} (${loc.codePays})</div>
+              <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${loc.pays}</div>
+              <div style="margin-top: 6px; display: inline-block; padding: 3px 8px; background: #3b82f6; color: white; border-radius: 9999px; font-weight: 800; font-size: 11px;">
+                ${loc.count} visite${loc.count > 1 ? 's' : ''} (${pct}%)
+              </div>
+            </div>
+          `
+
+          marker.bindPopup(popupContent)
+          marker.on('click', () => setSelectedCity(loc))
+          markersRef.current.push(marker)
+        })
+
+        if (locations.length > 1) {
+          const bounds = L.latLngBounds(locations.map((l) => [l.lat, l.lng]))
+          map.fitBounds(bounds, { padding: [40, 40], maxZoom: 8 })
+        }
+      }
+    } catch (err) {
+      console.warn('Leaflet error, switching to fallback map:', err)
+      setUseFallbackMap(true)
     }
-  }, [leafletLoaded, locations, mapStyle])
+  }, [leafletLoaded, locations, mapStyle, useFallbackMap])
 
   const flyToLocation = (loc: LocationPoint) => {
     setSelectedCity(loc)
-    if (mapInstanceRef.current && window.L) {
+    if (mapInstanceRef.current && window.L && !useFallbackMap) {
       mapInstanceRef.current.flyTo([loc.lat, loc.lng], 10, { duration: 1.2 })
     }
   }
@@ -173,7 +225,7 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
               Carte des Visiteurs & Taille Proportionnelle des Villes
             </h2>
             <p className="text-[11px] text-slate-400 font-medium">
-              La taille des cercles grandit en fonction du nombre de connexions détectées dans chaque ville
+              La taille des cercles grandit en fonction du nombre de connexions enregistrées dans chaque ville
             </p>
           </div>
         </div>
@@ -207,16 +259,65 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
         </div>
       </div>
 
-      {/* Conteneur de la Carte Leaflet */}
+      {/* Conteneur de la Carte */}
       <div className="relative w-full h-[500px] rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
-        {!leafletLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-slate-400 text-xs font-bold">
-            <span className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2" />
-            Chargement de la carte interactive…
+        {!useFallbackMap ? (
+          <>
+            {!leafletLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-slate-400 text-xs font-bold z-30">
+                <span className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2" />
+                Chargement de la carte interactive…
+              </div>
+            )}
+            <div ref={mapContainerRef} className="w-full h-full z-10" />
+          </>
+        ) : (
+          /* Carte Vectorielle de secours ultra rapide sans aucun script tiers */
+          <div className="relative w-full h-full bg-slate-950 flex flex-col items-center justify-center overflow-hidden">
+            <svg viewBox="0 0 800 400" className="w-full h-full opacity-90">
+              <rect width="800" height="400" fill="#090d16" />
+              {/* Villes avec cercles proportionnels SVG */}
+              {locations.map((loc, idx) => {
+                const { x, y } = latLngToSvgCoords(loc.lat, loc.lng, 800, 400)
+                const radius = Math.max(10, Math.min(45, Math.sqrt(loc.count) * 6 + 4))
+                const isSelected = selectedCity?.ville === loc.ville
+                const color = loc.count >= 15 ? '#ef4444' : loc.count >= 5 ? '#f59e0b' : '#10b981'
+
+                return (
+                  <g key={idx} className="cursor-pointer" onClick={() => setSelectedCity(loc)}>
+                    <circle
+                      cx={x} cy={y} r={radius * 1.4}
+                      fill={color} opacity="0.25"
+                      className="animate-ping"
+                    />
+                    <circle
+                      cx={x} cy={y} r={radius}
+                      fill={color} fillOpacity="0.7"
+                      stroke={isSelected ? '#ffffff' : color}
+                      strokeWidth={isSelected ? 3 : 1.5}
+                    />
+                    <text
+                      x={x} y={y + 4}
+                      textAnchor="middle" fill="#ffffff"
+                      fontSize={Math.max(10, Math.min(14, radius * 0.7))}
+                      fontWeight="bold"
+                    >
+                      {loc.count}
+                    </text>
+                  </g>
+                )
+              })}
+            </svg>
+
+            {selectedCity && (
+              <div className="absolute bottom-4 left-4 z-30 bg-slate-900/95 border border-primary/40 p-3 rounded-xl shadow-xl text-xs">
+                <div className="font-extrabold text-white">{selectedCity.ville} ({selectedCity.codePays})</div>
+                <div className="text-slate-400 text-[11px]">{selectedCity.pays}</div>
+                <div className="mt-1 font-bold text-primary">{selectedCity.count} visite(s)</div>
+              </div>
+            )}
           </div>
         )}
-
-        <div ref={mapContainerRef} className="w-full h-full z-10" />
 
         {/* Tiroir / Liste latérale interactive des villes */}
         <div className="absolute top-3 right-3 z-20 max-w-xs w-64 bg-slate-900/95 backdrop-blur-md border border-slate-800 p-3 rounded-xl shadow-2xl max-h-80 overflow-y-auto hidden sm:block">
