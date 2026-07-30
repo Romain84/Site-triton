@@ -191,7 +191,6 @@ export async function POST(request: NextRequest) {
             },
           },
           groupe: { select: { id: true, nom: true, niveau: true, tempsFacture: true } },
-          semaineImpaire: true,
         },
       }),
       minDate && maxDate
