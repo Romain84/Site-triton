@@ -21,109 +21,80 @@ declare global {
   }
 }
 
-// Projection équirectangulaire pour carte vectorielle de secours (sans CDN externe)
-function latLngToSvgCoords(lat: number, lng: number, width: number = 800, height: number = 400) {
-  const x = ((lng + 180) * (width / 360))
-  const y = (((-1 * lat) + 90) * (height / 180))
-  return { x, y }
-}
-
 export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps) {
   const [mapStyle, setMapStyle] = useState<'dark' | 'light' | 'satellite'>('dark')
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])
   const [leafletLoaded, setLeafletLoaded] = useState(false)
-  const [useFallbackMap, setUseFallbackMap] = useState(false)
   const [selectedCity, setSelectedCity] = useState<LocationPoint | null>(null)
 
   const totalVisits = locations.reduce((sum, l) => sum + l.count, 0) || 1
   const maxCount = Math.max(...locations.map((l) => l.count), 1)
 
-  // Chargeur de script Leaflet résilient avec timeout et fallback automatique
+  // Chargeur Leaflet garanti avec détection robuste
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // 1. Déjà disponible dans la fenêtre
-    if (window.L) {
-      setLeafletLoaded(true)
-      return
-    }
-
-    // 2. Vérifier si un tag script existe déjà
-    const existingScript = document.querySelector('script[src*="leaflet"]') as HTMLScriptElement
-    if (existingScript) {
-      const checkInterval = setInterval(() => {
-        if (window.L) {
-          setLeafletLoaded(true)
-          clearInterval(checkInterval)
-        }
-      }, 100)
-
-      const timer = setTimeout(() => {
-        clearInterval(checkInterval)
-        if (!window.L) setUseFallbackMap(true)
-      }, 2500)
-
-      return () => {
-        clearInterval(checkInterval)
-        clearTimeout(timer)
+    const checkAndInitLeaflet = () => {
+      if (window.L) {
+        setLeafletLoaded(true)
+        return true
       }
+      return false
     }
 
-    // 3. Injecter Leaflet CSS
+    if (checkAndInitLeaflet()) return
+
+    // Injecter CSS Leaflet si absent
     if (!document.querySelector('link[href*="leaflet"]')) {
       const cssLink = document.createElement('link')
       cssLink.rel = 'stylesheet'
-      cssLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'
+      cssLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
       document.head.appendChild(cssLink)
     }
 
-    // 4. Injecter Leaflet JS avec fallback
-    const jsScript = document.createElement('script')
-    jsScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'
-    jsScript.async = true
-
-    jsScript.onload = () => {
-      if (window.L) setLeafletLoaded(true)
+    // Injecter JS Leaflet
+    let script = document.querySelector('script[src*="leaflet"]') as HTMLScriptElement
+    if (!script) {
+      script = document.createElement('script')
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+      script.async = true
+      document.body.appendChild(script)
     }
 
-    jsScript.onerror = () => {
-      const fallbackScript = document.createElement('script')
-      fallbackScript.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-      fallbackScript.onload = () => {
-        if (window.L) setLeafletLoaded(true)
-        else setUseFallbackMap(true)
+    const interval = setInterval(() => {
+      if (checkAndInitLeaflet()) {
+        clearInterval(interval)
       }
-      fallbackScript.onerror = () => setUseFallbackMap(true)
-      document.body.appendChild(fallbackScript)
+    }, 100)
+
+    script.onload = () => {
+      checkAndInitLeaflet()
+      clearInterval(interval)
     }
 
-    document.body.appendChild(jsScript)
-
-    // Timeout de sécurité : si le CDN est bloqué par le navigateur / adblocker après 2.5s -> Basculer sur la carte vectorielle
-    const timeout = setTimeout(() => {
-      if (!window.L) {
-        setUseFallbackMap(true)
-      }
-    }, 2500)
-
-    return () => clearTimeout(timeout)
+    return () => clearInterval(interval)
   }, [])
 
   // Initialisation et mise à jour de la carte Leaflet
   useEffect(() => {
-    if (!leafletLoaded || useFallbackMap || !mapContainerRef.current) return
+    if (!leafletLoaded || !mapContainerRef.current) return
     const L = window.L
 
     try {
       if (!mapInstanceRef.current) {
+        // Purger un conteneur éventuellement pré-initialisé par Leaflet
+        if ((mapContainerRef.current as any)._leaflet_id) {
+          (mapContainerRef.current as any)._leaflet_id = null
+        }
+
         const initialLat = locations.length > 0 ? locations[0].lat : 43.8333
         const initialLng = locations.length > 0 ? locations[0].lng : 5.0333
 
         const map = L.map(mapContainerRef.current, {
           center: [initialLat, initialLng],
-          zoom: 5,
+          zoom: 6,
           zoomControl: false,
         })
 
@@ -133,6 +104,7 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
 
       const map = mapInstanceRef.current
 
+      // Sélection des fonds de cartes CartoDB / OpenStreetMap / Esri
       let tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
       let attribution = '&copy; OpenStreetMap &copy; CARTO'
 
@@ -143,6 +115,7 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
         attribution = '&copy; Esri World Imagery'
       }
 
+      // Nettoyer les tuiles précédentes
       map.eachLayer((layer: any) => {
         if (layer instanceof L.TileLayer) {
           map.removeLayer(layer)
@@ -151,22 +124,24 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
 
       L.tileLayer(tileUrl, { attribution, maxZoom: 19 }).addTo(map)
 
+      // Nettoyer les anciens marqeurs
       markersRef.current.forEach((m) => map.removeLayer(m))
       markersRef.current = []
 
       if (locations.length > 0) {
         locations.forEach((loc) => {
           const sizeRatio = loc.count / maxCount
-          const radius = Math.max(8, Math.min(48, Math.sqrt(loc.count) * 6.5 + 4))
+          // Taille du rayon proportionnelle équilibrée (entre 6px et 32px)
+          const radius = Math.max(6, Math.min(32, Math.sqrt(loc.count) * 3.8 + 3))
 
-          let color = '#10b981'
+          let color = '#10b981' // Vert émeraude (faible trafic)
           let fillColor = '#10b981'
 
-          if (loc.count >= 15 || sizeRatio > 0.4) {
-            color = '#f43f5e'
+          if (loc.count >= 15 || sizeRatio > 0.35) {
+            color = '#f43f5e' // Rouge rose (fort trafic)
             fillColor = '#ef4444'
-          } else if (loc.count >= 5 || sizeRatio > 0.15) {
-            color = '#f59e0b'
+          } else if (loc.count >= 5 || sizeRatio > 0.12) {
+            color = '#f59e0b' // Ambre (trafic moyen)
             fillColor = '#f59e0b'
           }
 
@@ -178,7 +153,7 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
             weight: 2,
             opacity: 0.9,
             fillColor,
-            fillOpacity: mapStyle === 'dark' ? 0.65 : 0.5,
+            fillOpacity: 0.45,
           }).addTo(map)
 
           const popupContent = `
@@ -196,20 +171,20 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
           markersRef.current.push(marker)
         })
 
+        // Adapter la vue aux points s'il y en a plusieurs
         if (locations.length > 1) {
           const bounds = L.latLngBounds(locations.map((l) => [l.lat, l.lng]))
-          map.fitBounds(bounds, { padding: [40, 40], maxZoom: 8 })
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 8 })
         }
       }
     } catch (err) {
-      console.warn('Leaflet error, switching to fallback map:', err)
-      setUseFallbackMap(true)
+      console.error('Erreur initialisation Leaflet:', err)
     }
-  }, [leafletLoaded, locations, mapStyle, useFallbackMap])
+  }, [leafletLoaded, locations, mapStyle])
 
   const flyToLocation = (loc: LocationPoint) => {
     setSelectedCity(loc)
-    if (mapInstanceRef.current && window.L && !useFallbackMap) {
+    if (mapInstanceRef.current && window.L) {
       mapInstanceRef.current.flyTo([loc.lat, loc.lng], 10, { duration: 1.2 })
     }
   }
@@ -259,65 +234,15 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
         </div>
       </div>
 
-      {/* Conteneur de la Carte */}
-      <div className="relative w-full h-[500px] rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
-        {!useFallbackMap ? (
-          <>
-            {!leafletLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-slate-400 text-xs font-bold z-30">
-                <span className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2" />
-                Chargement de la carte interactive…
-              </div>
-            )}
-            <div ref={mapContainerRef} className="w-full h-full z-10" />
-          </>
-        ) : (
-          /* Carte Vectorielle de secours ultra rapide sans aucun script tiers */
-          <div className="relative w-full h-full bg-slate-950 flex flex-col items-center justify-center overflow-hidden">
-            <svg viewBox="0 0 800 400" className="w-full h-full opacity-90">
-              <rect width="800" height="400" fill="#090d16" />
-              {/* Villes avec cercles proportionnels SVG */}
-              {locations.map((loc, idx) => {
-                const { x, y } = latLngToSvgCoords(loc.lat, loc.lng, 800, 400)
-                const radius = Math.max(10, Math.min(45, Math.sqrt(loc.count) * 6 + 4))
-                const isSelected = selectedCity?.ville === loc.ville
-                const color = loc.count >= 15 ? '#ef4444' : loc.count >= 5 ? '#f59e0b' : '#10b981'
-
-                return (
-                  <g key={idx} className="cursor-pointer" onClick={() => setSelectedCity(loc)}>
-                    <circle
-                      cx={x} cy={y} r={radius * 1.4}
-                      fill={color} opacity="0.25"
-                      className="animate-ping"
-                    />
-                    <circle
-                      cx={x} cy={y} r={radius}
-                      fill={color} fillOpacity="0.7"
-                      stroke={isSelected ? '#ffffff' : color}
-                      strokeWidth={isSelected ? 3 : 1.5}
-                    />
-                    <text
-                      x={x} y={y + 4}
-                      textAnchor="middle" fill="#ffffff"
-                      fontSize={Math.max(10, Math.min(14, radius * 0.7))}
-                      fontWeight="bold"
-                    >
-                      {loc.count}
-                    </text>
-                  </g>
-                )
-              })}
-            </svg>
-
-            {selectedCity && (
-              <div className="absolute bottom-4 left-4 z-30 bg-slate-900/95 border border-primary/40 p-3 rounded-xl shadow-xl text-xs">
-                <div className="font-extrabold text-white">{selectedCity.ville} ({selectedCity.codePays})</div>
-                <div className="text-slate-400 text-[11px]">{selectedCity.pays}</div>
-                <div className="mt-1 font-bold text-primary">{selectedCity.count} visite(s)</div>
-              </div>
-            )}
+      {/* Conteneur de la Carte Leaflet HD */}
+      <div className="relative w-full h-[520px] rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
+        {!leafletLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-slate-400 text-xs font-bold z-30">
+            <span className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2" />
+            Chargement de la carte géographique…
           </div>
         )}
+        <div ref={mapContainerRef} className="w-full h-full z-10" />
 
         {/* Tiroir / Liste latérale interactive des villes */}
         <div className="absolute top-3 right-3 z-20 max-w-xs w-64 bg-slate-900/95 backdrop-blur-md border border-slate-800 p-3 rounded-xl shadow-2xl max-h-80 overflow-y-auto hidden sm:block">
@@ -362,14 +287,14 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
           <span className="font-bold text-white uppercase tracking-wider text-[9px]">Échelle des cercles :</span>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-            <span>1-3 visites</span>
+            <span>1-4 visites</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-4 h-4 rounded-full bg-amber-500 inline-block" />
-            <span>4-14 visites</span>
+            <span className="w-3.5 h-3.5 rounded-full bg-amber-500 inline-block" />
+            <span>5-14 visites</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-6 h-6 rounded-full bg-rose-500 inline-block" />
+            <span className="w-5 h-5 rounded-full bg-rose-500 inline-block" />
             <span>15+ visites</span>
           </div>
         </div>
