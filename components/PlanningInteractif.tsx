@@ -522,10 +522,10 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
             </div>
           )}
 
-          <div className="relative h-[720px] bg-gradient-to-b from-cyan-300/10 via-sky-400/5 to-blue-500/10 border-4 border-slate-900 rounded-2xl overflow-hidden shadow-md flex print:border-0 print:shadow-none">
+          <div className="relative h-[920px] bg-gradient-to-b from-cyan-300/10 via-sky-400/5 to-blue-500/10 border-4 border-slate-900 rounded-2xl overflow-hidden shadow-md flex print:border-0 print:shadow-none">
             
             {/* Ruler column (left) */}
-            <div className="w-16 flex-shrink-0 bg-slate-900 text-slate-400 font-mono text-[9px] select-none flex flex-col justify-between py-4 text-center border-r border-slate-800">
+            <div className="w-16 flex-shrink-0 bg-slate-900 text-slate-400 font-mono text-[9.5px] select-none flex flex-col justify-between py-4 text-center border-r border-slate-800">
               <div className="h-10 border-b border-slate-800" />
               <div className="relative flex-grow h-[calc(100%-2.5rem)]">
                 {Array.from({ length: numHours + 1 }).map((_, idx) => {
@@ -534,7 +534,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                   return (
                     <span
                       key={hour}
-                      className="absolute left-0 right-0 text-center font-black -translate-y-1/2 text-slate-400"
+                      className="absolute left-0 right-0 text-center font-black -translate-y-1/2 text-slate-300"
                       style={{ top: `${topPct}%` }}
                     >
                       {hour.toString().padStart(2, '0')}:00
@@ -554,7 +554,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                   return (
                     <div
                       key={idx}
-                      className="absolute left-0 right-0 border-t border-cyan-400/10"
+                      className="absolute left-0 right-0 border-t border-cyan-400/15"
                       style={{ top: `${topPct}%` }}
                     />
                   )
@@ -649,7 +649,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                           const activeColorHex = planning.groupe?.couleur || planning.couleur
                           const isLight = isLightColor(activeColorHex)
                           const textColor = activeColorHex ? (isLight ? '#0f172a' : '#ffffff') : color.textColor
-                          const borderColor = activeColorHex ? (isLight ? 'rgba(15, 23, 42, 0.15)' : 'rgba(255, 255, 255, 0.2)') : color.textBorder
+                          const borderColor = activeColorHex ? (isLight ? 'rgba(15, 23, 42, 0.25)' : 'rgba(255, 255, 255, 0.35)') : color.textBorder
                           const textShadow = activeColorHex && !isLight ? '0 1px 2px rgba(0, 0, 0, 0.35)' : 'none'
 
                           return (
@@ -658,17 +658,18 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                               onClick={() => setSelectedPlanningDetails(planning)}
                               title={`${planning.nomSession || planning.groupe?.nom}\nHoraires : ${planning.heureDebut} - ${planning.heureFin}\nLieu : ${planning.lieu || 'Piscine'}${planning.coachs && planning.coachs.length > 0 ? `\nCoach(s) : ${planning.coachs.map(c => c.coach.prenom).join(', ')}` : ''}`}
                               style={{
-                                top: `${topPct}%`,
-                                height: `${heightPct}%`,
+                                top: `calc(${topPct}% + 1px)`,
+                                height: `calc(${heightPct}% - 2px)`,
                                 left: `calc(${leftPct}% + 2px)`,
                                 width: `calc(${widthPct}% - 4px)`,
                                 background: planning.groupe?.couleur ? getCardGradient(planning.groupe.couleur) : (planning.couleur ? getCardGradient(planning.couleur) : color.gradient),
                                 color: textColor,
                                 borderColor: borderColor,
-                                textShadow: textShadow
+                                textShadow: textShadow,
+                                zIndex: 10 + colIdx
                               }}
-                              className={`absolute rounded-xl flex flex-col justify-center border cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none overflow-hidden shadow-sm ${
-                                isShort ? 'p-1 md:p-1.5' : 'p-2 md:p-2.5'
+                              className={`absolute rounded-xl flex flex-col justify-center border-2 cursor-pointer shadow-md hover:shadow-xl hover:scale-[1.02] hover:z-30 transition-all duration-200 select-none overflow-hidden ${
+                                isShort ? 'p-1.5 md:p-2' : 'p-2.5 md:p-3'
                               } ${(planning.groupe as any)?.annule ? 'opacity-40 grayscale-[60%] border-red-300' : ''}`}
                             >
                               <div className={`min-w-0 ${isShort ? 'space-y-0' : 'space-y-0.5'} print:space-y-0`}>
