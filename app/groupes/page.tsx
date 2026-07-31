@@ -50,6 +50,8 @@ function getWatermarkSvgBase64(text: string) {
   return Buffer.from(svg).toString('base64')
 }
 
+import GroupesClient from '@/components/GroupesClient'
+
 export default async function GroupesPage() {
   const [groupes, settings] = await Promise.all([
     getGroupes(),
@@ -95,121 +97,20 @@ export default async function GroupesPage() {
         <div className={interSaison ? "opacity-55 grayscale-[50%] blur-[0.6px] pointer-events-auto" : ""}>
           {/* HEADER */}
           <div className="text-center space-y-3 mb-12">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
               Nos Groupes d&apos;Entraînement
             </h1>
             <p className="text-slate-600 font-medium text-base md:text-lg max-w-3xl mx-auto leading-relaxed">
-              Apprentissage (ENF), perfectionnement ou compétition nationale : nous accompagnons chaque nageur vers ses objectifs. Découvrez la catégorie adaptée à votre profil.
+              Apprentissage (ENF), section Loisir, Compétition FFN ou activités physiques : découvrez nos catégories et choisissez le groupe adapté à votre profil.
             </p>
           </div>
 
           {groupes.length === 0 ? (
-            <div className="border border-slate-200/80 p-10 text-center text-slate-400 font-medium rounded-xl">
+            <div className="border border-slate-200/80 p-10 text-center text-slate-400 font-medium rounded-2xl">
               Aucun groupe disponible pour le moment.
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2">
-              {groupes.map((groupe) => {
-                // Custom age badge logic
-                const hasAgeRange = groupe.ageMin !== null || groupe.ageMax !== null
-                const isAdult = groupe.ageMin !== null && groupe.ageMin >= 18
-                
-                return (
-                  <article key={groupe.id} className={`border p-6 md:p-8 flex flex-col justify-between space-y-6 rounded-xl bg-white hover:border-slate-350 transition-colors duration-200 ${groupe.annule ? 'border-red-200 bg-red-50/5' : 'border-slate-200/80'}`}>
-                    <div className="space-y-4">
-                      {/* Header: Title + Age Badge */}
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight leading-tight">
-                          {groupe.nom}
-                        </h2>
-                        
-                        {hasAgeRange && (
-                          <span className="border border-slate-200 text-slate-500 px-3 py-1 rounded-full text-xs font-semibold tracking-wide shrink-0">
-                            {isAdult 
-                              ? 'Adultes' 
-                              : (groupe.ageMin && groupe.ageMax 
-                                ? `${groupe.ageMin} à ${groupe.ageMax} ans` 
-                                : (groupe.ageMin ? `Dès ${groupe.ageMin} ans` : `Jusqu'à ${groupe.ageMax} ans`)
-                              )
-                            }
-                          </span>
-                        )}
-                      </div>
-
-                      {groupe.annule && (
-                        <div className="bg-red-50 border border-red-200/60 rounded-xl p-3.5 flex items-center gap-2.5 text-red-800 text-xs font-bold shadow-xs">
-                          <span className="text-sm">⚠️</span>
-                          <span>Créneau temporairement suspendu (en attente d&apos;un coach). Réouverture possible à tout moment !</span>
-                        </div>
-                      )}
-
-                      <p className="text-slate-600 text-xs md:text-sm leading-relaxed font-normal whitespace-pre-line">
-                        {groupe.description || 'Description à venir pour ce groupe de natation.'}
-                      </p>
-                    </div>
-
-                    {/* Pricing & Caution Box */}
-                    {(typeof groupe.tarif === 'number' || typeof groupe.tarif1Cours === 'number' || typeof groupe.prixLicence === 'number' || typeof groupe.caution === 'number') && (
-                      <div className={`border-t border-slate-100 pt-4 space-y-2.5 mt-auto ${groupe.annule ? 'opacity-35 grayscale select-none pointer-events-none' : ''}`}>
-                        {typeof groupe.tarif1Cours === 'number' ? (
-                          <>
-                            <div className="flex items-center justify-between gap-3 text-sm">
-                              <span className="text-slate-500 font-medium">{groupe.libelleOption1 || '1 cours/semaine'}</span>
-                              <span className="font-bold text-slate-950">
-                                {((groupe.tarif1Cours || 0) + (groupe.prixLicence || 0)).toFixed(2)} €
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between gap-3 text-sm border-t border-slate-50/50 pt-2">
-                              <span className="text-slate-500 font-medium">{groupe.libelleOption2 || '2 cours/semaine'}</span>
-                              <span className="font-bold text-slate-950">
-                                {((groupe.tarif || 0) + (groupe.prixLicence || 0)).toFixed(2)} €
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Tarif annuel</span>
-                            <span className="text-xl font-bold text-slate-950">
-                              {((groupe.tarif || 0) + (groupe.prixLicence || 0)).toFixed(2)} €
-                            </span>
-                          </div>
-                        )}
-
-                        {typeof groupe.prixLicence === 'number' && groupe.prixLicence > 0 && (
-                          <p className="text-[11px] text-slate-450 flex justify-between items-center">
-                            <span>Dont licence fédérale FFN</span>
-                            <span className="font-medium text-slate-500">
-                              {groupe.prixLicence.toFixed(2)} €
-                            </span>
-                          </p>
-                        )}
-
-                        {typeof groupe.caution === 'number' && groupe.caution > 0 && (
-                          <div className="mt-2.5 pt-2.5 border-t border-dashed border-amber-200/90 bg-amber-50/60 rounded-xl p-3 text-xs space-y-1.5">
-                            <div className="flex items-center justify-between font-bold text-amber-950">
-                              <span className="flex items-center gap-1.5">
-                                <span>🏷️</span>
-                                <span>Caution demandée (en supplément au tarif global) :</span>
-                              </span>
-                              <span className="font-mono text-sm bg-amber-100/90 px-2 py-0.5 rounded border border-amber-200 text-amber-950 font-black">{groupe.caution.toFixed(2)} €</span>
-                            </div>
-                            {groupe.nbCompetitionsCaution && groupe.nbCompetitionsCaution > 0 ? (
-                              <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
-                                🔄 <strong>Condition de remboursement :</strong> Remboursable en fin de saison sur participation à au moins <strong>{groupe.nbCompetitionsCaution} compétition{groupe.nbCompetitionsCaution > 1 ? 's' : ''}</strong>.
-                              </p>
-                            ) : (
-                              <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
-                                🔄 <strong>Condition de remboursement :</strong> Restituée en fin de saison selon les conditions du club.
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </article>
-                )
-              })}
-            </div>
+            <GroupesClient groupes={groupes} interSaison={interSaison} texteFiligrane={texteFiligrane} />
           )}
         </div>
       </div>
