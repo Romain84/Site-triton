@@ -759,42 +759,42 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
 
       {/* Barre d'outils et sélecteurs de vue */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/70 backdrop-blur-md p-3 rounded-2xl border border-slate-200/50 shadow-sm max-w-4xl mx-auto print:hidden">
-        <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200/25">
+        <div className="flex flex-wrap sm:inline-flex w-full sm:w-auto rounded-xl bg-slate-100 p-1 border border-slate-200/25 gap-1 sm:gap-0">
           <button
             onClick={() => { setViewMode('grille'); localStorage.setItem('planning_view_mode', 'grille') }}
-            className={`px-4 py-2 rounded-lg font-bold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${
+            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg font-bold text-[11px] sm:text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${
               viewMode === 'grille'
                 ? 'bg-white text-slate-900 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            📅 Par Jour (Timeline)
+            📅 Par Jour
           </button>
           <button
             onClick={() => { setViewMode('tableau'); localStorage.setItem('planning_view_mode', 'tableau') }}
-            className={`px-4 py-2 rounded-lg font-bold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${
+            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg font-bold text-[11px] sm:text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${
               viewMode === 'tableau'
                 ? 'bg-white text-slate-900 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            🗓️ Semaine Globale
+            🗓️ Semaine
           </button>
           <button
             onClick={() => { setViewMode('bassin'); localStorage.setItem('planning_view_mode', 'bassin') }}
-            className={`px-4 py-2 rounded-lg font-bold text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${
+            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg font-bold text-[11px] sm:text-xs tracking-wider uppercase transition-all duration-200 cursor-pointer ${
               viewMode === 'bassin'
                 ? 'bg-white text-slate-900 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            🏊 Vue Bassin
+            🏊 Bassin
           </button>
         </div>
 
         <button
           onClick={handleExportPDF}
-          className="px-4 py-2.5 bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs tracking-wider uppercase rounded-xl transition-all duration-200 cursor-pointer shadow-xs"
+          className="w-full sm:w-auto px-4 py-2.5 bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs tracking-wider uppercase rounded-xl transition-all duration-200 cursor-pointer shadow-xs text-center"
         >
           🖨️ Imprimer / PDF
         </button>
