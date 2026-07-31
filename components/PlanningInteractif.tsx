@@ -488,12 +488,12 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
     }
 
     // Calcul dynamique de la plage horaire (par ex: 07:00 à 22:00)
-    const allStartMins = dayPlannings.map(p => timeToMinutes(p.heureDebut))
+    const allStartMins = planningsForDay.map(p => timeToMinutes(p.heureDebut))
     const minStartMin = allStartMins.length > 0 ? Math.min(...allStartMins) : 480
     const startHour = Math.min(Math.floor(minStartMin / 60), 7)
     const gridStartMin = startHour * 60
 
-    const allEndMins = dayPlannings.map(p => timeToMinutes(p.heureFin))
+    const allEndMins = planningsForDay.map(p => timeToMinutes(p.heureFin))
     const maxEndMin = allEndMins.length > 0 ? Math.max(...allEndMins) : 1320
     const endHour = Math.max(Math.ceil(maxEndMin / 60), 22)
     const gridEndMin = endHour * 60
