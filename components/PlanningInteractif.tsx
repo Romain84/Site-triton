@@ -487,6 +487,20 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
       lanesList.push({ key: 'PPG', label: 'PPG' })
     }
 
+    // Calcul dynamique de la plage horaire (par ex: 07:00 à 22:00)
+    const allStartMins = dayPlannings.map(p => timeToMinutes(p.heureDebut))
+    const minStartMin = allStartMins.length > 0 ? Math.min(...allStartMins) : 480
+    const startHour = Math.min(Math.floor(minStartMin / 60), 7)
+    const gridStartMin = startHour * 60
+
+    const allEndMins = dayPlannings.map(p => timeToMinutes(p.heureFin))
+    const maxEndMin = allEndMins.length > 0 ? Math.max(...allEndMins) : 1320
+    const endHour = Math.max(Math.ceil(maxEndMin / 60), 22)
+    const gridEndMin = endHour * 60
+
+    const totalMinutes = gridEndMin - gridStartMin
+    const numHours = endHour - startHour
+
     return (
       <div className="bg-slate-100 rounded-3xl p-5 shadow-inner border border-slate-200/80 overflow-x-auto print:bg-white print:border-0 print:p-0">
         <div className="min-w-[800px]">
@@ -503,7 +517,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                 🏊 Bassin de Cavaillon • {day}
               </span>
               <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wide select-none">
-                08:00 - 22:00 • Cliquez sur un cours pour plus d&apos;informations
+                {startHour.toString().padStart(2, '0')}:00 - {endHour.toString().padStart(2, '0')}:00 • Cliquez sur un cours pour plus d&apos;informations
               </span>
             </div>
           )}
@@ -514,9 +528,9 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
             <div className="w-16 flex-shrink-0 bg-slate-900 text-slate-400 font-mono text-[9px] select-none flex flex-col justify-between py-4 text-center border-r border-slate-800">
               <div className="h-10 border-b border-slate-800" />
               <div className="relative flex-grow h-[calc(100%-2.5rem)]">
-                {Array.from({ length: 15 }).map((_, idx) => {
-                  const hour = 8 + idx
-                  const topPct = (idx / 14) * 100
+                {Array.from({ length: numHours + 1 }).map((_, idx) => {
+                  const hour = startHour + idx
+                  const topPct = (idx / numHours) * 100
                   return (
                     <span
                       key={hour}
@@ -535,8 +549,8 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
               
               {/* Horizontal grid lines */}
               <div className="absolute inset-0 pointer-events-none z-0 mt-10 h-[calc(100%-2.5rem)]">
-                {Array.from({ length: 15 }).map((_, idx) => {
-                  const topPct = (idx / 14) * 100
+                {Array.from({ length: numHours + 1 }).map((_, idx) => {
+                  const topPct = (idx / numHours) * 100
                   return (
                     <div
                       key={idx}
@@ -609,8 +623,8 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                         return col.map((planning) => {
                           const startMin = timeToMinutes(planning.heureDebut)
                           const endMin = timeToMinutes(planning.heureFin)
-                          const topPct = ((startMin - 480) / 840) * 100
-                          const heightPct = ((endMin - startMin) / 840) * 100
+                          const topPct = ((startMin - gridStartMin) / totalMinutes) * 100
+                          const heightPct = ((endMin - startMin) / totalMinutes) * 100
                           
                           const duration = endMin - startMin
                           const isShort = duration <= 50
