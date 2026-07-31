@@ -315,7 +315,7 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
                           )}
 
                           <a
-                            href="/inscription"
+                            href={`/inscription?groupe=${encodeURIComponent(groupe.nom)}`}
                             className="block w-full text-center bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-xs active:scale-[0.99] mt-3"
                           >
                             S&apos;inscrire à ce groupe
