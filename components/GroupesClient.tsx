@@ -37,19 +37,19 @@ export function formatBirthYears(ageMin: number | null, ageMax: number | null): 
     const yearOldest = currentYear - ageMax
     const yearYoungest = currentYear - ageMin
     if (yearOldest === yearYoungest) {
-      return `${yearOldest}`
+      return `Année de naissance : ${yearOldest}`
     }
-    return `${yearOldest} - ${yearYoungest}`
+    return `Années de naissance : ${yearOldest} - ${yearYoungest}`
   }
 
   if (ageMin !== null) {
     const yearYoungest = currentYear - ageMin
-    return `${yearYoungest} et avant`
+    return `Années de naissance : ${yearYoungest} et avant`
   }
 
   if (ageMax !== null) {
     const yearOldest = currentYear - ageMax
-    return `${yearOldest} et après`
+    return `Années de naissance : ${yearOldest} et après`
   }
 
   return null
