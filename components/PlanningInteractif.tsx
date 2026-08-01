@@ -1022,27 +1022,21 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
       {/* === VUE 1 : AGENDA TIMELINE (PAR JOUR) === */}
       {viewMode === 'grille' && (
         <div className="max-w-3xl mx-auto space-y-8">
-          {/* Day Selector Bar */}
-          <div className="flex justify-between items-center bg-white p-2 rounded-2xl border border-slate-200/60 shadow-xs print:hidden overflow-x-auto">
+          {/* Day Selector Bar - Sticky au défilement */}
+          <div className="sticky top-2 z-40 flex justify-between items-center bg-white/90 backdrop-blur-md p-2 rounded-2xl border border-slate-200/80 shadow-md print:hidden overflow-x-auto">
             {JOURS_ORDRE.map((day) => {
-              const sessionsDay = planningsFiltres.filter(p => p.jourSemaine === day)
               const isActive = selectedDayTimeline === day
               return (
                 <button
                   key={day}
                   onClick={() => setSelectedDayTimeline(day)}
-                  className={`flex-1 min-w-[75px] py-3 px-2 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                  className={`flex-1 min-w-[75px] py-3.5 px-3 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
                     isActive
                        ? 'bg-slate-950 text-white shadow-md'
-                       : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                       : 'text-slate-600 hover:bg-slate-100/60 hover:text-slate-900 font-extrabold'
                   }`}
                 >
                   <span className="text-xs font-black uppercase tracking-wider">{day}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {sessionsDay.length}
-                  </span>
                 </button>
               )
             })}
@@ -1055,7 +1049,20 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                 .filter(p => p.jourSemaine === selectedDayTimeline)
                 .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut))
 
-              if (dayPlannings.length === 0) {
+              const fusedTimelinePlannings: Planning[] = []
+              dayPlannings.forEach(p => {
+                const gName = p.nomSession || p.groupe?.nom
+                const existing = fusedTimelinePlannings.find(item => 
+                  (item.nomSession || item.groupe?.nom) === gName &&
+                  item.heureDebut === p.heureDebut &&
+                  item.heureFin === p.heureFin
+                )
+                if (!existing) {
+                  fusedTimelinePlannings.push(p)
+                }
+              })
+
+              if (fusedTimelinePlannings.length === 0) {
                 return (
                   <div className="bg-white rounded-3xl p-8 border border-slate-200/60 text-center space-y-3 shadow-2xs ml-6">
                     <p className="text-3xl">🌊</p>
@@ -1065,7 +1072,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                 )
               }
 
-              return dayPlannings.map((session) => {
+              return fusedTimelinePlannings.map((session) => {
                 const color = getCouleurGroupe(session.groupe?.nom || '', session.groupe?.couleur)
                 return (
                   <div key={session.id} className="relative pl-8 md:pl-0">
@@ -1209,9 +1216,9 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
         <div className="bg-white rounded-3xl border border-slate-200/70 shadow-xs overflow-hidden max-w-6xl mx-auto">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left">
-              <thead>
+              <thead className="sticky top-0 z-30 shadow-md">
                 <tr className="border-b border-slate-200 bg-slate-900 text-white">
-                  <th className="p-4 print:p-2 font-black text-xs uppercase tracking-wider sticky left-0 bg-slate-900 z-10 min-w-[200px] print:min-w-0 border-r border-slate-800">
+                  <th className="p-4 print:p-2 font-black text-xs uppercase tracking-wider sticky left-0 top-0 bg-slate-900 z-40 min-w-[200px] print:min-w-0 border-r border-slate-800">
                     Groupe / Section
                   </th>
                   {JOURS_ORDRE.map((jour) => (
@@ -1245,7 +1252,16 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                           </div>
                         </td>
                         {JOURS_ORDRE.map((jour) => {
-                          const sessions = planningParJourEtGroupe[jour]?.[groupe.id] || []
+                          const rawSessions = planningParJourEtGroupe[jour]?.[groupe.id] || []
+                          const sessions: Planning[] = []
+                          rawSessions.forEach(s => {
+                            const existing = sessions.find(item => 
+                              item.heureDebut === s.heureDebut && item.heureFin === s.heureFin
+                            )
+                            if (!existing) {
+                              sessions.push(s)
+                            }
+                          })
                           return (
                             <td key={jour} className="p-3 print:p-1 text-center border-r border-slate-100 bg-white last:border-r-0">
                               {sessions.length > 0 ? (
@@ -1293,8 +1309,8 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
       {/* === VUE 3 : BASSIN VIEW (PISCINE INTERACTIVE) === */}
       {viewMode === 'bassin' && (
         <div className="space-y-6 max-w-5xl mx-auto">
-          {/* Day Switcher */}
-          <div className="flex flex-wrap justify-center gap-2 mb-6 bg-slate-100/80 p-1.5 rounded-xl border border-slate-200/40 print:hidden">
+          {/* Day Switcher - Sticky au défilement */}
+          <div className="sticky top-2 z-40 flex flex-wrap justify-center gap-2 mb-6 bg-white/90 backdrop-blur-md p-2 rounded-2xl border border-slate-200/80 shadow-md print:hidden">
             {JOURS_ORDRE.map(day => {
               return (
                 <button
