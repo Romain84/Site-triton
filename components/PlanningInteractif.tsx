@@ -734,16 +734,16 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                 }}
                                 className="absolute rounded-xl flex flex-col justify-center border-2 cursor-pointer shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-200 select-none overflow-hidden p-2 md:p-2.5"
                               >
+                                {hasImpaire && (
+                                  <span className="absolute top-1 right-1 z-30 text-[7px] sm:text-[8px] bg-amber-400 text-amber-950 font-black px-1.5 py-0.5 rounded-md shadow-md border border-amber-300 uppercase tracking-wider" title="Contient un ou plusieurs cours dispensés les semaines impaires uniquement">
+                                    🗓️ Sem. impaire
+                                  </span>
+                                )}
                                 <div className="min-w-0 space-y-0.5">
                                   <div className="flex items-center gap-1 min-w-0 flex-wrap">
                                     <span className="shrink-0 text-[7px] md:text-[8px] bg-indigo-500 text-white font-black px-1 rounded-xs uppercase tracking-tight">
                                       👥 {item.plannings.length} Groupes
                                     </span>
-                                    {hasImpaire && (
-                                      <span className="shrink-0 text-[7px] md:text-[8px] bg-amber-400 text-amber-950 font-black px-1 rounded-xs uppercase tracking-tight">
-                                        🗓️ Impaire
-                                      </span>
-                                    )}
                                   </div>
                                   <div className="space-y-0.5 min-w-0">
                                     {item.plannings.map((p) => (
@@ -790,10 +790,15 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                 textShadow: textShadow,
                                 zIndex: singleCardZIndex
                               }}
-                              className={`absolute rounded-xl flex flex-col justify-center border-2 cursor-pointer shadow-md hover:shadow-xl hover:scale-[1.02] hover:z-30 transition-all duration-200 select-none overflow-hidden ${
+                              className={`absolute rounded-xl flex flex-col justify-center border-2 cursor-pointer shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-200 select-none overflow-hidden ${
                                 isShort ? 'p-1.5 md:p-2' : 'p-2.5 md:p-3'
                               } ${(planning.groupe as any)?.annule ? 'opacity-40 grayscale-[60%] border-red-300' : ''}`}
                             >
+                              {planning.semaineImpaire && (
+                                <span className="absolute top-1 right-1 z-30 text-[7px] sm:text-[8px] bg-amber-400 text-amber-950 font-black px-1.5 py-0.5 rounded-md shadow-md border border-amber-300 uppercase tracking-wider select-none" title="Cours dispensé les semaines impaires uniquement (1 semaine sur 2)">
+                                  🗓️ Sem. impaire
+                                </span>
+                              )}
                               <div className={`min-w-0 ${isShort ? 'space-y-0' : 'space-y-0.5'} print:space-y-0`}>
                                 <div className="flex flex-wrap items-center gap-1 min-w-0">
                                   <p className={`font-black tracking-tight leading-tight break-words whitespace-normal line-clamp-2 ${
@@ -808,11 +813,6 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                       🏊 {spanLanes} Lignes
                                     </span>
                                   )}
-                                  {planning.semaineImpaire && (
-                                     <span className="shrink-0 text-[7px] md:text-[8px] bg-amber-400 text-amber-950 font-black px-1 py-0.2 rounded-xs leading-tight print:inline-block shadow-xs uppercase tracking-tighter" title="Cours dispensé les semaines impaires uniquement (1 semaine sur 2)">
-                                       🗓️ Sem. impaire
-                                     </span>
-                                   )}
                                   {(planning.groupe as any)?.annule && (
                                     <span className="shrink-0 text-[7px] md:text-[8px] bg-red-650 text-white font-extrabold px-1 rounded-sm leading-tight print:hidden">
                                       PAS DE COURS
