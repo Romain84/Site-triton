@@ -427,47 +427,52 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
       laneAssignments['PPG'] = []
     }
     
-    // Traitement des créneaux par bassin
-    const grandBassinLanes = [
-      'Grand Bassin - Ligne 1',
-      'Grand Bassin - Ligne 2',
-      'Grand Bassin - Ligne 3',
-      'Grand Bassin - Ligne 4'
-    ]
-
-    const grandBassinPlannings: Planning[] = []
+    const explicitPlannings: Planning[] = []
+    const genericPlannings: Planning[] = []
     
     planningsForDay.forEach(p => {
       const lieu = p.lieu || ''
-      if (lieu.includes('Petit Bassin')) {
-        laneAssignments['Petit Bassin'].push({ ...p, lieu: 'Petit Bassin' })
-      } else if (lieu.toUpperCase().includes('PPG')) {
-        if (hasPPG) laneAssignments['PPG'].push({ ...p, lieu: 'PPG' })
+      if (laneKeys.includes(lieu)) {
+        explicitPlannings.push(p)
       } else {
-        // Tous les créneaux du Grand Bassin (Ligne 1, 2, 3, 4 ou génériques)
-        grandBassinPlannings.push(p)
+        let matchedKey: string | null = null
+        if (lieu.includes('Ligne 1')) matchedKey = 'Grand Bassin - Ligne 1'
+        else if (lieu.includes('Ligne 2')) matchedKey = 'Grand Bassin - Ligne 2'
+        else if (lieu.includes('Ligne 3')) matchedKey = 'Grand Bassin - Ligne 3'
+        else if (lieu.includes('Ligne 4')) matchedKey = 'Grand Bassin - Ligne 4'
+        else if (lieu.includes('Petit Bassin')) matchedKey = 'Petit Bassin'
+        else if (lieu.toUpperCase().includes('PPG')) matchedKey = 'PPG'
+        
+        if (matchedKey) {
+          explicitPlannings.push({ ...p, lieu: matchedKey })
+        } else {
+          genericPlannings.push(p)
+        }
       }
     })
-
-    // Trier les créneaux du Grand Bassin par heure de début
-    const sortedGrandBassin = [...grandBassinPlannings].sort((a, b) => {
+    
+    explicitPlannings.forEach(p => {
+      if (p.lieu && laneAssignments[p.lieu]) {
+        laneAssignments[p.lieu].push(p)
+      }
+    })
+    
+    const sortedGeneric = [...genericPlannings].sort((a, b) => {
       return timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut)
     })
-
-    // Distribuer intelligemment chaque groupe sur la première ligne libre du Grand Bassin
-    sortedGrandBassin.forEach(p => {
+    
+    sortedGeneric.forEach(p => {
       let assigned = false
-      for (const laneKey of grandBassinLanes) {
+      for (const laneKey of laneKeys) {
         const hasOverlap = laneAssignments[laneKey].some(existing => overlaps(p, existing))
         if (!hasOverlap) {
-          laneAssignments[laneKey].push({ ...p, lieu: laneKey })
+          laneAssignments[laneKey].push(p)
           assigned = true
           break
         }
       }
-      // Si toutes les 4 lignes sont occupées aux mêmes heures, assigner à la ligne 1
       if (!assigned) {
-        laneAssignments['Grand Bassin - Ligne 1'].push({ ...p, lieu: 'Grand Bassin - Ligne 1' })
+        laneAssignments['Grand Bassin - Ligne 1'].push(p)
       }
     })
 
@@ -670,11 +675,8 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                           const firstPlanning = item.plannings[0]
 
                           if (isFused) {
-                            // Rendu de carte fusionnée (plusieurs groupes simultanés)
+                            // Rendu de carte fusionnée (plusieurs groupes simultanés dans la même ligne)
                             const hasImpaire = item.plannings.some(p => p.semaineImpaire)
-                            const isGrandBassin = lane.key.includes('Grand Bassin')
-                            const horizontalSpanLanes = isGrandBassin ? Math.min(item.plannings.length, 3) : 1
-                            const fusedWidthStyle = horizontalSpanLanes > 1 ? `calc(${horizontalSpanLanes * 100}% - 4px)` : `calc(${widthPct}% - 4px)`
 
                             return (
                               <div
@@ -685,11 +687,11 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                   top: `calc(${topPct}% + 1px)`,
                                   height: `calc(${heightPct}% - 2px)`,
                                   left: `calc(${leftPct}% + 2px)`,
-                                  width: fusedWidthStyle,
+                                  width: `calc(100% - 4px)`,
                                   background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)',
                                   color: '#ffffff',
                                   borderColor: 'rgba(129, 140, 248, 0.4)',
-                                  zIndex: horizontalSpanLanes > 1 ? 25 : 10 + colIdx
+                                  zIndex: 10 + colIdx
                                 }}
                                 className="absolute rounded-xl flex flex-col justify-center border-2 cursor-pointer shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-200 select-none overflow-hidden p-2 md:p-2.5"
                               >
