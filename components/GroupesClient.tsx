@@ -148,7 +148,7 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
               : 'bg-white text-slate-650 border border-slate-200/90 hover:border-slate-400 hover:text-slate-900'
           }`}
         >
-          ✨ Tous les groupes ({groupes.length})
+          Tous les groupes
         </button>
 
         {categoriesKeys.map((catKey) => {
@@ -162,16 +162,13 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
             <button
               key={catKey}
               onClick={() => setSelectedCategory(catKey)}
-              className={`px-4 py-2.5 rounded-full font-bold text-xs tracking-wider uppercase transition-all cursor-pointer flex items-center gap-2 shadow-xs ${
+              className={`px-4 py-2.5 rounded-full font-bold text-xs tracking-wider uppercase transition-all cursor-pointer shadow-xs ${
                 isActive
                   ? 'bg-slate-900 text-white shadow-md border border-slate-900 scale-[1.02]'
                   : 'bg-white text-slate-650 border border-slate-200/90 hover:border-slate-400 hover:text-slate-900'
               }`}
             >
               <span>{config.titre.split('&')[0].trim()}</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                {count}
-              </span>
             </button>
           )
         })}
@@ -231,10 +228,10 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
                           {hasAgeRange && (
                             <span className="border border-slate-200 bg-slate-50 text-slate-700 px-3 py-1 rounded-full text-xs font-bold tracking-wide shrink-0 shadow-2xs">
                               {isAdult
-                                ? '👤 Adultes'
+                                ? 'Adultes'
                                 : (groupe.ageMin && groupe.ageMax
-                                  ? `👶 ${groupe.ageMin} à ${groupe.ageMax} ans`
-                                  : (groupe.ageMin ? `👶 Dès ${groupe.ageMin} ans` : `👶 Jusqu'à ${groupe.ageMax} ans`)
+                                  ? `${groupe.ageMin} à ${groupe.ageMax} ans`
+                                  : (groupe.ageMin ? `Dès ${groupe.ageMin} ans` : `Jusqu'à ${groupe.ageMax} ans`)
                                 )
                               }
                             </span>
@@ -243,7 +240,6 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
 
                         {groupe.annule && (
                           <div className="bg-red-50 border border-red-200/60 rounded-2xl p-3.5 flex items-center gap-2.5 text-red-800 text-xs font-bold shadow-xs">
-                            <span className="text-sm">⚠️</span>
                             <span>Créneau temporairement suspendu (en attente d&apos;un coach). Réouverture possible à tout moment !</span>
                           </div>
                         )}
@@ -292,19 +288,16 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
                           {typeof groupe.caution === 'number' && groupe.caution > 0 && (
                             <div className="mt-2.5 border border-amber-200/90 bg-amber-50/70 rounded-2xl p-3.5 text-xs space-y-1.5 shadow-2xs">
                               <div className="flex items-center justify-between font-extrabold text-amber-950">
-                                <span className="flex items-center gap-1.5">
-                                  <span>🏷️</span>
-                                  <span>Caution demandée :</span>
-                                </span>
+                                <span>Caution demandée :</span>
                                 <span className="font-mono text-sm bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 text-amber-950 font-black">{groupe.caution.toFixed(2)} €</span>
                               </div>
                               {groupe.nbCompetitionsCaution && groupe.nbCompetitionsCaution > 0 ? (
                                 <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
-                                  🔄 <strong>Condition de remboursement :</strong> Restituée en fin de saison si le nageur participe à au moins <strong>{groupe.nbCompetitionsCaution} compétition{groupe.nbCompetitionsCaution > 1 ? 's' : ''}</strong>.
+                                  <strong>Condition de remboursement :</strong> Restituée en fin de saison si le nageur participe à au moins <strong>{groupe.nbCompetitionsCaution} compétition{groupe.nbCompetitionsCaution > 1 ? 's' : ''}</strong>.
                                 </p>
                               ) : (
                                 <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
-                                  🔄 <strong>Condition de remboursement :</strong> Restituée en fin de saison selon les règles du club.
+                                  <strong>Condition de remboursement :</strong> Restituée en fin de saison selon les règles du club.
                                 </p>
                               )}
                             </div>
