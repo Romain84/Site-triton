@@ -29,6 +29,32 @@ interface GroupesClientProps {
 
 export type CategorieGroupeKey = 'all' | 'apprentissage' | 'loisir' | 'competition' | 'autres'
 
+export function formatBirthYears(ageMin: number | null, ageMax: number | null): string | null {
+  if (ageMin === null && ageMax === null) return null
+  const currentYear = new Date().getFullYear()
+
+  if (ageMin !== null && ageMax !== null) {
+    const yearOldest = currentYear - ageMax
+    const yearYoungest = currentYear - ageMin
+    if (yearOldest === yearYoungest) {
+      return `${yearOldest}`
+    }
+    return `${yearOldest} - ${yearYoungest}`
+  }
+
+  if (ageMin !== null) {
+    const yearYoungest = currentYear - ageMin
+    return `${yearYoungest} et avant`
+  }
+
+  if (ageMax !== null) {
+    const yearOldest = currentYear - ageMax
+    return `${yearOldest} et après`
+  }
+
+  return null
+}
+
 export interface CategorieConfig {
   key: Exclude<CategorieGroupeKey, 'all'>
   titre: string
@@ -227,13 +253,7 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
 
                           {hasAgeRange && (
                             <span className="border border-slate-200 bg-slate-50 text-slate-700 px-3 py-1 rounded-full text-xs font-bold tracking-wide shrink-0 shadow-2xs">
-                              {isAdult
-                                ? 'Adultes'
-                                : (groupe.ageMin && groupe.ageMax
-                                  ? `${groupe.ageMin} à ${groupe.ageMax} ans`
-                                  : (groupe.ageMin ? `Dès ${groupe.ageMin} ans` : `Jusqu'à ${groupe.ageMax} ans`)
-                                )
-                              }
+                              {formatBirthYears(groupe.ageMin, groupe.ageMax)}
                             </span>
                           )}
                         </div>
