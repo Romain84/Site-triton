@@ -541,6 +541,53 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
     const totalMinutes = gridEndMin - gridStartMin
     const numHours = endHour - startHour
 
+    // Détection automatique des grandes pauses d'inactivité (ex: pause >= 2h30 entre 08h30 et 17h00)
+    const sortedDayPlannings = [...planningsForDay].sort((a, b) => timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut))
+    
+    let breakStartMin: number | null = null
+    let breakEndMin: number | null = null
+
+    for (let i = 0; i < sortedDayPlannings.length - 1; i++) {
+      const currentEnd = timeToMinutes(sortedDayPlannings[i].heureFin)
+      const nextStart = timeToMinutes(sortedDayPlannings[i + 1].heureDebut)
+      if (nextStart - currentEnd >= 150) {
+        breakStartMin = currentEnd
+        breakEndMin = nextStart
+        break
+      }
+    }
+
+    const hasBreak = breakStartMin !== null && breakEndMin !== null
+
+    const breakHeightPct = 5 // 5% de la hauteur totale pour le bandeau de pause
+    const activeHeightPct = hasBreak ? (100 - breakHeightPct) : 100
+
+    const morningMins = hasBreak ? (breakStartMin! - gridStartMin) : totalMinutes
+    const eveningMins = hasBreak ? (gridEndMin - breakEndMin!) : 0
+    const activeMins = morningMins + eveningMins
+
+    const morningShare = hasBreak ? (morningMins / activeMins) * activeHeightPct : 100
+    const eveningShare = hasBreak ? (eveningMins / activeMins) * activeHeightPct : 0
+
+    const getTopPct = (timeMin: number): number => {
+      if (!hasBreak) {
+        return ((timeMin - gridStartMin) / totalMinutes) * 100
+      }
+      if (timeMin <= breakStartMin!) {
+        return ((timeMin - gridStartMin) / morningMins) * morningShare
+      }
+      if (timeMin >= breakEndMin!) {
+        return morningShare + breakHeightPct + (((timeMin - breakEndMin!) / eveningMins) * eveningShare)
+      }
+      return morningShare + (breakHeightPct / 2)
+    }
+
+    const getHeightPct = (startMin: number, endMin: number): number => {
+      const tStart = getTopPct(startMin)
+      const tEnd = getTopPct(endMin)
+      return Math.max(tEnd - tStart, 12)
+    }
+
     return (
       <div className="bg-slate-100 rounded-3xl p-5 shadow-inner border border-slate-200/80 overflow-x-auto print:bg-white print:border-0 print:p-0">
         <div className="min-w-[800px]">
@@ -570,7 +617,14 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
               <div className="relative flex-grow h-[calc(100%-2.5rem)]">
                 {Array.from({ length: numHours + 1 }).map((_, idx) => {
                   const hour = startHour + idx
-                  const topPct = (idx / numHours) * 100
+                  const timeMin = hour * 60
+                  
+                  // Si l'heure tombe en plein dans la pause masquée, on ne l'affiche pas sur la règle
+                  if (hasBreak && timeMin > breakStartMin! && timeMin < breakEndMin!) {
+                    return null
+                  }
+                  
+                  const topPct = getTopPct(timeMin)
                   return (
                     <span
                       key={hour}
@@ -590,7 +644,10 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
               {/* Horizontal grid lines */}
               <div className="absolute inset-0 pointer-events-none z-0 mt-10 h-[calc(100%-2.5rem)]">
                 {Array.from({ length: numHours + 1 }).map((_, idx) => {
-                  const topPct = (idx / numHours) * 100
+                  const hour = startHour + idx
+                  const timeMin = hour * 60
+                  if (hasBreak && timeMin > breakStartMin! && timeMin < breakEndMin!) return null
+                  const topPct = getTopPct(timeMin)
                   return (
                     <div
                       key={idx}
@@ -599,6 +656,16 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                     />
                   )
                 })}
+                {hasBreak && (
+                  <div 
+                    className="absolute left-0 right-0 z-20 flex items-center justify-center pointer-events-none border-y border-dashed border-indigo-400/40 bg-slate-900/90 py-1"
+                    style={{ top: `${morningShare}%`, height: `${breakHeightPct}%` }}
+                  >
+                    <span className="text-[9px] font-black text-amber-300 uppercase tracking-widest flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-950/80 border border-amber-400/40 shadow-lg">
+                      ⚡ Interruption d&apos;activité ({Math.floor(breakStartMin! / 60)}h{breakStartMin! % 60 ? (breakStartMin! % 60).toString().padStart(2, '0') : ''} à {Math.floor(breakEndMin! / 60)}h{breakEndMin! % 60 ? (breakEndMin! % 60).toString().padStart(2, '0') : ''})
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Repeating pool lane separators (vertical ropes) */}
@@ -688,8 +755,8 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                         return col.map((item) => {
                           const startMin = timeToMinutes(item.heureDebut)
                           const endMin = timeToMinutes(item.heureFin)
-                          const topPct = ((startMin - gridStartMin) / totalMinutes) * 100
-                          const heightPct = ((endMin - startMin) / totalMinutes) * 100
+                          const topPct = getTopPct(startMin)
+                          const heightPct = getHeightPct(startMin, endMin)
                           
                           const duration = endMin - startMin
                           const isShort = duration <= 50
