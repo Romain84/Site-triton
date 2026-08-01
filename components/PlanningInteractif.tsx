@@ -378,6 +378,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
   const [selectedDayTimeline, setSelectedDayTimeline] = useState<string>('Lundi')
   const [selectedDayBassin, setSelectedDayBassin] = useState<string>('Lundi')
   const [selectedPlanningDetails, setSelectedPlanningDetails] = useState<Planning | null>(null)
+  const [selectedFusedGroup, setSelectedFusedGroup] = useState<Planning[] | null>(null)
 
   // Synchroniser les jours sélectionnés si nécessaire
   useEffect(() => {
@@ -585,22 +586,47 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                   return timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut)
                 })
                 
-                const columns: Planning[][] = []
+                // Fusion des créneaux aux horaires identiques dans la même ligne
+                interface FusedItem {
+                  id: string
+                  heureDebut: string
+                  heureFin: string
+                  plannings: Planning[]
+                }
+
+                const fusedItems: FusedItem[] = []
                 sortedPlannings.forEach(p => {
+                  const existing = fusedItems.find(item => 
+                    item.heureDebut === p.heureDebut && item.heureFin === p.heureFin
+                  )
+                  if (existing) {
+                    existing.plannings.push(p)
+                  } else {
+                    fusedItems.push({
+                      id: p.id,
+                      heureDebut: p.heureDebut,
+                      heureFin: p.heureFin,
+                      plannings: [p]
+                    })
+                  }
+                })
+
+                const columns: FusedItem[][] = []
+                fusedItems.forEach(item => {
                   let placed = false
                   for (let i = 0; i < columns.length; i++) {
                     const col = columns[i]
                     const last = col[col.length - 1]
                     const lastEnd = timeToMinutes(last.heureFin)
-                    const pStart = timeToMinutes(p.heureDebut)
-                    if (pStart >= lastEnd) {
-                      col.push(p)
+                    const itemStart = timeToMinutes(item.heureDebut)
+                    if (itemStart >= lastEnd) {
+                      col.push(item)
                       placed = true
                       break
                     }
                   }
                   if (!placed) {
-                    columns.push([p])
+                    columns.push([item])
                   }
                 })
                 
@@ -620,17 +646,15 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                       {columns.map((col, colIdx) => {
                         const leftPct = (colIdx / totalCols) * 100
                         
-                        return col.map((planning) => {
-                          const startMin = timeToMinutes(planning.heureDebut)
-                          const endMin = timeToMinutes(planning.heureFin)
+                        return col.map((item) => {
+                          const startMin = timeToMinutes(item.heureDebut)
+                          const endMin = timeToMinutes(item.heureFin)
                           const topPct = ((startMin - gridStartMin) / totalMinutes) * 100
                           const heightPct = ((endMin - startMin) / totalMinutes) * 100
                           
                           const duration = endMin - startMin
                           const isShort = duration <= 50
 
-                          const color = getCouleurGroupe(planning.groupe?.nom || '', planning.groupe?.couleur)
-                          
                           // Calculate colSpan
                           let colSpan = 1
                           for (let nextColIdx = colIdx + 1; nextColIdx < totalCols; nextColIdx++) {
@@ -646,6 +670,61 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                             }
                           }
                           const widthPct = (colSpan / totalCols) * 100
+
+                          const isFused = item.plannings.length > 1
+                          const firstPlanning = item.plannings[0]
+
+                          if (isFused) {
+                            // Rendu de carte fusionnée (plusieurs groupes simultanés)
+                            const hasImpaire = item.plannings.some(p => p.semaineImpaire)
+
+                            return (
+                              <div
+                                key={`fused-${item.id}`}
+                                onClick={() => setSelectedFusedGroup(item.plannings)}
+                                title={`Créneau partagé (${item.plannings.length} groupes) :\n${item.plannings.map(p => `• ${p.nomSession || p.groupe?.nom}`).join('\n')}\nHoraires : ${item.heureDebut} - ${item.heureFin}`}
+                                style={{
+                                  top: `calc(${topPct}% + 1px)`,
+                                  height: `calc(${heightPct}% - 2px)`,
+                                  left: `calc(${leftPct}% + 2px)`,
+                                  width: `calc(${widthPct}% - 4px)`,
+                                  background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)',
+                                  color: '#ffffff',
+                                  borderColor: 'rgba(129, 140, 248, 0.4)',
+                                  zIndex: 10 + colIdx
+                                }}
+                                className="absolute rounded-xl flex flex-col justify-center border-2 cursor-pointer shadow-md hover:shadow-xl hover:scale-[1.02] hover:z-30 transition-all duration-200 select-none overflow-hidden p-2 md:p-2.5"
+                              >
+                                <div className="min-w-0 space-y-0.5">
+                                  <div className="flex items-center gap-1 min-w-0 flex-wrap">
+                                    <span className="shrink-0 text-[7px] md:text-[8px] bg-indigo-500 text-white font-black px-1 rounded-xs uppercase tracking-tight">
+                                      👥 {item.plannings.length} Groupes
+                                    </span>
+                                    {hasImpaire && (
+                                      <span className="shrink-0 text-[7px] md:text-[8px] bg-amber-400 text-amber-950 font-black px-1 rounded-xs uppercase tracking-tight">
+                                        🗓️ Impaire
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="space-y-0.5 min-w-0">
+                                    {item.plannings.map((p) => (
+                                      <p key={p.id} className="font-bold text-[8.5px] sm:text-[9.5px] md:text-[10px] text-white truncate flex items-center gap-1 leading-tight">
+                                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.groupe?.couleur || '#38bdf8' }} />
+                                        <span className="truncate">{p.nomSession || p.groupe?.nom}</span>
+                                      </p>
+                                    ))}
+                                  </div>
+                                  <p className="font-extrabold text-[8px] sm:text-[9px] text-cyan-300 leading-none pt-0.5">
+                                    {item.heureDebut} - {item.heureFin}
+                                  </p>
+                                </div>
+                              </div>
+                            )
+                          }
+
+                          // Rendu classique pour un seul groupe
+                          const planning = firstPlanning
+                          const color = getCouleurGroupe(planning.groupe?.nom || '', planning.groupe?.couleur)
                           const activeColorHex = planning.groupe?.couleur || planning.couleur
                           const isLight = isLightColor(activeColorHex)
                           const textColor = activeColorHex ? (isLight ? '#0f172a' : '#ffffff') : color.textColor
@@ -1203,6 +1282,67 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
             >
               S&apos;inscrire à ce groupe
             </a>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'affichage des groupes fusionnés */}
+      {selectedFusedGroup && selectedFusedGroup.length > 0 && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-xl border border-slate-100 flex flex-col relative animate-fade-in-up max-h-[85vh] overflow-y-auto">
+            {/* Close Button */}
+            <button
+              onClick={() => setSelectedFusedGroup(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-650 transition-colors font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="mb-4">
+              <span className="bg-indigo-50 text-indigo-800 border border-indigo-200/40 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
+                👥 {selectedFusedGroup.length} Cours Simultanés dans ce Bassin
+              </span>
+              <h3 className="text-xl font-black text-slate-900 mt-2.5 leading-tight">
+                📅 {selectedFusedGroup[0].jourSemaine} • {selectedFusedGroup[0].heureDebut} - {selectedFusedGroup[0].heureFin}
+              </h3>
+              <p className="text-xs text-slate-500 font-semibold mt-1">
+                🏊 {selectedFusedGroup[0].lieu || 'Piscine Municipale'}
+              </p>
+            </div>
+
+            <div className="space-y-3.5 mb-4">
+              {selectedFusedGroup.map((planning) => (
+                <div key={planning.id} className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/60 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: planning.groupe?.couleur || '#38bdf8' }} />
+                      {planning.nomSession || planning.groupe?.nom}
+                    </span>
+                    {planning.semaineImpaire && (
+                      <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-black px-1.5 py-0.5 rounded-md shrink-0">
+                        🗓️ Sem. impaire
+                      </span>
+                    )}
+                  </div>
+
+                  {planning.coachs && planning.coachs.length > 0 && (
+                    <div className="text-xs text-slate-600 font-semibold">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Entraîneur(s) :</span>
+                      <span>{planning.coachs.map(c => c.coach.prenom).join(', ')}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-1">
+                    <a
+                      href={`/inscription?groupe=${encodeURIComponent(planning.groupe?.nom || '')}`}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+                    >
+                      S&apos;inscrire à ce groupe →
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
