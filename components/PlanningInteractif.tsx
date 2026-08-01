@@ -541,49 +541,88 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
     const totalMinutes = gridEndMin - gridStartMin
     const numHours = endHour - startHour
 
-    // Détection automatique des grandes pauses d'inactivité (gap >= 2h) sur TOUS les jours de la semaine
-    // Ajout d'une marge tampon de 15 min avant et après l'interruption pour aérer l'affichage
-    const sortedDayPlannings = [...planningsForDay].sort((a, b) => timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut))
-    
-    let rawBreakStart: number | null = null
-    let rawBreakEnd: number | null = null
+    // Algorithme de détection des pauses d'inactivité (gaps >= 120 min) sans aucun chevauchement de carte
+    const rawPlannings = planningsForDay.map(p => ({
+      start: timeToMinutes(p.heureDebut),
+      end: timeToMinutes(p.heureFin)
+    })).sort((a, b) => a.start - b.start)
 
-    for (let i = 0; i < sortedDayPlannings.length - 1; i++) {
-      const currentEnd = timeToMinutes(sortedDayPlannings[i].heureFin)
-      const nextStart = timeToMinutes(sortedDayPlannings[i + 1].heureDebut)
-      if (nextStart - currentEnd >= 120) { // Interruption de 2h ou plus
-        rawBreakStart = currentEnd
-        rawBreakEnd = nextStart
-        break
+    interface TimeGap {
+      startMin: number
+      endMin: number
+      rawStart: number
+      rawEnd: number
+    }
+
+    const gaps: TimeGap[] = []
+
+    if (rawPlannings.length > 0) {
+      // 1. Détection de la pause initiale (ex: 07h00 -> 19h30 si premier cours à 19h30)
+      const firstStart = rawPlannings[0].start
+      if (firstStart - gridStartMin >= 150) {
+        const bStart = gridStartMin + 30
+        const bEnd = firstStart - 15
+        if (bEnd > bStart) {
+          gaps.push({ startMin: bStart, endMin: bEnd, rawStart: gridStartMin, rawEnd: firstStart })
+        }
+      }
+
+      // 2. Détection des pauses intermédiaires (entre la FIN EFFECTIVE de tous les cours précédents et le DEBUT du cours suivant)
+      let maxEndSoFar = rawPlannings[0].end
+      for (let i = 1; i < rawPlannings.length; i++) {
+        const nextStart = rawPlannings[i].start
+        if (nextStart - maxEndSoFar >= 120) {
+          const bStart = maxEndSoFar + 15
+          const bEnd = nextStart - 15
+          if (bEnd > bStart) {
+            gaps.push({ startMin: bStart, endMin: bEnd, rawStart: maxEndSoFar, rawEnd: nextStart })
+          }
+        }
+        maxEndSoFar = Math.max(maxEndSoFar, rawPlannings[i].end)
       }
     }
 
-    const MARGIN = 15 // Marge de 15 min de courtoisie
-    const breakStartMin = rawBreakStart !== null ? rawBreakStart + MARGIN : null
-    const breakEndMin = rawBreakEnd !== null ? rawBreakEnd - MARGIN : null
-    const hasBreak = breakStartMin !== null && breakEndMin !== null && (breakEndMin > breakStartMin)
+    // Mapping temps -> pourcentage de hauteur de grille (0% à 100%)
+    const gapHeightPct = 4 // 4% de la hauteur globale attribué à chaque bandeau de pause
+    const totalGapsHeight = gaps.length * gapHeightPct
+    const activeHeightPct = 100 - totalGapsHeight
 
-    const breakHeightPct = 4 // 4% de la hauteur totale pour le bandeau
-    const activeHeightPct = hasBreak ? (100 - breakHeightPct) : 100
-
-    const morningMins = hasBreak ? (breakStartMin! - gridStartMin) : totalMinutes
-    const eveningMins = hasBreak ? (gridEndMin - breakEndMin!) : 0
-    const activeMins = morningMins + eveningMins
-
-    const morningShare = hasBreak ? (morningMins / activeMins) * activeHeightPct : 100
-    const eveningShare = hasBreak ? (eveningMins / activeMins) * activeHeightPct : 0
+    let totalCompressedGapMins = 0
+    gaps.forEach(g => {
+      totalCompressedGapMins += (g.endMin - g.startMin)
+    })
+    const totalActiveMins = totalMinutes - totalCompressedGapMins
 
     const getTopPct = (timeMin: number): number => {
-      if (!hasBreak) {
+      if (gaps.length === 0 || totalActiveMins <= 0) {
         return ((timeMin - gridStartMin) / totalMinutes) * 100
       }
-      if (timeMin <= breakStartMin!) {
-        return ((timeMin - gridStartMin) / morningMins) * morningShare
+
+      let accumulatedPct = 0
+      let lastPoint = gridStartMin
+
+      for (const g of gaps) {
+        if (timeMin < g.startMin) {
+          const activeSegment = timeMin - lastPoint
+          accumulatedPct += (activeSegment / totalActiveMins) * activeHeightPct
+          return accumulatedPct
+        }
+        
+        const activeSegment = g.startMin - lastPoint
+        accumulatedPct += (activeSegment / totalActiveMins) * activeHeightPct
+        
+        if (timeMin <= g.endMin) {
+          const gapRatio = (timeMin - g.startMin) / (g.endMin - g.startMin)
+          return accumulatedPct + (gapRatio * gapHeightPct)
+        }
+
+        accumulatedPct += gapHeightPct
+        lastPoint = g.endMin
       }
-      if (timeMin >= breakEndMin!) {
-        return morningShare + breakHeightPct + (((timeMin - breakEndMin!) / eveningMins) * eveningShare)
-      }
-      return morningShare + (breakHeightPct / 2)
+
+      const activeSegment = timeMin - lastPoint
+      accumulatedPct += (activeSegment / totalActiveMins) * activeHeightPct
+      return accumulatedPct
     }
 
     const getHeightPct = (startMin: number, endMin: number): number => {
@@ -623,10 +662,9 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                   const hour = startHour + idx
                   const timeMin = hour * 60
                   
-                  // Si l'heure tombe en plein dans la pause masquée, on ne l'affiche pas sur la règle
-                  if (hasBreak && timeMin > breakStartMin! && timeMin < breakEndMin!) {
-                    return null
-                  }
+                  // Si l'heure tombe en plein dans une pause masquée, on ne l'affiche pas sur la règle
+                  const isInGap = gaps.some(g => timeMin > g.startMin && timeMin < g.endMin)
+                  if (isInGap) return null
                   
                   const topPct = getTopPct(timeMin)
                   return (
@@ -650,7 +688,8 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                 {Array.from({ length: numHours + 1 }).map((_, idx) => {
                   const hour = startHour + idx
                   const timeMin = hour * 60
-                  if (hasBreak && timeMin > breakStartMin! && timeMin < breakEndMin!) return null
+                  const isInGap = gaps.some(g => timeMin > g.startMin && timeMin < g.endMin)
+                  if (isInGap) return null
                   const topPct = getTopPct(timeMin)
                   return (
                     <div
@@ -660,16 +699,23 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                     />
                   )
                 })}
-                {hasBreak && (
-                  <div 
-                    className="absolute left-0 right-0 z-20 flex items-center justify-center pointer-events-none border-y border-dashed border-indigo-400/40 bg-slate-900/90 py-1"
-                    style={{ top: `${morningShare}%`, height: `${breakHeightPct}%` }}
-                  >
-                    <span className="text-[9px] font-black text-amber-300 uppercase tracking-widest flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-950/80 border border-amber-400/40 shadow-lg">
-                      ⚡ Interruption d&apos;activité ({Math.floor(breakStartMin! / 60)}h{breakStartMin! % 60 ? (breakStartMin! % 60).toString().padStart(2, '0') : ''} à {Math.floor(breakEndMin! / 60)}h{breakEndMin! % 60 ? (breakEndMin! % 60).toString().padStart(2, '0') : ''})
-                    </span>
-                  </div>
-                )}
+                {gaps.map((g, gIdx) => {
+                  const topPct = getTopPct(g.startMin)
+                  const startHourStr = Math.floor(g.rawStart / 60).toString().padStart(2, '0') + 'h' + (g.rawStart % 60 ? (g.rawStart % 60).toString().padStart(2, '0') : '')
+                  const endHourStr = Math.floor(g.rawEnd / 60).toString().padStart(2, '0') + 'h' + (g.rawEnd % 60 ? (g.rawEnd % 60).toString().padStart(2, '0') : '')
+                  
+                  return (
+                    <div 
+                      key={gIdx}
+                      className="absolute left-0 right-0 z-20 flex items-center justify-center pointer-events-none border-y border-dashed border-indigo-400/40 bg-slate-900/90 py-1"
+                      style={{ top: `${topPct}%`, height: `${gapHeightPct}%` }}
+                    >
+                      <span className="text-[9px] font-black text-amber-300 uppercase tracking-widest flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-950/80 border border-amber-400/40 shadow-lg">
+                        ⚡ Interruption d&apos;activité ({startHourStr} à {endHourStr})
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
 
               {/* Repeating pool lane separators (vertical ropes) */}
