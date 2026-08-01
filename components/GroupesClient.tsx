@@ -45,7 +45,7 @@ export const CATEGORIES_CONFIG: Record<Exclude<CategorieGroupeKey, 'all'>, Categ
     key: 'apprentissage',
     titre: 'Apprentissage & École de Natation',
     sousTitre: 'Acquisition des bases, découverte de l\'eau et préparation aux premiers brevets (ENF 1, ENF 2...)',
-    icon: '🌱',
+    icon: '',
     badgeBg: 'bg-emerald-100/80',
     badgeText: 'text-emerald-800 border-emerald-200',
     borderAccent: 'border-l-emerald-500',
@@ -55,7 +55,7 @@ export const CATEGORIES_CONFIG: Record<Exclude<CategorieGroupeKey, 'all'>, Categ
     key: 'loisir',
     titre: 'Section Loisir & Perfectionnement',
     sousTitre: 'Pratique plaisir, santé et perfectionnement de l\'adolescence à l\'âge adulte (Avenirs, Jeunes, Juniors, Adultes)',
-    icon: '🏊',
+    icon: '',
     badgeBg: 'bg-sky-100/80',
     badgeText: 'text-sky-800 border-sky-200',
     borderAccent: 'border-l-sky-500',
@@ -65,7 +65,7 @@ export const CATEGORIES_CONFIG: Record<Exclude<CategorieGroupeKey, 'all'>, Categ
     key: 'competition',
     titre: 'Section Compétition',
     sousTitre: 'Entraînements intensifs et engagement sur les plannings fédéraux FFN (Avenirs, Benjamins, Juniors, Adultes)',
-    icon: '🏆',
+    icon: '',
     badgeBg: 'bg-indigo-100/80',
     badgeText: 'text-indigo-800 border-indigo-200',
     borderAccent: 'border-l-indigo-500',
@@ -75,7 +75,7 @@ export const CATEGORIES_CONFIG: Record<Exclude<CategorieGroupeKey, 'all'>, Categ
     key: 'autres',
     titre: 'Activités & Autres Pratiques',
     sousTitre: 'AquaGym, Natation Artistique et séances de remise en forme aquatique',
-    icon: '🎨',
+    icon: '',
     badgeBg: 'bg-fuchsia-100/80',
     badgeText: 'text-fuchsia-800 border-fuchsia-200',
     borderAccent: 'border-l-fuchsia-500',
@@ -168,7 +168,6 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
                   : 'bg-white text-slate-650 border border-slate-200/90 hover:border-slate-400 hover:text-slate-900'
               }`}
             >
-              <span>{config.icon}</span>
               <span>{config.titre.split('&')[0].trim()}</span>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
                 {count}
@@ -194,16 +193,13 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
             <section key={catKey} className="space-y-6 animate-fade-in">
               {/* En-tête de catégorie stylisé */}
               <div className={`p-6 md:p-8 rounded-3xl border ${config.headerBg} shadow-xs space-y-2 relative overflow-hidden`}>
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl p-3 bg-white rounded-2xl shadow-xs border border-slate-200/50">{config.icon}</span>
-                  <div>
-                    <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
-                      {config.titre}
-                    </h2>
-                    <p className="text-slate-600 text-xs md:text-sm font-medium mt-0.5 leading-relaxed">
-                      {config.sousTitre}
-                    </p>
-                  </div>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+                    {config.titre}
+                  </h2>
+                  <p className="text-slate-600 text-xs md:text-sm font-medium mt-1 leading-relaxed">
+                    {config.sousTitre}
+                  </p>
                 </div>
               </div>
 
