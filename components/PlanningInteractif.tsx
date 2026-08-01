@@ -476,6 +476,45 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
       }
     })
 
+    // Fusion horizontale des créneaux identiques du même groupe sur plusieurs lignes contiguës du Grand Bassin
+    const grandBassinLaneKeys = [
+      'Grand Bassin - Ligne 1',
+      'Grand Bassin - Ligne 2',
+      'Grand Bassin - Ligne 3',
+      'Grand Bassin - Ligne 4'
+    ]
+
+    grandBassinLaneKeys.forEach((laneKey, laneIdx) => {
+      const currentLanePlannings = [...laneAssignments[laneKey]]
+      
+      currentLanePlannings.forEach(p => {
+        const groupName = p.nomSession || p.groupe?.nom
+        if (!groupName) return
+
+        let spanCount = 1
+        for (let nextIdx = laneIdx + 1; nextIdx < grandBassinLaneKeys.length; nextIdx++) {
+          const nextLaneKey = grandBassinLaneKeys[nextIdx]
+          const nextPlannings = laneAssignments[nextLaneKey]
+          const matchingIndex = nextPlannings.findIndex(other => 
+            (other.nomSession || other.groupe?.nom) === groupName &&
+            other.heureDebut === p.heureDebut &&
+            other.heureFin === p.heureFin
+          )
+          
+          if (matchingIndex !== -1) {
+            spanCount++
+            nextPlannings.splice(matchingIndex, 1)
+          } else {
+            break
+          }
+        }
+
+        if (spanCount > 1) {
+          (p as any).spanLanesCount = spanCount
+        }
+      })
+    })
+
     const separatorPct = hasPPG ? [16.66, 33.33, 50, 66.66, 83.33] : [20, 40, 60, 80]
     const lanesList = [
       { key: 'Grand Bassin - Ligne 1', label: 'Ligne 1' },
@@ -722,8 +761,12 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                             )
                           }
 
-                          // Rendu classique pour un seul groupe
+                          // Rendu classique pour un seul groupe (pouvant s'étendre sur plusieurs lignes contiguës)
                           const planning = firstPlanning
+                          const spanLanes = (planning as any).spanLanesCount || 1
+                          const singleCardWidth = spanLanes > 1 ? `calc(${spanLanes * 100}% - 4px)` : `calc(${widthPct}% - 4px)`
+                          const singleCardZIndex = spanLanes > 1 ? 25 : 10 + colIdx
+
                           const color = getCouleurGroupe(planning.groupe?.nom || '', planning.groupe?.couleur)
                           const activeColorHex = planning.groupe?.couleur || planning.couleur
                           const isLight = isLightColor(activeColorHex)
@@ -740,12 +783,12 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                 top: `calc(${topPct}% + 1px)`,
                                 height: `calc(${heightPct}% - 2px)`,
                                 left: `calc(${leftPct}% + 2px)`,
-                                width: `calc(${widthPct}% - 4px)`,
+                                width: singleCardWidth,
                                 background: planning.groupe?.couleur ? getCardGradient(planning.groupe.couleur) : (planning.couleur ? getCardGradient(planning.couleur) : color.gradient),
                                 color: textColor,
                                 borderColor: borderColor,
                                 textShadow: textShadow,
-                                zIndex: 10 + colIdx
+                                zIndex: singleCardZIndex
                               }}
                               className={`absolute rounded-xl flex flex-col justify-center border-2 cursor-pointer shadow-md hover:shadow-xl hover:scale-[1.02] hover:z-30 transition-all duration-200 select-none overflow-hidden ${
                                 isShort ? 'p-1.5 md:p-2' : 'p-2.5 md:p-3'
@@ -760,6 +803,11 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                   }`}>
                                     {planning.nomSession || planning.groupe?.nom}
                                   </p>
+                                  {spanLanes > 1 && (
+                                    <span className="shrink-0 text-[7px] md:text-[8px] bg-slate-900/80 text-white font-black px-1 py-0.2 rounded-xs leading-tight shadow-xs uppercase tracking-tighter">
+                                      🏊 {spanLanes} Lignes
+                                    </span>
+                                  )}
                                   {planning.semaineImpaire && (
                                      <span className="shrink-0 text-[7px] md:text-[8px] bg-amber-400 text-amber-950 font-black px-1 py-0.2 rounded-xs leading-tight print:inline-block shadow-xs uppercase tracking-tighter" title="Cours dispensé les semaines impaires uniquement (1 semaine sur 2)">
                                        🗓️ Sem. impaire
