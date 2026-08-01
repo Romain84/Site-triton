@@ -734,16 +734,16 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                 }}
                                 className="absolute rounded-xl flex flex-col justify-center border-2 cursor-pointer shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-200 select-none overflow-hidden p-2 md:p-2.5"
                               >
-                                {hasImpaire && (
-                                  <span className="absolute top-1.5 right-1.5 z-30 bg-amber-400 text-amber-950 font-black text-[7.5px] sm:text-[8.5px] px-1.5 py-0.5 rounded-md shadow-lg border-2 border-amber-950/50 uppercase tracking-widest rotate-6 sm:rotate-12 select-none pointer-events-none transform origin-center" title="Contient un ou plusieurs cours dispensés les semaines impaires uniquement">
-                                    🗓️ IMPAIRE
-                                  </span>
-                                )}
                                 <div className="min-w-0 space-y-0.5">
-                                  <div className="flex items-center gap-1 min-w-0 flex-wrap">
-                                    <span className="shrink-0 text-[7px] md:text-[8px] bg-indigo-500 text-white font-black px-1 rounded-xs uppercase tracking-tight">
+                                  <div className="flex items-center justify-between gap-1 min-w-0 flex-wrap">
+                                    <span className="shrink-0 text-[7px] md:text-[8px] bg-indigo-500 text-white font-black px-1.5 py-0.5 rounded-xs uppercase tracking-tight">
                                       👥 {item.plannings.length} Groupes
                                     </span>
+                                    {hasImpaire && (
+                                      <span className="shrink-0 text-[7px] sm:text-[8px] bg-amber-400 text-amber-950 font-black px-1.5 py-0.5 rounded-sm border border-amber-950/70 shadow-sm uppercase tracking-wider transform -rotate-3 select-none" title="Contient un ou plusieurs cours dispensés les semaines impaires uniquement">
+                                        🗓️ Semaine impaire
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="space-y-0.5 min-w-0">
                                     {item.plannings.map((p) => (
@@ -794,13 +794,8 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                 isShort ? 'p-1.5 md:p-2' : 'p-2.5 md:p-3'
                               } ${(planning.groupe as any)?.annule ? 'opacity-40 grayscale-[60%] border-red-300' : ''}`}
                             >
-                              {planning.semaineImpaire && (
-                                <span className="absolute top-1.5 right-1.5 z-30 bg-amber-400 text-amber-950 font-black text-[7.5px] sm:text-[8.5px] px-1.5 py-0.5 rounded-md shadow-lg border-2 border-amber-950/50 uppercase tracking-widest rotate-6 sm:rotate-12 select-none pointer-events-none transform origin-center" title="Cours dispensé les semaines impaires uniquement (1 semaine sur 2)">
-                                  🗓️ IMPAIRE
-                                </span>
-                              )}
                               <div className={`min-w-0 ${isShort ? 'space-y-0' : 'space-y-0.5'} print:space-y-0`}>
-                                <div className="flex flex-wrap items-center gap-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-1 justify-between min-w-0">
                                   <p className={`font-black tracking-tight leading-tight break-words whitespace-normal line-clamp-2 ${
                                     isShort 
                                       ? 'text-[8.5px] sm:text-[9.5px] md:text-[10px] print:text-[8px]' 
@@ -808,6 +803,11 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                                   }`}>
                                     {planning.nomSession || planning.groupe?.nom}
                                   </p>
+                                  {planning.semaineImpaire && (
+                                    <span className="shrink-0 text-[7px] sm:text-[8px] bg-amber-400 text-amber-950 font-black px-1.5 py-0.5 rounded-sm border border-amber-950/70 shadow-sm uppercase tracking-wider transform -rotate-3 select-none" title="Cours dispensé les semaines impaires uniquement (1 semaine sur 2)">
+                                      🗓️ Semaine impaire
+                                    </span>
+                                  )}
                                   {spanLanes > 1 && (
                                     <span className="shrink-0 text-[7px] md:text-[8px] bg-slate-900/80 text-white font-black px-1 py-0.2 rounded-xs leading-tight shadow-xs uppercase tracking-tighter">
                                       🏊 {spanLanes} Lignes
