@@ -541,25 +541,29 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
     const totalMinutes = gridEndMin - gridStartMin
     const numHours = endHour - startHour
 
-    // Détection automatique des grandes pauses d'inactivité (ex: pause >= 2h30 entre 08h30 et 17h00)
+    // Détection automatique des grandes pauses d'inactivité (gap >= 2h) sur TOUS les jours de la semaine
+    // Ajout d'une marge tampon de 15 min avant et après l'interruption pour aérer l'affichage
     const sortedDayPlannings = [...planningsForDay].sort((a, b) => timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut))
     
-    let breakStartMin: number | null = null
-    let breakEndMin: number | null = null
+    let rawBreakStart: number | null = null
+    let rawBreakEnd: number | null = null
 
     for (let i = 0; i < sortedDayPlannings.length - 1; i++) {
       const currentEnd = timeToMinutes(sortedDayPlannings[i].heureFin)
       const nextStart = timeToMinutes(sortedDayPlannings[i + 1].heureDebut)
-      if (nextStart - currentEnd >= 150) {
-        breakStartMin = currentEnd
-        breakEndMin = nextStart
+      if (nextStart - currentEnd >= 120) { // Interruption de 2h ou plus
+        rawBreakStart = currentEnd
+        rawBreakEnd = nextStart
         break
       }
     }
 
-    const hasBreak = breakStartMin !== null && breakEndMin !== null
+    const MARGIN = 15 // Marge de 15 min de courtoisie
+    const breakStartMin = rawBreakStart !== null ? rawBreakStart + MARGIN : null
+    const breakEndMin = rawBreakEnd !== null ? rawBreakEnd - MARGIN : null
+    const hasBreak = breakStartMin !== null && breakEndMin !== null && (breakEndMin > breakStartMin)
 
-    const breakHeightPct = 5 // 5% de la hauteur totale pour le bandeau de pause
+    const breakHeightPct = 4 // 4% de la hauteur totale pour le bandeau
     const activeHeightPct = hasBreak ? (100 - breakHeightPct) : 100
 
     const morningMins = hasBreak ? (breakStartMin! - gridStartMin) : totalMinutes
@@ -585,7 +589,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
     const getHeightPct = (startMin: number, endMin: number): number => {
       const tStart = getTopPct(startMin)
       const tEnd = getTopPct(endMin)
-      return Math.max(tEnd - tStart, 12)
+      return Math.max(tEnd - tStart, 10)
     }
 
     return (
