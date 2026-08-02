@@ -28,7 +28,6 @@ const DonsManager = lazy(() => import('@/components/admin/DonsManager'))
 const SystemVersionsManager = lazy(() => import('@/components/admin/SystemVersionsManager'))
 const PodiumsManager = lazy(() => import('@/components/admin/PodiumsManager'))
 const VisiteursManager = lazy(() => import('@/components/admin/VisiteursManager'))
-const AdherentsManager = lazy(() => import('@/components/admin/AdherentsManager'))
 
 // Loading component
 const TabLoading = () => (
@@ -40,7 +39,7 @@ const TabLoading = () => (
   </div>
 )
 
-type Tab = 'dashboard' | 'visiteurs' | 'profils' | 'podiums' | 'adherents-monclub' | 'factures' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
+type Tab = 'dashboard' | 'visiteurs' | 'profils' | 'podiums' | 'factures' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
 
 const CATEGORIES = [
   {
@@ -60,7 +59,6 @@ const CATEGORIES = [
   {
     title: 'Sportif',
     items: [
-      { id: 'adherents-monclub', label: 'Adhérents MonClub (~300)', icon: '🏊' },
       { id: 'profils', label: 'Profils', icon: '👥' },
       { id: 'podiums', label: 'Podiums & Bilan Saison', icon: '🏅' },
       { id: 'groupes', label: 'Groupes / Jauges', icon: '👥' },
@@ -324,7 +322,6 @@ const CATEGORIES = [
           <Suspense fallback={<TabLoading />}>
             {activeTab === 'dashboard' && <DashboardTab currentUser={currentUser} />}
             {activeTab === 'visiteurs' && <VisiteursTab />}
-            {activeTab === 'adherents-monclub' && <AdherentsManager />}
             {activeTab === 'profils' && <ProfilsTab currentUser={currentUser} />}
             {activeTab === 'podiums' && <PodiumsTab />}
             {activeTab === 'factures' && <FacturesTab />}
