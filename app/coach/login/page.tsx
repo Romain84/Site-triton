@@ -9,6 +9,7 @@ export default function CoachLoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -77,15 +78,25 @@ export default function CoachLoginPage() {
               <label htmlFor="password" className="block font-semibold mb-2">
                 Mot de passe
               </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 p-1 text-sm select-none"
+                  title={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
 
             <button
@@ -110,14 +121,6 @@ export default function CoachLoginPage() {
             <Link href="/" className="text-primary hover:underline">
               ← Retour à l&apos;accueil
             </Link>
-          </div>
-
-          <div className="mt-8 p-4 bg-primary/10 border border-primary/20 rounded-lg">
-            <p className="text-sm text-gray-700">
-              <strong>Pour tester :</strong><br />
-              Email : jean.dupont@triton-club.fr<br />
-              Mot de passe : coach123
-            </p>
           </div>
         </div>
       </div>
