@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { getCurrentSeasonLabel, isInterSaisonActive } from '@/lib/season-utils'
-import DOMPurify from 'isomorphic-dompurify'
+import { sanitizeHtml } from '@/lib/sanitize'
 
 export const dynamic = 'force-dynamic'
 
@@ -73,7 +73,7 @@ async function getGroupes(): Promise<Groupe[]> {
 
 // ─── Sanitize HTML ──────────────────────────────────────
 function sanitize(html: string): string {
-  return DOMPurify.sanitize(html, { ALLOWED_TAGS: ['strong', 'em', 'b', 'i', 'a', 'br', 'span', 'p', 'ul', 'ol', 'li'], ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'className'] })
+  return sanitizeHtml(html)
 }
 
 // ─── Main Page ──────────────────────────────────────────
