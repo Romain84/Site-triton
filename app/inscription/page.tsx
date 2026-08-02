@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { getCurrentSeasonLabel, isInterSaisonActive } from '@/lib/season-utils'
 import DOMPurify from 'isomorphic-dompurify'
+import MonClubTunnel from '@/components/inscription/MonClubTunnel'
 
 export const dynamic = 'force-dynamic'
 
@@ -155,6 +156,9 @@ export default async function InscriptionPage() {
           {ctaBlocks.map(block => (
             <CtaBlock key={block.id} block={block} inscriptionUrl={inscriptionUrl} />
           ))}
+
+          {/* Module d'Inscription MonClub Intégré */}
+          <MonClubTunnel groupes={dbGroupes} inscriptionUrl={inscriptionUrl} />
 
           {/* Content Grid */}
           {(mainBlocks.length > 0 || sidebarBlocks.length > 0) && (
