@@ -23,6 +23,7 @@ const AuditLogsManager = lazy(() => import('@/components/admin/AuditLogsManager'
 const ChatbotSuggestionsManager = lazy(() => import('@/components/admin/ChatbotSuggestionsManager'))
 const ChatbotStatsManager = lazy(() => import('@/components/admin/ChatbotStatsManager'))
 const DatabaseManager = lazy(() => import('@/components/admin/DatabaseManager'))
+const BackupManager = lazy(() => import('@/components/admin/BackupManager'))
 const InscriptionPageBuilder = lazy(() => import('@/components/admin/InscriptionPageBuilder'))
 const DonsManager = lazy(() => import('@/components/admin/DonsManager'))
 const SystemVersionsManager = lazy(() => import('@/components/admin/SystemVersionsManager'))
@@ -39,7 +40,7 @@ const TabLoading = () => (
   </div>
 )
 
-type Tab = 'dashboard' | 'visiteurs' | 'profils' | 'podiums' | 'factures' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
+type Tab = 'dashboard' | 'visiteurs' | 'profils' | 'podiums' | 'factures' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'backup-onedrive' | 'inscription-page' | 'system-versions'
 
 const CATEGORIES = [
   {
@@ -47,10 +48,11 @@ const CATEGORIES = [
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: '📊' },
       { id: 'visiteurs', label: 'Statistiques visiteurs', icon: '🌍' },
+      { id: 'backup-onedrive', label: 'Sauvegardes OneDrive', icon: '☁️' },
       { id: 'factures', label: 'Factures', icon: '💰' },
       { id: 'finances', label: 'Finances', icon: '📈' },
       { id: 'dons', label: 'Dons & Reçus', icon: '🎗️' },
-      { id: 'database', label: 'Sauvegarde BDD', icon: '💾' },
+      { id: 'database', label: 'Bases de données SQL', icon: '💾' },
       { id: 'system-versions', label: 'Versions & Composants', icon: '📦' },
       { id: 'parametres', label: 'Paramètres', icon: '⚙️' },
       { id: 'audit-logs', label: 'Journal d\'Audit', icon: '🕵️‍♂️' }
@@ -342,6 +344,7 @@ const CATEGORIES = [
             {activeTab === 'audit-logs' && <AuditLogsTab />}
             {activeTab === 'parametres' && <ParametresTab />}
             {activeTab === 'database' && <DatabaseTab />}
+            {activeTab === 'backup-onedrive' && <BackupOneDriveTab />}
             {activeTab === 'inscription-page' && <InscriptionPageTab />}
             {activeTab === 'system-versions' && <SystemVersionsTab />}
           </Suspense>
@@ -767,6 +770,11 @@ function ParametresTab() {
 // Database Tab
 function DatabaseTab() {
   return <DatabaseManager />
+}
+
+// Backup OneDrive Tab
+function BackupOneDriveTab() {
+  return <BackupManager />
 }
 
 // Inscription Page Tab
