@@ -219,12 +219,13 @@ function HeroBlock({ block }: { block: BlockData }) {
       <span className="text-primary font-bold text-sm uppercase tracking-widest bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20">
         {(c.saison as string) || 'Saison'}
       </span>
-      <h1 className="text-4xl md:text-5xl font-black font-display text-slate-900 tracking-tight">
-        {block.titre || 'Inscriptions'}
-      </h1>
+      {block.titre && (
+        <h1 className="text-4xl md:text-5xl font-black font-display text-slate-900 tracking-tight"
+            dangerouslySetInnerHTML={{ __html: sanitize(block.titre) }} />
+      )}
       {c.description && (
-        <p className="text-base md:text-lg text-slate-700 leading-relaxed font-normal"
-           dangerouslySetInnerHTML={{ __html: sanitize(c.description as string) }} />
+        <div className="text-base md:text-lg text-slate-700 leading-relaxed font-normal"
+             dangerouslySetInnerHTML={{ __html: sanitize(c.description as string) }} />
       )}
     </div>
   )
@@ -245,11 +246,14 @@ function BannerBlock({ block }: { block: BlockData }) {
     <div className={`border-l-4 p-6 rounded-r-2xl shadow-xs ${colorClasses[couleur] || colorClasses.sky}`}>
       <div className="flex items-start gap-4">
         <span className="text-3xl">{(c.emoji as string) || '📢'}</span>
-        <div className="space-y-1.5">
-          <h4 className="font-extrabold text-base uppercase tracking-wide">{block.titre}</h4>
+        <div className="space-y-1.5 flex-1">
+          {block.titre && (
+            <h4 className="font-extrabold text-base uppercase tracking-wide"
+                dangerouslySetInnerHTML={{ __html: sanitize(block.titre) }} />
+          )}
           {c.texte && (
-            <p className="text-sm md:text-base font-normal leading-relaxed"
-               dangerouslySetInnerHTML={{ __html: sanitize(c.texte as string) }} />
+            <div className="text-sm md:text-base font-normal leading-relaxed"
+                 dangerouslySetInnerHTML={{ __html: sanitize(c.texte as string) }} />
           )}
         </div>
       </div>
@@ -271,10 +275,13 @@ function CtaBlock({ block, inscriptionUrl }: { block: BlockData; inscriptionUrl:
             {c.label as string}
           </span>
         )}
-        <h3 className="font-extrabold text-xl md:text-2xl text-white">{block.titre}</h3>
+        {block.titre && (
+          <h3 className="font-extrabold text-xl md:text-2xl text-white"
+              dangerouslySetInnerHTML={{ __html: sanitize(block.titre) }} />
+        )}
         {c.description && (
-          <p className="text-sm text-slate-200 font-light max-w-lg"
-             dangerouslySetInnerHTML={{ __html: sanitize(c.description as string) }} />
+          <div className="text-sm text-slate-200 font-light max-w-lg"
+               dangerouslySetInnerHTML={{ __html: sanitize(c.description as string) }} />
         )}
       </div>
       <div className="flex flex-wrap justify-center gap-3 w-full md:w-auto relative z-10">
