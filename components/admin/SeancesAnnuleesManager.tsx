@@ -391,7 +391,7 @@ export default function SeancesAnnuleesManager() {
               </tr>
             </thead>
             <tbody>
-              {cancellations.map((c) => (
+              {cancellations.filter((c) => !getTargetDescription(c).includes('Inconnu')).map((c) => (
                 <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
                   <td className="py-3 px-4 font-medium text-slate-900">
                     {new Date(c.date).toLocaleDateString('fr-FR', {
