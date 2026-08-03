@@ -1727,8 +1727,8 @@ export default function EvenementsManager() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {enrichResult.details.filter((d) => d.matched).map((d, i) => (
-                      <tr key={i} className="bg-white">
+                    {enrichResult.details.map((d, i) => (
+                      <tr key={i} className={d.matched ? 'bg-white' : 'bg-amber-50/50'}>
                         <td className="px-4 py-2.5">
                           <p className="font-medium text-gray-800 text-xs truncate max-w-[200px]">{d.sheetTitle}</p>
                           <p className="text-xs text-gray-400">
@@ -1736,17 +1736,28 @@ export default function EvenementsManager() {
                           </p>
                         </td>
                         <td className="px-4 py-2.5">
-                          {d.eventTitle && (
+                          {d.eventTitle ? (
                             <p className="text-xs text-gray-700 truncate max-w-[200px]">{d.eventTitle}</p>
+                          ) : (
+                            <p className="text-xs text-amber-500 italic">Aucun événement à cette date</p>
                           )}
                         </td>
                         <td className="px-4 py-2.5 text-center">
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
-                            </svg>
-                            Enrichi
-                          </span>
+                          {d.matched ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                              </svg>
+                              Enrichi
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                              </svg>
+                              Non trouvé
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}

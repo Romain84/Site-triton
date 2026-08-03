@@ -427,7 +427,7 @@ export default function RemplacementsManager() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {remplacements.filter(r => r.coachRemplace && r.coachRemplacant).map((remp) => (
+              {remplacements.map((remp) => (
                 <tr key={remp.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatCompactDateFr(remp.date)}
