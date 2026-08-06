@@ -106,17 +106,6 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
 
       const map = mapInstanceRef.current
 
-      // Sélection des fonds de cartes CartoDB / OpenStreetMap / Esri
-      let tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      let attribution = '&copy; OpenStreetMap &copy; CARTO'
-
-      if (mapStyle === 'light') {
-        tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-      } else if (mapStyle === 'satellite') {
-        tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-        attribution = '&copy; Esri World Imagery'
-      }
-
       // Nettoyer les tuiles précédentes
       map.eachLayer((layer: any) => {
         if (layer instanceof L.TileLayer) {
@@ -124,7 +113,36 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
         }
       })
 
-      L.tileLayer(tileUrl, { attribution, maxZoom: 19 }).addTo(map)
+      // Sélection des fonds de cartes avec subdomains et options garanties
+      let tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      let attribution = '&copy; OpenStreetMap &copy; CARTO'
+      let subdomains = 'abcd'
+
+      if (mapStyle === 'light') {
+        tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+      } else if (mapStyle === 'satellite') {
+        tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        attribution = '&copy; Esri World Imagery'
+        subdomains = ''
+      }
+
+      const tileLayer = L.tileLayer(tileUrl, {
+        attribution,
+        maxZoom: 19,
+        subdomains: subdomains ? subdomains.split('') : ['a', 'b', 'c', 'd'],
+      })
+
+      // Fallback vers OpenStreetMap standard en cas d'erreur de chargement de tuile
+      tileLayer.on('tileerror', () => {
+        if (mapStyle !== 'satellite') {
+          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19,
+          }).addTo(map)
+        }
+      })
+
+      tileLayer.addTo(map)
 
       // Nettoyer les anciens marqueurs
       markersRef.current.forEach((m) => map.removeLayer(m))
@@ -133,17 +151,16 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
       if (locations.length > 0) {
         locations.forEach((loc) => {
           const sizeRatio = loc.count / maxCount
-          // Taille du rayon proportionnelle équilibrée (entre 6px et 32px)
           const radius = Math.max(6, Math.min(32, Math.sqrt(loc.count) * 3.8 + 3))
 
-          let color = '#10b981' // Vert émeraude (faible trafic)
+          let color = '#10b981' // Vert émeraude
           let fillColor = '#10b981'
 
           if (loc.count >= 15 || sizeRatio > 0.35) {
-            color = '#f43f5e' // Rouge rose (fort trafic)
+            color = '#f43f5e' // Rouge rose
             fillColor = '#ef4444'
           } else if (loc.count >= 5 || sizeRatio > 0.12) {
-            color = '#f59e0b' // Ambre (trafic moyen)
+            color = '#f59e0b' // Ambre
             fillColor = '#f59e0b'
           }
 
@@ -160,7 +177,7 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
 
           const popupContent = `
             <div style="font-family: system-ui, sans-serif; padding: 6px; text-align: center; min-width: 140px;">
-              <div style="font-weight: 800; font-size: 13px; color: #0f172a; display: flex; items-center; justify-content: center; gap: 4px;">
+              <div style="font-weight: 800; font-size: 13px; color: #0f172a; display: flex; align-items: center; justify-content: center; gap: 4px;">
                 📍 ${loc.ville} <span style="font-size: 11px; color: #64748b;">(${loc.codePays})</span>
               </div>
               <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${loc.pays}</div>
@@ -175,12 +192,18 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
           markersRef.current.push(marker)
         })
 
-        // Adapter la vue aux points s'il y en a plusieurs
         if (locations.length > 1) {
           const bounds = L.latLngBounds(locations.map((l) => [l.lat, l.lng]))
           map.fitBounds(bounds, { padding: [50, 50], maxZoom: 8 })
         }
       }
+
+      // Forcer le recalcul des dimensions du conteneur Leaflet pour garantir l'affichage des tuiles
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize()
+        }
+      }, 150)
     } catch (err) {
       console.error('Erreur initialisation Leaflet:', err)
     }
