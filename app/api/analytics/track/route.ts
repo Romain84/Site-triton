@@ -1,22 +1,105 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// Fonction utilitaire pour tenter la géolocalisation sans jamais bloquer
-async function resolveGeoIp(ip: string) {
-  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+// Cache mémoire des adresses IP déjà géolocalisées pour éviter les requêtes API réseau répétées
+const ipGeoCache = new Map<string, { pays: string; codePays: string; region: string; ville: string; latitude: number; longitude: number; timestamp: number }>()
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 heures
+
+// Fonction utilitaire pour tenter la géolocalisation avec fallback multi-fournisseurs
+async function resolveGeoIp(ip: string, requestHeaders?: Headers) {
+  // 1. IP locale ou loopback -> Cavaillon / Vaucluse
+  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.')) {
     return { pays: 'France', codePays: 'FR', region: 'Vaucluse', ville: 'Cavaillon', latitude: 43.8333, longitude: 5.0333 }
   }
 
+  // 2. Vérifier le cache mémoire
+  const cached = ipGeoCache.get(ip)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached
+  }
+
+  // 3. Vérifier les en-têtes CDN / Reverse Proxy (Vercel / Cloudflare / OVH)
+  if (requestHeaders) {
+    const headerCity = requestHeaders.get('x-vercel-ip-city') || requestHeaders.get('cf-ipcity')
+    const headerCountry = requestHeaders.get('x-vercel-ip-country') || requestHeaders.get('cf-ipcountry')
+    const headerLat = parseFloat(requestHeaders.get('x-vercel-ip-latitude') || '')
+    const headerLng = parseFloat(requestHeaders.get('x-vercel-ip-longitude') || '')
+
+    if (headerCity && headerCountry && !isNaN(headerLat) && !isNaN(headerLng)) {
+      const geoResult = {
+        pays: headerCountry === 'FR' ? 'France' : headerCountry,
+        codePays: headerCountry,
+        region: 'PACA',
+        ville: decodeURIComponent(headerCity),
+        latitude: headerLat,
+        longitude: headerLng,
+      }
+      ipGeoCache.set(ip, { ...geoResult, timestamp: Date.now() })
+      return geoResult
+    }
+  }
+
+  // 4. Fournisseur 1 : ip-api.com (gratuit, très précis, 45 req/min, aucune clé requise)
+  try {
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,regionName,city,lat,lon`, {
+      signal: AbortSignal.timeout(1200),
+    }).catch(() => null)
+
+    if (res && res.ok) {
+      const data = await res.json()
+      if (data.status === 'success' && data.city) {
+        const geoResult = {
+          pays: data.country || 'France',
+          codePays: data.countryCode || 'FR',
+          region: data.regionName || 'Provence-Alpes-Côte d\'Azur',
+          ville: data.city,
+          latitude: data.lat || 43.8333,
+          longitude: data.lon || 5.0333,
+        }
+        ipGeoCache.set(ip, { ...geoResult, timestamp: Date.now() })
+        return geoResult
+      }
+    }
+  } catch {
+    // Ignorer et passer au suivant
+  }
+
+  // 5. Fournisseur 2 : ipwho.is (gratuit, indépendant)
+  try {
+    const res = await fetch(`https://ipwho.is/${ip}`, {
+      signal: AbortSignal.timeout(1200),
+    }).catch(() => null)
+
+    if (res && res.ok) {
+      const data = await res.json()
+      if (data.success && data.city) {
+        const geoResult = {
+          pays: data.country || 'France',
+          codePays: data.country_code || 'FR',
+          region: data.region || 'Provence-Alpes-Côte d\'Azur',
+          ville: data.city,
+          latitude: data.latitude || 43.8333,
+          longitude: data.longitude || 5.0333,
+        }
+        ipGeoCache.set(ip, { ...geoResult, timestamp: Date.now() })
+        return geoResult
+      }
+    }
+  } catch {
+    // Ignorer et passer au suivant
+  }
+
+  // 6. Fournisseur 3 : ipapi.co
   try {
     const res = await fetch(`https://ipapi.co/${ip}/json/`, {
       headers: { 'User-Agent': 'TritonClub/1.0' },
-      signal: AbortSignal.timeout(1500),
+      signal: AbortSignal.timeout(1200),
     }).catch(() => null)
 
     if (res && res.ok) {
       const data = await res.json()
       if (data.country_name) {
-        return {
+        const geoResult = {
           pays: data.country_name || 'France',
           codePays: data.country_code || 'FR',
           region: data.region || 'Provence-Alpes-Côte d\'Azur',
@@ -24,12 +107,15 @@ async function resolveGeoIp(ip: string) {
           latitude: data.latitude || 43.8333,
           longitude: data.longitude || 5.0333,
         }
+        ipGeoCache.set(ip, { ...geoResult, timestamp: Date.now() })
+        return geoResult
       }
     }
   } catch {
-    // Ignorer si échec
+    // Ignorer
   }
 
+  // Fallback si tout échoue
   return { pays: 'France', codePays: 'FR', region: 'Vaucluse', ville: 'Cavaillon', latitude: 43.8333, longitude: 5.0333 }
 }
 
@@ -46,7 +132,7 @@ export async function POST(request: NextRequest) {
 
     // Détection du navigateur
     let navigateur = 'Autre'
-    if (/chrome/i.test(userAgent)) navigateur = 'Chrome'
+    if (/chrome/i.test(userAgent) && !/edg/i.test(userAgent)) navigateur = 'Chrome'
     else if (/safari/i.test(userAgent) && !/chrome/i.test(userAgent)) navigateur = 'Safari'
     else if (/firefox/i.test(userAgent)) navigateur = 'Firefox'
     else if (/edg/i.test(userAgent)) navigateur = 'Edge'
@@ -80,8 +166,8 @@ export async function POST(request: NextRequest) {
       // Ignorer si existante
     }
 
-    // 1. Tenter la géolocalisation rapide
-    const geo = await resolveGeoIp(cleanIp)
+    // 1. Géolocalisation avec fallback multi-fournisseurs et cache
+    const geo = await resolveGeoIp(cleanIp, request.headers)
 
     // 2. Générer l'ID et exécuter l'INSERT immédiatement
     const id = `v_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`

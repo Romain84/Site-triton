@@ -212,10 +212,10 @@ async function getEvenements(groupeId?: string) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type SearchParamsProps = { [key: string]: string | string[] | undefined } | Promise<{ [key: string]: string | string[] | undefined }>
+type SearchParamsProps = Promise<{ [key: string]: string | string[] | undefined }>
 
 export default async function CalendrierPage({ searchParams }: { searchParams: SearchParamsProps }) {
-  const resolvedParams = searchParams instanceof Promise ? await searchParams : searchParams
+  const resolvedParams = await searchParams
   const groupeId = typeof resolvedParams?.groupeId === 'string' ? resolvedParams.groupeId : 'all'
 
   const [evenements, groupes] = await Promise.all([

@@ -1,11 +1,14 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin, handleRouteError } from '@/lib/api/guards'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const auth = await requireAdmin()
     if (!auth.ok) return auth.response
+
+    const url = new URL(request.url)
+    const period = url.searchParams.get('period') || '30d' // 'today' | '7d' | '30d' | 'all'
 
     // Auto-création de la table si absente dans PostgreSQL
     try {
@@ -29,32 +32,63 @@ export async function GET() {
       console.warn('Notice verification table visites:', e)
     }
 
-    // Compteurs globaux via SQL direct
-    let totalToday = 0
-    let totalWeek = 0
-    let totalMonth = 0
-    let totalAll = 0
+    // Clause WHERE selon la période sélectionnée
+    let whereClause = ''
+    if (period === 'today') {
+      whereClause = `WHERE "createdAt" >= NOW() - INTERVAL '24 hours'`
+    } else if (period === '7d') {
+      whereClause = `WHERE "createdAt" >= NOW() - INTERVAL '7 days'`
+    } else if (period === '30d') {
+      whereClause = `WHERE "createdAt" >= NOW() - INTERVAL '30 days'`
+    }
+
+    // 1. Compteurs globaux & Visiteurs Uniques
+    let totalToday = 0, totalWeek = 0, totalMonth = 0, totalAll = 0
+    let uniqueToday = 0, uniqueWeek = 0, uniqueMonth = 0, uniqueTotal = 0
 
     try {
-      const todayRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites" WHERE "createdAt" >= NOW() - INTERVAL '24 hours'`)
-      const weekRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites" WHERE "createdAt" >= NOW() - INTERVAL '7 days'`)
-      const monthRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites" WHERE "createdAt" >= NOW() - INTERVAL '30 days'`)
-      const totalRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "visites"`)
+      const todayRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as total, COUNT(DISTINCT ip)::int as "unique" FROM "visites" WHERE "createdAt" >= NOW() - INTERVAL '24 hours'`)
+      const weekRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as total, COUNT(DISTINCT ip)::int as "unique" FROM "visites" WHERE "createdAt" >= NOW() - INTERVAL '7 days'`)
+      const monthRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as total, COUNT(DISTINCT ip)::int as "unique" FROM "visites" WHERE "createdAt" >= NOW() - INTERVAL '30 days'`)
+      const totalRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as total, COUNT(DISTINCT ip)::int as "unique" FROM "visites"`)
 
-      totalToday = Number(todayRes[0]?.count || 0)
-      totalWeek = Number(weekRes[0]?.count || 0)
-      totalMonth = Number(monthRes[0]?.count || 0)
-      totalAll = Number(totalRes[0]?.count || 0)
+      totalToday = Number(todayRes[0]?.total || 0)
+      uniqueToday = Number(todayRes[0]?.unique || 0)
+
+      totalWeek = Number(weekRes[0]?.total || 0)
+      uniqueWeek = Number(weekRes[0]?.unique || 0)
+
+      totalMonth = Number(monthRes[0]?.total || 0)
+      uniqueMonth = Number(monthRes[0]?.unique || 0)
+
+      totalAll = Number(totalRes[0]?.total || 0)
+      uniqueTotal = Number(totalRes[0]?.unique || 0)
     } catch (err) {
       console.error('Erreur SQL counts visites:', err)
     }
 
-    // Top Pays
+    // 2. Top Pages Consultées
+    let topPages: any[] = []
+    try {
+      topPages = await prisma.$queryRawUnsafe(`
+        SELECT COALESCE(page, '/') as page, COUNT(*)::int as count
+        FROM "visites"
+        ${whereClause}
+        GROUP BY page
+        ORDER BY count DESC
+        LIMIT 10
+      `)
+    } catch (e) {
+      console.error('Erreur SQL topPages:', e)
+    }
+
+    // 3. Top Pays
     let topCountries: any[] = []
     try {
       topCountries = await prisma.$queryRawUnsafe(`
         SELECT COALESCE(pays, 'France') as pays, COALESCE("codePays", 'FR') as "codePays", COUNT(*)::int as count
         FROM "visites"
+        ${whereClause}
         GROUP BY pays, "codePays"
         ORDER BY count DESC
         LIMIT 15
@@ -63,12 +97,13 @@ export async function GET() {
       console.error('Erreur SQL topCountries:', e)
     }
 
-    // Top Villes
+    // 4. Top Villes
     let topCities: any[] = []
     try {
       topCities = await prisma.$queryRawUnsafe(`
         SELECT COALESCE(ville, 'Cavaillon') as ville, COALESCE(pays, 'France') as pays, COALESCE("codePays", 'FR') as "codePays", COUNT(*)::int as count
         FROM "visites"
+        ${whereClause}
         GROUP BY ville, pays, "codePays"
         ORDER BY count DESC
         LIMIT 15
@@ -77,7 +112,7 @@ export async function GET() {
       console.error('Erreur SQL topCities:', e)
     }
 
-    // Coordonnées pour la carte
+    // 5. Coordonnées pour la carte
     let locations: any[] = []
     try {
       locations = await prisma.$queryRawUnsafe(`
@@ -85,6 +120,7 @@ export async function GET() {
                COALESCE(ville, 'Cavaillon') as ville, COALESCE(pays, 'France') as pays,
                COALESCE("codePays", 'FR') as "codePays", COUNT(*)::int as count
         FROM "visites"
+        ${whereClause}
         GROUP BY latitude, longitude, ville, pays, "codePays"
         ORDER BY count DESC
         LIMIT 100
@@ -93,19 +129,65 @@ export async function GET() {
       console.error('Erreur SQL locations:', e)
     }
 
-    // Appareils
+    // 6. Appareils & Navigateurs
     let devices: any[] = []
+    let browsers: any[] = []
     try {
       devices = await prisma.$queryRawUnsafe(`
         SELECT COALESCE(appareil, 'Desktop') as name, COUNT(*)::int as count
         FROM "visites"
+        ${whereClause}
         GROUP BY appareil
       `)
+      browsers = await prisma.$queryRawUnsafe(`
+        SELECT COALESCE(navigateur, 'Autre') as name, COUNT(*)::int as count
+        FROM "visites"
+        ${whereClause}
+        GROUP BY navigateur
+        ORDER BY count DESC
+        LIMIT 6
+      `)
     } catch (e) {
-      console.error('Erreur SQL devices:', e)
+      console.error('Erreur SQL devices/browsers:', e)
     }
 
-    // 50 Dernières Visites
+    // 7. Pics d'affluence par Heure (0h à 23h)
+    let hourlyDistribution: any[] = []
+    try {
+      const rawHours: any[] = await prisma.$queryRawUnsafe(`
+        SELECT EXTRACT(HOUR FROM "createdAt")::int as hour, COUNT(*)::int as count
+        FROM "visites"
+        ${whereClause}
+        GROUP BY hour
+        ORDER BY hour ASC
+      `)
+      const hourMap = new Map<number, number>()
+      rawHours.forEach((r: any) => hourMap.set(r.hour, r.count))
+      for (let h = 0; h < 24; h++) {
+        hourlyDistribution.push({
+          hour: `${h}h`,
+          count: hourMap.get(h) || 0,
+        })
+      }
+    } catch (e) {
+      console.error('Erreur SQL hourlyDistribution:', e)
+    }
+
+    // 8. Tendance des Visites par Jour (30 derniers jours)
+    let dailyTrends: any[] = []
+    try {
+      dailyTrends = await prisma.$queryRawUnsafe(`
+        SELECT TO_CHAR(DATE("createdAt"), 'YYYY-MM-DD') as date, COUNT(*)::int as count, COUNT(DISTINCT ip)::int as "unique"
+        FROM "visites"
+        WHERE "createdAt" >= NOW() - INTERVAL '30 days'
+        GROUP BY DATE("createdAt")
+        ORDER BY DATE("createdAt") ASC
+      `)
+    } catch (e) {
+      console.error('Erreur SQL dailyTrends:', e)
+    }
+
+    // 9. 50 Dernières Visites
     let recentVisits: any[] = []
     try {
       recentVisits = await prisma.$queryRawUnsafe(`
@@ -122,13 +204,22 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      period,
       stats: {
         today: totalToday,
+        uniqueToday,
         week: totalWeek,
+        uniqueWeek,
         month: totalMonth,
+        uniqueMonth,
         total: totalAll,
+        uniqueTotal,
         uniqueCountries: topCountries.length,
       },
+      topPages: topPages.map((p: any) => ({
+        page: p.page || '/',
+        count: Number(p.count || 0),
+      })),
       topCountries: topCountries.map((c: any) => ({
         pays: c.pays || 'France',
         codePays: c.codePays || 'FR',
@@ -152,6 +243,12 @@ export async function GET() {
         name: d.name || 'Desktop',
         count: Number(d.count || 0),
       })),
+      browsers: browsers.map((b: any) => ({
+        name: b.name || 'Autre',
+        count: Number(b.count || 0),
+      })),
+      hourlyDistribution,
+      dailyTrends,
       recentVisits,
     })
   } catch (error) {
