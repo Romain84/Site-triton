@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import 'leaflet/dist/leaflet.css'
 
 interface LocationPoint {
   lat: number
@@ -15,17 +16,19 @@ interface VisiteursMapProps {
   locations: LocationPoint[]
 }
 
-declare global {
-  interface Window {
-    L: any
-  }
+// Projection Equirectangulaire pour la carte SVG interactive (Fallback & Mode Vectoriel)
+function latLngToSvg(lat: number, lng: number, width: number = 800, height: number = 420) {
+  const x = ((lng + 180) * (width / 360))
+  const y = (((-1 * lat) + 90) * (height / 180))
+  return { x, y }
 }
 
 export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps) {
-  const [mapStyle, setMapStyle] = useState<'dark' | 'light' | 'satellite'>('dark')
+  const [mapStyle, setMapStyle] = useState<'dark' | 'light' | 'satellite' | 'svg'>('dark')
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])
+  const LRef = useRef<any>(null)
   const [leafletLoaded, setLeafletLoaded] = useState(false)
   const [selectedCity, setSelectedCity] = useState<LocationPoint | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -34,59 +37,43 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
   const totalVisits = locations.reduce((sum, l) => sum + l.count, 0) || 1
   const maxCount = Math.max(...locations.map((l) => l.count), 1)
 
-  // Chargeur Leaflet garanti avec détection robuste
+  // Chargement natif de Leaflet via import() dynamique (npm package)
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    let isMounted = true
 
-    const checkAndInitLeaflet = () => {
-      if (window.L) {
+    if (typeof window !== 'undefined') {
+      import('leaflet').then((L) => {
+        if (!isMounted) return
+        LRef.current = L.default || L
+
+        // Fix icônes par défaut de Leaflet sous Webpack / Next.js
+        delete (LRef.current.Icon.Default.prototype as any)._getIconUrl
+        LRef.current.Icon.Default.mergeOptions({
+          iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        })
+
         setLeafletLoaded(true)
-        return true
-      }
-      return false
+      }).catch((err) => {
+        console.warn('Leaflet import warning, bascule vers mode Vectoriel SVG:', err)
+        setMapStyle('svg')
+      })
     }
 
-    if (checkAndInitLeaflet()) return
-
-    // Injecter CSS Leaflet si absent
-    if (!document.querySelector('link[href*="leaflet"]')) {
-      const cssLink = document.createElement('link')
-      cssLink.rel = 'stylesheet'
-      cssLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-      document.head.appendChild(cssLink)
+    return () => {
+      isMounted = false
     }
-
-    // Injecter JS Leaflet
-    let script = document.querySelector('script[src*="leaflet"]') as HTMLScriptElement
-    if (!script) {
-      script = document.createElement('script')
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-      script.async = true
-      document.body.appendChild(script)
-    }
-
-    const interval = setInterval(() => {
-      if (checkAndInitLeaflet()) {
-        clearInterval(interval)
-      }
-    }, 100)
-
-    script.onload = () => {
-      checkAndInitLeaflet()
-      clearInterval(interval)
-    }
-
-    return () => clearInterval(interval)
   }, [])
 
   // Initialisation et mise à jour de la carte Leaflet
   useEffect(() => {
-    if (!leafletLoaded || !mapContainerRef.current) return
-    const L = window.L
+    if (!leafletLoaded || !mapContainerRef.current || mapStyle === 'svg') return
+    const L = LRef.current
+    if (!L) return
 
     try {
       if (!mapInstanceRef.current) {
-        // Purger un conteneur éventuellement pré-initialisé par Leaflet
         if ((mapContainerRef.current as any)._leaflet_id) {
           (mapContainerRef.current as any)._leaflet_id = null
         }
@@ -106,45 +93,44 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
 
       const map = mapInstanceRef.current
 
-      // Nettoyer les tuiles précédentes
+      // Nettoyer les tuiles
       map.eachLayer((layer: any) => {
         if (layer instanceof L.TileLayer) {
           map.removeLayer(layer)
         }
       })
 
-      // Sélection des fonds de cartes avec subdomains et options garanties
-      let tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      let attribution = '&copy; OpenStreetMap &copy; CARTO'
-      let subdomains = 'abcd'
+      // Tuiles configurées avec fallback
+      let tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+      let attribution = '&copy; OpenStreetMap contributors'
+      let subdomains = ['a', 'b', 'c']
 
-      if (mapStyle === 'light') {
+      if (mapStyle === 'dark') {
+        tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        attribution = '&copy; OpenStreetMap &copy; CARTO'
+        subdomains = ['a', 'b', 'c', 'd']
+      } else if (mapStyle === 'light') {
         tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+        attribution = '&copy; OpenStreetMap &copy; CARTO'
+        subdomains = ['a', 'b', 'c', 'd']
       } else if (mapStyle === 'satellite') {
         tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
         attribution = '&copy; Esri World Imagery'
-        subdomains = ''
+        subdomains = []
       }
 
-      const tileLayer = L.tileLayer(tileUrl, {
-        attribution,
-        maxZoom: 19,
-        subdomains: subdomains ? subdomains.split('') : ['a', 'b', 'c', 'd'],
-      })
+      const tileLayerOptions: any = { attribution, maxZoom: 19 }
+      if (subdomains.length > 0) tileLayerOptions.subdomains = subdomains
 
-      // Fallback vers OpenStreetMap standard en cas d'erreur de chargement de tuile
+      const tileLayer = L.tileLayer(tileUrl, tileLayerOptions)
       tileLayer.on('tileerror', () => {
-        if (mapStyle !== 'satellite') {
-          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 19,
-          }).addTo(map)
+        if (mapStyle !== 'light') {
+          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map)
         }
       })
-
       tileLayer.addTo(map)
 
-      // Nettoyer les anciens marqueurs
+      // Marqueurs
       markersRef.current.forEach((m) => map.removeLayer(m))
       markersRef.current = []
 
@@ -153,14 +139,14 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
           const sizeRatio = loc.count / maxCount
           const radius = Math.max(6, Math.min(32, Math.sqrt(loc.count) * 3.8 + 3))
 
-          let color = '#10b981' // Vert émeraude
+          let color = '#10b981'
           let fillColor = '#10b981'
 
           if (loc.count >= 15 || sizeRatio > 0.35) {
-            color = '#f43f5e' // Rouge rose
+            color = '#f43f5e'
             fillColor = '#ef4444'
           } else if (loc.count >= 5 || sizeRatio > 0.12) {
-            color = '#f59e0b' // Ambre
+            color = '#f59e0b'
             fillColor = '#f59e0b'
           }
 
@@ -198,20 +184,19 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
         }
       }
 
-      // Forcer le recalcul des dimensions du conteneur Leaflet pour garantir l'affichage des tuiles
       setTimeout(() => {
         if (mapInstanceRef.current) {
           mapInstanceRef.current.invalidateSize()
         }
-      }, 150)
+      }, 100)
     } catch (err) {
-      console.error('Erreur initialisation Leaflet:', err)
+      console.error('Erreur Leaflet tile setup:', err)
     }
   }, [leafletLoaded, locations, mapStyle])
 
   const flyToLocation = (loc: LocationPoint) => {
     setSelectedCity(loc)
-    if (mapInstanceRef.current && window.L) {
+    if (mapStyle !== 'svg' && mapInstanceRef.current && LRef.current) {
       mapInstanceRef.current.flyTo([loc.lat, loc.lng], 11, { duration: 1.2 })
     }
   }
@@ -266,6 +251,14 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
             >
               🛰️ Satellite HD
             </button>
+            <button
+              onClick={() => setMapStyle('svg')}
+              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                mapStyle === 'svg' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              ✨ Carte Vectorielle SVG
+            </button>
           </div>
 
           <button
@@ -278,17 +271,99 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
         </div>
       </div>
 
-      {/* Conteneur de la Carte Leaflet HD */}
+      {/* Conteneur Principal de la Carte */}
       <div className={`relative w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800 ${
         isFullscreen ? 'h-[calc(100%-60px)]' : 'h-[520px]'
       }`}>
-        {!leafletLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-slate-400 text-xs font-bold z-30">
-            <span className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2" />
-            Chargement de la carte géographique…
+        
+        {/* MODE MAP LEAFLET HD */}
+        {mapStyle !== 'svg' && (
+          <div ref={mapContainerRef} className="w-full h-full min-h-[520px] z-10 relative" />
+        )}
+
+        {/* MODE CARTE VECTORIELLE SVG (Ultra-rapide, zéro dépendance CDN) */}
+        {mapStyle === 'svg' && (
+          <div className="w-full h-full relative bg-slate-950 flex items-center justify-center overflow-hidden">
+            {/* Grille de repères vectoriels */}
+            <svg className="w-full h-full absolute inset-0 opacity-15 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#3b82f6" strokeWidth="0.5" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#grid)" />
+            </svg>
+
+            {/* Carte Monde & France Vectorielle */}
+            <svg viewBox="0 0 800 420" className="w-full h-full relative z-10">
+              {/* Villes avec cercles de trafic proportionnels */}
+              {locations.map((loc, idx) => {
+                const { x, y } = latLngToSvg(loc.lat, loc.lng)
+                const sizeRatio = loc.count / maxCount
+                const radius = Math.max(6, Math.min(28, Math.sqrt(loc.count) * 4 + 4))
+                const isSelected = selectedCity?.ville === loc.ville
+
+                let fillColor = '#10b981'
+                if (loc.count >= 15 || sizeRatio > 0.35) fillColor = '#f43f5e'
+                else if (loc.count >= 5 || sizeRatio > 0.12) fillColor = '#f59e0b'
+
+                return (
+                  <g
+                    key={idx}
+                    className="cursor-pointer group"
+                    onClick={() => setSelectedCity(loc)}
+                  >
+                    {/* Pulsation lumineuse pour ville sélectionnée ou fort trafic */}
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={radius * 1.5}
+                      fill={fillColor}
+                      opacity={isSelected ? 0.4 : 0.25}
+                      className="animate-ping"
+                    />
+
+                    {/* Cercle de la ville */}
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={radius}
+                      fill={fillColor}
+                      fillOpacity={0.7}
+                      stroke={isSelected ? '#ffffff' : fillColor}
+                      strokeWidth={isSelected ? 3 : 1.5}
+                      className="transition-all duration-300 group-hover:scale-125 origin-center"
+                    />
+
+                    {/* Texte de la ville si sélectionnée */}
+                    <text
+                      x={x}
+                      y={y - radius - 6}
+                      textAnchor="middle"
+                      fill="#ffffff"
+                      fontSize="11"
+                      fontWeight="bold"
+                      className="drop-shadow-md pointer-events-none"
+                    >
+                      {loc.ville} ({loc.count}v)
+                    </text>
+                  </g>
+                )
+              })}
+            </svg>
+
+            {/* Info bulle de ville sélectionnée en mode SVG */}
+            {selectedCity && (
+              <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-30 bg-slate-900/95 border border-slate-700 p-3 rounded-xl shadow-2xl text-center backdrop-blur-md">
+                <p className="font-extrabold text-sm text-white">📍 {selectedCity.ville} ({selectedCity.codePays})</p>
+                <p className="text-xs text-slate-400 mt-0.5">{selectedCity.pays}</p>
+                <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-black bg-primary text-white">
+                  {selectedCity.count} visite{selectedCity.count > 1 ? 's' : ''} enregistrée{selectedCity.count > 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
           </div>
         )}
-        <div ref={mapContainerRef} className="w-full h-full z-10" />
 
         {/* Tiroir / Liste latérale interactive des villes avec barre de recherche */}
         <div className="absolute top-3 right-3 z-20 max-w-xs w-64 bg-slate-900/95 backdrop-blur-md border border-slate-800 p-3 rounded-xl shadow-2xl max-h-84 overflow-y-auto hidden sm:flex flex-col gap-2">
