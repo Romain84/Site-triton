@@ -926,17 +926,6 @@ export default function CoutGroupes() {
               </div>
             </div>
 
-            {/* KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-              <div className="bg-slate-50/60 border border-slate-200/85 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                  Semaines
-                  <HelpTooltip title="Nombre de semaines">
-                    Semaines d&apos;activité sur la période globale hors vacances. Si les dates sont par groupe, ce champ est absent.
-                  </HelpTooltip>
-                </div>
-                <div className="text-2xl font-black text-slate-900">
-                  {resultat.nbSemainesTotales ?? '—'}
             {/* Cartes Métriques Épurées */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 mb-6">
               <div className="bg-slate-50/70 border border-slate-200/70 p-4 rounded-2xl shadow-2xs hover:shadow-xs transition-all">
