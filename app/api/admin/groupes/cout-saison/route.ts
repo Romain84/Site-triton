@@ -846,15 +846,15 @@ function getPlanningDuree(planning: {
   semaineImpaire?: boolean | null
   groupe?: { tempsFacture?: number | null } | null
 }): number {
-  const tempsFacture = planning.groupe?.tempsFacture
-  let dureeBase = 0
-  if (tempsFacture && tempsFacture > 0) {
-    dureeBase = tempsFacture / 60
-  } else {
-    const start = parseTimeToMinutes(planning.heureDebut)
-    const end = parseTimeToMinutes(planning.heureFin)
-    dureeBase = Math.max(0, (end - start) / 60)
-  }
+  const start = parseTimeToMinutes(planning.heureDebut)
+  const end = parseTimeToMinutes(planning.heureFin)
+  const dureeReelle = Math.max(0, (end - start) / 60)
+
+  // Priorité absolue aux horaires réels définis sur le créneau (ex: 19:30 à 21:30 = 2.0h)
+  const dureeBase = dureeReelle > 0
+    ? dureeReelle
+    : (planning.groupe?.tempsFacture ? planning.groupe.tempsFacture / 60 : 0)
+
   return planning.semaineImpaire ? dureeBase / 2 : dureeBase
 }
 
