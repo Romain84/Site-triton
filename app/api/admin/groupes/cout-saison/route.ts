@@ -13,6 +13,7 @@ interface CoutSaisonRequest {
   tauxChargesOverride?: number
   margeSecurite?: number
   coutFormationsPSE1?: number
+  nbFormationsBNSSA?: number
 }
 
 // ─── Types de sortie ──────────────────────────────────────────────────────────
@@ -532,11 +533,11 @@ export async function POST(request: NextRequest) {
 
         const coutLicences = prixLicence * groupe.inscrits
 
-        // Calcul au prorata de la part des formations PSE1 / Secourisme attribuée à ce groupe
-        const nbCoachsFormes = coachStats.size || 1
-        const forfaitPSE1Total = (body.coutFormationsPSE1 ?? 150) * nbCoachsFormes
-        const partPSE1 = totalHeuresHebdoSimple > 0 ? (heuresParSemaine / totalHeuresHebdoSimple) * forfaitPSE1Total : 0
-        const coutFormationsPSE1 = Math.round(partPSE1)
+        // Coût des formations & recyclages PSE1 / BNSSA appliqué UNIQUEMENT au(x) groupe(s) BNSSA
+        const isBNSSA = nomLow.includes('bnssa') || niveauLow.includes('bnssa')
+        const coutUnitairePSE1 = body.coutFormationsPSE1 ?? 150
+        const nbFormations = body.nbFormationsBNSSA !== undefined ? Math.max(0, body.nbFormationsBNSSA) : groupe.inscrits
+        const coutFormationsPSE1 = isBNSSA ? Math.round(nbFormations * coutUnitairePSE1) : 0
 
         const baseCout = coutCoaching + coutCompetitions + coutFormationsPSE1
         const coutMargeSecurite = (baseCout + coutLicences) * (margeSecurite / 100)
@@ -772,6 +773,7 @@ export async function POST(request: NextRequest) {
       nbDemiJourneesParCompetition,
       margeSecurite,
       coutFormationsPSE1: body.coutFormationsPSE1 ?? 150,
+      nbFormationsBNSSA: body.nbFormationsBNSSA ?? null,
       mode,
       groupes: resultats,
       coachsCout,

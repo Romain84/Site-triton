@@ -109,6 +109,7 @@ interface ResultatCalcul {
   nbDemiJourneesParCompetition: number
   margeSecurite: number
   coutFormationsPSE1?: number
+  nbFormationsBNSSA?: number | null
   mode: 'simple' | 'optimise'
   groupes: GroupeCout[]
   coachsCout: CoachCout[]
@@ -265,6 +266,7 @@ export default function CoutGroupes() {
   const [mode, setMode]                         = useState<'simple' | 'optimise'>('simple')
   const [margeSecurite, setMargeSecurite]       = useState(0)
   const [coutFormationsPSE1, setCoutFormationsPSE1] = useState<number>(150)
+  const [nbFormationsBNSSA, setNbFormationsBNSSA]   = useState<string>('')
   const [includeComparaison, setIncludeComparaison] = useState(false)
   // NOUVEAU: simulation taux horaire
   const [tauxOverride, setTauxOverride]         = useState<string>('')
@@ -403,6 +405,7 @@ export default function CoutGroupes() {
           mode,
           margeSecurite,
           coutFormationsPSE1,
+          nbFormationsBNSSA: nbFormationsBNSSA !== '' ? Number(nbFormationsBNSSA) : undefined,
           includeComparaison,
           tauxChargesOverride,
         }),
@@ -679,7 +682,7 @@ export default function CoutGroupes() {
             <span className="inline-block transition-transform duration-200 group-open:rotate-90 text-[9px]">▶</span>
             Options de simulation avancée
           </summary>
-          <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3 pt-2">
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-5 gap-3 pt-2">
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1">Marge de sécurité (%)</label>
               <input
@@ -700,13 +703,24 @@ export default function CoutGroupes() {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Formations PSE1 / Secourisme (€/coach)</label>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Prix Formation BNSSA (€/cand.)</label>
               <input
                 type="number" min={0} step={10}
                 value={coutFormationsPSE1}
                 onChange={(e) => setCoutFormationsPSE1(Number(e.target.value))}
                 className="input w-full text-xs py-1.5"
                 placeholder="150"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nb Formations BNSSA (Optionnel)</label>
+              <input
+                type="number" min={0} step={1}
+                value={nbFormationsBNSSA}
+                onChange={(e) => setNbFormationsBNSSA(e.target.value)}
+                className="input w-full text-xs py-1.5"
+                placeholder="Tous les inscrits"
+                title="Nombre de candidats nécessitant la formation (si certains l'ont déjà)"
               />
             </div>
             <div className="flex items-center pt-4">
@@ -716,10 +730,13 @@ export default function CoutGroupes() {
                   onChange={(e) => setIncludeComparaison(e.target.checked)}
                   className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary"
                 />
-                <span className="font-semibold text-slate-700">Comparer Simple vs Optimisé</span>
+                <span className="font-semibold text-slate-700">Comparer Simple/Optimisé</span>
               </label>
             </div>
           </div>
+          <p className="mt-2 text-[11px] text-slate-500 flex items-center gap-1.5">
+            <span>💡 <strong>Précisions :</strong> Le coût de formation PSE1/BNSSA s'applique <em>uniquement au(x) groupe(s) BNSSA</em>. Les licences FFN sont calculées avec le prix individuel défini sur la fiche de chaque groupe (`prixLicence`). La simultanéité du bassin se réfère au planning établi.</span>
+          </p>
         </details>
 
         {error && (
