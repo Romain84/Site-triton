@@ -17,6 +17,7 @@ interface Coach {
   siret: string | null
   adresse: string | null
   actif: boolean
+  heuresAdminHebdo?: number
   lastLogin: Date | null
   createdAt: Date
   updatedAt: Date
@@ -47,6 +48,7 @@ export default function CoachesManager() {
   const [siret, setSiret] = useState('')
   const [adresse, setAdresse] = useState('')
   const [actif, setActif] = useState(true)
+  const [heuresAdminHebdo, setHeuresAdminHebdo] = useState<number>(0)
 
   useEffect(() => {
     fetchCoaches()
@@ -82,6 +84,7 @@ export default function CoachesManager() {
       setSiret(coach.siret || '')
       setAdresse(coach.adresse || '')
       setActif(coach.actif)
+      setHeuresAdminHebdo(coach.heuresAdminHebdo || 0)
     } else {
       setEditingCoach(null)
       setPrenom('')
@@ -95,6 +98,7 @@ export default function CoachesManager() {
       setSiret('')
       setAdresse('')
       setActif(true)
+      setHeuresAdminHebdo(0)
     }
     setShowModal(true)
   }
@@ -124,6 +128,7 @@ export default function CoachesManager() {
       siret: siret || null,
       adresse: adresse || null,
       actif,
+      heuresAdminHebdo,
     }
 
     try {
@@ -278,8 +283,13 @@ export default function CoachesManager() {
                   <tr key={coach.id} className="hover:bg-gray-50">
                     <td className="py-3 px-4">
                       <div>
-                        <p className="font-medium">
+                        <p className="font-medium flex items-center gap-2">
                           {coach.prenom} {coach.nom}
+                          {!!coach.heuresAdminHebdo && coach.heuresAdminHebdo > 0 && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/80">
+                              ⏱️ 1h Admin/sem
+                            </span>
+                          )}
                         </p>
                         {coach.lastLogin && (
                           <p className="text-xs text-gray-500">
@@ -463,16 +473,33 @@ export default function CoachesManager() {
                 </div>
               </div>
 
-              <div>
-                <label className="flex items-center gap-2">
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={actif}
                     onChange={(e) => setActif(e.target.checked)}
-                    className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded"
+                    className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded cursor-pointer"
                   />
                   <span className="text-sm font-medium text-gray-700">Coach actif</span>
                 </label>
+
+                <div className="bg-blue-50/60 border border-blue-100 p-3.5 rounded-xl">
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={heuresAdminHebdo > 0}
+                      onChange={(e) => setHeuresAdminHebdo(e.target.checked ? 1 : 0)}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                    />
+                    <span className="text-sm font-bold text-slate-800">
+                      ⏱️ Ajouter 1h &quot;Administratif&quot; par semaine (hors vacances)
+                    </span>
+                  </label>
+                  <p className="text-xs text-slate-500 ml-6 mt-1 font-medium">
+                    Ajoute automatiquement 1 heure administrative pour chaque semaine d&apos;activité hors vacances scolaires sur la facture mensuelle du coach.
+                  </p>
+                </div>
               </div>
 
               <div className="flex gap-4 mt-6">

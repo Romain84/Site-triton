@@ -20,6 +20,7 @@ const updateCoachSchema = z.object({
   siret: z.string().trim().optional().nullable(),
   adresse: z.string().trim().optional().nullable(),
   actif: z.boolean().optional(),
+  heuresAdminHebdo: z.number().min(0).optional(),
 })
 
 // GET: Récupérer un coach
@@ -49,6 +50,7 @@ export async function GET(
         siret: true,
         adresse: true,
         actif: true,
+        heuresAdminHebdo: true,
         lastLogin: true,
         createdAt: true,
         updatedAt: true,

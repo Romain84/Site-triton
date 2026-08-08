@@ -236,6 +236,27 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     }
   }
 
+  // 1.b Heures administratives automatiques pour le coach (si activées)
+  const coachInfo = await prisma.coach.findUnique({
+    where: { id: coachId },
+    select: { heuresAdminHebdo: true },
+  })
+
+  if (coachInfo?.heuresAdminHebdo && coachInfo.heuresAdminHebdo > 0) {
+    const { nbSemaines } = compterSemainesHorsVacances(dateDebut, dateFin, periodesVacances)
+    if (nbSemaines > 0) {
+      const totalHrsAdmin = nbSemaines * coachInfo.heuresAdminHebdo
+      const montantAdmin = totalHrsAdmin * tauxHoraire
+      heuresPlanningFixe += totalHrsAdmin
+      lignesPlanningFixe.push({
+        type: 'planning_fixe',
+        description: `Heures administratives (${nbSemaines} semaine${nbSemaines > 1 ? 's' : ''} hors vacances - ${coachInfo.heuresAdminHebdo}h/sem)`,
+        heures: totalHrsAdmin,
+        montant: montantAdmin,
+      })
+    }
+  }
+
   const manualRempIds = (factureExistante?.lignes?.map(l => l.remplacementId).filter(Boolean) as string[]) || []
 
   // 2. Remplacements et Absences
@@ -487,4 +508,55 @@ function calculerDuree(heureDebut: string, heureFin: string): number {
   const [hD, mD] = heureDebut.split(':').map(Number)
   const [hF, mF] = heureFin.split(':').map(Number)
   return (hF * 60 + mF - (hD * 60 + mD)) / 60
+}
+
+function compterSemainesHorsVacances(
+  dateDebut: Date,
+  dateFin: Date,
+  periodesVacances: Array<{ dateDebut: Date; dateFin: Date }> = []
+): { nbSemaines: number } {
+  let count = 0
+  const current = new Date(dateDebut)
+  
+  const day = current.getDay()
+  const diffToMonday = (day === 0 ? -6 : 1 - day)
+  const firstMonday = new Date(current)
+  firstMonday.setDate(current.getDate() + diffToMonday)
+  firstMonday.setHours(0, 0, 0, 0)
+
+  let weekStart = new Date(firstMonday)
+
+  while (weekStart <= dateFin) {
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekStart.getDate() + 6)
+    weekEnd.setHours(23, 59, 59, 999)
+
+    if (weekStart <= dateFin && weekEnd >= dateDebut) {
+      let aJourActif = false
+      const dayCheck = new Date(Math.max(weekStart.getTime(), dateDebut.getTime()))
+      const limitDay = new Date(Math.min(weekEnd.getTime(), dateFin.getTime()))
+
+      while (dayCheck <= limitDay) {
+        const estEnVacances = periodesVacances.some((p) => {
+          const debut = new Date(p.dateDebut)
+          const fin = new Date(p.dateFin)
+          return dayCheck >= debut && dayCheck <= fin
+        })
+
+        if (!estEnVacances) {
+          aJourActif = true
+          break
+        }
+        dayCheck.setDate(dayCheck.getDate() + 1)
+      }
+
+      if (aJourActif) {
+        count++
+      }
+    }
+
+    weekStart.setDate(weekStart.getDate() + 7)
+  }
+
+  return { nbSemaines: count }
 }

@@ -20,6 +20,7 @@ model Coach {
   adresse                String?
   abbyApiKey             String?
   actif                  Boolean               @default(true)
+  heuresAdminHebdo       Float                 @default(0)
   lastLogin              DateTime?
   createdAt              DateTime              @default(now())
   updatedAt              DateTime              @updatedAt

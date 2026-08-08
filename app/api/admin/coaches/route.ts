@@ -17,6 +17,7 @@ const createCoachSchema = z.object({
   siret: z.string().regex(/^[0-9]{14}$/, 'Le SIRET doit contenir 14 chiffres').optional().nullable().or(z.literal('')),
   adresse: z.string().max(500).optional().nullable(),
   actif: z.boolean().optional(),
+  heuresAdminHebdo: z.number().min(0).optional(),
 })
 
 export async function GET() {
@@ -37,6 +38,7 @@ export async function GET() {
         siret: true,
         adresse: true,
         actif: true,
+        heuresAdminHebdo: true,
         lastLogin: true,
         createdAt: true,
         updatedAt: true,
@@ -73,6 +75,7 @@ export async function POST(request: NextRequest) {
       siret,
       adresse,
       actif,
+      heuresAdminHebdo,
     } = validationResult.data
 
     if (email) {
@@ -100,6 +103,7 @@ export async function POST(request: NextRequest) {
         siret: siret === '' ? null : siret || null,
         adresse: adresse || null,
         actif: actif !== undefined ? actif : true,
+        heuresAdminHebdo: heuresAdminHebdo ?? 0,
       },
     })
 
