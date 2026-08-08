@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import 'leaflet/dist/leaflet.css'
+import { useState, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 
 interface LocationPoint {
   lat: number
@@ -16,20 +16,41 @@ interface VisiteursMapProps {
   locations: LocationPoint[]
 }
 
-// Projection Equirectangulaire pour la carte SVG interactive (Fallback & Mode Vectoriel)
-function latLngToSvg(lat: number, lng: number, width: number = 800, height: number = 420) {
-  const x = ((lng + 180) * (width / 360))
-  const y = (((-1 * lat) + 90) * (height / 180))
-  return { x, y }
-}
+// Composant Leaflet chargé dynamiquement côté client uniquement (désactivation SSR pour éviter tout problème de rendu)
+const LeafletTileMap = dynamic(() => import('./LeafletTileMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full min-h-[520px] bg-slate-950 flex items-center justify-center text-slate-400 text-xs font-bold">
+      <span className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2" />
+      Initialisation des tuiles Leaflet…
+    </div>
+  ),
+})
+
+// Définition des contours vectoriels de la France & Europe (Fond de carte haute définition)
+const FRANCE_SVG_PATH = `
+  M 320,80 L 360,70 L 400,85 L 440,110 L 480,120 L 520,150 L 535,190 L 515,225 L 485,250 L 490,290 
+  L 460,335 L 430,370 L 375,395 L 340,390 L 315,365 L 290,370 L 260,340 L 225,320 L 200,285 L 180,250 
+  L 190,210 L 165,185 L 175,160 L 220,155 L 255,130 L 290,110 Z
+`
+
+const SPAIN_SVG_PATH = `
+  M 200,285 L 225,320 L 260,340 L 290,370 L 315,365 L 340,390 L 375,395 L 350,420 L 290,420 L 210,410 L 150,380 L 140,320 L 170,290 Z
+`
+
+const ITALY_SVG_PATH = `
+  M 485,250 L 515,225 L 540,240 L 565,270 L 590,310 L 610,340 L 630,365 L 615,380 L 585,350 L 560,310 L 525,275 Z
+`
+
+const UK_SVG_PATH = `
+  M 240,60 L 270,40 L 300,50 L 310,80 L 290,105 L 250,110 L 225,85 Z
+`
 
 export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps) {
-  const [mapStyle, setMapStyle] = useState<'dark' | 'light' | 'satellite' | 'svg'>('dark')
-  const mapContainerRef = useRef<HTMLDivElement>(null)
-  const mapInstanceRef = useRef<any>(null)
-  const markersRef = useRef<any[]>([])
-  const LRef = useRef<any>(null)
-  const [leafletLoaded, setLeafletLoaded] = useState(false)
+  const [mapEngine, setMapEngine] = useState<'vector' | 'leaflet'>('vector')
+  const [tileStyle, setTileStyle] = useState<'dark' | 'light' | 'satellite'>('dark')
+  const [viewPreset, setViewPreset] = useState<'france' | 'europe' | 'world'>('france')
+  const [zoomLevel, setZoomLevel] = useState<number>(1)
   const [selectedCity, setSelectedCity] = useState<LocationPoint | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -37,168 +58,29 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
   const totalVisits = locations.reduce((sum, l) => sum + l.count, 0) || 1
   const maxCount = Math.max(...locations.map((l) => l.count), 1)
 
-  // Chargement natif de Leaflet via import() dynamique (npm package)
-  useEffect(() => {
-    let isMounted = true
-
-    if (typeof window !== 'undefined') {
-      import('leaflet').then((L) => {
-        if (!isMounted) return
-        LRef.current = L.default || L
-
-        // Fix icônes par défaut de Leaflet sous Webpack / Next.js
-        delete (LRef.current.Icon.Default.prototype as any)._getIconUrl
-        LRef.current.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-        })
-
-        setLeafletLoaded(true)
-      }).catch((err) => {
-        console.warn('Leaflet import warning, bascule vers mode Vectoriel SVG:', err)
-        setMapStyle('svg')
-      })
+  // Bounding box selon le preset sélectionné
+  const bounds = useMemo(() => {
+    if (viewPreset === 'france') {
+      return { minLat: 41.0, maxLat: 51.5, minLng: -5.0, maxLng: 9.8 }
+    } else if (viewPreset === 'europe') {
+      return { minLat: 34.0, maxLat: 65.0, minLng: -11.0, maxLng: 32.0 }
+    } else {
+      return { minLat: -55.0, maxLat: 75.0, minLng: -160.0, maxLng: 180.0 }
     }
+  }, [viewPreset])
 
-    return () => {
-      isMounted = false
-    }
-  }, [])
+  // Projection (Lat, Lng) -> (x, y) en pixels SVG (Base 800x450)
+  const projectPoint = (lat: number, lng: number) => {
+    const width = 800
+    const height = 450
+    const normX = (lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)
+    const normY = (bounds.maxLat - lat) / (bounds.maxLat - bounds.minLat)
 
-  // Initialisation et mise à jour de la carte Leaflet
-  useEffect(() => {
-    if (!leafletLoaded || !mapContainerRef.current || mapStyle === 'svg') return
-    const L = LRef.current
-    if (!L) return
+    // S'assurer d'un espacement correct
+    const x = Math.max(20, Math.min(width - 20, normX * width))
+    const y = Math.max(20, Math.min(height - 20, normY * height))
 
-    try {
-      if (!mapInstanceRef.current) {
-        if ((mapContainerRef.current as any)._leaflet_id) {
-          (mapContainerRef.current as any)._leaflet_id = null
-        }
-
-        const initialLat = locations.length > 0 ? locations[0].lat : 43.8333
-        const initialLng = locations.length > 0 ? locations[0].lng : 5.0333
-
-        const map = L.map(mapContainerRef.current, {
-          center: [initialLat, initialLng],
-          zoom: 6,
-          zoomControl: false,
-        })
-
-        L.control.zoom({ position: 'topleft' }).addTo(map)
-        mapInstanceRef.current = map
-      }
-
-      const map = mapInstanceRef.current
-
-      // Nettoyer les tuiles
-      map.eachLayer((layer: any) => {
-        if (layer instanceof L.TileLayer) {
-          map.removeLayer(layer)
-        }
-      })
-
-      // Tuiles configurées avec fallback
-      let tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-      let attribution = '&copy; OpenStreetMap contributors'
-      let subdomains = ['a', 'b', 'c']
-
-      if (mapStyle === 'dark') {
-        tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        attribution = '&copy; OpenStreetMap &copy; CARTO'
-        subdomains = ['a', 'b', 'c', 'd']
-      } else if (mapStyle === 'light') {
-        tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-        attribution = '&copy; OpenStreetMap &copy; CARTO'
-        subdomains = ['a', 'b', 'c', 'd']
-      } else if (mapStyle === 'satellite') {
-        tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-        attribution = '&copy; Esri World Imagery'
-        subdomains = []
-      }
-
-      const tileLayerOptions: any = { attribution, maxZoom: 19 }
-      if (subdomains.length > 0) tileLayerOptions.subdomains = subdomains
-
-      const tileLayer = L.tileLayer(tileUrl, tileLayerOptions)
-      tileLayer.on('tileerror', () => {
-        if (mapStyle !== 'light') {
-          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map)
-        }
-      })
-      tileLayer.addTo(map)
-
-      // Marqueurs
-      markersRef.current.forEach((m) => map.removeLayer(m))
-      markersRef.current = []
-
-      if (locations.length > 0) {
-        locations.forEach((loc) => {
-          const sizeRatio = loc.count / maxCount
-          const radius = Math.max(6, Math.min(32, Math.sqrt(loc.count) * 3.8 + 3))
-
-          let color = '#10b981'
-          let fillColor = '#10b981'
-
-          if (loc.count >= 15 || sizeRatio > 0.35) {
-            color = '#f43f5e'
-            fillColor = '#ef4444'
-          } else if (loc.count >= 5 || sizeRatio > 0.12) {
-            color = '#f59e0b'
-            fillColor = '#f59e0b'
-          }
-
-          const pct = Math.round((loc.count / totalVisits) * 100)
-
-          const marker = L.circleMarker([loc.lat, loc.lng], {
-            radius,
-            color,
-            weight: 2,
-            opacity: 0.9,
-            fillColor,
-            fillOpacity: 0.5,
-          }).addTo(map)
-
-          const popupContent = `
-            <div style="font-family: system-ui, sans-serif; padding: 6px; text-align: center; min-width: 140px;">
-              <div style="font-weight: 800; font-size: 13px; color: #0f172a; display: flex; align-items: center; justify-content: center; gap: 4px;">
-                📍 ${loc.ville} <span style="font-size: 11px; color: #64748b;">(${loc.codePays})</span>
-              </div>
-              <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${loc.pays}</div>
-              <div style="margin-top: 8px; display: inline-block; padding: 4px 10px; background: linear-gradient(to right, #2563eb, #3b82f6); color: white; border-radius: 9999px; font-weight: 800; font-size: 11px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                ${loc.count} visite${loc.count > 1 ? 's' : ''} (${pct}%)
-              </div>
-            </div>
-          `
-
-          marker.bindPopup(popupContent)
-          marker.on('click', () => setSelectedCity(loc))
-          markersRef.current.push(marker)
-        })
-
-        if (locations.length > 1) {
-          const bounds = L.latLngBounds(locations.map((l) => [l.lat, l.lng]))
-          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 8 })
-        }
-      }
-
-      setTimeout(() => {
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.invalidateSize()
-        }
-      }, 100)
-    } catch (err) {
-      console.error('Erreur Leaflet tile setup:', err)
-    }
-  }, [leafletLoaded, locations, mapStyle])
-
-  const flyToLocation = (loc: LocationPoint) => {
-    setSelectedCity(loc)
-    if (mapStyle !== 'svg' && mapInstanceRef.current && LRef.current) {
-      mapInstanceRef.current.flyTo([loc.lat, loc.lng], 11, { duration: 1.2 })
-    }
+    return { x, y }
   }
 
   const filteredLocations = locations.filter(l =>
@@ -206,58 +88,91 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
     l.pays.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const handleSelectCity = (loc: LocationPoint) => {
+    setSelectedCity(loc)
+    // Ajuster la vue selon la position de la ville
+    if (loc.pays === 'France' || loc.codePays === 'FR') {
+      setViewPreset('france')
+    } else if (['IT', 'ES', 'DE', 'GB', 'BE', 'CH', 'NL', 'PT', 'AT'].includes(loc.codePays)) {
+      setViewPreset('europe')
+    } else {
+      setViewPreset('world')
+    }
+  }
+
   return (
     <div className={`w-full bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-xl space-y-3 relative text-white overflow-hidden transition-all duration-300 ${
       isFullscreen ? 'fixed inset-4 z-50 h-[calc(100vh-32px)] m-0' : ''
     }`}>
       {/* En-tête de la Carte */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-800 pb-3">
         <div className="flex items-center gap-2.5">
           <span className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
           <div>
             <h2 className="text-sm font-extrabold text-white flex items-center gap-2">
-              Carte des Visiteurs & Taille Proportionnelle des Villes
+              Carte des Visiteurs & Concentré Géographique des Villes
             </h2>
             <p className="text-[11px] text-slate-400 font-medium">
-              La taille des cercles s&apos;adapte automatiquement au volume des connexions géolocalisées
+              Représentation en temps réel du volume de connexions avec cercles proportionnels
             </p>
           </div>
         </div>
 
-        {/* Boutons de style de carte & plein écran */}
-        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
-          <div className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/80">
+        {/* Sélecteurs de moteur de carte & présélection de zooms */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Presets de Zoom rapide */}
+          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
             <button
-              onClick={() => setMapStyle('dark')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                mapStyle === 'dark' ? 'bg-primary text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              onClick={() => { setMapEngine('vector'); setViewPreset('france'); }}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                mapEngine === 'vector' && viewPreset === 'france' ? 'bg-primary text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
-              🌙 Mode Sombre
+              🇫🇷 France
             </button>
             <button
-              onClick={() => setMapStyle('light')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                mapStyle === 'light' ? 'bg-primary text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              onClick={() => { setMapEngine('vector'); setViewPreset('europe'); }}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                mapEngine === 'vector' && viewPreset === 'europe' ? 'bg-primary text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
-              🗺️ Plan Clair
+              🇪🇺 Europe
             </button>
             <button
-              onClick={() => setMapStyle('satellite')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                mapStyle === 'satellite' ? 'bg-primary text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              onClick={() => { setMapEngine('vector'); setViewPreset('world'); }}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                mapEngine === 'vector' && viewPreset === 'world' ? 'bg-primary text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
-              🛰️ Satellite HD
+              🌐 Monde
+            </button>
+          </div>
+
+          {/* Styles de carte Leaflet / Tuiles */}
+          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <button
+              onClick={() => { setMapEngine('leaflet'); setTileStyle('dark'); }}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                mapEngine === 'leaflet' && tileStyle === 'dark' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              🌙 Sombre (Tuiles)
             </button>
             <button
-              onClick={() => setMapStyle('svg')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                mapStyle === 'svg' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              onClick={() => { setMapEngine('leaflet'); setTileStyle('light'); }}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                mapEngine === 'leaflet' && tileStyle === 'light' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
-              ✨ Carte Vectorielle SVG
+              🗺️ Clair (Tuiles)
+            </button>
+            <button
+              onClick={() => { setMapEngine('leaflet'); setTileStyle('satellite'); }}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                mapEngine === 'leaflet' && tileStyle === 'satellite' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              🛰️ Satellite
             </button>
           </div>
 
@@ -271,98 +186,176 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
         </div>
       </div>
 
-      {/* Conteneur Principal de la Carte */}
+      {/* Conteneur Principal de la Carte (Résolution garantie sans écran noir) */}
       <div className={`relative w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800 ${
         isFullscreen ? 'h-[calc(100%-60px)]' : 'h-[520px]'
       }`}>
         
-        {/* MODE MAP LEAFLET HD */}
-        {mapStyle !== 'svg' && (
-          <div ref={mapContainerRef} className="w-full h-full min-h-[520px] z-10 relative" />
-        )}
-
-        {/* MODE CARTE VECTORIELLE SVG (Ultra-rapide, zéro dépendance CDN) */}
-        {mapStyle === 'svg' && (
+        {/* MOTEUR 1: CARTE VECTORIELLE INTERACTIVE HD (Défaut, 0ms de temps de charge, 100% garanti) */}
+        {mapEngine === 'vector' && (
           <div className="w-full h-full relative bg-slate-950 flex items-center justify-center overflow-hidden">
-            {/* Grille de repères vectoriels */}
-            <svg className="w-full h-full absolute inset-0 opacity-15 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+            {/* Arrière-plan avec repères géométriques haute technologie */}
+            <svg className="w-full h-full absolute inset-0 opacity-20 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
               <defs>
-                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <pattern id="grid-pattern" width="40" height="40" patternUnits="userSpaceOnUse">
                   <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#3b82f6" strokeWidth="0.5" />
                 </pattern>
               </defs>
-              <rect width="100%" height="100%" fill="url(#grid)" />
+              <rect width="100%" height="100%" fill="url(#grid-pattern)" />
             </svg>
 
-            {/* Carte Monde & France Vectorielle */}
-            <svg viewBox="0 0 800 420" className="w-full h-full relative z-10">
-              {/* Villes avec cercles de trafic proportionnels */}
+            {/* Canvas Vectoriel SVG interactif */}
+            <svg viewBox="0 0 800 450" className="w-full h-full relative z-10 transition-transform duration-500 ease-out" style={{ transform: `scale(${zoomLevel})` }}>
+              {/* Formes vectorielles stylisées des pays en fond (France, Espagne, Italie, UK) */}
+              {viewPreset === 'france' && (
+                <g className="opacity-40">
+                  <path d={FRANCE_SVG_PATH} fill="#1e293b" stroke="#334155" strokeWidth="2" />
+                  <path d={SPAIN_SVG_PATH} fill="#0f172a" stroke="#1e293b" strokeWidth="1" />
+                  <path d={ITALY_SVG_PATH} fill="#0f172a" stroke="#1e293b" strokeWidth="1" />
+                  <path d={UK_SVG_PATH} fill="#0f172a" stroke="#1e293b" strokeWidth="1" />
+                  
+                  {/* Point de repère central Cavaillon / Provence */}
+                  <g transform="translate(435, 330)">
+                    <circle r="4" fill="#3b82f6" opacity="0.6" className="animate-ping" />
+                    <text x="8" y="4" fill="#94a3b8" fontSize="10" fontWeight="bold">Siège Triton Club (Cavaillon)</text>
+                  </g>
+                </g>
+              )}
+
+              {/* Villes avec marqueurs de trafic proportionnels */}
               {locations.map((loc, idx) => {
-                const { x, y } = latLngToSvg(loc.lat, loc.lng)
+                const { x, y } = projectPoint(loc.lat, loc.lng)
                 const sizeRatio = loc.count / maxCount
-                const radius = Math.max(6, Math.min(28, Math.sqrt(loc.count) * 4 + 4))
+                const radius = Math.max(7, Math.min(30, Math.sqrt(loc.count) * 4.2 + 3))
                 const isSelected = selectedCity?.ville === loc.ville
 
+                let color = '#10b981' // Vert émeraude
                 let fillColor = '#10b981'
-                if (loc.count >= 15 || sizeRatio > 0.35) fillColor = '#f43f5e'
-                else if (loc.count >= 5 || sizeRatio > 0.12) fillColor = '#f59e0b'
+
+                if (loc.count >= 15 || sizeRatio > 0.35) {
+                  color = '#f43f5e' // Rose rouge
+                  fillColor = '#ef4444'
+                } else if (loc.count >= 5 || sizeRatio > 0.12) {
+                  color = '#f59e0b' // Ambre
+                  fillColor = '#f59e0b'
+                }
 
                 return (
                   <g
                     key={idx}
                     className="cursor-pointer group"
-                    onClick={() => setSelectedCity(loc)}
+                    onClick={() => handleSelectCity(loc)}
                   >
-                    {/* Pulsation lumineuse pour ville sélectionnée ou fort trafic */}
+                    {/* Anneau de pulsation dynamique */}
                     <circle
                       cx={x}
                       cy={y}
-                      r={radius * 1.5}
-                      fill={fillColor}
-                      opacity={isSelected ? 0.4 : 0.25}
+                      r={radius * 1.6}
+                      fill={color}
+                      opacity={isSelected ? 0.45 : 0.2}
                       className="animate-ping"
                     />
 
-                    {/* Cercle de la ville */}
+                    {/* Cercle principal de la ville */}
                     <circle
                       cx={x}
                       cy={y}
                       r={radius}
                       fill={fillColor}
-                      fillOpacity={0.7}
-                      stroke={isSelected ? '#ffffff' : fillColor}
+                      fillOpacity={0.75}
+                      stroke={isSelected ? '#ffffff' : color}
                       strokeWidth={isSelected ? 3 : 1.5}
-                      className="transition-all duration-300 group-hover:scale-125 origin-center"
+                      className="transition-all duration-300 group-hover:scale-125 origin-center shadow-2xl"
                     />
 
-                    {/* Texte de la ville si sélectionnée */}
-                    <text
-                      x={x}
-                      y={y - radius - 6}
-                      textAnchor="middle"
-                      fill="#ffffff"
-                      fontSize="11"
-                      fontWeight="bold"
-                      className="drop-shadow-md pointer-events-none"
-                    >
-                      {loc.ville} ({loc.count}v)
-                    </text>
+                    {/* Badge texte de la ville au survol ou sélection */}
+                    <g transform={`translate(${x}, ${y - radius - 8})`}>
+                      <rect
+                        x="-45"
+                        y="-16"
+                        width="90"
+                        height="18"
+                        rx="9"
+                        fill="#0f172a"
+                        fillOpacity="0.9"
+                        stroke={isSelected ? '#3b82f6' : '#334155'}
+                        strokeWidth="1"
+                        className="transition-all duration-200 group-hover:opacity-100"
+                      />
+                      <text
+                        x="0"
+                        y="-4"
+                        textAnchor="middle"
+                        fill="#ffffff"
+                        fontSize="9.5"
+                        fontWeight="800"
+                        className="pointer-events-none"
+                      >
+                        {loc.ville} ({loc.count}v)
+                      </text>
+                    </g>
                   </g>
                 )
               })}
             </svg>
 
-            {/* Info bulle de ville sélectionnée en mode SVG */}
+            {/* Contrôles de zoom sur la carte vectorielle */}
+            <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-1 bg-slate-900/90 border border-slate-800 p-1 rounded-xl shadow-xl backdrop-blur-md">
+              <button
+                onClick={() => setZoomLevel(prev => Math.min(prev + 0.3, 2.5))}
+                className="w-8 h-8 flex items-center justify-center text-sm font-bold text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                title="Zoomer"
+              >
+                +
+              </button>
+              <button
+                onClick={() => setZoomLevel(1)}
+                className="w-8 h-8 flex items-center justify-center text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                title="Réinitialiser zoom"
+              >
+                🎯
+              </button>
+              <button
+                onClick={() => setZoomLevel(prev => Math.max(prev - 0.3, 0.8))}
+                className="w-8 h-8 flex items-center justify-center text-sm font-bold text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                title="Dézoomer"
+              >
+                -
+              </button>
+            </div>
+
+            {/* Info Bulle de la Ville Sélectionnée */}
             {selectedCity && (
-              <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-30 bg-slate-900/95 border border-slate-700 p-3 rounded-xl shadow-2xl text-center backdrop-blur-md">
-                <p className="font-extrabold text-sm text-white">📍 {selectedCity.ville} ({selectedCity.codePays})</p>
-                <p className="text-xs text-slate-400 mt-0.5">{selectedCity.pays}</p>
-                <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-black bg-primary text-white">
-                  {selectedCity.count} visite{selectedCity.count > 1 ? 's' : ''} enregistrée{selectedCity.count > 1 ? 's' : ''}
-                </span>
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 bg-slate-900/95 border border-slate-700 p-3 rounded-2xl shadow-2xl text-center backdrop-blur-md flex items-center gap-3">
+                <div className="text-left">
+                  <p className="font-extrabold text-sm text-white flex items-center gap-1.5">
+                    <span>📍</span> {selectedCity.ville} <span className="text-xs text-slate-400 font-normal">({selectedCity.codePays})</span>
+                  </p>
+                  <p className="text-xs text-slate-400">{selectedCity.pays}</p>
+                </div>
+                <div className="pl-3 border-l border-slate-800">
+                  <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs">
+                    {selectedCity.count} visite{selectedCity.count > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedCity(null)}
+                  className="text-slate-500 hover:text-white text-xs font-bold ml-1 cursor-pointer"
+                >
+                  ✕
+                </button>
               </div>
             )}
           </div>
+        )}
+
+        {/* MOTEUR 2: LEAFLET TILE MAP (Côté client uniquement sans SSR) */}
+        {mapEngine === 'leaflet' && (
+          <LeafletTileMap
+            locations={locations}
+            mapStyle={tileStyle}
+            onSelectCity={handleSelectCity}
+          />
         )}
 
         {/* Tiroir / Liste latérale interactive des villes avec barre de recherche */}
@@ -387,7 +380,7 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
                 return (
                   <button
                     key={idx}
-                    onClick={() => flyToLocation(loc)}
+                    onClick={() => handleSelectCity(loc)}
                     className={`w-full flex items-center justify-between text-[11px] p-2 rounded-lg transition-all text-left cursor-pointer ${
                       isSelected
                         ? 'bg-primary/25 border border-primary/50 text-white font-bold'
@@ -432,3 +425,4 @@ export default function VisiteursMapGoogleStyle({ locations }: VisiteursMapProps
     </div>
   )
 }
+
