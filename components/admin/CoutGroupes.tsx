@@ -28,6 +28,7 @@ interface PlanningDetail {
   duree: number
   coach?: string
   nbCoachsFactures: number
+  nbGroupesSimultanes?: number
 }
 
 interface GroupeCout {
@@ -42,6 +43,7 @@ interface GroupeCout {
   inscritsEquivalents: number
   tarifAnnuel: number
   tarif1Cours: number
+  tarifConseille: number
   libelleOption1: string | null
   libelleOption2: string | null
   prixLicence: number
@@ -49,6 +51,7 @@ interface GroupeCout {
   nbSemaines: number
   totalHeures: number
   coutCoaching: number
+  coutFormationsPSE1: number
   heuresAnnuleesDeduites: number
   nbCompetitions: number
   coutCompetitions: number
@@ -105,6 +108,7 @@ interface ResultatCalcul {
   forfaitCompetition: number
   nbDemiJourneesParCompetition: number
   margeSecurite: number
+  coutFormationsPSE1?: number
   mode: 'simple' | 'optimise'
   groupes: GroupeCout[]
   coachsCout: CoachCout[]
@@ -113,6 +117,7 @@ interface ResultatCalcul {
     coutCoaching: number
     coutCompetitions: number
     coutLicences: number
+    coutFormationsPSE1?: number
     coutMargeSecurite: number
     coutTotal: number
     revenuActuel: number
@@ -259,6 +264,7 @@ export default function CoutGroupes() {
   const [dateFin, setDateFin]                   = useState('')
   const [mode, setMode]                         = useState<'simple' | 'optimise'>('simple')
   const [margeSecurite, setMargeSecurite]       = useState(0)
+  const [coutFormationsPSE1, setCoutFormationsPSE1] = useState<number>(150)
   const [includeComparaison, setIncludeComparaison] = useState(false)
   // NOUVEAU: simulation taux horaire
   const [tauxOverride, setTauxOverride]         = useState<string>('')
@@ -396,6 +402,7 @@ export default function CoutGroupes() {
           dateFin:    dateFin   || undefined,
           mode,
           margeSecurite,
+          coutFormationsPSE1,
           includeComparaison,
           tauxChargesOverride,
         }),
@@ -672,7 +679,7 @@ export default function CoutGroupes() {
             <span className="inline-block transition-transform duration-200 group-open:rotate-90 text-[9px]">▶</span>
             Options de simulation avancée
           </summary>
-          <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3 pt-2">
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1">Marge de sécurité (%)</label>
               <input
@@ -690,6 +697,16 @@ export default function CoutGroupes() {
                 onChange={(e) => setTauxOverride(e.target.value)}
                 className="input w-full text-xs py-1.5"
                 placeholder="Taux réel"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Formations PSE1 / Secourisme (€/coach)</label>
+              <input
+                type="number" min={0} step={10}
+                value={coutFormationsPSE1}
+                onChange={(e) => setCoutFormationsPSE1(Number(e.target.value))}
+                className="input w-full text-xs py-1.5"
+                placeholder="150"
               />
             </div>
             <div className="flex items-center pt-4">
@@ -962,6 +979,7 @@ export default function CoutGroupes() {
                     <div className="flex justify-between"><span>👨‍🏫 Coaching</span><strong>{fmt(resultat.totaux.coutCoaching)}€</strong></div>
                     {resultat.totaux.coutCompetitions > 0 && <div className="flex justify-between"><span>🏆 Compétitions</span><strong>{fmt(resultat.totaux.coutCompetitions)}€</strong></div>}
                     {resultat.totaux.coutLicences > 0 && <div className="flex justify-between"><span>🎫 Licences</span><strong>{fmt(resultat.totaux.coutLicences)}€</strong></div>}
+                    {(resultat.totaux.coutFormationsPSE1 ?? 0) > 0 && <div className="flex justify-between text-indigo-900"><span>⛑️ Formations PSE1</span><strong>{fmt(resultat.totaux.coutFormationsPSE1 ?? 0)}€</strong></div>}
                     {(resultat.totaux.coutMargeSecurite ?? 0) > 0 && <div className="flex justify-between text-amber-800"><span>🛡️ Marge sécu.</span><strong>{fmt(resultat.totaux.coutMargeSecurite)}€</strong></div>}
                   </div>
                 )}
@@ -1069,6 +1087,7 @@ export default function CoutGroupes() {
             <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap gap-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
               <span>📌 {resultat.tauxHoraire}€/h</span>
               <span>🏆 {resultat.forfaitCompetition}€ × {resultat.nbDemiJourneesParCompetition} demi-j.</span>
+              {(resultat.coutFormationsPSE1 ?? 0) > 0 && <span className="text-indigo-600">⛑️ PSE1 {resultat.coutFormationsPSE1}€/coach</span>}
               {resultat.margeSecurite > 0 && <span className="text-amber-600">🛡️ Marge {resultat.margeSecurite}%</span>}
             </div>
 

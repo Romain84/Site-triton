@@ -12,6 +12,7 @@ interface CoutSaisonRequest {
   includeComparaison?: boolean
   tauxChargesOverride?: number
   margeSecurite?: number
+  coutFormationsPSE1?: number
 }
 
 // ─── Types de sortie ──────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ interface GroupeCout {
   inscritsEquivalents: number
   tarifAnnuel: number
   tarif1Cours: number
+  tarifConseille: number
   libelleOption1: string | null
   libelleOption2: string | null
   prixLicence: number
@@ -50,6 +52,7 @@ interface GroupeCout {
   nbSemaines: number
   totalHeures: number
   coutCoaching: number
+  coutFormationsPSE1: number
   heuresAnnuleesDeduites: number
   nbCompetitions: number
   coutCompetitions: number
@@ -80,6 +83,7 @@ interface GroupeCout {
     duree: number
     coach?: string
     nbCoachsFactures: number
+    nbGroupesSimultanes: number
   }>
 }
 
@@ -243,6 +247,7 @@ export async function POST(request: NextRequest) {
       duree: number
       nbCoachsFacturesSimple: number
       nbCoachsFacturesOptimise: number
+      nbGroupesSimultanes: number
       coachLabel?: string
       coachIds: string[]
     }
@@ -299,6 +304,13 @@ export async function POST(request: NextRequest) {
         nbCoachsFacturesOptimise = totalHeuresEffectivesOptimise / duree
       }
 
+      // Nombre de groupes partageant simultanément le bassin au même horaire
+      const nbGroupesSimultanes = Math.max(1, plannings.filter(op =>
+        op.jourSemaine === planning.jourSemaine &&
+        parseTimeToMinutes(op.heureDebut) < parseTimeToMinutes(planning.heureFin) &&
+        parseTimeToMinutes(op.heureFin) > parseTimeToMinutes(planning.heureDebut)
+      ).length)
+
       totalHeuresHebdoSimple += duree * nbCoachsFacturesSimple
       totalHeuresHebdoOptimise += duree * nbCoachsFacturesOptimise
 
@@ -314,6 +326,7 @@ export async function POST(request: NextRequest) {
         duree,
         nbCoachsFacturesSimple,
         nbCoachsFacturesOptimise,
+        nbGroupesSimultanes,
         coachLabel,
         coachIds,
       }
@@ -519,8 +532,14 @@ export async function POST(request: NextRequest) {
 
         const coutLicences = prixLicence * groupe.inscrits
 
-        const baseCout = coutCoaching + coutCompetitions
-        const coutMargeSecurite = baseCout * (margeSecurite / 100)
+        // Calcul au prorata de la part des formations PSE1 / Secourisme attribuée à ce groupe
+        const nbCoachsFormes = coachStats.size || 1
+        const forfaitPSE1Total = (body.coutFormationsPSE1 ?? 150) * nbCoachsFormes
+        const partPSE1 = totalHeuresHebdoSimple > 0 ? (heuresParSemaine / totalHeuresHebdoSimple) * forfaitPSE1Total : 0
+        const coutFormationsPSE1 = Math.round(partPSE1)
+
+        const baseCout = coutCoaching + coutCompetitions + coutFormationsPSE1
+        const coutMargeSecurite = (baseCout + coutLicences) * (margeSecurite / 100)
         const coutTotal = baseCout + coutLicences + coutMargeSecurite
 
         const coutParInscrit = groupe.inscrits > 0 ? coutTotal / groupe.inscrits : 0
@@ -534,6 +553,10 @@ export async function POST(request: NextRequest) {
 
         const totalTarifInscrits = (inscrits2Cours * tarifAnnuel) + (inscrits1Cours * tarif1Cours)
         const tarifMoyen = groupe.inscrits > 0 ? totalTarifInscrits / groupe.inscrits : tarifAnnuel
+
+        // Tarif conseillé par adhérent pour équilibrer 100% des coûts du groupe
+        const effectifEquilibre = groupe.inscrits > 0 ? groupe.inscrits : Math.max(1, Math.ceil(groupe.total * 0.8))
+        const tarifConseille = Math.ceil(coutTotal / effectifEquilibre)
 
         const membresBureau = groupe.membresBureau ?? 0
         const enfantsBureau = groupe.enfantsBureau ?? 0
@@ -591,6 +614,7 @@ export async function POST(request: NextRequest) {
             modeCalc === 'optimise'
               ? p.nbCoachsFacturesOptimise
               : p.nbCoachsFacturesSimple,
+          nbGroupesSimultanes: p.nbGroupesSimultanes,
         }))
 
         res.push({
@@ -605,6 +629,7 @@ export async function POST(request: NextRequest) {
           inscritsEquivalents,
           tarifAnnuel,
           tarif1Cours,
+          tarifConseille,
           libelleOption1: groupe.libelleOption1,
           libelleOption2: groupe.libelleOption2,
           prixLicence,
@@ -612,6 +637,7 @@ export async function POST(request: NextRequest) {
           nbSemaines: nbSemainesGroupe,
           totalHeures,
           coutCoaching,
+          coutFormationsPSE1,
           heuresAnnuleesDeduites: heuresDeduites,
           nbCompetitions: isCompetition ? nbCompetitionsGroupe : 0,
           coutCompetitions,
@@ -670,6 +696,7 @@ export async function POST(request: NextRequest) {
     const coutCoachingGlobal   = resultatsAvecDates.reduce((s, r) => s + r.coutCoaching, 0)
     const coutCompetitionsGlobal = resultatsAvecDates.reduce((s, r) => s + r.coutCompetitions, 0)
     const coutLicencesGlobal   = resultatsAvecDates.reduce((s, r) => s + r.coutLicences, 0)
+    const coutFormationsPSE1Global = resultatsAvecDates.reduce((s, r) => s + r.coutFormationsPSE1, 0)
     const coutMargeGlobal      = resultatsAvecDates.reduce((s, r) => s + r.coutMargeSecurite, 0)
     const coutTotalGlobal      = resultatsAvecDates.reduce((s, r) => s + r.coutTotal, 0)
     const revenuActuelGlobal   = resultatsAvecDates.reduce((s, r) => s + r.revenuActuel, 0)
@@ -744,6 +771,7 @@ export async function POST(request: NextRequest) {
       forfaitCompetition,
       nbDemiJourneesParCompetition,
       margeSecurite,
+      coutFormationsPSE1: body.coutFormationsPSE1 ?? 150,
       mode,
       groupes: resultats,
       coachsCout,
@@ -752,6 +780,7 @@ export async function POST(request: NextRequest) {
         coutCoaching: coutCoachingGlobal,
         coutCompetitions: coutCompetitionsGlobal,
         coutLicences: coutLicencesGlobal,
+        coutFormationsPSE1: coutFormationsPSE1Global,
         coutMargeSecurite: coutMargeGlobal,
         coutTotal: coutTotalGlobal,
         revenuActuel: revenuActuelGlobal,
