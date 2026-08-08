@@ -937,30 +937,33 @@ export default function CoutGroupes() {
                 </div>
                 <div className="text-2xl font-black text-slate-900">
                   {resultat.nbSemainesTotales ?? '—'}
+            {/* Cartes Métriques Épurées */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 mb-6">
+              <div className="bg-slate-50/70 border border-slate-200/70 p-4 rounded-2xl shadow-2xs hover:shadow-xs transition-all">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  Volume Horaire
                 </div>
-                <div className="text-xs text-slate-500 mt-2 font-semibold">{fmt(resultat.totaux.totalHeures)}h total</div>
+                <div className="text-2xl font-black text-slate-900 tracking-tight">
+                  {fmt(resultat.totaux.totalHeures)}h
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1.5 font-medium">
+                  {resultat.nbSemainesTotales ? `${resultat.nbSemainesTotales} semaines hors vacances` : 'Volume saison'}
+                </div>
               </div>
 
-              <div className="bg-rose-50/40 border border-rose-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                <div className="text-[10px] font-extrabold text-rose-800/80 uppercase tracking-wider mb-2 flex items-center justify-between">
-                  <span className="flex items-center gap-1">
-                    Coût Total
-                    <CalculationTooltip
-                      title="Formule du coût total"
-                      formula="Coaching + Compétitions + Licences + Marge sécu."
-                      explanation="Coaching = Heures × Taux. Chaque cours prend la valeur de 'Temps à facturer' (ex: 60 min = 1h) ou la durée réelle si non renseignée. La PPG et le Petit Bassin ne sont jamais réduits en mode optimisé."
-                      example="200h × 35€ + 5 × 150€ × 2 + 80€ × 20 = 10 100€"
-                    />
-                  </span>
+              <div className="bg-rose-50/40 border border-rose-100 p-4 rounded-2xl shadow-2xs hover:shadow-xs transition-all">
+                <div className="flex items-center justify-between text-[10px] font-bold text-rose-800 uppercase tracking-wider mb-1">
+                  <span>Coût Total</span>
                   <button onClick={() => setShowCostBreakdown(!showCostBreakdown)}
-                    className="text-rose-700 hover:text-rose-900 text-[10px] font-bold underline cursor-pointer">
+                    className="text-rose-700 hover:text-rose-950 font-bold underline cursor-pointer">
                     {showCostBreakdown ? 'Masquer' : 'Détails'}
                   </button>
                 </div>
-                <div className="text-2xl font-black text-rose-950">{fmt(resultat.totaux.coutTotal)}€</div>
+                <div className="text-2xl font-black text-rose-950 tracking-tight">
+                  {fmt(resultat.totaux.coutTotal)} €
+                </div>
                 
-                {/* Barres de répartition graphiques des coûts */}
-                <div className="w-full h-1.5 rounded-full overflow-hidden flex mt-3 bg-slate-200" title="Répartition des dépenses">
+                <div className="w-full h-1.5 rounded-full overflow-hidden flex mt-2.5 bg-slate-200" title="Répartition des dépenses">
                   {resultat.totaux.coutCoaching > 0 && (
                     <div 
                       className="h-full bg-rose-500" 
@@ -982,13 +985,6 @@ export default function CoutGroupes() {
                       title={`Licences : ${fmt(resultat.totaux.coutLicences)}€`}
                     />
                   )}
-                  {(resultat.totaux.coutMargeSecurite ?? 0) > 0 && (
-                    <div 
-                      className="h-full bg-amber-500" 
-                      style={{ width: `${(resultat.totaux.coutMargeSecurite / resultat.totaux.coutTotal) * 100}%` }}
-                      title={`Marge de sécurité : ${fmt(resultat.totaux.coutMargeSecurite)}€`}
-                    />
-                  )}
                 </div>
 
                 {showCostBreakdown && (
@@ -1002,60 +998,43 @@ export default function CoutGroupes() {
                 )}
               </div>
 
-              <div className="bg-violet-50/40 border border-violet-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                <div className="text-[10px] font-extrabold text-violet-800/80 uppercase tracking-wider mb-2 flex items-center gap-1">
+              <div className="bg-violet-50/40 border border-violet-100 p-4 rounded-2xl shadow-2xs hover:shadow-xs transition-all">
+                <div className="text-[10px] font-bold text-violet-800 uppercase tracking-wider mb-1">
                   Revenu Actuel
-                  <CalculationTooltip title="Revenu actuel" formula="Σ (Tarif × Inscrits)" explanation="Membres bureau = 0€, enfants bureau = tarif réduit, autres = tarif plein." example="50 inscrits × 200€ = 10 000€" />
                 </div>
-                <div className="text-2xl font-black text-violet-950">{fmt(resultat.totaux.revenuActuel)}€</div>
-                
-                {/* Barres de répartition graphiques des revenus */}
-                <div className="w-full h-1.5 rounded-full overflow-hidden flex mt-3 bg-slate-200" title="Répartition des recettes">
-                  {splitRevenu.plein > 0 && (
-                    <div 
-                      className="h-full bg-violet-500" 
-                      style={{ width: `${(splitRevenu.plein / resultat.totaux.revenuActuel) * 100}%` }}
-                      title={`Plein tarif : ${fmt(splitRevenu.plein)}€`}
-                    />
-                  )}
-                  {splitRevenu.bureau > 0 && (
-                    <div 
-                      className="h-full bg-yellow-500" 
-                      style={{ width: `${(splitRevenu.bureau / resultat.totaux.revenuActuel) * 100}%` }}
-                      title={`Enfants bureau (50%) : ${fmt(splitRevenu.bureau)}€`}
-                    />
-                  )}
+                <div className="text-2xl font-black text-violet-950 tracking-tight">
+                  {fmt(resultat.totaux.revenuActuel)} €
                 </div>
-
-                <div className="text-xs text-violet-700 mt-2 font-semibold">{resultat.totaux.totalInscrits} inscrits</div>
+                <div className="text-[11px] text-violet-700/80 mt-1.5 font-medium">
+                  {resultat.totaux.totalInscrits} adhérents inscrits
+                </div>
               </div>
 
-              <div className="bg-amber-50/40 border border-amber-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                <div className="text-[10px] font-extrabold text-amber-800/80 uppercase tracking-wider mb-2 flex items-center gap-1">
+              <div className="bg-amber-50/40 border border-amber-100 p-4 rounded-2xl shadow-2xs hover:shadow-xs transition-all">
+                <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">
                   Revenu Potentiel
-                  <CalculationTooltip title="Revenu potentiel" formula="Σ (Tarif × Capacité max)" explanation="Revenu si toutes les places étaient occupées au tarif plein." example="100 places × 200€ = 20 000€" />
                 </div>
-                <div className="text-2xl font-black text-amber-950">{fmt(resultat.totaux.revenuPotentiel)}€</div>
-                <div className="text-xs text-amber-700 mt-2 font-semibold">Si {resultat.totaux.totalPlaces} places remplies</div>
+                <div className="text-2xl font-black text-amber-950 tracking-tight">
+                  {fmt(resultat.totaux.revenuPotentiel)} €
+                </div>
+                <div className="text-[11px] text-amber-700/80 mt-1.5 font-medium">
+                  Capacité à 100% ({resultat.totaux.totalPlaces} places)
+                </div>
               </div>
 
-              <div className={`p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow border ${
+              <div className={`p-4 rounded-2xl shadow-2xs hover:shadow-xs transition-all border ${
                 resultat.totaux.beneficeActuel >= 0 
                   ? 'bg-emerald-50/40 border-emerald-100' 
                   : 'bg-rose-50/40 border-rose-100'
               }`}>
-                <div className="text-[10px] font-extrabold uppercase tracking-wider mb-2 flex items-center gap-1">
-                  <span className={resultat.totaux.beneficeActuel >= 0 ? 'text-emerald-800/80' : 'text-rose-800/80'}>Bénéfice</span>
-                  <CalculationTooltip title="Bénéfice" formula="Revenu Actuel − Coût Total" explanation="Positif = rentable. Négatif = déficit." example="10 000€ − 8 000€ = +2 000€" />
+                <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${resultat.totaux.beneficeActuel >= 0 ? 'text-emerald-800' : 'text-rose-800'}`}>
+                  Bénéfice Net
                 </div>
-                <div className={`text-2xl font-black ${resultat.totaux.beneficeActuel >= 0 ? 'text-emerald-950' : 'text-rose-950'}`}>
-                  {sign(resultat.totaux.beneficeActuel)}{fmt(resultat.totaux.beneficeActuel)}€
+                <div className={`text-2xl font-black tracking-tight ${resultat.totaux.beneficeActuel >= 0 ? 'text-emerald-950' : 'text-rose-950'}`}>
+                  {sign(resultat.totaux.beneficeActuel)}{fmt(resultat.totaux.beneficeActuel)} €
                 </div>
-                <div className={`text-xs font-semibold mt-1 ${resultat.totaux.beneficeActuel >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                <div className={`text-[11px] font-semibold mt-1.5 ${resultat.totaux.beneficeActuel >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                   Marge : {fmtD(resultat.totaux.margeActuelle ?? 0)}%
-                </div>
-                <div className="text-[10px] text-slate-500 font-semibold mt-1">
-                  Potentiel : {sign(resultat.totaux.beneficePotentiel)}{fmt(resultat.totaux.beneficePotentiel)}€
                 </div>
               </div>
             </div>

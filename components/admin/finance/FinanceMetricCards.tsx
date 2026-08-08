@@ -14,89 +14,86 @@ export default function FinanceMetricCards({
   soldeDepartSaison, totalIncome, totalExpense, tresorerieGlobale,
   incomeTrend, expenseTrend, tresorerieTrend,
 }: FinanceMetricCardsProps) {
+  const fmt = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      {/* Solde Initial (Saison) */}
-      <div className="bg-slate-50/60 border border-slate-200/80 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-        <div className="flex items-center justify-between text-slate-800 text-xs font-extrabold uppercase tracking-widest mb-3">
-          <span>Argent en début d&apos;année (Solde)</span>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Solde Initial */}
+      <div className="bg-slate-50/70 border border-slate-200/80 p-5 rounded-2xl shadow-2xs hover:shadow-xs transition-all">
+        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+          Solde Initial (Saison)
         </div>
-        <p className="text-3xl font-black text-slate-900">
-          {soldeDepartSaison.toFixed(2)} €
-        </p>
-        <p className="text-xs text-slate-500 mt-3 font-semibold">
-          Montant en caisse en début de saison
+        <div className="text-2xl font-black text-slate-900 tracking-tight">
+          {fmt(soldeDepartSaison)} €
+        </div>
+        <p className="text-[11px] text-slate-500 mt-2 font-medium">
+          Montant en caisse au démarrage
         </p>
       </div>
 
-      {/* Recettes Globales */}
-      <div className="bg-emerald-50/40 border border-emerald-100/80 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-        <div className="flex items-center justify-between text-emerald-800 text-xs font-extrabold uppercase tracking-widest mb-3">
-          <span>Toutes les Recettes (Boutique, cotisations...)</span>
-          <div className="flex items-center gap-1.5">
-            {incomeTrend !== null && (
-              <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black ${
-                incomeTrend >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-              }`}>
-                {incomeTrend >= 0 ? '↗ +' : '↘ '}{incomeTrend.toFixed(1)}%
-              </span>
-            )}
-          </div>
+      {/* Recettes */}
+      <div className="bg-emerald-50/40 border border-emerald-100 p-5 rounded-2xl shadow-2xs hover:shadow-xs transition-all">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Recettes du Mois</span>
+          {incomeTrend !== null && (
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              incomeTrend >= 0 ? 'bg-emerald-100/80 text-emerald-800' : 'bg-rose-100/80 text-rose-800'
+            }`}>
+              {incomeTrend >= 0 ? '+' : ''}{incomeTrend.toFixed(1)}%
+            </span>
+          )}
         </div>
-        <p className="text-3xl font-black text-emerald-950">
-          {totalIncome.toFixed(2)} €
-        </p>
-        <p className="text-xs text-emerald-600 mt-3 font-semibold">
-          Boutique, cotisations et subventions reçues
+        <div className="text-2xl font-black text-emerald-950 tracking-tight">
+          +{fmt(totalIncome)} €
+        </div>
+        <p className="text-[11px] text-emerald-700/80 mt-2 font-medium">
+          Cotisations, boutique &amp; subventions
         </p>
       </div>
 
-      {/* Dépenses Globales */}
-      <div className="bg-sky-50/40 border border-sky-100/80 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-        <div className="flex items-center justify-between text-sky-800 text-xs font-extrabold uppercase tracking-widest mb-3">
-          <span>Toutes les Dépenses (Salaires, matériel...)</span>
-          <div className="flex items-center gap-1.5">
-            {expenseTrend !== null && (
-              <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black ${
-                expenseTrend <= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-              }`}>
-                {expenseTrend > 0 ? '↗ +' : '↘ '}{expenseTrend.toFixed(1)}%
-              </span>
-            )}
-          </div>
+      {/* Dépenses */}
+      <div className="bg-rose-50/30 border border-rose-100 p-5 rounded-2xl shadow-2xs hover:shadow-xs transition-all">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[10px] font-bold text-rose-800 uppercase tracking-wider">Dépenses du Mois</span>
+          {expenseTrend !== null && (
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              expenseTrend <= 0 ? 'bg-emerald-100/80 text-emerald-800' : 'bg-rose-100/80 text-rose-800'
+            }`}>
+              {expenseTrend > 0 ? '+' : ''}{expenseTrend.toFixed(1)}%
+            </span>
+          )}
         </div>
-        <p className="text-3xl font-black text-sky-950">
-          {totalExpense.toFixed(2)} €
-        </p>
-        <p className="text-xs text-sky-600 mt-3 font-semibold">
-          Entraîneurs payés, matériel acheté et frais
+        <div className="text-2xl font-black text-rose-950 tracking-tight">
+          -{fmt(totalExpense)} €
+        </div>
+        <p className="text-[11px] text-rose-700/80 mt-2 font-medium">
+          Salaires entraîneur &amp; achats
         </p>
       </div>
 
-      {/* Trésorerie Actuelle */}
-      <div className={`p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow border ${
+      {/* Solde Trésorerie */}
+      <div className={`p-5 rounded-2xl shadow-2xs hover:shadow-xs transition-all border ${
         tresorerieGlobale >= 0 
-          ? 'bg-indigo-50/60 border-indigo-200/70' 
-          : 'bg-rose-50/40 border-rose-100'
+          ? 'bg-indigo-50/50 border-indigo-100' 
+          : 'bg-rose-50/50 border-rose-200'
       }`}>
-        <div className="flex items-center justify-between text-xs font-extrabold uppercase tracking-widest mb-3">
-          <span className={tresorerieGlobale >= 0 ? 'text-indigo-800' : 'text-rose-800'}>Solde actuel de la banque</span>
-          <div className="flex items-center gap-1.5">
-            {tresorerieTrend !== null && (
-              <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black ${
-                tresorerieTrend >= 0 ? 'bg-indigo-100 text-indigo-800' : 'bg-rose-100 text-rose-800'
-              }`}>
-                {tresorerieTrend >= 0 ? '↗ +' : '↘ '}{tresorerieTrend.toFixed(1)}%
-              </span>
-            )}
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-          </div>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className={`text-[10px] font-bold uppercase tracking-wider ${tresorerieGlobale >= 0 ? 'text-indigo-800' : 'text-rose-800'}`}>
+            Trésorerie Globale
+          </span>
+          {tresorerieTrend !== null && (
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              tresorerieTrend >= 0 ? 'bg-indigo-100/80 text-indigo-800' : 'bg-rose-100/80 text-rose-800'
+            }`}>
+              {tresorerieTrend >= 0 ? '+' : ''}{tresorerieTrend.toFixed(1)}%
+            </span>
+          )}
         </div>
-        <p className={`text-3xl font-black ${tresorerieGlobale >= 0 ? 'text-indigo-700' : 'text-rose-700'}`}>
-          {tresorerieGlobale.toFixed(2)} €
-        </p>
-        <p className={`text-xs mt-3 font-semibold ${tresorerieGlobale >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
-          Argent disponible actuellement pour le club
+        <div className={`text-2xl font-black tracking-tight ${tresorerieGlobale >= 0 ? 'text-indigo-950' : 'text-rose-950'}`}>
+          {fmt(tresorerieGlobale)} €
+        </div>
+        <p className={`text-[11px] mt-2 font-medium ${tresorerieGlobale >= 0 ? 'text-indigo-700/80' : 'text-rose-700/80'}`}>
+          Solde bancaire théorique disponible
         </p>
       </div>
     </div>

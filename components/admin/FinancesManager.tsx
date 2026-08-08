@@ -285,8 +285,8 @@ export default function FinancesManager() {
       <FinanceChart overview={overview} cumulativeOverview={cumulativeOverview} />
 
       {/* Onglets détaillés */}
-      <div className="card p-6">
-        <div className="bg-slate-100 p-1 rounded-2xl flex flex-col md:flex-row gap-1 mb-6 border border-slate-200/50 max-w-5xl">
+      <div className="card p-5">
+        <div className="bg-slate-100/80 p-1 rounded-xl flex flex-wrap md:flex-nowrap gap-1 mb-5 border border-slate-200/60 max-w-5xl">
           {[
             { id: 'coaches', label: `Entraîneurs (${selectedPeriod?.factures.length || 0})` },
             { id: 'boutique', label: `Boutique (${selectedPeriod?.commandes.length || 0})` },
@@ -298,10 +298,10 @@ export default function FinancesManager() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 py-2.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'bg-white text-slate-900 shadow-sm border border-slate-200/40'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/30'
+                  ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/50'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/40'
               }`}
             >
               {tab.label}
