@@ -849,11 +849,11 @@ function getPlanningDuree(planning: {
   const start = parseTimeToMinutes(planning.heureDebut)
   const end = parseTimeToMinutes(planning.heureFin)
   const dureeReelle = Math.max(0, (end - start) / 60)
+  const tempsFacture = (planning.groupe?.tempsFacture ?? 0) / 60
 
-  // Priorité absolue aux horaires réels définis sur le créneau (ex: 19:30 à 21:30 = 2.0h)
-  const dureeBase = dureeReelle > 0
-    ? dureeReelle
-    : (planning.groupe?.tempsFacture ? planning.groupe.tempsFacture / 60 : 0)
+  // Si "Temps à facturer" est configuré (ex: 45min arrondi à 60min ou 1h15 arrondi à 1h30/90min),
+  // on utilise le temps à facturer s'il est supérieur ou égal à la durée réelle.
+  let dureeBase = tempsFacture > 0 ? Math.max(dureeReelle, tempsFacture) : dureeReelle
 
   return planning.semaineImpaire ? dureeBase / 2 : dureeBase
 }
