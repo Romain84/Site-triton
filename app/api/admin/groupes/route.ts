@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
         inscrits: validatedData.inscrits,
         inscrits1Cours: validatedData.inscrits1Cours,
         prixLicence: validatedData.prixLicence,
+        prixFormationPSE: validatedData.prixFormationPSE,
         caution: validatedData.caution,
         niveau: validatedData.niveau,
         dateDebut: validatedData.dateDebut ? new Date(validatedData.dateDebut) : null,

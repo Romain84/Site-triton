@@ -150,6 +150,7 @@ export const groupeSchema = z.object({
   inscrits: z.coerce.number().int().min(0).default(0),
   inscrits1Cours: z.coerce.number().int().min(0).default(0),
   prixLicence: z.coerce.number().min(0).optional().nullable(),
+  prixFormationPSE: z.coerce.number().min(0).optional().nullable(),
   caution: z.coerce.number().min(0).optional().nullable(),
   niveau: z.string().optional().nullable(),
   dateDebut: z.string().optional().nullable(),

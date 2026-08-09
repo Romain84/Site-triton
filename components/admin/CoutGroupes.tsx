@@ -136,7 +136,7 @@ interface ResultatCalcul {
   periodesVacances: PeriodeVacances[]
 }
 
-type ViewMode = 'couts' | 'rentabilite' | 'alertes' | 'coachs'
+type ViewMode = 'general' | 'alertes' | 'coachs'
 type SortKey  = 'nom' | 'cout' | 'benefice' | 'remplissage'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -281,7 +281,7 @@ export default function CoutGroupes() {
   const [showCostBreakdown, setShowCostBreakdown]         = useState(false)
   const [showGroupCostBreakdown, setShowGroupCostBreakdown] = useState<Record<string, boolean>>({})
   const [showProjection, setShowProjection]               = useState<Record<string, boolean>>({})
-  const [viewMode, setViewMode]                           = useState<ViewMode>('couts')
+  const [viewMode, setViewMode]                           = useState<ViewMode>('general')
   const [sortBy, setSortBy]                               = useState<SortKey>('nom')
 
   // NOUVEAU: états de simulation interactive client
@@ -762,105 +762,102 @@ export default function CoutGroupes() {
       {resultat && !loading && (
         <div className="space-y-6">
 
-          {/* Synthèse de la saison */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-indigo-100 rounded-3xl p-6 shadow-xs flex items-start gap-4">
-            <span className="text-3xl leading-none">💡</span>
-            <div className="space-y-1">
-              <h4 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">Synthèse de la saison</h4>
-              <p className="text-slate-600 text-sm leading-relaxed font-medium">
-                Avec <strong>{resultat.totaux.totalInscrits}</strong> adhérents inscrits sur <strong>{resultat.totaux.totalPlaces}</strong> places disponibles ({fmtD(resultat.totaux.tauxRemplissageMoyen)}% de remplissage), 
-                le club génère un revenu de <strong>{fmt(resultat.totaux.revenuActuel)}€</strong>. 
-                Le coût de fonctionnement estimé (coaching, licences et compétitions) s&apos;élève à <strong>{fmt(resultat.totaux.coutTotal)}€</strong>.
-                La situation dégage un {resultat.totaux.beneficeActuel >= 0 ? 'bénéfice net' : 'déficit net'} de <strong className={resultat.totaux.beneficeActuel >= 0 ? 'text-emerald-700 font-extrabold' : 'text-rose-700 font-extrabold'}>{fmt(resultat.totaux.beneficeActuel)}€</strong> (marge : {fmtD(resultat.totaux.margeActuelle)}%).
-              </p>
-            </div>
-          </div>
 
-          {/* NOUVEAU: Cockpit de Simulation Commerciale Interactive */}
-          <div className="bg-slate-900 text-white rounded-3xl p-6 border border-slate-800 shadow-md space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+          {/* Cockpit de Simulation Commerciale Interactive (Repliable) */}
+          <details className="group bg-slate-900 text-white rounded-3xl p-5 border border-slate-800 shadow-md">
+            <summary className="flex justify-between items-center cursor-pointer select-none outline-none list-none">
               <div>
                 <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-100 flex items-center gap-2">
-                  <span>🧪</span> Cockpit de Simulation Commerciale
+                  <span className="inline-block transition-transform duration-200 group-open:rotate-90 text-[10px] text-slate-400">▶</span>
+                  <span>🧪 Cockpit de Simulation Commerciale</span>
                 </h4>
                 <p className="text-[10px] text-slate-400 mt-1 font-normal uppercase">Ajustement en temps réel des variables tarifaires et de recrutement</p>
               </div>
               <button
-                onClick={() => { setSimTarifPercent(0); setSimRemplissageTarget(0); setSimInscritsByGroupe({}); }}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSimTarifPercent(0)
+                  setSimRemplissageTarget(0)
+                  setSimInscritsByGroupe({})
+                }}
                 className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-3 py-1 rounded-lg transition-all cursor-pointer"
               >
                 🔄 Réinitialiser
               </button>
+            </summary>
+
+            <div className="mt-4 pt-4 border-t border-slate-800 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                {/* Ajustement tarifaire */}
+                <div className="space-y-2">
+                  <div className="flex justify-between font-bold text-slate-200">
+                    <span>Ajustement Tarifaire Annuel (€)</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black font-mono ${simTarifPercent > 0 ? 'bg-emerald-500 text-white' : simTarifPercent < 0 ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                      {simTarifPercent > 0 ? '+' : ''}{simTarifPercent}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-20}
+                    max={50}
+                    step={5}
+                    value={simTarifPercent}
+                    onChange={(e) => setSimTarifPercent(Number(e.target.value))}
+                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                  />
+                  <div className="flex justify-between text-[9px] text-slate-500 font-semibold uppercase">
+                    <span>-20% (Baisse)</span>
+                    <span>0% (Réel)</span>
+                    <span>+50% (Hausse)</span>
+                  </div>
+                </div>
+                
+                {/* Remplissage cible */}
+                <div className="space-y-2">
+                  <div className="flex justify-between font-bold text-slate-200">
+                    <span>Objectif Taux Remplissage Cible</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black font-mono ${simRemplissageTarget > 0 ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                      {simRemplissageTarget > 0 ? `${simRemplissageTarget}%` : 'Désactivé'}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={simRemplissageTarget}
+                    onChange={(e) => setSimRemplissageTarget(Number(e.target.value))}
+                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                  />
+                  <div className="flex justify-between text-[9px] text-slate-500 font-semibold uppercase">
+                    <span>Désactivé</span>
+                    <span>75%</span>
+                    <span>90%</span>
+                    <span>100% (Plein)</span>
+                  </div>
+                </div>
+              </div>
+              {(simTarifPercent !== 0 || simRemplissageTarget !== 0 || Object.keys(simInscritsByGroupe).length > 0) && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-[10px] font-bold uppercase tracking-wider text-center flex items-center justify-between">
+                  <span>⚠️ Mode simulation actif : Les données ci-dessous intègrent vos ajustements d&apos;inscrits ou de tarifs en temps réel.</span>
+                  <button
+                    type="button"
+                    onClick={() => { setSimTarifPercent(0); setSimRemplissageTarget(0); setSimInscritsByGroupe({}); }}
+                    className="underline hover:text-white cursor-pointer ml-2 text-[10px]"
+                  >
+                    Réinitialiser tout
+                  </button>
+                </div>
+              )}
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-              {/* Ajustement tarifaire */}
-              <div className="space-y-2">
-                <div className="flex justify-between font-bold text-slate-200">
-                  <span>Ajustement Tarifaire Annuel (€)</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-black font-mono ${simTarifPercent > 0 ? 'bg-emerald-500 text-white' : simTarifPercent < 0 ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                    {simTarifPercent > 0 ? '+' : ''}{simTarifPercent}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={-20}
-                  max={50}
-                  step={5}
-                  value={simTarifPercent}
-                  onChange={(e) => setSimTarifPercent(Number(e.target.value))}
-                  className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <div className="flex justify-between text-[9px] text-slate-500 font-semibold uppercase">
-                  <span>-20% (Baisse)</span>
-                  <span>0% (Réel)</span>
-                  <span>+50% (Hausse)</span>
-                </div>
-              </div>
-              
-              {/* Remplissage cible */}
-              <div className="space-y-2">
-                <div className="flex justify-between font-bold text-slate-200">
-                  <span>Objectif Taux Remplissage Cible</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-black font-mono ${simRemplissageTarget > 0 ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                    {simRemplissageTarget > 0 ? `${simRemplissageTarget}%` : 'Désactivé'}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={simRemplissageTarget}
-                  onChange={(e) => setSimRemplissageTarget(Number(e.target.value))}
-                  className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                />
-                <div className="flex justify-between text-[9px] text-slate-500 font-semibold uppercase">
-                  <span>Désactivé</span>
-                  <span>75%</span>
-                  <span>90%</span>
-                  <span>100% (Plein)</span>
-                </div>
-              </div>
-            </div>
-            {(simTarifPercent !== 0 || simRemplissageTarget !== 0 || Object.keys(simInscritsByGroupe).length > 0) && (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-[10px] font-bold uppercase tracking-wider text-center flex items-center justify-between">
-                <span>⚠️ Mode simulation actif : Les données ci-dessous intègrent vos ajustements d&apos;inscrits ou de tarifs en temps réel.</span>
-                <button
-                  onClick={() => { setSimTarifPercent(0); setSimRemplissageTarget(0); setSimInscritsByGroupe({}); }}
-                  className="underline hover:text-white cursor-pointer ml-2 text-[10px]"
-                >
-                  Réinitialiser tout
-                </button>
-              </div>
-            )}
-          </div>
+          </details>
 
           {/* Bandeau simulation */}
           {tauxOverride !== '' && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-100 bg-amber-50/60 text-xs font-semibold text-amber-800 shadow-xs">
               🧪 Simulation active — taux horaire simulé à {tauxOverride}€/h
-              (réel : {resultat.tauxHoraire !== Number(tauxOverride) ? '?' : resultat.tauxHoraire}€/h)
+              (réel : {resultat.tauxHoraire}€/h)
             </div>
           )}
 
@@ -989,25 +986,13 @@ export default function CoutGroupes() {
 
               <div className="bg-violet-50/40 border border-violet-100 p-4 rounded-2xl shadow-2xs hover:shadow-xs transition-all">
                 <div className="text-[10px] font-bold text-violet-800 uppercase tracking-wider mb-1">
-                  Revenu Actuel
+                  Revenus
                 </div>
                 <div className="text-2xl font-black text-violet-950 tracking-tight">
                   {fmt(resultat.totaux.revenuActuel)} €
                 </div>
                 <div className="text-[11px] text-violet-700/80 mt-1.5 font-medium">
-                  {resultat.totaux.totalInscrits} adhérents inscrits
-                </div>
-              </div>
-
-              <div className="bg-amber-50/40 border border-amber-100 p-4 rounded-2xl shadow-2xs hover:shadow-xs transition-all">
-                <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">
-                  Revenu Potentiel
-                </div>
-                <div className="text-2xl font-black text-amber-950 tracking-tight">
-                  {fmt(resultat.totaux.revenuPotentiel)} €
-                </div>
-                <div className="text-[11px] text-amber-700/80 mt-1.5 font-medium">
-                  Capacité à 100% ({resultat.totaux.totalPlaces} places)
+                  {resultat.totaux.totalInscrits} inscrits (Capacité 100%: {fmt(resultat.totaux.revenuPotentiel)} €)
                 </div>
               </div>
 
@@ -1068,34 +1053,15 @@ export default function CoutGroupes() {
               </div>
             )}
 
-            {/* Paramètres */}
-            <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap gap-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <span>📌 {resultat.tauxHoraire}€/h</span>
-              <span>🏆 {resultat.forfaitCompetition}€ × {resultat.nbDemiJourneesParCompetition} demi-j.</span>
-              {(resultat.coutFormationsPSE1 ?? 0) > 0 && <span className="text-indigo-600">⛑️ PSE1 {resultat.coutFormationsPSE1}€/coach</span>}
-              {resultat.margeSecurite > 0 && <span className="text-amber-600">🛡️ Marge {resultat.margeSecurite}%</span>}
-            </div>
 
-            {/* Vacances */}
-            {resultat.periodesVacances.length > 0 && (
-              <div className="mt-4">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Périodes exclues (Vacances) :</p>
-                <div className="flex flex-wrap gap-2">
-                  {resultat.periodesVacances.map((p, i) => (
-                    <span key={i} className="inline-flex items-center bg-slate-150/50 border border-slate-200/40 text-slate-700 px-3 py-1 rounded-full text-xs font-semibold shadow-xs">
-                      🏖️ {p.nom}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+
+
           </div>
 
           {/* ── Navigation vues ──────────────────────────────────────────────── */}
-          <div className="bg-slate-100 p-1 rounded-2xl flex flex-col sm:flex-row gap-1 border border-slate-200/50 max-w-2xl">
+          <div className="bg-slate-100 p-1 rounded-2xl flex flex-col sm:flex-row gap-1 border border-slate-200/50 max-w-xl">
             {([
-              { key: 'couts',       label: '💰 Vue Coûts' },
-              { key: 'rentabilite', label: '📈 Vue Rentabilité' },
+              { key: 'general',     label: '📊 Vue d\'ensemble (Groupes)' },
               {
                 key: 'alertes',
                 label: nbAlertesTotal > 0
@@ -1121,14 +1087,15 @@ export default function CoutGroupes() {
           {/* ── Tableaux ─────────────────────────────────────────────────────── */}
           <div className="card p-6">
 
-            {/* ══ VUE COÛTS ══════════════════════════════════════════════════ */}
-            {viewMode === 'couts' && (
+            {/* ══ VUE D'ENSEMBLE (GROUPES) ════════════════════════════════════ */}
+            {viewMode === 'general' && (
               <>
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-                  <h3 className="text-xl font-bold">Détail des Coûts par Groupe</h3>
+                  <h3 className="text-xl font-bold text-slate-900">Analyse et Rentabilité des Groupes</h3>
                   <SortButtons options={[
                     { key: 'nom', label: 'Nom' },
                     { key: 'cout', label: 'Coût ↓' },
+                    { key: 'benefice', label: 'Bénéfice ↓' },
                     { key: 'remplissage', label: 'Remplissage ↓' },
                   ]} />
                 </div>
@@ -1136,19 +1103,25 @@ export default function CoutGroupes() {
                   <table className="min-w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-300">
-                        <th className="px-3 py-3 text-left   text-xs font-bold text-slate-700 uppercase tracking-wider">Groupe</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Type</th>
+                        <th className="px-3 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Groupe</th>
                         <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">H/sem</th>
                         <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
                           <span className="flex items-center justify-center gap-1">
-                            Inscrits
+                            Inscrits / Capacité
                             <HelpTooltip title="Saisie d'inscrits interactive">
                               <p>Modifiez le nombre d&apos;inscrits dans la case pour simuler en temps réel l&apos;impact financier et le taux de remplissage.</p>
                             </HelpTooltip>
                           </span>
                         </th>
-                        <th className="px-3 py-3 text-right  text-xs font-bold text-slate-700 uppercase tracking-wider">Coût Total</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Planning</th>
+                        <th className="px-3 py-3 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">Coût Total</th>
+                        <th className="px-3 py-3 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">Revenu</th>
+                        <th className="px-3 py-3 text-right text-xs font-bold text-slate-700 uppercase tracking-wider">Bénéfice Net</th>
+                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
+                          <span className="flex items-center justify-center gap-1">
+                            Seuil & Actions
+                            <CalculationTooltip title="Seuil de rentabilité" formula="Coût Total ÷ Tarif effectif moyen" explanation="Nombre minimum d'inscrits pour couvrir les coûts." position="left" />
+                          </span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1160,7 +1133,10 @@ export default function CoutGroupes() {
                             <tr className="hover:bg-slate-50/50 transition-colors">
                               <td className="px-3 py-3 text-sm font-medium text-slate-950">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  {groupe.groupeNom}
+                                  <span>{groupe.groupeNom}</span>
+                                  {groupe.isCompetition && (
+                                    <span className="px-1.5 py-0.5 text-[10px] rounded-md bg-blue-50 border border-blue-100 text-blue-800 font-bold">🏆 Compét.</span>
+                                  )}
                                   {nbAlertes > 0 && (
                                     <span
                                       title={groupe.alertes.filter(a => a.code !== 'DATE_GROUPE').map((a) => a.message).join(' | ')}
@@ -1172,28 +1148,18 @@ export default function CoutGroupes() {
                                     </span>
                                   )}
                                 </div>
-                                {/* NOUVEAU: affichage période propre au groupe */}
                                 {hasDateGroupe && (
                                   <div className="text-[10px] text-blue-500 mt-0.5 flex items-center gap-1">
                                     📅 {groupe.dateDebutUtilisee} → {groupe.dateFinUtilisee}
-                                    <span className="bg-blue-50/50 text-blue-600 px-1 rounded">dates du groupe</span>
                                   </div>
                                 )}
                               </td>
-                              <td className="px-3 py-3 text-center">
-                                {groupe.isCompetition ? (
-                                  <div>
-                                    <span className="px-2 py-1 text-xs rounded-full bg-blue-50 border border-blue-100 text-blue-800 font-bold">🏆 Compét.</span>
-                                    <div className="text-[10px] text-slate-400 mt-1 font-medium">{groupe.nbCompetitions} compét.</div>
-                                  </div>
-                                ) : (
-                                  <span className="px-2 py-1 text-xs rounded-full bg-slate-100 border border-slate-200/50 text-slate-600 font-bold">Loisir</span>
-                                )}
-                              </td>
+
                               <td className="px-3 py-3 text-sm text-center text-slate-700">
                                 {groupe.heuresParSemaine.toFixed(1)}h
                                 <div className="text-[10px] text-slate-400">{groupe.totalHeures.toFixed(0)}h/an</div>
                               </td>
+
                               <td className="px-3 py-3 text-sm text-center text-slate-700">
                                 <div className="flex items-center justify-center gap-1">
                                   <input
@@ -1216,53 +1182,94 @@ export default function CoutGroupes() {
                                   />
                                   <span className="text-slate-400 text-xs font-medium">/ {groupe.placesTotal}</span>
                                 </div>
-                                {groupe.inscrits1Cours > 0 && (
-                                  <div className="text-[10px] text-slate-500 font-normal mt-0.5">
-                                    dont {groupe.inscrits1Cours} à {groupe.libelleOption1 || '1 cours'}
-                                    <span className="block text-blue-600 font-semibold">({groupe.inscritsEquivalents.toFixed(1)} éq.)</span>
-                                  </div>
-                                )}
-                                <div className="text-[10px] text-slate-400 font-medium mt-1">{groupe.tauxRemplissage.toFixed(0)}% rempli</div>
+                                <div className="text-[10px] text-slate-400 font-medium mt-0.5">{groupe.tauxRemplissage.toFixed(0)}% rempli</div>
                               </td>
+
                               <td className="px-3 py-3">
-                                <div className="flex items-center justify-end gap-2">
+                                <div className="flex items-center justify-end gap-1.5">
                                   <div className="text-right">
                                     <div className="text-sm font-bold text-slate-900">{fmt(groupe.coutTotal)}€</div>
                                     {groupe.inscrits > 0 && <div className="text-[10px] text-slate-500">{fmt(groupe.coutParInscrit)}€/inscrit</div>}
-                                    {(groupe.coutParHeure ?? 0) > 0 && <div className="text-[10px] text-slate-400">{fmt(groupe.coutParHeure)}€/h</div>}
                                   </div>
                                   <button onClick={() => toggleGroupCostBreakdown(groupe.groupeId)}
-                                    className="text-slate-500 hover:text-slate-800 hover:bg-slate-100/80 text-xs p-1 rounded transition-colors cursor-pointer">
+                                    className="text-slate-400 hover:text-slate-700 text-xs p-1 rounded cursor-pointer">
                                     {showGroupCostBreakdown[groupe.groupeId] ? '▲' : '▼'}
                                   </button>
                                 </div>
                                 {showGroupCostBreakdown[groupe.groupeId] && (
-                                  <div className="mt-2 pt-2 border-t border-slate-250/50 space-y-1 text-xs text-right text-slate-600">
+                                  <div className="mt-2 pt-2 border-t border-slate-200/60 space-y-1 text-xs text-right text-slate-600">
                                     <div className="flex justify-between"><span className="text-slate-500">👨‍🏫 Coaching</span><span className="font-semibold">{fmt(groupe.coutCoaching)}€</span></div>
                                     {groupe.coutCompetitions > 0 && <div className="flex justify-between"><span className="text-slate-500">🏆 Compétitions</span><span className="font-semibold">{fmt(groupe.coutCompetitions)}€</span></div>}
-                                    {groupe.coutLicences > 0 && <div className="flex justify-between"><span className="text-slate-500">🎫 Licences ({groupe.prixLicence}€ × {groupe.inscrits})</span><span className="font-semibold">{fmt(groupe.coutLicences)}€</span></div>}
-                                    {(groupe.coutMargeSecurite ?? 0) > 0 && <div className="flex justify-between text-amber-700"><span>🛡️ Marge sécu.</span><span className="font-semibold">{fmt(groupe.coutMargeSecurite)}€</span></div>}
+                                    {groupe.coutLicences > 0 && <div className="flex justify-between"><span className="text-slate-500">🎫 Licences</span><span className="font-semibold">{fmt(groupe.coutLicences)}€</span></div>}
+                                    {(groupe.coutMargeSecurite ?? 0) > 0 && <div className="flex justify-between text-amber-700"><span>🛡️ Marge</span><span className="font-semibold">{fmt(groupe.coutMargeSecurite)}€</span></div>}
                                   </div>
                                 )}
                               </td>
+
+                              <td className="px-3 py-3 text-sm text-right text-slate-700">
+                                {fmt(groupe.revenuActuel)}€
+                                <div className="text-[10px] text-slate-400 font-medium">(max: {fmt(groupe.revenuPotentiel)}€)</div>
+                              </td>
+
+                              <td className={`px-3 py-3 text-sm text-right font-bold ${getBeneficeBg(groupe.beneficeActuel)}`}>
+                                <span className={getBeneficeColor(groupe.beneficeActuel)}>
+                                  {sign(groupe.beneficeActuel)}{fmt(groupe.beneficeActuel)}€
+                                </span>
+                                <div className={`text-[10px] font-semibold ${getBeneficeColor(groupe.margeActuelle ?? 0)}`}>
+                                  {fmtD(groupe.margeActuelle ?? 0)}%
+                                </div>
+                              </td>
+
                               <td className="px-3 py-3 text-center">
-                                {groupe.plannings.length > 0 && (
-                                  <button onClick={() => toggleDetails(groupe.groupeId)} className="text-slate-500 hover:text-slate-800 text-xs cursor-pointer">
-                                    {showDetails[groupe.groupeId] ? '▼' : '▶'}
-                                  </button>
-                                )}
+                                <div className="flex items-center justify-center gap-2">
+                                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${groupe.inscrits >= groupe.seuilRentabilite ? 'bg-emerald-50 border border-emerald-100 text-emerald-800' : 'bg-rose-50 border border-rose-100 text-rose-800'}`}>
+                                    {groupe.seuilRentabilite} min
+                                  </span>
+                                  {groupe.plannings.length > 0 && (
+                                    <button onClick={() => toggleDetails(groupe.groupeId)} className="text-slate-400 hover:text-slate-700 text-xs cursor-pointer" title="Voir le planning">
+                                      {showDetails[groupe.groupeId] ? '▼' : '📅'}
+                                    </button>
+                                  )}
+                                  {groupe.projection && (
+                                    <button onClick={() => toggleProjection(groupe.groupeId)} className="text-slate-400 hover:text-slate-700 text-xs cursor-pointer" title="Voir les projections">
+                                      {showProjection[groupe.groupeId] ? '▲' : '📊'}
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
+
+                            {/* Details planning */}
                             {showDetails[groupe.groupeId] && groupe.plannings.length > 0 && (
                               <tr>
-                                <td colSpan={6} className="px-3 py-2 bg-slate-50/50">
+                                <td colSpan={7} className="px-3 py-2 bg-slate-50/50">
                                   <div className="ml-4 text-xs flex flex-wrap gap-3 text-slate-600 font-medium">
                                     {groupe.plannings.map((p, i) => (
                                       <span key={i} className="inline-flex items-center gap-1">
                                         <strong>{p.jour}</strong> {p.heureDebut}–{p.heureFin}
                                         {p.coach && <span className="text-slate-400">({p.coach})</span>}
-                                        {p.nbCoachsFactures !== 1 && <span className="text-slate-455">×{p.nbCoachsFactures.toFixed(1)}</span>}
                                       </span>
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+
+                            {/* Projection */}
+                            {showProjection[groupe.groupeId] && groupe.projection && (
+                              <tr>
+                                <td colSpan={7} className="px-6 py-3 bg-slate-50/50">
+                                  <p className="text-xs font-semibold text-slate-700 mb-2">📊 Projection du bénéfice</p>
+                                  <div className="grid grid-cols-3 gap-3">
+                                    {([
+                                      { label: '75%', val: groupe.projection.projection75 },
+                                      { label: '90%', val: groupe.projection.projection90 },
+                                      { label: '100%', val: groupe.projection.projection100 },
+                                    ]).map(({ label, val }) => (
+                                      <div key={label} className={`rounded-xl p-2 text-center border ${getBeneficeBg(val)} ${val >= 0 ? 'border-emerald-100' : 'border-rose-100'}`}>
+                                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{label} rempli</div>
+                                        <div className={`font-black text-sm ${getBeneficeColor(val)}`}>{sign(val)}{fmt(val)}€</div>
+                                      </div>
                                     ))}
                                   </div>
                                 </td>
@@ -1272,220 +1279,17 @@ export default function CoutGroupes() {
                         )
                       })}
                       <tr className="bg-slate-100/80 font-bold border-t border-slate-350">
-                        <td colSpan={4} className="px-3 py-3 text-sm text-slate-800">TOTAL</td>
-                        <td className="px-3 py-3 text-sm text-right text-slate-900 bg-slate-100/50">
-                          {fmt(resultat.totaux.coutTotal)}€
-                          <div className="text-[10px] font-normal text-slate-500 mt-1">
-                            👨‍🏫 {fmt(resultat.totaux.coutCoaching)}€ |
-                            🏆 {fmt(resultat.totaux.coutCompetitions)}€ |
-                            🎫 {fmt(resultat.totaux.coutLicences)}€
-                            {(resultat.totaux.coutMargeSecurite ?? 0) > 0 && <> | 🛡️ {fmt(resultat.totaux.coutMargeSecurite)}€</>}
-                          </div>
+                        <td className="px-3 py-3 text-sm text-slate-800">TOTAL</td>
+                        <td className="px-3 py-3 text-sm text-center text-slate-700">{fmt(resultat.totaux.totalHeures)}h</td>
+                        <td className="px-3 py-3 text-sm text-center text-slate-800">
+                          {resultat.totaux.totalInscrits} / {resultat.totaux.totalPlaces} ({fmtD(resultat.totaux.tauxRemplissageMoyen)}%)
+                        </td>
+                        <td className="px-3 py-3 text-sm text-right text-rose-700">{fmt(resultat.totaux.coutTotal)}€</td>
+                        <td className="px-3 py-3 text-sm text-right text-slate-900">{fmt(resultat.totaux.revenuActuel)}€</td>
+                        <td className={`px-3 py-3 text-sm text-right ${resultat.totaux.beneficeActuel >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                          {sign(resultat.totaux.beneficeActuel)}{fmt(resultat.totaux.beneficeActuel)}€ ({fmtD(resultat.totaux.margeActuelle ?? 0)}%)
                         </td>
                         <td />
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-
-            {/* ══ VUE RENTABILITÉ ════════════════════════════════════════════ */}
-            {viewMode === 'rentabilite' && (
-              <>
-                <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-                  <h3 className="text-xl font-bold">Analyse de Rentabilité par Groupe</h3>
-                  <SortButtons options={[
-                    { key: 'nom',      label: 'Nom' },
-                    { key: 'benefice', label: 'Bénéfice ↓' },
-                    { key: 'remplissage', label: 'Remplissage ↓' },
-                  ]} />
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-300">
-                        <th className="px-3 py-3 text-left   text-xs font-bold text-slate-700 uppercase tracking-wider">Groupe</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
-                          <span className="flex items-center justify-center gap-1">
-                            Inscrits
-                            <HelpTooltip title="Saisie d'inscrits interactive">
-                              <p>Modifiez le nombre d&apos;inscrits dans la case pour simuler en temps réel le chiffre d&apos;affaires, le bénéfice et le seuil de rentabilité.</p>
-                            </HelpTooltip>
-                          </span>
-                        </th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Capacité</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Taux</th>
-                        <th className="px-3 py-3 text-right  text-xs font-bold text-slate-700 uppercase tracking-wider">Tarif</th>
-                        <th className="px-3 py-3 text-right  text-xs font-bold text-slate-700 uppercase tracking-wider">Coût</th>
-                        <th className="px-3 py-3 text-right  text-xs font-bold text-slate-700 uppercase tracking-wider">Revenu</th>
-                        <th className="px-3 py-3 text-right  text-xs font-bold text-slate-700 uppercase tracking-wider">Bénéfice</th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
-                          <span className="flex items-center justify-center gap-1">
-                            Seuil
-                            <CalculationTooltip title="Seuil de rentabilité" formula="Coût Total ÷ Tarif effectif moyen" explanation="Nombre minimum d'inscrits pour couvrir les coûts. Le tarif effectif tient compte des membres/enfants bureau." example="3 000€ ÷ 230€ = 14 inscrits" position="left" />
-                          </span>
-                        </th>
-                        <th className="px-3 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Projection</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {groupesTries.map((groupe) => (
-                        <Fragment key={groupe.groupeId}>
-                          <tr className="hover:bg-slate-50/50 transition-colors">
-                            <td className="px-3 py-3 text-sm font-medium text-slate-950">
-                              {groupe.groupeNom}
-                              {groupe.isCompetition && <span className="ml-1 text-xs">🏆</span>}
-                              {groupe.sourceDate === 'groupe' && groupe.dateDebutUtilisee && (
-                                <div className="text-[10px] text-blue-500 mt-0.5">
-                                  📅 {groupe.dateDebutUtilisee} → {groupe.dateFinUtilisee}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-sm text-center font-semibold text-slate-800">
-                              <div className="flex items-center justify-center gap-1">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  value={groupe.inscrits}
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value, 10)
-                                    setSimInscritsByGroupe((prev) => ({
-                                      ...prev,
-                                      [groupe.groupeId]: isNaN(val) ? 0 : Math.max(0, val),
-                                    }))
-                                  }}
-                                  className={`w-14 px-1.5 py-0.5 text-center text-xs font-bold rounded border transition-all cursor-pointer ${
-                                    simInscritsByGroupe[groupe.groupeId] !== undefined
-                                      ? 'bg-indigo-50 border-indigo-400 text-indigo-900 ring-2 ring-indigo-200/50'
-                                      : 'bg-slate-50 border-slate-200 text-slate-800 hover:border-slate-300'
-                                  }`}
-                                  title="Modifier le nombre d'inscrits pour ce groupe (calcul instantané)"
-                                />
-                              </div>
-                              {groupe.inscrits1Cours > 0 && (
-                                <div className="text-[10px] text-slate-500 font-normal mt-0.5">
-                                  dont {groupe.inscrits1Cours} à {groupe.libelleOption1 || '1 cours'}
-                                  <span className="block text-blue-600 font-semibold">({groupe.inscritsEquivalents.toFixed(1)} éq.)</span>
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-sm text-center text-slate-500">{groupe.placesTotal}</td>
-                            <td className="px-3 py-3 text-center">
-                              <div className="flex items-center gap-1">
-                                <div className="w-16 bg-slate-100 rounded-full h-1.5">
-                                  <div className={`h-1.5 rounded-full ${groupe.tauxRemplissage >= 80 ? 'bg-emerald-500' : groupe.tauxRemplissage >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                                    style={{ width: `${Math.min(100, groupe.tauxRemplissage)}%` }} />
-                                </div>
-                                <span className="text-xs text-slate-500">{groupe.tauxRemplissage.toFixed(0)}%</span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 text-sm text-right text-slate-600">
-                              {groupe.tarif1Cours > 0 ? (
-                                <div className="space-y-0.5 text-xs text-slate-500 font-normal leading-tight">
-                                  <div>{groupe.libelleOption1 || '1 cours'}: <span className="text-slate-800 font-semibold">{groupe.tarif1Cours}€</span></div>
-                                  <div>{groupe.libelleOption2 || '2 cours'}: <span className="text-slate-800 font-semibold">{groupe.tarifAnnuel}€</span></div>
-                                </div>
-                              ) : (
-                                <span>{groupe.tarifAnnuel}€</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-sm text-right text-rose-600">{fmt(groupe.coutTotal)}€</td>
-                            <td className="px-3 py-3 text-sm text-right text-slate-700">
-                              {fmt(groupe.revenuActuel)}€
-                              <div className="text-xs text-slate-400 font-medium">(max: {fmt(groupe.revenuPotentiel)}€)</div>
-                            </td>
-                            <td className={`px-3 py-3 text-sm text-right font-bold ${getBeneficeBg(groupe.beneficeActuel)}`}>
-                              <span className={getBeneficeColor(groupe.beneficeActuel)}>
-                                {sign(groupe.beneficeActuel)}{fmt(groupe.beneficeActuel)}€
-                              </span>
-                              <div className={`text-xs font-semibold ${getBeneficeColor(groupe.margeActuelle ?? 0)}`}>
-                                {fmtD(groupe.margeActuelle ?? 0)}%
-                              </div>
-                              <div className="text-[10px] text-slate-400 font-medium">
-                                (max: {sign(groupe.beneficePotentiel)}{fmt(groupe.beneficePotentiel)}€)
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 text-center">
-                              <div className="flex flex-col items-center gap-1.5">
-                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${groupe.inscrits >= groupe.seuilRentabilite ? 'bg-emerald-50 border border-emerald-100 text-emerald-800' : 'bg-rose-50 border border-rose-100 text-rose-800'}`}>
-                                  {groupe.seuilRentabilite} min
-                                </span>
-                                
-                                {/* Jauge visuelle */}
-                                <div className="relative w-28 bg-slate-100 border border-slate-200/60 rounded-full h-2 overflow-hidden">
-                                  {/* Seuil de rentabilité en pointillés verticaux */}
-                                  {groupe.placesTotal > 0 && (
-                                    <div
-                                      className="absolute top-0 bottom-0 border-l border-dashed border-slate-400 z-10"
-                                      style={{ left: `${Math.min(100, (groupe.seuilRentabilite / (groupe.placesTotal || 1)) * 100)}%` }}
-                                      title={`Seuil d'équilibre à ${groupe.seuilRentabilite} inscrits`}
-                                    />
-                                  )}
-                                  {/* Remplissage réel */}
-                                  <div
-                                    className={`h-full rounded-full transition-all ${
-                                      groupe.inscrits >= groupe.seuilRentabilite 
-                                        ? 'bg-emerald-500' 
-                                        : 'bg-rose-500'
-                                    }`}
-                                    style={{ width: `${Math.min(100, (groupe.inscrits / (groupe.placesTotal || 1)) * 100)}%` }}
-                                  />
-                                </div>
-                                <span className="text-[10px] text-slate-400 font-semibold uppercase leading-none mt-0.5">
-                                  {groupe.inscrits >= groupe.seuilRentabilite 
-                                    ? 'Rentable' 
-                                    : `-&/${groupe.seuilRentabilite - groupe.inscrits} requis`}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 text-center">
-                              {groupe.projection && (
-                                <button onClick={() => toggleProjection(groupe.groupeId)}
-                                  className="text-slate-500 hover:text-slate-800 text-xs cursor-pointer">
-                                  {showProjection[groupe.groupeId] ? '▲' : '📊'}
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                          {showProjection[groupe.groupeId] && groupe.projection && (
-                            <tr>
-                              <td colSpan={10} className="px-6 py-3 bg-slate-50/50">
-                                <p className="text-xs font-semibold text-slate-700 mb-2">📊 Projection du bénéfice</p>
-                                <div className="grid grid-cols-3 gap-3">
-                                  {([
-                                    { label: '75%', val: groupe.projection.projection75 },
-                                    { label: '90%', val: groupe.projection.projection90 },
-                                    { label: '100%', val: groupe.projection.projection100 },
-                                  ]).map(({ label, val }) => (
-                                    <div key={label} className={`rounded-xl p-2 text-center border ${getBeneficeBg(val)} ${val >= 0 ? 'border-emerald-100' : 'border-rose-100'}`}>
-                                      <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{label} rempli</div>
-                                      <div className={`font-black text-sm ${getBeneficeColor(val)}`}>{sign(val)}{fmt(val)}€</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </Fragment>
-                      ))}
-                      <tr className="bg-slate-100/80 font-bold border-t border-slate-350">
-                        <td className="px-3 py-3 text-sm text-slate-800">TOTAL</td>
-                        <td className="px-3 py-3 text-sm text-center text-slate-800">{resultat.totaux.totalInscrits}</td>
-                        <td className="px-3 py-3 text-sm text-center text-slate-800">{resultat.totaux.totalPlaces}</td>
-                        <td className="px-3 py-3 text-sm text-center text-slate-800">{resultat.totaux.tauxRemplissageMoyen.toFixed(0)}%</td>
-                        <td className="px-3 py-3 text-sm text-right text-slate-400">—</td>
-                        <td className="px-3 py-3 text-sm text-right text-rose-600">{fmt(resultat.totaux.coutTotal)}€</td>
-                        <td className="px-3 py-3 text-sm text-right text-slate-800">{fmt(resultat.totaux.revenuActuel)}€</td>
-                        <td className={`px-3 py-3 text-sm text-right bg-slate-100/50 ${resultat.totaux.beneficeActuel >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                          <span>
-                            {sign(resultat.totaux.beneficeActuel)}{fmt(resultat.totaux.beneficeActuel)}€
-                          </span>
-                          <div className={`text-xs font-semibold ${resultat.totaux.beneficeActuel >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {fmtD(resultat.totaux.margeActuelle ?? 0)}%
-                          </div>
-                        </td>
-                        <td colSpan={2} />
                       </tr>
                     </tbody>
                   </table>

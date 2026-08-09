@@ -535,9 +535,9 @@ export async function POST(request: NextRequest) {
 
         const coutLicences = prixLicence * groupe.inscrits
 
-        // Coût des formations & recyclages PSE1 / BNSSA appliqué UNIQUEMENT au(x) groupe(s) BNSSA
-        const isBNSSA = nomLow.includes('bnssa') || niveauLow.includes('bnssa')
-        const coutUnitairePSE1 = body.coutFormationsPSE1 ?? 150
+        // Coût des formations & recyclages PSE1/2 (Croix Blanche) appliqué aux groupes BNSSA / SSA
+        const isBNSSA = nomLow.includes('bnssa') || niveauLow.includes('bnssa') || nomLow.includes('ssa') || niveauLow.includes('ssa')
+        const coutUnitairePSE1 = groupe.prixFormationPSE ?? body.coutFormationsPSE1 ?? 150
         const nbFormations = body.nbFormationsBNSSA !== undefined ? Math.max(0, body.nbFormationsBNSSA) : groupe.inscrits
         const coutFormationsPSE1 = isBNSSA ? Math.round(nbFormations * coutUnitairePSE1) : 0
 
@@ -548,8 +548,8 @@ export async function POST(request: NextRequest) {
         const coutParInscrit = groupe.inscrits > 0 ? coutTotal / groupe.inscrits : 0
         const coutParHeure = totalHeures > 0 ? coutTotal / totalHeures : 0
 
-        const tarifAnnuel = groupe.tarif ?? 0
-        const tarif1Cours = groupe.tarif1Cours ?? 0
+        const tarifAnnuel = (groupe.tarif ?? 0) + prixLicence
+        const tarif1Cours = (groupe.tarif1Cours ?? 0) + (groupe.tarif1Cours ? prixLicence : 0)
         const inscrits1Cours = groupe.inscrits1Cours ?? 0
         const inscrits2Cours = Math.max(0, groupe.inscrits - inscrits1Cours)
         const inscritsEquivalents = inscrits2Cours + inscrits1Cours * 0.5
@@ -566,9 +566,11 @@ export async function POST(request: NextRequest) {
         const inscritsPleintarif = Math.max(0, groupe.inscrits - membresBureau - enfantsBureau)
         const tarifEnfantBureau = tarifMoyen * (1 - reductionEnfantBureau / 100)
 
-        const revenuActuel =
-          inscritsPleintarif * tarifMoyen + enfantsBureau * tarifEnfantBureau
-        const revenuPotentiel = tarifMoyen * groupe.total
+        // Revenu brut avant reversement Croix Blanche
+        const revenuBrut = inscritsPleintarif * tarifMoyen + enfantsBureau * tarifEnfantBureau
+        // Le montant PSE1/2 reversé à la Croix Blanche est déduit de l'adhésion nette du club
+        const revenuActuel = Math.max(0, revenuBrut - coutFormationsPSE1)
+        const revenuPotentiel = Math.max(0, (tarifMoyen * groupe.total) - (groupe.total * coutUnitairePSE1))
         const beneficeActuel = revenuActuel - coutTotal
         const beneficePotentiel = revenuPotentiel - coutTotal
         const margeActuelle = revenuActuel > 0 ? (beneficeActuel / revenuActuel) * 100 : -100
@@ -745,16 +747,7 @@ export async function POST(request: NextRequest) {
         message: `${nbGroupesDeficitaires} groupe(s) déficitaire(s)`,
       })
     }
-    const nbSansDates = resultats.filter((r) =>
-      r.alertes.some((a) => a.code === 'SANS_DATE')
-    ).length
-    if (nbSansDates > 0) {
-      alertesGlobales.push({
-        type: 'info',
-        code: 'GROUPES_SANS_DATE',
-        message: `${nbSansDates} groupe(s) sans date de saison définie — exclus du calcul`,
-      })
-    }
+
 
     const heuresDedupliquees =
       mode === 'optimise'
@@ -830,13 +823,12 @@ function isPPGouPetitBassin(planning: {
   const groupeNomLow = (planning.groupe?.nom || '').toLowerCase()
   const groupeNiveauLow = (planning.groupe?.niveau || '').toLowerCase()
 
-  return (
-    lieuLow.includes('ppg') ||
-    lieuLow.includes('petit bassin') ||
-    groupeNomLow.includes('ppg') ||
-    groupeNomLow.includes('petit bassin') ||
-    groupeNiveauLow.includes('ppg') ||
-    groupeNiveauLow.includes('petit bassin')
+  const keywords = ['ppg', 'petit', 'pb', 'bnssa', 'apprentissage', 'jardin', 'bebe', 'bébé', 'ecole', 'école']
+
+  return keywords.some((kw) =>
+    lieuLow.includes(kw) ||
+    groupeNomLow.includes(kw) ||
+    groupeNiveauLow.includes(kw)
   )
 }
 

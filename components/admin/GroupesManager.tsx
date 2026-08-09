@@ -21,6 +21,7 @@ interface Groupe {
   libelleOption2: string | null
   caution: number | null
   prixLicence: number | null
+  prixFormationPSE: number | null
   niveau: string | null
   actif: boolean
   annule: boolean
@@ -57,6 +58,7 @@ export default function GroupesManager() {
   const [libelleOption2, setLibelleOption2] = useState('')
   const [caution, setCaution] = useState('')
   const [prixLicence, setPrixLicence] = useState('')
+  const [prixFormationPSE, setPrixFormationPSE] = useState('')
   const [niveau, setNiveau] = useState('')
   const [actif, setActif] = useState(true)
   const [annule, setAnnule] = useState(false)
@@ -102,6 +104,7 @@ export default function GroupesManager() {
     setLibelleOption2('')
     setCaution('')
     setPrixLicence('')
+    setPrixFormationPSE('')
     setNiveau('')
     setActif(true)
     setAnnule(false)
@@ -133,6 +136,7 @@ export default function GroupesManager() {
     setLibelleOption2(groupe.libelleOption2 || '')
     setCaution(groupe.caution?.toString() || '')
     setPrixLicence(groupe.prixLicence?.toString() || '')
+    setPrixFormationPSE(groupe.prixFormationPSE?.toString() || '')
     setNiveau(groupe.niveau || '')
     setActif(groupe.actif)
     setAnnule(groupe.annule || false)
@@ -184,6 +188,7 @@ export default function GroupesManager() {
           libelleOption2: libelleOption2 || null,
           caution: caution || null,
           prixLicence: prixLicence || null,
+          prixFormationPSE: prixFormationPSE || null,
           niveau: niveau || null,
           actif,
           annule,
@@ -514,6 +519,25 @@ export default function GroupesManager() {
                 Inclus dans le coût total
               </p>
             </div>
+
+            {(nom.toLowerCase().includes('bnssa') || nom.toLowerCase().includes('ssa') || (niveau || '').toLowerCase().includes('bnssa') || (niveau || '').toLowerCase().includes('ssa')) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Prix Formation PSE 1 & 2 / Croix Blanche (€)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={prixFormationPSE}
+                  onChange={(e) => setPrixFormationPSE(e.target.value)}
+                  className="w-full px-4 py-2 border border-blue-300 bg-blue-50/40 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent font-semibold"
+                  placeholder="150"
+                />
+                <p className="text-xs text-blue-700 font-medium mt-1">
+                  À déduire du revenu net d&apos;adhésion du club (montant reversé à la Croix Blanche)
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

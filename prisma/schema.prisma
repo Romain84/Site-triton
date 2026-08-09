@@ -169,6 +169,7 @@ model Groupe {
   libelleOption2         String?
   caution                Float?
   prixLicence            Float?
+  prixFormationPSE       Float?
   actif                  Boolean                @default(true)
   annule                 Boolean                @default(false)
   ordre                  Int                    @default(0)
