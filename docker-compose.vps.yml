@@ -48,7 +48,7 @@ services:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:-lJrBYMfUx2uZAOWYkKswSZjdzsCa7wc4}
     command: >
       sh -c "
-        npx prisma db push &&
+        npx prisma db push --accept-data-loss &&
         npm run start
       "
 
