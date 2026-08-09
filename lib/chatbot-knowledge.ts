@@ -302,3 +302,114 @@ export async function getCorrectedSuggestionsKnowledgeBase(): Promise<string> {
     return ''
   }
 }
+
+/**
+ * Récupère les dernières actualités publiées sur le site
+ */
+export async function getActualitesKnowledgeBase(): Promise<string> {
+  try {
+    const actualites = await prisma.actualite.findMany({
+      where: { publie: true },
+      orderBy: { datePubli: 'desc' },
+      take: 10,
+    })
+
+    if (actualites.length === 0) return ''
+
+    let texte = '\n**DERNIÈRES ACTUALITÉS ET ANNONCES DU CLUB :**\n\n'
+    actualites.forEach((act) => {
+      const dateStr = new Date(act.datePubli).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+      texte += `• **${act.titre}** (${dateStr})\n`
+      if (act.excerpt) {
+        texte += `  Résumé : ${act.excerpt}\n`
+      }
+      texte += `  Lien : [Lire l'article](/actualites/${act.slug})\n\n`
+    })
+
+    return texte
+  } catch (error) {
+    logger.error('Erreur lors de la récupération des actualités pour le chatbot', error)
+    return ''
+  }
+}
+
+/**
+ * Récupère les articles disponibles dans la boutique du club
+ */
+export async function getBoutiqueKnowledgeBase(): Promise<string> {
+  try {
+    const produits = await prisma.produit.findMany({
+      where: { actif: true },
+      include: { categorie: { select: { nom: true } } },
+      orderBy: { nom: 'asc' },
+      take: 30,
+    })
+
+    if (produits.length === 0) return ''
+
+    let texte = '\n**ARTICLES ET ÉQUIPEMENTS EN VENTE SUR LA BOUTIQUE DU CLUB :**\n\n'
+    produits.forEach((prod) => {
+      const cat = prod.categorie?.nom ? ` (${prod.categorie.nom})` : ''
+      texte += `• **${prod.nom}**${cat} - Tarif : ${prod.prix}€\n`
+      if (prod.descriptionCourte || prod.description) {
+        texte += `  Description : ${prod.descriptionCourte || prod.description}\n`
+      }
+    })
+    texte += `Lien pour commander : [Accéder à la boutique](/boutique)\n\n`
+
+    return texte
+  } catch (error) {
+    logger.error('Erreur lors de la récupération de la boutique pour le chatbot', error)
+    return ''
+  }
+}
+
+/**
+ * Récupère les dates clés de la saison (reprise des cours, tests) et les documents réglementaires depuis Settings
+ */
+export async function getSiteDatesKnowledgeBase(): Promise<string> {
+  try {
+    const settings = await prisma.settings.findFirst({
+      select: {
+        debutCoursNormal: true,
+        debutCoursBnssa: true,
+        datesTests: true,
+        statutsUrl: true,
+        reglementPiscineUrl: true,
+        reglementClubUrl: true,
+        boutiqueOuverte: true,
+      },
+    })
+
+    if (!settings) return ''
+
+    let texte = '\n**DATES CLÉS ET INFORMATIONS GÉNÉRALES DE LA SAISON :**\n\n'
+    if (settings.debutCoursNormal) {
+      texte += `• Début des cours généraux : ${settings.debutCoursNormal}\n`
+    }
+    if (settings.debutCoursBnssa) {
+      texte += `• Début des cours BNSSA / SSA : ${settings.debutCoursBnssa}\n`
+    }
+    if (settings.datesTests && settings.datesTests.length > 0) {
+      texte += `• Dates des sessions de test d'entrée : ${settings.datesTests.join(', ')}\n`
+    }
+    if (settings.boutiqueOuverte !== undefined) {
+      texte += `• Statut de la boutique du club : ${settings.boutiqueOuverte ? 'Ouverte aux commandes' : 'Fermée actuellement'}\n`
+    }
+    if (settings.statutsUrl) {
+      texte += `• Statuts officiels du club : [Consulter les statuts](${settings.statutsUrl})\n`
+    }
+    if (settings.reglementPiscineUrl) {
+      texte += `• Règlement intérieur de la piscine : [Consulter le règlement](${settings.reglementPiscineUrl})\n`
+    }
+    if (settings.reglementClubUrl) {
+      texte += `• Règlement intérieur du club : [Consulter le règlement](${settings.reglementClubUrl})\n`
+    }
+    texte += '\n'
+
+    return texte
+  } catch (error) {
+    logger.error('Erreur lors de la récupération des dates clés pour le chatbot', error)
+    return ''
+  }
+}

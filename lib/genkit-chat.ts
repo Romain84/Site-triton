@@ -1,4 +1,13 @@
-import { getPlanningKnowledgeBase, getGroupesKnowledgeBase, getCustomKnowledgeBase, getCorrectedSuggestionsKnowledgeBase, getCalendrierKnowledgeBase } from './chatbot-knowledge'
+import {
+  getPlanningKnowledgeBase,
+  getGroupesKnowledgeBase,
+  getCustomKnowledgeBase,
+  getCorrectedSuggestionsKnowledgeBase,
+  getCalendrierKnowledgeBase,
+  getActualitesKnowledgeBase,
+  getBoutiqueKnowledgeBase,
+  getSiteDatesKnowledgeBase,
+} from './chatbot-knowledge'
 import { prisma } from './prisma'
 import { logger } from './logger'
 
@@ -21,13 +30,26 @@ export async function getChatResponse(
   }
 
   // Récupérer les paramètres et charger toutes les bases de connaissances en parallèle (Ultra-rapide avec cache TTL 5min)
-  const [settings, planningKnowledge, groupesKnowledge, faqKnowledge, suggestionsKnowledge, calendrierKnowledge] = await Promise.all([
+  const [
+    settings,
+    planningKnowledge,
+    groupesKnowledge,
+    faqKnowledge,
+    suggestionsKnowledge,
+    calendrierKnowledge,
+    actualitesKnowledge,
+    boutiqueKnowledge,
+    datesKnowledge,
+  ] = await Promise.all([
     prisma.settings.findFirst({ select: { chatbotModel: true, emailClub: true } }),
     getPlanningKnowledgeBase(),
     getGroupesKnowledgeBase(),
     getCustomKnowledgeBase(),
     getCorrectedSuggestionsKnowledgeBase(),
     getCalendrierKnowledgeBase(),
+    getActualitesKnowledgeBase(),
+    getBoutiqueKnowledgeBase(),
+    getSiteDatesKnowledgeBase(),
   ])
 
   const activeModelName = settings?.chatbotModel || 'mistral-small-latest'
@@ -52,10 +74,13 @@ INFORMATIONS TEMPORELLES EN TEMPS RÉEL (CRITIQUE) :
 - Heure actuelle : ${formattedTime}
 Utilise TOUJOURS ces informations pour situer les demandes temporelles (ex. "ce soir", "aujourd'hui", "demain", "ce week-end", "lundi prochain").
 
-INFORMATIONS OFFICIELLES DU CLUB (CONNAISSANCES EN TEMPS RÉEL) :
+INFORMATIONS OFFICIELLES DU CLUB (CONNAISSANCES EN TEMPS RÉEL DU SITE) :
 
 --- INFORMATIONS DE CONTACT ---
 ${contactInfo}
+
+--- DATES CLÉS ET INFORMATIONS GÉNÉRALES ---
+${datesKnowledge}
 
 --- PLANNING HEBDOMADAIRE & VACANCES ---
 ${planningKnowledge}
@@ -66,7 +91,13 @@ ${groupesKnowledge}
 --- CALENDRIER DES COMPÉTITIONS & ÉVÉNEMENTS ---
 ${calendrierKnowledge}
 
---- FOIRE AUX QUESTIONS & CONNAISSANCES ---
+--- DERNIÈRES ACTUALITÉS ET ANNONCES DU SITE ---
+${actualitesKnowledge}
+
+--- ARTICLES DE LA BOUTIQUE DU CLUB ---
+${boutiqueKnowledge}
+
+--- FOIRE AUX QUESTIONS & CONNAISSANCES PERMANENTES ---
 ${faqKnowledge}
 
 --- EXEMPLES & CONSIGNES ADMIN ---
