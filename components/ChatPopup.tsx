@@ -131,38 +131,7 @@ export default function ChatPopup() {
   const [showBadge, setShowBadge] = useState(true)
   const [lastUserMessage, setLastUserMessage] = useState<string | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
-  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  const speakMessage = (text: string, index: number) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      toast.error('La synthèse vocale n\'est pas supportée par votre navigateur.')
-      return
-    }
-
-    if (speakingIndex === index) {
-      window.speechSynthesis.cancel()
-      setSpeakingIndex(null)
-      return
-    }
-
-    window.speechSynthesis.cancel()
-    const cleanText = text
-      .replace(/\[.*?\]\((.*?)\)/g, '$1')
-      .replace(/\*\*/g, '')
-      .replace(/[•-]/g, '')
-      .trim()
-
-    const utterance = new SpeechSynthesisUtterance(cleanText)
-    utterance.lang = 'fr-FR'
-    utterance.rate = 1.0
-
-    utterance.onend = () => setSpeakingIndex(null)
-    utterance.onerror = () => setSpeakingIndex(null)
-
-    setSpeakingIndex(index)
-    window.speechSynthesis.speak(utterance)
-  }
 
   // Récupérer le statut du quota
   const fetchQuotaStatus = async () => {
@@ -542,44 +511,26 @@ export default function ChatPopup() {
                   </p>
                 </div>
 
-                {/* Synthèse vocale & Thumbs Feedback sous le message assistant */}
-                {message.role === 'assistant' && (
-                  <div className="flex items-center gap-2.5 mt-1.5 ml-2.5 text-[10px] text-slate-400 bg-white/60 backdrop-blur px-3 py-1 rounded-full border border-slate-200/60 shadow-2xs">
-                    {/* Bouton Écouter à haute voix */}
+                {/* Thumbs Feedback (sous le message assistant, sauf le premier) */}
+                {message.role === 'assistant' && index > 0 && (
+                  <div className="flex items-center gap-2.5 mt-1.5 ml-2.5 text-[10px] text-slate-400 bg-white/50 backdrop-blur px-2.5 py-1 rounded-full border border-slate-100/60 shadow-2xs">
+                    <span className="font-semibold text-slate-500">Pertinent ?</span>
                     <button
-                      onClick={() => speakMessage(message.content, index)}
-                      className={`flex items-center gap-1 font-semibold transition-all duration-200 ${
-                        speakingIndex === index ? 'text-primary animate-pulse font-bold' : 'hover:text-primary'
-                      }`}
-                      title={speakingIndex === index ? "Arrêter la lecture" : "Écouter la réponse à haute voix"}
+                      onClick={() => handleFeedback(index, 'up')}
+                      disabled={message.feedbackSent !== undefined}
+                      className={`transition-all duration-200 hover:scale-125 hover:text-green-600 ${message.feedbackSent === 'up' ? 'text-green-600 scale-125 animate-bounce' : ''}`}
+                      title="Oui, très utile"
                     >
-                      <span>{speakingIndex === index ? '🔊' : '🗣️'}</span>
-                      <span>{speakingIndex === index ? 'Lecture...' : 'Écouter'}</span>
+                      👍
                     </button>
-
-                    {index > 0 && <span className="text-slate-300">•</span>}
-
-                    {index > 0 && (
-                      <>
-                        <span className="font-medium text-slate-500">Utile ?</span>
-                        <button
-                          onClick={() => handleFeedback(index, 'up')}
-                          disabled={message.feedbackSent !== undefined}
-                          className={`transition-all duration-200 hover:scale-125 hover:text-green-600 ${message.feedbackSent === 'up' ? 'text-green-600 scale-125 animate-bounce' : ''}`}
-                          title="Oui, très utile"
-                        >
-                          👍
-                        </button>
-                        <button
-                          onClick={() => handleFeedback(index, 'down')}
-                          disabled={message.feedbackSent !== undefined}
-                          className={`transition-all duration-200 hover:scale-125 hover:text-rose-600 ${message.feedbackSent === 'down' ? 'text-rose-600 scale-125 animate-bounce' : ''}`}
-                          title="Non, pas pertinent"
-                        >
-                          👎
-                        </button>
-                      </>
-                    )}
+                    <button
+                      onClick={() => handleFeedback(index, 'down')}
+                      disabled={message.feedbackSent !== undefined}
+                      className={`transition-all duration-200 hover:scale-125 hover:text-rose-600 ${message.feedbackSent === 'down' ? 'text-rose-600 scale-125 animate-bounce' : ''}`}
+                      title="Non, pas pertinent"
+                    >
+                      👎
+                    </button>
                   </div>
                 )}
               </div>
