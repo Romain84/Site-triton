@@ -107,6 +107,7 @@ function FacturationContent() {
   const [conflictWarning, setConflictWarning] = useState<string | null>(null)
 
   // État export Abby & Popups
+  const [facturationElectronique, setFacturationElectronique] = useState(false)
   const [loadingAbby, setLoadingAbby] = useState(false)
   const [abbyModal, setAbbyModal] = useState<{
     open: boolean
@@ -365,6 +366,10 @@ function FacturationContent() {
     fetchGroupes()
     fetchCoaches()
     fetchEvenements()
+    fetch('/api/settings/public')
+      .then((res) => res.json())
+      .then((data) => setFacturationElectronique(data.facturationElectronique ?? false))
+      .catch(() => {})
   }, [fetchGroupes, fetchCoaches, fetchEvenements])
 
   const handleAddManuel = (type: 'remplacement' | 'competition' | 'forfait_regional' | 'absence', dateStr?: string) => {
@@ -1611,13 +1616,18 @@ function FacturationContent() {
               </button>
               <button
                 onClick={handleExportAbby}
-                disabled={loading || loadingAbby}
-                className="flex-1 min-w-[200px] px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 active:scale-[0.99] shadow-sm flex items-center justify-center gap-2"
+                disabled={loading || loadingAbby || !facturationElectronique}
+                title={!facturationElectronique ? "Facturation électronique non activée par l'administration dans les paramètres du club" : undefined}
+                className={`flex-1 min-w-[200px] px-6 py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+                  !facturationElectronique
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 shadow-none opacity-75'
+                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] shadow-sm'
+                }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
-                {loadingAbby ? 'Exportation Abby...' : 'Exporter vers Abby'}
+                {loadingAbby ? 'Exportation Abby...' : !facturationElectronique ? 'Exporter vers Abby (Désactivé)' : 'Exporter vers Abby'}
               </button>
             </div>
           </>

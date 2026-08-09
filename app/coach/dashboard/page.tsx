@@ -404,31 +404,6 @@ export default async function CoachDashboard() {
                 </Link>
               </div>
             </div>
-
-            {/* Actions rapides */}
-            <div className="card p-6 bg-white border border-slate-200/60 shadow-xs">
-              <h2 className="text-xl font-bold text-slate-900 mb-4 tracking-tight">Actions rapides</h2>
-              <div className="space-y-3">
-                <Link
-                  href="/coach/planning-tournant"
-                  className="block w-full border border-slate-200 hover:border-slate-350 hover:bg-slate-50 p-3 rounded-xl text-left transition-colors"
-                >
-                  <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Planning Tournant</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Prendre/libérer des créneaux partagés</p>
-                </Link>
-
-                <Link
-                  href="/coach/remplacements"
-                  className="block w-full border border-slate-200 hover:border-slate-350 hover:bg-slate-50 p-3 rounded-xl text-left transition-colors"
-                >
-                  <p className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>🔄</span> Bourse des Remplacements
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Proposer une absence ou prendre un remplacement</p>
-                </Link>
-              </div>
-            </div>
-
           </div>
         </div>
 

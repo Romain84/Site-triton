@@ -328,6 +328,7 @@ model Settings {
   forfaitRegionalActif         Boolean  @default(false)
   montantForfaitRegional       Float    @default(50)
   boutiqueOuverte              Boolean  @default(true)
+  facturationElectronique      Boolean  @default(false)
   emailClub                    String?
   emailNotification            String?
   logoUrl                      String?

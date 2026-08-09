@@ -30,6 +30,12 @@ function renderIcon(name: string) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
         </svg>
       )
+    case 'remplacements':
+      return (
+        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+      )
     case 'profil':
       return (
         <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -50,6 +56,7 @@ export default function CoachNav() {
   const navItems = [
     { href: '/coach/dashboard', label: 'Tableau de bord', icon: 'dashboard' },
     { href: '/coach/planning-tournant', label: 'Planning tournant', icon: 'planning-tournant' },
+    { href: '/coach/remplacements', label: 'Remplacements', icon: 'remplacements' },
     { href: '/coach/facturation', label: 'Facturation', icon: 'facturation' },
     { href: '/coach/historique', label: 'Historique', icon: 'historique' },
     { href: '/coach/profil', label: 'Profil', icon: 'profil' },

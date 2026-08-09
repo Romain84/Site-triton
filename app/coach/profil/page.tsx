@@ -36,10 +36,14 @@ export default function ProfilPage() {
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [facturationElectronique, setFacturationElectronique] = useState(false)
 
   const fetchProfil = useCallback(async () => {
     try {
-      const response = await fetch('/api/auth/coach/me')
+      const [response, resSettings] = await Promise.all([
+        fetch('/api/auth/coach/me'),
+        fetch('/api/settings/public'),
+      ])
 
       if (response.status === 401) {
         router.push('/coach/login')
@@ -50,6 +54,11 @@ export default function ProfilPage() {
 
       if (!response.ok) {
         throw new Error(data.error || 'Erreur lors du chargement')
+      }
+
+      if (resSettings.ok) {
+        const sData = await resSettings.json()
+        setFacturationElectronique(sData.facturationElectronique ?? false)
       }
 
       setCoach(data.coach)
@@ -279,19 +288,29 @@ export default function ProfilPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="abbyApiKey" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                    Clé API Abby (Facturation Électronique)
+                  <label htmlFor="abbyApiKey" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <span>Clé API Abby (Facturation Électronique)</span>
+                    {!facturationElectronique && (
+                      <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-bold">
+                        🔒 Désactivée par l&apos;admin
+                      </span>
+                    )}
                   </label>
                   <input
                     type="password"
                     id="abbyApiKey"
+                    disabled={!facturationElectronique}
                     value={abbyApiKey}
                     onChange={(e) => setAbbyApiKey(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 hover:bg-slate-50/80 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm font-semibold text-slate-800 outline-none"
-                    placeholder="suk-********************************"
+                    className={`w-full px-4 py-2.5 border rounded-xl transition-all text-sm font-semibold outline-none ${
+                      !facturationElectronique
+                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed select-none'
+                        : 'bg-slate-50/50 hover:bg-slate-50/80 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary text-slate-800'
+                    }`}
+                    placeholder={!facturationElectronique ? 'Facturation électronique non activée' : 'suk-********************************'}
                   />
                   <p className="text-[10px] text-slate-400 font-medium mt-1.5 flex items-center gap-1 select-none">
-                    <span>ℹ️</span> Requis pour l&apos;exportation automatique des factures vers Abby (my.app-abby.com).
+                    <span>ℹ️</span> {!facturationElectronique ? 'La facturation électronique ABBY doit être activée dans les paramètres admin pour utiliser cette clé.' : 'Requis pour l\'exportation automatique des factures vers Abby (my.app-abby.com).'}
                   </p>
                 </div>
               </div>

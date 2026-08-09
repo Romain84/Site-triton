@@ -17,6 +17,7 @@ interface Settings {
   montantForfaitRegional: number
   reductionEnfantBureau: number
   boutiqueOuverte: boolean
+  facturationElectronique?: boolean
   emailClub: string | null
   logoUrl: string | null
   statutsUrl: string | null
@@ -62,6 +63,7 @@ export default function ParametresManager() {
   const [montantForfaitRegional, setMontantForfaitRegional] = useState('50')
   const [reductionEnfantBureau, setReductionEnfantBureau] = useState('50')
   const [boutiqueOuverte, setBoutiqueOuverte] = useState(true)
+  const [facturationElectronique, setFacturationElectronique] = useState(false)
   const [emailClub, setEmailClub] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
   const [statutsUrl, setStatutsUrl] = useState('')
@@ -115,6 +117,7 @@ export default function ParametresManager() {
         setMontantForfaitRegional(s.montantForfaitRegional?.toString() || '50')
         setReductionEnfantBureau(s.reductionEnfantBureau?.toString() || '50')
         setBoutiqueOuverte(s.boutiqueOuverte ?? true)
+        setFacturationElectronique(s.facturationElectronique ?? false)
         setEmailClub(s.emailClub || '')
         setLogoUrl(s.logoUrl || '')
         setStatutsUrl(s.statutsUrl || '')
@@ -405,6 +408,7 @@ export default function ParametresManager() {
           montantForfaitRegional,
           reductionEnfantBureau,
           boutiqueOuverte,
+          facturationElectronique,
           emailClub,
           logoUrl: logoUrl || null,
           statutsUrl: statutsUrl || null,
@@ -458,6 +462,7 @@ export default function ParametresManager() {
       montantForfaitRegional !== (settings.montantForfaitRegional?.toString() || '50') ||
       reductionEnfantBureau !== (settings.reductionEnfantBureau?.toString() || '50') ||
       boutiqueOuverte !== (settings.boutiqueOuverte ?? true) ||
+      facturationElectronique !== (settings.facturationElectronique ?? false) ||
       emailClub !== (settings.emailClub || '') ||
       logoUrl !== (settings.logoUrl || '') ||
       statutsUrl !== (settings.statutsUrl || '') ||
@@ -1065,6 +1070,29 @@ export default function ParametresManager() {
                       ⚠️ La boutique est fermée aux ventes.
                     </div>
                   )}
+
+                  <div className="mt-6 pt-4 border-t border-slate-100">
+                    <h3 className="text-md font-bold text-slate-900 mb-3">Facturation Électronique (ABBY)</h3>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={facturationElectronique}
+                        onChange={(e) => setFacturationElectronique(e.target.checked)}
+                        className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-gray-700">Activer la facturation électronique (Export ABBY)</span>
+                        <p className="text-[10px] text-gray-500">
+                          Si décoché, les clés API ABBY et le bouton d&apos;exportation vers ABBY dans l&apos;espace coach seront grisés.
+                        </p>
+                      </div>
+                    </label>
+                    {!facturationElectronique && (
+                      <div className="mt-2.5 bg-slate-100 border border-slate-200 p-2.5 rounded-lg text-slate-600 text-[10px] font-semibold">
+                        🔒 Facturation électronique désactivée par l&apos;administration.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
