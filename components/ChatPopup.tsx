@@ -130,7 +130,39 @@ export default function ChatPopup() {
   const [monthlyQuotaExceeded, setMonthlyQuotaExceeded] = useState(false)
   const [showBadge, setShowBadge] = useState(true)
   const [lastUserMessage, setLastUserMessage] = useState<string | null>(null)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const speakMessage = (text: string, index: number) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      toast.error('La synthèse vocale n\'est pas supportée par votre navigateur.')
+      return
+    }
+
+    if (speakingIndex === index) {
+      window.speechSynthesis.cancel()
+      setSpeakingIndex(null)
+      return
+    }
+
+    window.speechSynthesis.cancel()
+    const cleanText = text
+      .replace(/\[.*?\]\((.*?)\)/g, '$1')
+      .replace(/\*\*/g, '')
+      .replace(/[•-]/g, '')
+      .trim()
+
+    const utterance = new SpeechSynthesisUtterance(cleanText)
+    utterance.lang = 'fr-FR'
+    utterance.rate = 1.0
+
+    utterance.onend = () => setSpeakingIndex(null)
+    utterance.onerror = () => setSpeakingIndex(null)
+
+    setSpeakingIndex(index)
+    window.speechSynthesis.speak(utterance)
+  }
 
   // Récupérer le statut du quota
   const fetchQuotaStatus = async () => {
@@ -426,9 +458,13 @@ export default function ChatPopup() {
         )}
       </button>
 
-      {/* Chat popup — plein écran mobile, popup desktop */}
+      {/* Chat popup — plein écran mobile, popup ou grande vue desktop */}
       {isOpen && (
-        <div className="fixed bottom-0 right-0 w-full h-[100dvh] sm:bottom-24 sm:right-6 sm:w-96 sm:h-auto sm:max-w-[calc(100vw-3rem)] glass-panel sm:rounded-2xl shadow-2xl overflow-hidden z-50 animate-slide-up">
+        <div className={`fixed glass-panel shadow-2xl overflow-hidden z-50 animate-slide-up transition-all duration-300 ${
+          isExpanded
+            ? 'bottom-2 right-2 left-2 top-2 sm:bottom-6 sm:right-6 sm:left-auto sm:top-auto sm:w-[680px] sm:h-[600px] sm:max-w-[calc(100vw-3rem)] rounded-2xl'
+            : 'bottom-0 right-0 w-full h-[100dvh] sm:bottom-24 sm:right-6 sm:w-96 sm:h-auto sm:max-w-[calc(100vw-3rem)] sm:rounded-2xl'
+        }`}>
           {/* Header */}
           <div className="bg-gradient-to-r from-primary to-primary-dark text-white p-4">
             <div className="flex items-center justify-between">
@@ -438,10 +474,25 @@ export default function ChatPopup() {
                 </div>
                 <div>
                   <h3 className="font-bold text-sm tracking-wide">Assistant Triton</h3>
-                  <p className="text-[10px] text-white/80 font-medium">En ligne • Réponses instantanées</p>
+                  <p className="text-[10px] text-white/80 font-medium">En ligne • Intelligence Artificielle du Club</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                {/* Bouton agrandir / réduire */}
+                <button
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="hidden sm:flex w-8 h-8 rounded-full hover:bg-white/10 items-center justify-center text-white/80 hover:text-white transition-all"
+                  aria-label={isExpanded ? "Réduire la fenêtre" : "Agrandir la fenêtre"}
+                  title={isExpanded ? "Réduire" : "Agrandir"}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    {isExpanded ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 9L4 4m0 0l5 0m-5 0l0 5m11 5l5 5m0 0l-5 0m5 0l0-5" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                    )}
+                  </svg>
+                </button>
                 {/* Bouton nouvelle conversation */}
                 {messages.length > 1 && (
                   <button
@@ -470,7 +521,9 @@ export default function ChatPopup() {
           </div>
 
           {/* Messages — hauteur adaptative mobile/desktop */}
-          <div className="h-[calc(100dvh-180px)] sm:h-80 overflow-y-auto p-4 space-y-4 bg-slate-50/60 flex flex-col">
+          <div className={`overflow-y-auto p-4 space-y-4 bg-slate-50/60 flex flex-col ${
+            isExpanded ? 'h-[calc(100vh-210px)] sm:h-[440px]' : 'h-[calc(100dvh-180px)] sm:h-80'
+          }`}>
             {messages.map((message, index) => (
               <div
                 key={index}
@@ -489,26 +542,44 @@ export default function ChatPopup() {
                   </p>
                 </div>
 
-                {/* Thumbs Feedback (sous le message assistant, sauf le premier) */}
-                {message.role === 'assistant' && index > 0 && (
-                  <div className="flex items-center gap-2.5 mt-1.5 ml-2.5 text-[10px] text-slate-400 bg-white/50 backdrop-blur px-2.5 py-1 rounded-full border border-slate-100/60 shadow-2xs">
-                    <span className="font-semibold text-slate-500">Pertinent ?</span>
+                {/* Synthèse vocale & Thumbs Feedback sous le message assistant */}
+                {message.role === 'assistant' && (
+                  <div className="flex items-center gap-2.5 mt-1.5 ml-2.5 text-[10px] text-slate-400 bg-white/60 backdrop-blur px-3 py-1 rounded-full border border-slate-200/60 shadow-2xs">
+                    {/* Bouton Écouter à haute voix */}
                     <button
-                      onClick={() => handleFeedback(index, 'up')}
-                      disabled={message.feedbackSent !== undefined}
-                      className={`transition-all duration-200 hover:scale-125 hover:text-green-600 ${message.feedbackSent === 'up' ? 'text-green-600 scale-125 animate-bounce' : ''}`}
-                      title="Oui, très utile"
+                      onClick={() => speakMessage(message.content, index)}
+                      className={`flex items-center gap-1 font-semibold transition-all duration-200 ${
+                        speakingIndex === index ? 'text-primary animate-pulse font-bold' : 'hover:text-primary'
+                      }`}
+                      title={speakingIndex === index ? "Arrêter la lecture" : "Écouter la réponse à haute voix"}
                     >
-                      👍
+                      <span>{speakingIndex === index ? '🔊' : '🗣️'}</span>
+                      <span>{speakingIndex === index ? 'Lecture...' : 'Écouter'}</span>
                     </button>
-                    <button
-                      onClick={() => handleFeedback(index, 'down')}
-                      disabled={message.feedbackSent !== undefined}
-                      className={`transition-all duration-200 hover:scale-125 hover:text-rose-600 ${message.feedbackSent === 'down' ? 'text-rose-600 scale-125 animate-bounce' : ''}`}
-                      title="Non, pas pertinent"
-                    >
-                      👎
-                    </button>
+
+                    {index > 0 && <span className="text-slate-300">•</span>}
+
+                    {index > 0 && (
+                      <>
+                        <span className="font-medium text-slate-500">Utile ?</span>
+                        <button
+                          onClick={() => handleFeedback(index, 'up')}
+                          disabled={message.feedbackSent !== undefined}
+                          className={`transition-all duration-200 hover:scale-125 hover:text-green-600 ${message.feedbackSent === 'up' ? 'text-green-600 scale-125 animate-bounce' : ''}`}
+                          title="Oui, très utile"
+                        >
+                          👍
+                        </button>
+                        <button
+                          onClick={() => handleFeedback(index, 'down')}
+                          disabled={message.feedbackSent !== undefined}
+                          className={`transition-all duration-200 hover:scale-125 hover:text-rose-600 ${message.feedbackSent === 'down' ? 'text-rose-600 scale-125 animate-bounce' : ''}`}
+                          title="Non, pas pertinent"
+                        >
+                          👎
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
