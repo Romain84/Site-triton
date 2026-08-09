@@ -229,12 +229,6 @@ export async function getGroupesKnowledgeBase(): Promise<string> {
       if (groupe.tarif) {
         texte += `  Tarif : ${groupe.tarif}€\n`
       }
-      const places = groupe.total - groupe.inscrits
-      if (places > 0) {
-        texte += `  Places disponibles : ${places}/${groupe.total}\n`
-      } else {
-        texte += `  Complet (${groupe.inscrits}/${groupe.total})\n`
-      }
       texte += '\n'
     })
 
