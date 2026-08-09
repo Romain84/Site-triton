@@ -418,11 +418,13 @@ export default async function CoachDashboard() {
                 </Link>
 
                 <Link
-                  href="/coach/facturation"
+                  href="/coach/remplacements"
                   className="block w-full border border-slate-200 hover:border-slate-350 hover:bg-slate-50 p-3 rounded-xl text-left transition-colors"
                 >
-                  <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">Déclarer un remplacement</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Ajouter des heures effectuées manuellement</p>
+                  <p className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>🔄</span> Bourse des Remplacements
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Proposer une absence ou prendre un remplacement</p>
                 </Link>
               </div>
             </div>

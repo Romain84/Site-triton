@@ -38,17 +38,18 @@ model Coach {
 model Remplacement {
   id                String   @id @default(cuid())
   coachRemplaceId   String
-  coachRemplacantId String
+  coachRemplacantId String?
   date              DateTime
   heureDebut        String
   heureFin          String
   planningId        String?
+  statut            String   @default("en_attente")
   motif             String?
   description       String?
   actif             Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-  coachRemplacant   Coach    @relation("CoachRemplacant", fields: [coachRemplacantId], references: [id])
+  coachRemplacant   Coach?   @relation("CoachRemplacant", fields: [coachRemplacantId], references: [id])
   coachRemplace     Coach    @relation("CoachRemplace", fields: [coachRemplaceId], references: [id])
 
   @@index([coachRemplaceId])

@@ -3,6 +3,7 @@ import { getAdminSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
+import { syncRemplacementBillingLines } from '@/lib/services/remplacement-service'
 
 const planningLogger = logger.withContext('Remplacements')
 
@@ -139,6 +140,8 @@ export async function PUT(
       },
     })
 
+    await syncRemplacementBillingLines(remplacement.id)
+
     return NextResponse.json({ remplacement })
   } catch (error) {
     planningLogger.error('Erreur lors de la mise à jour du remplacement', error)
@@ -159,7 +162,6 @@ export async function DELETE(
 
     const { id } = await params
 
-    // Vérifier que le remplacement existe
     const existing = await prisma.remplacement.findUnique({
       where: { id },
     })
@@ -170,6 +172,10 @@ export async function DELETE(
         { status: 404 }
       )
     }
+
+    await prisma.ligneFactureCoach.deleteMany({
+      where: { remplacementId: id },
+    })
 
     await prisma.remplacement.delete({
       where: { id },

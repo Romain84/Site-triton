@@ -322,7 +322,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     const dureeHeures = calculerDuree(remp.heureDebut, remp.heureFin)
     heuresAbsences += dureeHeures
     const dateStr = new Date(remp.date).toLocaleDateString('fr-FR')
-    const coachNom = `${remp.coachRemplacant.prenom} ${remp.coachRemplacant.nom || ''}`.trim()
+    const coachNom = remp.coachRemplacant ? `${remp.coachRemplacant.prenom} ${remp.coachRemplacant.nom || ''}`.trim() : 'En attente'
     lignesAbsences.push({
       type: 'absence',
       description: `Absent(e) - remplacé(e) par ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin}${remp.motif ? ` (${remp.motif})` : ''}`,

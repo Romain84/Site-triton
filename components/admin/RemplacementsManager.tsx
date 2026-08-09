@@ -14,9 +14,9 @@ interface Coach {
 interface Remplacement {
   id: string
   coachRemplaceId: string
-  coachRemplacantId: string
+  coachRemplacantId: string | null
   coachRemplace: { id: string; prenom: string; nom: string | null }
-  coachRemplacant: { id: string; prenom: string; nom: string | null }
+  coachRemplacant: { id: string; prenom: string; nom: string | null } | null
   date: string
   heureDebut: string
   heureFin: string
@@ -138,7 +138,7 @@ export default function RemplacementsManager() {
   const handleEdit = (remplacement: Remplacement) => {
     setFormData({
       coachRemplaceId: remplacement.coachRemplaceId,
-      coachRemplacantId: remplacement.coachRemplacantId,
+      coachRemplacantId: remplacement.coachRemplacantId || '',
       date: new Date(remplacement.date).toISOString().split('T')[0],
       heureDebut: remplacement.heureDebut,
       heureFin: remplacement.heureFin,
@@ -438,9 +438,15 @@ export default function RemplacementsManager() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">
-                      {getCoachName(remp.coachRemplacant)}
-                    </span>
+                    {remp.coachRemplacant ? (
+                      <span className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">
+                        {getCoachName(remp.coachRemplacant)}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs font-semibold bg-amber-100 text-amber-800 rounded-full">
+                        En attente d&apos;un remplaçant
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                     {remp.heureDebut} - {remp.heureFin}

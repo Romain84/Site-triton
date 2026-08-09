@@ -3,18 +3,20 @@ import { getAdminSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
+import { syncRemplacementBillingLines } from '@/lib/services/remplacement-service'
 
 const planningLogger = logger.withContext('Remplacements')
 
 const remplacementSchema = z.object({
   coachRemplaceId: z.string().min(1, 'Coach remplacé requis'),
-  coachRemplacantId: z.string().min(1, 'Coach remplaçant requis'),
+  coachRemplacantId: z.string().optional().nullable(),
   date: z.string().min(1, 'Date requise'),
   heureDebut: z.string().min(1, 'Heure de début requise'),
   heureFin: z.string().min(1, 'Heure de fin requise'),
-  planningId: z.string().optional(),
-  motif: z.string().optional(),
-  description: z.string().optional(),
+  planningId: z.string().optional().nullable(),
+  motif: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  statut: z.string().optional(),
 })
 
 // GET: Liste des remplacements
@@ -38,7 +40,6 @@ export async function GET(request: NextRequest) {
       actif: true,
     }
 
-    // Filtrer par mois/année si fournis
     if (mois && annee) {
       const dateDebut = new Date(parseInt(annee), parseInt(mois) - 1, 1)
       const dateFin = new Date(parseInt(annee), parseInt(mois), 0, 23, 59, 59)
@@ -48,7 +49,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Filtrer par coach si fourni
     if (coachId) {
       whereClause.OR = [
         { coachRemplaceId: coachId },
@@ -96,20 +96,14 @@ export async function POST(request: NextRequest) {
 
     const data = validation.data
 
-    // Vérifier que les deux coachs sont différents
-    if (data.coachRemplaceId === data.coachRemplacantId) {
+    if (data.coachRemplacantId && data.coachRemplaceId === data.coachRemplacantId) {
       return NextResponse.json(
         { error: 'Le coach remplaçant doit être différent du coach remplacé' },
         { status: 400 }
       )
     }
 
-    // Vérifier que les deux coachs existent
-    const [coachRemplace, coachRemplacant] = await Promise.all([
-      prisma.coach.findUnique({ where: { id: data.coachRemplaceId } }),
-      prisma.coach.findUnique({ where: { id: data.coachRemplacantId } }),
-    ])
-
+    const coachRemplace = await prisma.coach.findUnique({ where: { id: data.coachRemplaceId } })
     if (!coachRemplace) {
       return NextResponse.json(
         { error: 'Coach remplacé non trouvé' },
@@ -117,23 +111,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!coachRemplacant) {
-      return NextResponse.json(
-        { error: 'Coach remplaçant non trouvé' },
-        { status: 400 }
-      )
+    if (data.coachRemplacantId) {
+      const coachRemplacant = await prisma.coach.findUnique({ where: { id: data.coachRemplacantId } })
+      if (!coachRemplacant) {
+        return NextResponse.json(
+          { error: 'Coach remplaçant non trouvé' },
+          { status: 400 }
+        )
+      }
     }
+
+    const statutFinal = data.statut || (data.coachRemplacantId ? 'accepte' : 'en_attente')
 
     const remplacement = await prisma.remplacement.create({
       data: {
         coachRemplaceId: data.coachRemplaceId,
-        coachRemplacantId: data.coachRemplacantId,
+        coachRemplacantId: data.coachRemplacantId || null,
         date: new Date(data.date),
         heureDebut: data.heureDebut,
         heureFin: data.heureFin,
         planningId: data.planningId || null,
         motif: data.motif || null,
         description: data.description || null,
+        statut: statutFinal,
       },
       include: {
         coachRemplace: {
@@ -144,6 +144,10 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+
+    if (statutFinal === 'accepte') {
+      await syncRemplacementBillingLines(remplacement.id)
+    }
 
     return NextResponse.json({ remplacement })
   } catch (error) {
