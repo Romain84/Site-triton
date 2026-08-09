@@ -9,6 +9,8 @@ interface LocationPoint {
   ville: string
   pays: string
   codePays: string
+  codePostal?: string
+  region?: string
   count: number
 }
 
@@ -19,6 +21,9 @@ interface VisitItem {
   codePays: string
   region: string
   ville: string
+  codePostal: string
+  fai: string
+  timezone: string
   page: string
   appareil: string
   navigateur: string
@@ -44,6 +49,7 @@ interface AnalyticsData {
   locations: LocationPoint[]
   devices: { name: string; count: number }[]
   browsers: { name: string; count: number }[]
+  topFai: { fai: string; count: number }[]
   hourlyDistribution: { hour: string; count: number }[]
   dailyTrends: { date: string; count: number; unique: number }[]
   recentVisits: VisitItem[]
@@ -94,11 +100,14 @@ export default function VisiteursManager() {
 
   const exportVisitsCSV = () => {
     if (!data?.recentVisits || data.recentVisits.length === 0) return
-    const headers = ['Horodatage', 'Ville', 'Pays', 'Page', 'Appareil', 'Navigateur', 'IP']
+    const headers = ['Horodatage', 'Ville', 'Code Postal', 'Pays', 'FAI', 'Timezone', 'Page', 'Appareil', 'Navigateur', 'IP']
     const rows = data.recentVisits.map(v => [
       formatDateHeureFr(v.createdAt),
       `"${v.ville}"`,
+      `"${v.codePostal}"`,
       `"${v.pays}"`,
+      `"${v.fai}"`,
+      `"${v.timezone}"`,
       `"${v.page}"`,
       `"${v.appareil}"`,
       `"${v.navigateur}"`,
@@ -472,6 +481,35 @@ export default function VisiteursManager() {
           </div>
         </div>
 
+        {/* Top FAI (Fournisseurs d'Accès Internet) */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs space-y-4 lg:col-span-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <span>📡</span> Top Fournisseurs d&apos;Accès Internet (FAI)
+            </h3>
+            <span className="text-xs font-semibold text-slate-400 uppercase">Connexions</span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {data?.topFai && data.topFai.length > 0 ? (
+              data.topFai.slice(0, 10).map((f, i) => {
+                const pct = Math.round((f.count / totalVisits) * 100)
+                return (
+                  <div key={i} className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center space-y-1">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase truncate" title={f.fai}>
+                      {i + 1}. {f.fai}
+                    </p>
+                    <p className="text-lg font-extrabold text-slate-900">{f.count}</p>
+                    <p className="text-[10px] text-slate-400 font-medium">{pct}% du trafic</p>
+                  </div>
+                )
+              })
+            ) : (
+              <p className="text-xs text-slate-400 italic col-span-5 text-center py-4">Aucun FAI enregistré</p>
+            )}
+          </div>
+        </div>
+
       </div>
 
       {/* Tableau en direct des dernières visites */}
@@ -508,6 +546,7 @@ export default function VisiteursManager() {
               <tr>
                 <th className="px-6 py-3">Horodatage</th>
                 <th className="px-6 py-3">Localisation</th>
+                <th className="px-6 py-3">FAI</th>
                 <th className="px-6 py-3">Page consultée</th>
                 <th className="px-6 py-3">Appareil</th>
                 <th className="px-6 py-3">Navigateur</th>
@@ -535,7 +574,17 @@ export default function VisiteursManager() {
                         </div>
                       </td>
                       <td className="px-6 py-3.5 whitespace-nowrap">
-                        <span className="font-semibold text-slate-800">{v.ville}</span>, <span className="text-slate-500">{v.pays}</span>
+                        <div>
+                          <span className="font-semibold text-slate-800">{v.ville}</span>
+                          {v.codePostal && <span className="text-slate-400 text-[10px] ml-1">({v.codePostal})</span>}
+                          <span className="text-slate-500">, {v.pays}</span>
+                        </div>
+                        {v.region && <p className="text-[10px] text-slate-400">{v.region}</p>}
+                      </td>
+                      <td className="px-6 py-3.5 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 truncate max-w-[120px] inline-block" title={v.fai}>
+                          {v.fai || 'Inconnu'}
+                        </span>
                       </td>
                       <td className="px-6 py-3.5 font-mono text-slate-600 max-w-xs truncate">
                         {v.page}
@@ -557,7 +606,7 @@ export default function VisiteursManager() {
                   ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-400 italic">
+                  <td colSpan={7} className="px-6 py-8 text-center text-slate-400 italic">
                     Aucune visite enregistrée pour le moment.
                   </td>
                 </tr>

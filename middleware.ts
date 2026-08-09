@@ -37,12 +37,12 @@ export async function middleware(request: NextRequest) {
   // Politique CSP commune pour limiter les ressources autorisées.
   const csp = [
     "default-src 'self'",
-    scriptSrc,
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://*.stripe.com",
+    scriptSrc + " https://unpkg.com",
+    "style-src 'self' 'unsafe-inline' https://unpkg.com",
+    "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://*.stripe.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://server.arcgisonline.com https://unpkg.com",
     "font-src 'self'",
     "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://www.google.com https://maps.google.com https://www.google.fr",
-    "connect-src 'self' https://api.stripe.com",
+    "connect-src 'self' https://api.stripe.com http://ip-api.com https://ipwho.is https://ipapi.co",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

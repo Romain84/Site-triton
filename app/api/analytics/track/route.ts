@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 // Cache mémoire des adresses IP déjà géolocalisées pour éviter les requêtes API réseau répétées
-const ipGeoCache = new Map<string, { pays: string; codePays: string; region: string; ville: string; latitude: number; longitude: number; timestamp: number }>()
+const ipGeoCache = new Map<string, { pays: string; codePays: string; region: string; ville: string; latitude: number; longitude: number; codePostal: string; fai: string; timezone: string; timestamp: number }>()
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 heures
 
 // Fonction utilitaire pour tenter la géolocalisation avec fallback multi-fournisseurs
 async function resolveGeoIp(ip: string, requestHeaders?: Headers) {
   // 1. IP locale ou loopback -> Cavaillon / Vaucluse
   if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.')) {
-    return { pays: 'France', codePays: 'FR', region: 'Vaucluse', ville: 'Cavaillon', latitude: 43.8333, longitude: 5.0333 }
+    return { pays: 'France', codePays: 'FR', region: 'Vaucluse', ville: 'Cavaillon', latitude: 43.8333, longitude: 5.0333, codePostal: '84300', fai: 'Réseau local', timezone: 'Europe/Paris' }
   }
 
   // 2. Vérifier le cache mémoire
@@ -33,6 +33,9 @@ async function resolveGeoIp(ip: string, requestHeaders?: Headers) {
         ville: decodeURIComponent(headerCity),
         latitude: headerLat,
         longitude: headerLng,
+        codePostal: '',
+        fai: '',
+        timezone: 'Europe/Paris',
       }
       ipGeoCache.set(ip, { ...geoResult, timestamp: Date.now() })
       return geoResult
@@ -41,7 +44,7 @@ async function resolveGeoIp(ip: string, requestHeaders?: Headers) {
 
   // 4. Fournisseur 1 : ip-api.com (gratuit, très précis, 45 req/min, aucune clé requise)
   try {
-    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,regionName,city,lat,lon`, {
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,regionName,city,lat,lon,zip,isp,timezone`, {
       signal: AbortSignal.timeout(1200),
     }).catch(() => null)
 
@@ -55,6 +58,9 @@ async function resolveGeoIp(ip: string, requestHeaders?: Headers) {
           ville: data.city,
           latitude: data.lat || 43.8333,
           longitude: data.lon || 5.0333,
+          codePostal: data.zip || '',
+          fai: data.isp || '',
+          timezone: data.timezone || 'Europe/Paris',
         }
         ipGeoCache.set(ip, { ...geoResult, timestamp: Date.now() })
         return geoResult
@@ -80,6 +86,9 @@ async function resolveGeoIp(ip: string, requestHeaders?: Headers) {
           ville: data.city,
           latitude: data.latitude || 43.8333,
           longitude: data.longitude || 5.0333,
+          codePostal: data.postal || '',
+          fai: data.connection?.isp || data.connection?.org || '',
+          timezone: data.timezone?.id || 'Europe/Paris',
         }
         ipGeoCache.set(ip, { ...geoResult, timestamp: Date.now() })
         return geoResult
@@ -106,6 +115,9 @@ async function resolveGeoIp(ip: string, requestHeaders?: Headers) {
           ville: data.city || 'Cavaillon',
           latitude: data.latitude || 43.8333,
           longitude: data.longitude || 5.0333,
+          codePostal: data.postal || '',
+          fai: data.org || '',
+          timezone: data.timezone || 'Europe/Paris',
         }
         ipGeoCache.set(ip, { ...geoResult, timestamp: Date.now() })
         return geoResult
@@ -116,7 +128,7 @@ async function resolveGeoIp(ip: string, requestHeaders?: Headers) {
   }
 
   // Fallback si tout échoue
-  return { pays: 'France', codePays: 'FR', region: 'Vaucluse', ville: 'Cavaillon', latitude: 43.8333, longitude: 5.0333 }
+  return { pays: 'France', codePays: 'FR', region: 'Vaucluse', ville: 'Cavaillon', latitude: 43.8333, longitude: 5.0333, codePostal: '84300', fai: 'Inconnu', timezone: 'Europe/Paris' }
 }
 
 export async function POST(request: NextRequest) {
@@ -156,12 +168,19 @@ export async function POST(request: NextRequest) {
           "ville" TEXT DEFAULT 'Inconnu',
           "latitude" DOUBLE PRECISION DEFAULT 43.8333,
           "longitude" DOUBLE PRECISION DEFAULT 5.0333,
+          "codePostal" TEXT,
+          "fai" TEXT,
+          "timezone" TEXT DEFAULT 'Europe/Paris',
           "page" TEXT DEFAULT '/',
           "appareil" TEXT DEFAULT 'Desktop',
           "navigateur" TEXT DEFAULT 'Navigateur',
           "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
       `)
+      // Migration colonnes pour bases existantes
+      await prisma.$executeRawUnsafe(`ALTER TABLE "visites" ADD COLUMN IF NOT EXISTS "codePostal" TEXT;`)
+      await prisma.$executeRawUnsafe(`ALTER TABLE "visites" ADD COLUMN IF NOT EXISTS "fai" TEXT;`)
+      await prisma.$executeRawUnsafe(`ALTER TABLE "visites" ADD COLUMN IF NOT EXISTS "timezone" TEXT DEFAULT 'Europe/Paris';`)
     } catch {
       // Ignorer si existante
     }
@@ -173,9 +192,9 @@ export async function POST(request: NextRequest) {
     const id = `v_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 
     await prisma.$executeRawUnsafe(
-      `INSERT INTO "visites" ("id", "ip", "pays", "codePays", "region", "ville", "latitude", "longitude", "page", "appareil", "navigateur", "createdAt")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW());`,
-      id, cleanIp, geo.pays, geo.codePays, geo.region, geo.ville, geo.latitude, geo.longitude, page, appareil, navigateur
+      `INSERT INTO "visites" ("id", "ip", "pays", "codePays", "region", "ville", "latitude", "longitude", "codePostal", "fai", "timezone", "page", "appareil", "navigateur", "createdAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW());`,
+      id, cleanIp, geo.pays, geo.codePays, geo.region, geo.ville, geo.latitude, geo.longitude, geo.codePostal, geo.fai, geo.timezone, page, appareil, navigateur
     )
 
     return NextResponse.json({ success: true, id, ville: geo.ville, ip: cleanIp })
@@ -209,6 +228,9 @@ export async function GET(request: NextRequest) {
         "ville" TEXT DEFAULT 'Inconnu',
         "latitude" DOUBLE PRECISION DEFAULT 43.8333,
         "longitude" DOUBLE PRECISION DEFAULT 5.0333,
+        "codePostal" TEXT,
+        "fai" TEXT,
+        "timezone" TEXT DEFAULT 'Europe/Paris',
         "page" TEXT DEFAULT '/',
         "appareil" TEXT DEFAULT 'Desktop',
         "navigateur" TEXT DEFAULT 'Navigateur',
@@ -217,9 +239,9 @@ export async function GET(request: NextRequest) {
     `)
 
     await prisma.$executeRawUnsafe(
-      `INSERT INTO "visites" ("id", "ip", "pays", "codePays", "region", "ville", "latitude", "longitude", "page", "appareil", "navigateur", "createdAt")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW());`,
-      id, cleanIp, geo.pays, geo.codePays, geo.region, geo.ville, geo.latitude, geo.longitude, page, appareil, 'Mobile Test'
+      `INSERT INTO "visites" ("id", "ip", "pays", "codePays", "region", "ville", "latitude", "longitude", "codePostal", "fai", "timezone", "page", "appareil", "navigateur", "createdAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW());`,
+      id, cleanIp, geo.pays, geo.codePays, geo.region, geo.ville, geo.latitude, geo.longitude, geo.codePostal, geo.fai, geo.timezone, page, appareil, 'Mobile Test'
     )
     return NextResponse.json({ success: true, message: 'Visite de test enregistrée avec succès !', id, ip: cleanIp, ville: geo.ville })
   } catch (err) {

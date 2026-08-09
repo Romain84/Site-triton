@@ -22,12 +22,19 @@ export async function GET(request: NextRequest) {
           "ville" TEXT DEFAULT 'Inconnu',
           "latitude" DOUBLE PRECISION DEFAULT 43.8333,
           "longitude" DOUBLE PRECISION DEFAULT 5.0333,
+          "codePostal" TEXT,
+          "fai" TEXT,
+          "timezone" TEXT DEFAULT 'Europe/Paris',
           "page" TEXT DEFAULT '/',
           "appareil" TEXT DEFAULT 'Desktop',
           "navigateur" TEXT DEFAULT 'Navigateur',
           "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
       `)
+      // Migration colonnes pour bases existantes
+      await prisma.$executeRawUnsafe(`ALTER TABLE "visites" ADD COLUMN IF NOT EXISTS "codePostal" TEXT;`)
+      await prisma.$executeRawUnsafe(`ALTER TABLE "visites" ADD COLUMN IF NOT EXISTS "fai" TEXT;`)
+      await prisma.$executeRawUnsafe(`ALTER TABLE "visites" ADD COLUMN IF NOT EXISTS "timezone" TEXT DEFAULT 'Europe/Paris';`)
     } catch (e) {
       console.warn('Notice verification table visites:', e)
     }
@@ -118,10 +125,12 @@ export async function GET(request: NextRequest) {
       locations = await prisma.$queryRawUnsafe(`
         SELECT COALESCE(latitude, 43.8333) as lat, COALESCE(longitude, 5.0333) as lng,
                COALESCE(ville, 'Cavaillon') as ville, COALESCE(pays, 'France') as pays,
-               COALESCE("codePays", 'FR') as "codePays", COUNT(*)::int as count
+               COALESCE("codePays", 'FR') as "codePays", COALESCE("codePostal", '') as "codePostal",
+               COALESCE(region, '') as region,
+               COUNT(*)::int as count
         FROM "visites"
         ${whereClause}
-        GROUP BY latitude, longitude, ville, pays, "codePays"
+        GROUP BY latitude, longitude, ville, pays, "codePays", "codePostal", region
         ORDER BY count DESC
         LIMIT 100
       `)
@@ -193,6 +202,8 @@ export async function GET(request: NextRequest) {
       recentVisits = await prisma.$queryRawUnsafe(`
         SELECT id, ip, COALESCE(pays, 'France') as pays, COALESCE("codePays", 'FR') as "codePays",
                COALESCE(region, 'PACA') as region, COALESCE(ville, 'Cavaillon') as ville,
+               COALESCE("codePostal", '') as "codePostal", COALESCE(fai, 'Inconnu') as fai,
+               COALESCE(timezone, 'Europe/Paris') as timezone,
                COALESCE(page, '/') as page, COALESCE(appareil, 'Desktop') as appareil,
                COALESCE(navigateur, 'Navigateur') as navigateur, "createdAt"
         FROM "visites"
@@ -201,6 +212,21 @@ export async function GET(request: NextRequest) {
       `)
     } catch (e) {
       console.error('Erreur SQL recentVisits:', e)
+    }
+
+    // 10. Top FAI (Fournisseurs d'Accès Internet)
+    let topFai: any[] = []
+    try {
+      topFai = await prisma.$queryRawUnsafe(`
+        SELECT COALESCE(fai, 'Inconnu') as fai, COUNT(*)::int as count
+        FROM "visites"
+        ${whereClause}
+        GROUP BY fai
+        ORDER BY count DESC
+        LIMIT 10
+      `)
+    } catch (e) {
+      console.error('Erreur SQL topFai:', e)
     }
 
     return NextResponse.json({
@@ -237,6 +263,8 @@ export async function GET(request: NextRequest) {
         ville: l.ville || 'Cavaillon',
         pays: l.pays || 'France',
         codePays: l.codePays || 'FR',
+        codePostal: l.codePostal || '',
+        region: l.region || '',
         count: Number(l.count || 0),
       })),
       devices: devices.map((d: any) => ({
@@ -247,9 +275,18 @@ export async function GET(request: NextRequest) {
         name: b.name || 'Autre',
         count: Number(b.count || 0),
       })),
+      topFai: topFai.map((f: any) => ({
+        fai: f.fai || 'Inconnu',
+        count: Number(f.count || 0),
+      })),
       hourlyDistribution,
       dailyTrends,
-      recentVisits,
+      recentVisits: recentVisits.map((v: any) => ({
+        ...v,
+        codePostal: v.codePostal || '',
+        fai: v.fai || 'Inconnu',
+        timezone: v.timezone || 'Europe/Paris',
+      })),
     })
   } catch (error) {
     return handleRouteError(error, 'Erreur lors de la récupération des statistiques visiteurs')
