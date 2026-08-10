@@ -431,41 +431,19 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
                   </p>
                 </div>
               ) : (
-                modalSlots.map((slot) => {
-                  const coachNames = slot.coachs && slot.coachs.length > 0
-                    ? slot.coachs.map((c) => `${c.coach.prenom} ${c.coach.nom || ''}`.trim()).join(', ')
-                    : null
-
-                  return (
-                    <div
-                      key={slot.id}
-                      className="bg-gradient-to-r from-sky-50/80 to-blue-50/40 border border-sky-200/70 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-2xs"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="bg-sky-600 text-white text-xs font-black px-2.5 py-0.5 rounded-lg uppercase tracking-wider">
-                            {slot.jourSemaine}
-                          </span>
-                          <span className="text-slate-900 font-extrabold text-sm">
-                            {slot.heureDebut} - {slot.heureFin}
-                          </span>
-                        </div>
-                        {slot.lieu && (
-                          <p className="text-xs text-slate-600 font-medium flex items-center gap-1">
-                            <span>📍</span>
-                            <span>{slot.lieu}</span>
-                          </p>
-                        )}
-                        {coachNames && (
-                          <p className="text-xs text-sky-800 font-semibold flex items-center gap-1">
-                            <span>👤</span>
-                            <span>Coach : {coachNames}</span>
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })
+                modalSlots.map((slot) => (
+                  <div
+                    key={slot.id}
+                    className="bg-slate-50 border border-slate-200/80 rounded-xl px-4 py-3 flex items-center justify-between shadow-2xs"
+                  >
+                    <span className="bg-sky-600 text-white text-xs font-black px-3 py-1 rounded-lg uppercase tracking-wider">
+                      {slot.jourSemaine}
+                    </span>
+                    <span className="text-slate-950 font-black text-sm md:text-base">
+                      {slot.heureDebut} – {slot.heureFin}
+                    </span>
+                  </div>
+                ))
               )}
             </div>
 
