@@ -21,13 +21,40 @@ export interface GroupeData {
   ordre: number | null
 }
 
+export interface PlanningSlot {
+  id: string
+  jourSemaine: string
+  heureDebut: string
+  heureFin: string
+  lieu: string | null
+  nomSession: string | null
+  groupeId: string | null
+  coachs?: Array<{
+    coach: {
+      prenom: string
+      nom: string | null
+    }
+  }>
+}
+
 interface GroupesClientProps {
   groupes: GroupeData[]
+  plannings?: PlanningSlot[]
   interSaison: boolean
   texteFiligrane: string
 }
 
 export type CategorieGroupeKey = 'all' | 'apprentissage' | 'loisir' | 'competition' | 'autres'
+
+const JOURS_ORDRE_MAP: Record<string, number> = {
+  Lundi: 1,
+  Mardi: 2,
+  Mercredi: 3,
+  Jeudi: 4,
+  Vendredi: 5,
+  Samedi: 6,
+  Dimanche: 7,
+}
 
 export function formatBirthYears(ageMin: number | null, ageMax: number | null): string | null {
   if (ageMin === null && ageMax === null) return null
@@ -144,8 +171,9 @@ export function categoriserGroupe(nom: string, isCompetition?: boolean | null): 
   return 'autres'
 }
 
-export default function GroupesClient({ groupes, interSaison, texteFiligrane }: GroupesClientProps) {
+export default function GroupesClient({ groupes, plannings = [], interSaison, texteFiligrane }: GroupesClientProps) {
   const [selectedCategory, setSelectedCategory] = useState<CategorieGroupeKey>('all')
+  const [planningModalGroupe, setPlanningModalGroupe] = useState<GroupeData | null>(null)
 
   // Regrouper les groupes par catégorie
   const groupesParCategorie: Record<Exclude<CategorieGroupeKey, 'all'>, GroupeData[]> = {
@@ -161,6 +189,18 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
   })
 
   const categoriesKeys: Array<Exclude<CategorieGroupeKey, 'all'>> = ['apprentissage', 'loisir', 'competition', 'autres']
+
+  // Récupérer les créneaux du groupe sélectionné pour la modale
+  const modalSlots = planningModalGroupe
+    ? plannings
+        .filter((p) => p.groupeId === planningModalGroupe.id)
+        .sort((a, b) => {
+          const dayA = JOURS_ORDRE_MAP[a.jourSemaine] || 99
+          const dayB = JOURS_ORDRE_MAP[b.jourSemaine] || 99
+          if (dayA !== dayB) return dayA - dayB
+          return a.heureDebut.localeCompare(b.heureDebut)
+        })
+    : []
 
   return (
     <div className="space-y-12">
@@ -230,7 +270,7 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
               <div className="grid gap-6 md:grid-cols-2">
                 {liste.map((groupe) => {
                   const hasAgeRange = groupe.ageMin !== null || groupe.ageMax !== null
-                  const isAdult = groupe.ageMin !== null && groupe.ageMin >= 18
+                  const slotsCount = plannings.filter((p) => p.groupeId === groupe.id).length
 
                   return (
                     <article
@@ -327,13 +367,14 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
                         )}
 
                         <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-                          <a
-                            href={`/planning?groupe=${encodeURIComponent(groupe.id)}`}
-                            className="flex-1 text-center bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-200/90 font-extrabold text-xs uppercase tracking-wider py-3 px-3 rounded-xl transition-all shadow-2xs active:scale-[0.99] flex items-center justify-center gap-1.5"
+                          <button
+                            type="button"
+                            onClick={() => setPlanningModalGroupe(groupe)}
+                            className="flex-1 bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-200/90 font-extrabold text-xs uppercase tracking-wider py-3 px-3 rounded-xl transition-all shadow-2xs active:scale-[0.99] flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <span>📅</span>
-                            <span>Planning de la semaine</span>
-                          </a>
+                            <span>Planning {slotsCount > 0 ? `(${slotsCount})` : ''}</span>
+                          </button>
                           <a
                             href={`/inscription?groupe=${encodeURIComponent(groupe.nom)}`}
                             className="flex-1 text-center bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs uppercase tracking-wider py-3 px-3 rounded-xl transition-all shadow-xs active:scale-[0.99] flex items-center justify-center gap-1.5"
@@ -350,6 +391,102 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
           )
         })}
       </div>
+
+      {/* MODALE DE PLANNING DU GROUPE */}
+      {planningModalGroupe && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div
+            className="bg-white rounded-3xl max-w-xl w-full p-6 md:p-8 shadow-2xl space-y-6 relative border border-slate-100 animate-scale-up overflow-hidden max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header Modale */}
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <span className="text-[10px] font-black text-sky-700 bg-sky-50 border border-sky-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  Créneaux d&apos;entraînement
+                </span>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-1">
+                  {planningModalGroupe.nom}
+                </h3>
+              </div>
+              <button
+                onClick={() => setPlanningModalGroupe(null)}
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-lg transition-colors cursor-pointer"
+                aria-label="Fermer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Liste des créneaux */}
+            <div className="overflow-y-auto space-y-3 flex-1 pr-1">
+              {modalSlots.length === 0 ? (
+                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-6 text-center space-y-3">
+                  <span className="text-3xl block">🏊‍♂️</span>
+                  <p className="text-sm font-semibold text-slate-700">
+                    Les créneaux exacts pour ce groupe sont en cours d&apos;actualisation.
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Vous pouvez consulter le planning interactif global du club ou nous contacter pour plus de renseignements.
+                  </p>
+                </div>
+              ) : (
+                modalSlots.map((slot) => {
+                  const coachNames = slot.coachs && slot.coachs.length > 0
+                    ? slot.coachs.map((c) => `${c.coach.prenom} ${c.coach.nom || ''}`.trim()).join(', ')
+                    : null
+
+                  return (
+                    <div
+                      key={slot.id}
+                      className="bg-gradient-to-r from-sky-50/80 to-blue-50/40 border border-sky-200/70 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-2xs"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-sky-600 text-white text-xs font-black px-2.5 py-0.5 rounded-lg uppercase tracking-wider">
+                            {slot.jourSemaine}
+                          </span>
+                          <span className="text-slate-900 font-extrabold text-sm">
+                            {slot.heureDebut} - {slot.heureFin}
+                          </span>
+                        </div>
+                        {slot.lieu && (
+                          <p className="text-xs text-slate-600 font-medium flex items-center gap-1">
+                            <span>📍</span>
+                            <span>{slot.lieu}</span>
+                          </p>
+                        )}
+                        {coachNames && (
+                          <p className="text-xs text-sky-800 font-semibold flex items-center gap-1">
+                            <span>👤</span>
+                            <span>Coach : {coachNames}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            {/* Footer Modale */}
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+              <a
+                href={`/planning?groupe=${encodeURIComponent(planningModalGroupe.id)}`}
+                className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider py-3.5 px-4 rounded-xl text-center transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2"
+              >
+                <span>🔍 Voir sur le planning général</span>
+              </a>
+              <button
+                onClick={() => setPlanningModalGroupe(null)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider py-3.5 px-4 rounded-xl transition-all cursor-pointer"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

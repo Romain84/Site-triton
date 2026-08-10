@@ -43,6 +43,39 @@ async function getGroupes() {
   }
 }
 
+async function getPlannings() {
+  try {
+    return await prisma.planning.findMany({
+      where: { actif: true },
+      select: {
+        id: true,
+        jourSemaine: true,
+        heureDebut: true,
+        heureFin: true,
+        lieu: true,
+        nomSession: true,
+        groupeId: true,
+        coachs: {
+          select: {
+            coach: {
+              select: {
+                prenom: true,
+                nom: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [
+        { jourSemaine: 'asc' },
+        { heureDebut: 'asc' },
+      ],
+    })
+  } catch {
+    return []
+  }
+}
+
 import { getCurrentSeasonLabel, isInterSaisonActive } from '@/lib/season-utils'
 
 function getWatermarkSvgBase64(text: string) {
@@ -53,8 +86,9 @@ function getWatermarkSvgBase64(text: string) {
 import GroupesClient from '@/components/GroupesClient'
 
 export default async function GroupesPage() {
-  const [groupes, settings] = await Promise.all([
+  const [groupes, plannings, settings] = await Promise.all([
     getGroupes(),
+    getPlannings(),
     prisma.settings.findFirst({
       select: {
         interSaisonActif: true,
@@ -110,7 +144,7 @@ export default async function GroupesPage() {
               Aucun groupe disponible pour le moment.
             </div>
           ) : (
-            <GroupesClient groupes={groupes} interSaison={interSaison} texteFiligrane={texteFiligrane} />
+            <GroupesClient groupes={groupes} plannings={plannings} interSaison={interSaison} texteFiligrane={texteFiligrane} />
           )}
         </div>
       </div>

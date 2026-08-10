@@ -972,10 +972,13 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
   // Plannings filtrés par groupe actif
   const planningsFiltres = plannings.filter(p => {
     if (p.jourSemaine === 'Dimanche') return false // Supprimer dimanche
-    if (!p.groupe) return false
-    if (selectedGroupeObj) {
-      return p.groupeId === selectedGroupeObj.id || p.groupe.nom.toLowerCase() === selectedGroupeObj.nom.toLowerCase()
+    if (selectedGroupeId) {
+      const target = selectedGroupeId.toLowerCase().trim()
+      const matchesId = p.groupeId === selectedGroupeId || (selectedGroupeObj && p.groupeId === selectedGroupeObj.id)
+      const matchesName = p.groupe?.nom ? p.groupe.nom.toLowerCase().trim() === target : false
+      return matchesId || matchesName
     }
+    if (!p.groupe) return false
     if (filtre === 'all') return true
     return categoriseGroupe(p.groupe.nom) === filtre
   })
