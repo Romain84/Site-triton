@@ -394,7 +394,10 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
 
       {/* MODALE DE PLANNING DU GROUPE */}
       {planningModalGroupe && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-fade-in">
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-fade-in"
+          onClick={() => setPlanningModalGroupe(null)}
+        >
           <div
             className="bg-white rounded-3xl max-w-xl w-full p-6 md:p-8 shadow-2xl space-y-6 relative border border-slate-100 animate-scale-up overflow-hidden max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
