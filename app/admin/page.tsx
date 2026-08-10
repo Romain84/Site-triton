@@ -79,7 +79,7 @@ const CATEGORIES = [
     items: [
       { id: 'actualites', label: 'Actualités', icon: '📰' },
       { id: 'galerie', label: 'Galerie', icon: '🖼️' },
-      { id: 'evenements', label: 'Événements', icon: '📆' },
+      { id: 'adherents-monclub', label: 'Adhérents (~300 Nageurs)', icon: '🏊' },
       { id: 'inscription-page', label: 'Page Inscription', icon: '📋' }
     ]
   },

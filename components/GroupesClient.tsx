@@ -269,68 +269,79 @@ export default function GroupesClient({ groupes, interSaison, texteFiligrane }: 
                         </p>
                       </div>
 
-                      {/* Tarifs & Cautions */}
-                      {(typeof groupe.tarif === 'number' || typeof groupe.tarif1Cours === 'number' || typeof groupe.prixLicence === 'number' || typeof groupe.caution === 'number') && (
-                        <div className={`border-t border-slate-100 pt-4 space-y-3 mt-auto ${groupe.annule ? 'opacity-35 grayscale select-none pointer-events-none' : ''}`}>
-                          {typeof groupe.tarif1Cours === 'number' ? (
-                            <div className="space-y-2 bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
-                              <div className="flex items-center justify-between gap-3 text-sm">
-                                <span className="text-slate-600 font-bold">{groupe.libelleOption1 || '1 cours/semaine'}</span>
-                                <span className="font-black text-slate-950 text-base">
-                                  {((groupe.tarif1Cours || 0) + (groupe.prixLicence || 0)).toFixed(2)} €
-                                </span>
+                      {/* Tarifs, Cautions & Actions */}
+                      <div className="border-t border-slate-100 pt-4 space-y-4 mt-auto">
+                        {(typeof groupe.tarif === 'number' || typeof groupe.tarif1Cours === 'number' || typeof groupe.prixLicence === 'number' || typeof groupe.caution === 'number') && (
+                          <div className={`space-y-3 ${groupe.annule ? 'opacity-35 grayscale select-none pointer-events-none' : ''}`}>
+                            {typeof groupe.tarif1Cours === 'number' ? (
+                              <div className="space-y-2 bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
+                                <div className="flex items-center justify-between gap-3 text-sm">
+                                  <span className="text-slate-600 font-bold">{groupe.libelleOption1 || '1 cours/semaine'}</span>
+                                  <span className="font-black text-slate-950 text-base">
+                                    {((groupe.tarif1Cours || 0) + (groupe.prixLicence || 0)).toFixed(2)} €
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-3 text-sm border-t border-slate-200/60 pt-2">
+                                  <span className="text-slate-600 font-bold">{groupe.libelleOption2 || '2 cours/semaine'}</span>
+                                  <span className="font-black text-slate-950 text-base">
+                                    {((groupe.tarif || 0) + (groupe.prixLicence || 0)).toFixed(2)} €
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex items-center justify-between gap-3 text-sm border-t border-slate-200/60 pt-2">
-                                <span className="text-slate-600 font-bold">{groupe.libelleOption2 || '2 cours/semaine'}</span>
-                                <span className="font-black text-slate-950 text-base">
+                            ) : (
+                              <div className="flex items-center justify-between gap-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
+                                <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Tarif annuel global</span>
+                                <span className="text-2xl font-black text-slate-950">
                                   {((groupe.tarif || 0) + (groupe.prixLicence || 0)).toFixed(2)} €
                                 </span>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between gap-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
-                              <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Tarif annuel global</span>
-                              <span className="text-2xl font-black text-slate-950">
-                                {((groupe.tarif || 0) + (groupe.prixLicence || 0)).toFixed(2)} €
-                              </span>
-                            </div>
-                          )}
+                            )}
 
-                          {typeof groupe.prixLicence === 'number' && groupe.prixLicence > 0 && (
-                            <p className="text-[11px] text-slate-500 flex justify-between items-center px-1 font-medium">
-                              <span>Dont licence fédérale FFN obligatoire :</span>
-                              <span className="font-bold text-slate-800">
-                                {groupe.prixLicence.toFixed(2)} €
-                              </span>
-                            </p>
-                          )}
+                            {typeof groupe.prixLicence === 'number' && groupe.prixLicence > 0 && (
+                              <p className="text-[11px] text-slate-500 flex justify-between items-center px-1 font-medium">
+                                <span>Dont licence fédérale FFN obligatoire :</span>
+                                <span className="font-bold text-slate-800">
+                                  {groupe.prixLicence.toFixed(2)} €
+                                </span>
+                              </p>
+                            )}
 
-                          {typeof groupe.caution === 'number' && groupe.caution > 0 && (
-                            <div className="mt-2.5 border border-amber-200/90 bg-amber-50/70 rounded-2xl p-3.5 text-xs space-y-1.5 shadow-2xs">
-                              <div className="flex items-center justify-between font-extrabold text-amber-950">
-                                <span>Caution demandée :</span>
-                                <span className="font-mono text-sm bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 text-amber-950 font-black">{groupe.caution.toFixed(2)} €</span>
+                            {typeof groupe.caution === 'number' && groupe.caution > 0 && (
+                              <div className="mt-2.5 border border-amber-200/90 bg-amber-50/70 rounded-2xl p-3.5 text-xs space-y-1.5 shadow-2xs">
+                                <div className="flex items-center justify-between font-extrabold text-amber-950">
+                                  <span>Caution demandée :</span>
+                                  <span className="font-mono text-sm bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 text-amber-950 font-black">{groupe.caution.toFixed(2)} €</span>
+                                </div>
+                                {groupe.nbCompetitionsCaution && groupe.nbCompetitionsCaution > 0 ? (
+                                  <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
+                                    <strong>Condition de remboursement :</strong> Restituée en fin de saison si le nageur participe à au moins <strong>{groupe.nbCompetitionsCaution} compétition{groupe.nbCompetitionsCaution > 1 ? 's' : ''}</strong>.
+                                  </p>
+                                ) : (
+                                  <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
+                                    <strong>Condition de remboursement :</strong> Restituée en fin de saison selon les règles du club.
+                                  </p>
+                                )}
                               </div>
-                              {groupe.nbCompetitionsCaution && groupe.nbCompetitionsCaution > 0 ? (
-                                <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
-                                  <strong>Condition de remboursement :</strong> Restituée en fin de saison si le nageur participe à au moins <strong>{groupe.nbCompetitionsCaution} compétition{groupe.nbCompetitionsCaution > 1 ? 's' : ''}</strong>.
-                                </p>
-                              ) : (
-                                <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
-                                  <strong>Condition de remboursement :</strong> Restituée en fin de saison selon les règles du club.
-                                </p>
-                              )}
-                            </div>
-                          )}
+                            )}
+                          </div>
+                        )}
 
+                        <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+                          <a
+                            href={`/planning?groupe=${encodeURIComponent(groupe.id)}`}
+                            className="flex-1 text-center bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-200/90 font-extrabold text-xs uppercase tracking-wider py-3 px-3 rounded-xl transition-all shadow-2xs active:scale-[0.99] flex items-center justify-center gap-1.5"
+                          >
+                            <span>📅</span>
+                            <span>Planning de la semaine</span>
+                          </a>
                           <a
                             href={`/inscription?groupe=${encodeURIComponent(groupe.nom)}`}
-                            className="block w-full text-center bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-xs active:scale-[0.99] mt-3"
+                            className="flex-1 text-center bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs uppercase tracking-wider py-3 px-3 rounded-xl transition-all shadow-xs active:scale-[0.99] flex items-center justify-center gap-1.5"
                           >
-                            S&apos;inscrire à ce groupe
+                            <span>S&apos;inscrire à ce groupe</span>
                           </a>
                         </div>
-                      )}
+                      </div>
                     </article>
                   )
                 })}

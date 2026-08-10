@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import PlanningInteractif from '@/components/PlanningInteractif'
@@ -94,7 +95,14 @@ function getWatermarkSvgBase64(text: string) {
   return Buffer.from(svg).toString('base64')
 }
 
-export default async function PlanningPage() {
+export default async function PlanningPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ groupe?: string; groupeId?: string }>
+}) {
+  const resolvedParams = searchParams ? await searchParams : {}
+  const initialGroupeId = resolvedParams?.groupe || resolvedParams?.groupeId
+
   const { plannings, groupes, settings } = await getData()
   const interSaison = isInterSaisonActive(settings?.interSaisonActif)
   const texteFiligrane = settings?.texteFiligrane || getCurrentSeasonLabel()
@@ -132,10 +140,17 @@ export default async function PlanningPage() {
               <p className="text-gray-600 text-lg">Le planning n&apos;est pas encore disponible.</p>
             </div>
           ) : (
-            <PlanningInteractif plannings={plannings} groupes={groupes} />
+            <Suspense fallback={
+              <div className="text-center py-20 bg-white rounded-xl shadow-lg">
+                <p className="text-gray-600 text-lg">Chargement du planning...</p>
+              </div>
+            }>
+              <PlanningInteractif plannings={plannings} groupes={groupes} initialGroupeId={initialGroupeId} />
+            </Suspense>
           )}
         </div>
       </div>
     </div>
   )
 }
+

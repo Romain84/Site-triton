@@ -363,6 +363,7 @@ model Settings {
   ovhServiceName               String?  @default("vps-248c64f5.vps.ovh.net")
   instagramAccountId           String?
   instagramAccessToken         String?
+  passSportApiKey              String?
 
   @@map("settings")
 }

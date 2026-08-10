@@ -73,7 +73,7 @@ export default function Header() {
 
             <div className="hidden md:flex items-center gap-2 ml-auto">
               <Link href="/boutique" className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-all">Boutique</Link>
-              <Link href="/inscription" className="px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-all">Accéder à MonClub.fr</Link>
+              <Link href="/inscription" className="px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-all">Inscriptions 2026-2027</Link>
               <a href="https://tritonapp.fr" target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-all">Performance</a>
               <span className="w-px h-4 bg-slate-200 mx-1" />
               <Link href="/coach/login" className="px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors">Coach</Link>

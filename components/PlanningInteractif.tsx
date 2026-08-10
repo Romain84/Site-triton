@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 interface Planning {
   id: string
@@ -38,6 +39,7 @@ interface Groupe {
 interface PlanningInteractifProps {
   plannings: Planning[]
   groupes: Groupe[]
+  initialGroupeId?: string
 }
 
 const JOURS_ORDRE = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
@@ -361,13 +363,15 @@ const getCardGradient = (hexColor: string | null | undefined): string => {
     case '#4caf50': return 'linear-gradient(135deg, #4caf50, #388e3c)' // Vert
     case '#ff9800': return 'linear-gradient(135deg, #ff9800, #f57c00)' // Orange
     case '#f44336': return 'linear-gradient(135deg, #f44336, #d32f2f)' // Rouge
-    case '#9c27b0': return 'linear-gradient(135deg, #9c27b0, #7b1fa2)' // Violet
-    case '#e91e63': return 'linear-gradient(135deg, #e91e63, #c2185b)' // Rose
     default: return `linear-gradient(135deg, ${baseColor}, ${baseColor})`
   }
 }
 
-export default function PlanningInteractif({ plannings, groupes }: PlanningInteractifProps) {
+export default function PlanningInteractif({ plannings, groupes, initialGroupeId }: PlanningInteractifProps) {
+  const searchParams = useSearchParams()
+  const targetParam = searchParams?.get('groupe') || searchParams?.get('groupeId') || initialGroupeId
+  const [selectedGroupeId, setSelectedGroupeId] = useState<string | null>(targetParam || null)
+
   const [filtre, setFiltre] = useState<string>('all')
   const [viewMode, setViewMode] = useState<'grille' | 'tableau' | 'bassin'>(() => {
     if (typeof window === 'undefined') return 'bassin'
@@ -380,10 +384,22 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
   const [selectedPlanningDetails, setSelectedPlanningDetails] = useState<Planning | null>(null)
   const [selectedFusedGroup, setSelectedFusedGroup] = useState<Planning[] | null>(null)
 
+  useEffect(() => {
+    if (targetParam) {
+      setSelectedGroupeId(targetParam)
+    }
+  }, [targetParam])
+
   // Synchroniser les jours sélectionnés si nécessaire
   useEffect(() => {
     setSelectedDayBassin(selectedDayTimeline)
   }, [selectedDayTimeline])
+
+  const selectedGroupeObj = selectedGroupeId
+    ? groupes.find(
+        g => g.id === selectedGroupeId || g.nom.toLowerCase() === selectedGroupeId.toLowerCase()
+      )
+    : null
 
   const timeToMinutes = (timeStr: string | null | undefined): number => {
     if (!timeStr) return 0
@@ -557,7 +573,6 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
     const gaps: TimeGap[] = []
 
     if (rawPlannings.length > 0) {
-      // 1. Détection de la pause initiale (ex: 07h00 -> 19h30 si premier cours à 19h30)
       const firstStart = rawPlannings[0].start
       if (firstStart - gridStartMin >= 150) {
         const bStart = gridStartMin + 30
@@ -567,7 +582,6 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
         }
       }
 
-      // 2. Détection des pauses intermédiaires (entre la FIN EFFECTIVE de tous les cours précédents et le DEBUT du cours suivant)
       let maxEndSoFar = rawPlannings[0].end
       for (let i = 1; i < rawPlannings.length; i++) {
         const nextStart = rawPlannings[i].start
@@ -582,8 +596,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
       }
     }
 
-    // Mapping temps -> pourcentage de hauteur de grille (0% à 100%)
-    const gapHeightPct = 4 // 4% de la hauteur globale attribué à chaque bandeau de pause
+    const gapHeightPct = 4
     const totalGapsHeight = gaps.length * gapHeightPct
     const activeHeightPct = 100 - totalGapsHeight
 
@@ -634,7 +647,6 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
     return (
       <div className="bg-slate-100 rounded-3xl p-5 shadow-inner border border-slate-200/80 overflow-x-auto print:bg-white print:border-0 print:p-0">
         <div className="min-w-[800px]">
-          {/* Day Name header inside the printable page */}
           {isPrintOnly ? (
             <div className="text-center mb-6">
               <h2 className="text-3xl font-black uppercase tracking-widest text-slate-900 border-b-2 border-slate-900 pb-2">
@@ -653,8 +665,6 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
           )}
 
           <div className="relative h-[920px] bg-gradient-to-b from-cyan-300/10 via-sky-400/5 to-blue-500/10 border-4 border-slate-900 rounded-2xl overflow-hidden shadow-md flex print:border-0 print:shadow-none">
-            
-            {/* Ruler column (left) */}
             <div className="w-16 flex-shrink-0 bg-slate-900 text-slate-400 font-mono text-[9.5px] select-none flex flex-col justify-between py-4 text-center border-r border-slate-800">
               <div className="h-10 border-b border-slate-800" />
               <div className="relative flex-grow h-[calc(100%-2.5rem)]">
@@ -662,7 +672,6 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                   const hour = startHour + idx
                   const timeMin = hour * 60
                   
-                  // Si l'heure tombe en plein dans une pause masquée, on ne l'affiche pas sur la règle
                   const isInGap = gaps.some(g => timeMin > g.startMin && timeMin < g.endMin)
                   if (isInGap) return null
                   
@@ -680,10 +689,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
               </div>
             </div>
 
-            {/* Lanes column container */}
             <div className={`flex-grow relative grid h-full ${hasPPG ? 'grid-cols-6' : 'grid-cols-5'}`}>
-              
-              {/* Horizontal grid lines */}
               <div className="absolute inset-0 pointer-events-none z-0 mt-10 h-[calc(100%-2.5rem)]">
                 {Array.from({ length: numHours + 1 }).map((_, idx) => {
                   const hour = startHour + idx
@@ -718,7 +724,6 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                 })}
               </div>
 
-              {/* Repeating pool lane separators (vertical ropes) */}
               {separatorPct.map((leftPct, idx) => {
                 return (
                   <div
@@ -734,7 +739,6 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                 )
               })}
 
-              {/* Lanes mapping */}
               {lanesList.map((lane, laneIdx) => {
                 const columnPlannings = laneAssignments[lane.key] || []
                 
@@ -742,7 +746,6 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                   return timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut)
                 })
                 
-                // Fusion des créneaux aux horaires identiques dans la même ligne
                 interface FusedItem {
                   id: string
                   heureDebut: string
@@ -798,6 +801,7 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                         {lane.label}
                       </span>
                     </div>
+
                     <div className="relative flex-grow h-[calc(100%-2.5rem)]">
                       {columns.map((col, colIdx) => {
                         const leftPct = (colIdx / totalCols) * 100
@@ -811,7 +815,6 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                           const duration = endMin - startMin
                           const isShort = duration <= 50
 
-                          // Calculate colSpan
                           let colSpan = 1
                           for (let nextColIdx = colIdx + 1; nextColIdx < totalCols; nextColIdx++) {
                             const hasOverlap = columns[nextColIdx].some(other => {
@@ -831,7 +834,6 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                           const firstPlanning = item.plannings[0]
 
                           if (isFused) {
-                            // Rendu de carte fusionnée (plusieurs groupes simultanés dans la même ligne)
                             const hasImpaire = item.plannings.some(p => p.semaineImpaire)
 
                             return (
@@ -878,7 +880,6 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
                             )
                           }
 
-                          // Rendu classique pour un seul groupe (pouvant s'étendre sur plusieurs lignes contiguës)
                           const planning = firstPlanning
                           const spanLanes = (planning as any).spanLanesCount || 1
                           const singleCardWidth = spanLanes > 1 ? `calc(${spanLanes * 100}% - 4px)` : `calc(${widthPct}% - 4px)`
@@ -959,8 +960,11 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
     )
   }
 
-  // Filtrer les groupes selon la catégorie sélectionnée
+  // Filtrer les groupes selon le groupe sélectionné ou la catégorie
   const groupesFiltres = groupes.filter((groupe) => {
+    if (selectedGroupeObj) {
+      return groupe.id === selectedGroupeObj.id
+    }
     if (filtre === 'all') return true
     return categoriseGroupe(groupe.nom) === filtre
   })
@@ -969,6 +973,9 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
   const planningsFiltres = plannings.filter(p => {
     if (p.jourSemaine === 'Dimanche') return false // Supprimer dimanche
     if (!p.groupe) return false
+    if (selectedGroupeObj) {
+      return p.groupeId === selectedGroupeObj.id || p.groupe.nom.toLowerCase() === selectedGroupeObj.nom.toLowerCase()
+    }
     if (filtre === 'all') return true
     return categoriseGroupe(p.groupe.nom) === filtre
   })
@@ -1044,14 +1051,42 @@ export default function PlanningInteractif({ plannings, groupes }: PlanningInter
         </button>
       </div>
 
+      {/* Banner Filtre Groupe Actif */}
+      {selectedGroupeObj && (
+        <div className="bg-sky-50 border-2 border-sky-200 rounded-3xl p-4 md:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 max-w-5xl mx-auto print:hidden animate-fade-in shadow-sm">
+          <div className="flex items-center gap-3 text-center sm:text-left">
+            <div className="w-12 h-12 rounded-2xl bg-sky-600 text-white flex items-center justify-center font-black text-2xl shrink-0 shadow-xs">
+              📅
+            </div>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-sky-700 block">
+                Filtre groupe actif
+              </span>
+              <h2 className="text-xl md:text-2xl font-black text-slate-900 leading-tight">
+                Planning de la semaine : {selectedGroupeObj.nom}
+              </h2>
+            </div>
+          </div>
+          <button
+            onClick={() => setSelectedGroupeId(null)}
+            className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs uppercase tracking-wider rounded-xl border border-slate-300 transition-all shadow-2xs shrink-0 cursor-pointer"
+          >
+            ✕ Afficher tous les groupes
+          </button>
+        </div>
+      )}
+
       {/* Filtres par catégorie épurés */}
       <div className="flex flex-wrap justify-center gap-2 max-w-5xl mx-auto print:hidden">
         {Object.entries(CATEGORIES).map(([key, label]) => {
-          const isActive = filtre === key
+          const isActive = !selectedGroupeObj && filtre === key
           return (
             <button
               key={key}
-              onClick={() => setFiltre(key)}
+              onClick={() => {
+                setSelectedGroupeId(null)
+                setFiltre(key)
+              }}
               className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider uppercase transition-all cursor-pointer ${
                 isActive
                   ? 'bg-slate-900 text-white shadow-sm border border-slate-900'
