@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 export interface GroupeData {
   id: string
@@ -174,6 +175,11 @@ export function categoriserGroupe(nom: string, isCompetition?: boolean | null): 
 export default function GroupesClient({ groupes, plannings = [], interSaison, texteFiligrane }: GroupesClientProps) {
   const [selectedCategory, setSelectedCategory] = useState<CategorieGroupeKey>('all')
   const [planningModalGroupe, setPlanningModalGroupe] = useState<GroupeData | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Regrouper les groupes par catégorie
   const groupesParCategorie: Record<Exclude<CategorieGroupeKey, 'all'>, GroupeData[]> = {
@@ -392,14 +398,14 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
         })}
       </div>
 
-      {/* MODALE DE PLANNING DU GROUPE */}
-      {planningModalGroupe && (
+      {/* MODALE DE PLANNING DU GROUPE - PORTAL SUR BODY POUR EVITER TOUTE INTERFERENCE transform/parent */}
+      {mounted && planningModalGroupe && createPortal(
         <div 
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-fade-in"
           onClick={() => setPlanningModalGroupe(null)}
         >
           <div
-            className="bg-white rounded-3xl max-w-xl w-full p-6 md:p-8 shadow-2xl space-y-6 relative border border-slate-100 animate-scale-up overflow-hidden max-h-[90vh] flex flex-col"
+            className="bg-white rounded-3xl max-w-xl w-full p-6 md:p-8 shadow-2xl space-y-6 relative border border-slate-100 animate-scale-up overflow-hidden max-h-[85vh] flex flex-col my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header Modale */}
@@ -466,7 +472,8 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
