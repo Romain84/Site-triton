@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react'
 import Link from 'next/link'
 import { QrCode, CheckCircle2, AlertTriangle, FileText, Download, ShieldCheck, Calendar, User, Waves, Award } from 'lucide-react'
