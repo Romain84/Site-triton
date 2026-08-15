@@ -226,16 +226,84 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Nombre de semaines globales (si dates globales fournies)
-    const dateDebutGlobale = hasDateGlobale ? new Date(dateDebutStr) : null
-    const dateFinGlobale = hasDateGlobale ? new Date(dateFinStr) : null
-    const nbSemainesTotalesGlobal = hasDateGlobale
-      ? calculerNombreSemaines(
-          dateDebutGlobale!,
-          dateFinGlobale!,
-          vacancesPourPeriode(dateDebutGlobale!, dateFinGlobale!)
-        )
-      : null
+    // ── Déduplication multi-lignes pour un même groupe et même horaire ───────
+    function dedupliquerPlanningsMultiLignes(rawList: typeof plannings) {
+      const map = new Map<string, (typeof plannings)[0]>()
+      for (const p of rawList) {
+        const key = `${p.groupeId}|${p.jourSemaine}|${p.heureDebut}|${p.heureFin}|${p.semaineImpaire}`
+        if (!map.has(key)) {
+          map.set(key, {
+            ...p,
+            coachs: [...p.coachs],
+          })
+        } else {
+          const existing = map.get(key)!
+          for (const c of p.coachs) {
+            if (!existing.coachs.some((ec) => ec.coachId === c.coachId)) {
+              existing.coachs.push(c)
+            }
+          }
+        }
+      }
+      return Array.from(map.values())
+    }
+
+    const planningsActifs = dedupliquerPlanningsMultiLignes(plannings)
+
+    // ── Helper: Calculer la présence physique hebdomadaire d'un coach (heures réelles sur le bassin)
+    function calculerPresenceHebdoCoach(coachId: string, list: typeof planningsActifs): number {
+      const coachPlannings = list.filter((p) => p.coachs.some((c) => c.coachId === coachId))
+      const parJour = new Map<string, typeof coachPlannings>()
+      for (const p of coachPlannings) {
+        const slots = parJour.get(p.jourSemaine) ?? []
+        slots.push(p)
+        parJour.set(p.jourSemaine, slots)
+      }
+
+      let totalHebdo = 0
+      for (const [, slots] of parJour.entries()) {
+        let minM = Infinity
+        let maxM = -Infinity
+        const intervals = slots.map((p) => {
+          const start = parseTimeToMinutes(p.heureDebut)
+          const end = parseTimeToMinutes(p.heureFin)
+          minM = Math.min(minM, start)
+          maxM = Math.max(maxM, end)
+          const dureeFacturee = getPlanningDuree(p)
+          return { start, end, dureeFacturee }
+        })
+
+        if (minM >= maxM) continue
+        let mins = 0
+        for (let m = minM; m < maxM; m++) {
+          if (intervals.some((inv) => m >= inv.start && m < inv.end)) {
+            mins++
+          }
+        }
+        const dureeReelle = mins / 60
+        const dureeFacturee = intervals.reduce((max, inv) => Math.max(max, inv.dureeFacturee), dureeReelle)
+        totalHebdo += Math.max(dureeReelle, dureeFacturee)
+      }
+
+      return totalHebdo
+    }
+
+    // ── Date par défaut de la saison si aucune date n'est fournie ─────────────
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth() // 0-indexed: 0 = Jan, 8 = Sept
+    const defaultAnneeDebut = currentMonth >= 8 ? currentYear : currentYear - 1
+    const dateDebutDefautSaison = new Date(defaultAnneeDebut, 8, 1) // 1er Septembre
+    const dateFinDefautSaison = new Date(defaultAnneeDebut + 1, 5, 30) // 30 Juin
+
+    // Nombre de semaines globales (si dates globales fournies ou saison standard)
+    const dateDebutGlobale = hasDateGlobale ? new Date(dateDebutStr) : dateDebutDefautSaison
+    const dateFinGlobale = hasDateGlobale ? new Date(dateFinStr) : dateFinDefautSaison
+    const nbSemainesTotalesGlobal = calculerNombreSemaines(
+      dateDebutGlobale,
+      dateFinGlobale,
+      vacancesPourPeriode(dateDebutGlobale, dateFinGlobale)
+    )
 
     // ── BUG FIX: 'adultes' retiré des niveaux compétition ─────────────────────
     const niveauxCompetition = ['competition', 'compétition', 'benjamins', 'juniors']
@@ -255,13 +323,13 @@ export async function POST(request: NextRequest) {
 
     const planningsParGroupe = new Map<string, PlanningDetail[]>()
     const coachSlotMap = new Map<string, number>()
-    for (const p of plannings) {
+    for (const p of planningsActifs) {
       const pExcluded = isPPGouPetitBassin(p)
       for (const c of p.coachs) {
         const key = `${c.coachId}|${p.jourSemaine}|${p.heureDebut}|${p.heureFin}`
         const count = pExcluded
           ? 1
-          : plannings.filter(op =>
+          : planningsActifs.filter(op =>
               op.jourSemaine === p.jourSemaine &&
               !isPPGouPetitBassin(op) &&
               op.coachs.some(oc => oc.coachId === c.coachId) &&
@@ -281,8 +349,7 @@ export async function POST(request: NextRequest) {
     let totalHeuresHebdoOptimise = 0
 
     // Indexation par minute des créneaux de chaque coach pour dédupliquer précisément les intersections
-    // Permet d'éviter de double facturer les tranches horaires partiellement chevauchantes
-    for (const planning of plannings) {
+    for (const planning of planningsActifs) {
       if (!planning.groupeId) continue
 
       const duree = getPlanningDuree(planning)
@@ -298,7 +365,7 @@ export async function POST(request: NextRequest) {
           const effHrs = calculerHeuresEffectivesCoach(
             coachId,
             planning,
-            plannings
+            planningsActifs
           )
           return sum + effHrs
         }, 0)
@@ -306,7 +373,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Nombre de groupes partageant simultanément le bassin au même horaire
-      const nbGroupesSimultanes = Math.max(1, plannings.filter(op =>
+      const nbGroupesSimultanes = Math.max(1, planningsActifs.filter(op =>
         op.jourSemaine === planning.jourSemaine &&
         parseTimeToMinutes(op.heureDebut) < parseTimeToMinutes(planning.heureFin) &&
         parseTimeToMinutes(op.heureFin) > parseTimeToMinutes(planning.heureDebut)
@@ -348,7 +415,7 @@ export async function POST(request: NextRequest) {
         stat.heuresOptimise += calculerHeuresEffectivesCoach(
           coachId,
           planning,
-          plannings
+          planningsActifs
         )
         if (planning.groupeId) stat.groupeIds.add(planning.groupeId)
         coachStats.set(coachId, stat)
@@ -360,11 +427,6 @@ export async function POST(request: NextRequest) {
       const res: GroupeCout[] = []
 
       for (const groupe of groupes) {
-        // ── NOUVEAU: résolution des dates par groupe ───────────────────────────
-        // Priorité 1 : dates globales saisies dans la page coût
-        // Priorité 2 : dates définies sur le groupe lui-même
-        // Si aucune date disponible → groupe ignoré avec alerte info
-
         let dateDebutGroupe: Date | null = null
         let dateFinGroupe: Date | null = null
         let sourceDate: 'global' | 'groupe' = 'global'
@@ -377,6 +439,10 @@ export async function POST(request: NextRequest) {
           dateDebutGroupe = new Date(groupe.dateDebut)
           dateFinGroupe = new Date(groupe.dateFin)
           sourceDate = 'groupe'
+        } else {
+          dateDebutGroupe = dateDebutDefautSaison
+          dateFinGroupe = dateFinDefautSaison
+          sourceDate = 'global'
         }
 
         // Groupe sans aucune date → on le saute avec une alerte
@@ -713,21 +779,21 @@ export async function POST(request: NextRequest) {
     // ── Coût par coach ────────────────────────────────────────────────────────
     const groupeNomById = new Map(groupes.map((g) => [g.id, g.nom]))
     const coachsCout: CoachCout[] = Array.from(coachStats.entries()).map(
-      ([id, stat]) => ({
-        coachId: id,
-        coachNom: `${stat.prenom} ${stat.nom}`.trim(),
-        heuresParSemaine: mode === 'optimise' ? stat.heuresOptimise : stat.heuresSimple,
-        totalHeures:
-          (mode === 'optimise' ? stat.heuresOptimise : stat.heuresSimple) *
-          (nbSemainesTotalesGlobal ?? 1),
-        coutTotal:
-          (mode === 'optimise' ? stat.heuresOptimise : stat.heuresSimple) *
-          (nbSemainesTotalesGlobal ?? 1) *
-          tauxHoraire,
-        groupes: Array.from(stat.groupeIds)
-          .map((gid) => groupeNomById.get(gid) ?? gid)
-          .filter(Boolean),
-      })
+      ([id, stat]) => {
+        const presenceHebdo = calculerPresenceHebdoCoach(id, planningsActifs)
+        const heuresParSemaine = mode === 'optimise' ? stat.heuresOptimise : presenceHebdo
+        const totalHeures = heuresParSemaine * (nbSemainesTotalesGlobal ?? 34)
+        return {
+          coachId: id,
+          coachNom: `${stat.prenom} ${stat.nom}`.trim(),
+          heuresParSemaine,
+          totalHeures,
+          coutTotal: totalHeures * tauxHoraire,
+          groupes: Array.from(stat.groupeIds)
+            .map((gid) => groupeNomById.get(gid) ?? gid)
+            .filter(Boolean),
+        }
+      }
     )
 
     // ── Alertes globales ──────────────────────────────────────────────────────

@@ -147,6 +147,13 @@ const fmt = (n: number) =>
 const fmtD = (n: number) =>
   n.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
+function formatHeuresDuree(h: number): string {
+  const ent = Math.floor(h)
+  const min = Math.round((h - ent) * 60)
+  if (min === 0) return `${ent}h`
+  return `${ent}h${min.toString().padStart(2, '0')}`
+}
+
 const getBeneficeColor = (v: number) =>
   v > 0 ? 'text-emerald-700' : v < 0 ? 'text-rose-700' : 'text-slate-600'
 
@@ -1620,7 +1627,12 @@ export default function CoutGroupes() {
                                     {coach.coachNom}
                                   </td>
                                   <td className="py-3.5 px-4 text-center font-semibold text-slate-800">
-                                    {coach.heuresParSemaine.toFixed(1)} h/sem
+                                    <span className="font-extrabold text-slate-900">
+                                      {formatHeuresDuree(coach.heuresParSemaine)}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 block">
+                                      ({coach.heuresParSemaine.toFixed(2)} h/sem)
+                                    </span>
                                   </td>
                                   <td className="py-3.5 px-4 text-center font-bold text-slate-900">
                                     {coach.totalHeures.toFixed(1)} h
