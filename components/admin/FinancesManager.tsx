@@ -230,22 +230,25 @@ export default function FinancesManager() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            Trésorerie &amp; Budget du Club
-            <HelpTooltip title="Suivi de l'argent du club">
-              <p>Visualisation simple des rentrées d&apos;argent (boutique, cotisations) et des sorties d&apos;argent (indemnités des entraîneurs, frais courants).</p>
-              <p className="mt-1">Les factures en statut &quot;Brouillon&quot; ne sont pas comptabilisées dans ces chiffres.</p>
-            </HelpTooltip>
-          </h2>
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              Trésorerie &amp; Finances
+              <HelpTooltip title="Suivi de la trésorerie">
+                <p>Visualisation des rentrées d&apos;argent (boutique, cotisations) et des sorties (indemnités entraîneurs, frais courants).</p>
+                <p className="mt-1">Les factures en statut &quot;Brouillon&quot; ne sont pas comptabilisées dans ces chiffres.</p>
+              </HelpTooltip>
+            </h2>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Gestion comptable, factures et bilans du club</p>
+          </div>
 
           {/* Sélecteur de période */}
-          <div className="inline-flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200/60 shadow-xs shrink-0 max-w-fit">
-            <select value={selectedMois} onChange={(e) => setSelectedMois(Number(e.target.value))} className="px-2.5 py-1 bg-white rounded-lg text-xs font-bold text-slate-800 border border-slate-200/40 outline-none focus:ring-0 cursor-pointer shadow-xs">
+          <div className="inline-flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/60 shadow-xs shrink-0 max-w-fit sm:ml-2">
+            <select value={selectedMois} onChange={(e) => setSelectedMois(Number(e.target.value))} aria-label="Sélectionner le mois" className="px-2.5 py-1.5 bg-white rounded-lg text-xs font-bold text-slate-800 border border-slate-200/40 outline-none focus:ring-0 cursor-pointer shadow-xs">
               {moisNoms.map((nom, index) => (
                 <option key={index} value={index + 1}>{nom}</option>
               ))}
             </select>
-            <select value={selectedAnnee} onChange={(e) => setSelectedAnnee(Number(e.target.value))} className="px-2.5 py-1 bg-white rounded-lg text-xs font-bold text-slate-800 border border-slate-200/40 outline-none focus:ring-0 cursor-pointer shadow-xs">
+            <select value={selectedAnnee} onChange={(e) => setSelectedAnnee(Number(e.target.value))} aria-label="Sélectionner l'année" className="px-2.5 py-1.5 bg-white rounded-lg text-xs font-bold text-slate-800 border border-slate-200/40 outline-none focus:ring-0 cursor-pointer shadow-xs">
               {anneesList.map((annee) => (
                 <option key={annee} value={annee}>{annee}</option>
               ))}
@@ -253,19 +256,21 @@ export default function FinancesManager() {
           </div>
         </div>
 
-        {/* Boutons d'action simplifiés */}
+        {/* Boutons d'action rapides */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => { setModalDefaultType('recette'); setIsModalOpen(true) }}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
           >
-            Recette
+            <span>➕</span>
+            <span>Nouvelle Recette</span>
           </button>
           <button
             onClick={() => { setModalDefaultType('depense'); setIsModalOpen(true) }}
-            className="px-4 py-2.5 bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
           >
-            Dépense
+            <span>➖</span>
+            <span>Nouvelle Dépense</span>
           </button>
         </div>
       </div>
@@ -281,126 +286,43 @@ export default function FinancesManager() {
         tresorerieTrend={tresorerieTrend}
       />
 
-      {/* Graphique SVG */}
+      {/* Graphique SVG avec toggle */}
       <FinanceChart overview={overview} cumulativeOverview={cumulativeOverview} />
 
       {/* Onglets détaillés */}
-      <div className="card p-5">
-        <div className="bg-slate-100/80 p-1 rounded-xl flex flex-wrap md:flex-nowrap gap-1 mb-5 border border-slate-200/60 max-w-5xl">
+      <div className="card p-5 bg-white border border-slate-200/90 rounded-2xl shadow-2xs">
+        <div className="bg-slate-100/90 p-1.5 rounded-2xl flex flex-wrap gap-1 mb-6 border border-slate-200/60 max-w-5xl">
           {[
-            { id: 'coaches', label: `Entraîneurs (${selectedPeriod?.factures.length || 0})` },
-            { id: 'boutique', label: `Boutique (${selectedPeriod?.commandes.length || 0})` },
-            { id: 'comptabilite', label: `Comptabilité (${selectedPeriod?.transactions?.length || 0})` },
-            { id: 'categories', label: `Catégories (${categories.length})` },
-            { id: 'bilan', label: 'Bilan de Saison' },
-            { id: 'projection', label: 'Prévisions' },
+            { id: 'comptabilite', label: 'Comptabilité', count: selectedPeriod?.transactions?.length || 0, icon: '📒' },
+            { id: 'coaches', label: 'Factures Coachs', count: selectedPeriod?.factures.length || 0, icon: '🏊' },
+            { id: 'boutique', label: 'Boutique', count: selectedPeriod?.commandes.length || 0, icon: '🛍️' },
+            { id: 'bilan', label: 'Bilan Saison', icon: '📊' },
+            { id: 'projection', label: 'Prévisions', icon: '🔮' },
+            { id: 'categories', label: 'Catégories', count: categories.length, icon: '⚙️' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+              className={`py-2 px-3.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/50'
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/40'
+                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
             >
-              {tab.label}
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
+              {tab.count !== undefined && (
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                  activeTab === tab.id ? 'bg-slate-100 text-slate-700' : 'bg-slate-200/70 text-slate-500'
+                }`}>
+                  {tab.count}
+                </span>
+              )}
             </button>
           ))}
         </div>
 
-        {/* Contenu des onglets */}
-        {activeTab === 'coaches' && (
-          <div>
-            {selectedPeriod?.factures.length === 0 ? (
-              <p className="text-center text-gray-500 py-6">Aucune facture enregistrée pour ce mois.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-300">
-                      <th className="text-left py-3 px-4 font-bold">Numéro</th>
-                      <th className="text-left py-3 px-4 font-bold">Coach</th>
-                      <th className="text-right py-3 px-4 font-bold">Montant</th>
-                      <th className="text-center py-3 px-4 font-bold">Statut</th>
-                      <th className="text-right py-3 px-4 font-bold">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedPeriod?.factures.map((facture) => (
-                      <tr key={facture.id} className="border-b border-gray-100 hover:bg-slate-50/50 transition-colors">
-                        <td className="py-3 px-4 font-mono font-medium text-xs">{facture.numero}</td>
-                        <td className="py-3 px-4 font-medium text-slate-800">
-                          {facture.coach.prenom} {facture.coach.nom || ''}
-                        </td>
-                        <td className="text-right py-3 px-4 font-bold text-slate-700">
-                          {facture.montantTotal.toFixed(2)} €
-                        </td>
-                        <td className="text-center py-3 px-4">
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statutsLabels[facture.statut]?.color || 'bg-gray-100 text-gray-800'}`}>
-                            {statutsLabels[facture.statut]?.label || facture.statut}
-                          </span>
-                        </td>
-                        <td className="text-right py-3 px-4 space-x-2">
-                          {facture.statut !== 'payee' && (
-                            <button
-                              onClick={() => handleMarkAsPaid(facture.id)}
-                              disabled={updatingId === facture.id}
-                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-100 text-green-800 hover:bg-green-200 transition-colors disabled:opacity-50"
-                            >
-                              {updatingId === facture.id ? 'Virement...' : 'Marquer Payée'}
-                            </button>
-                          )}
-                          {facture.pdfPath ? (
-                            <a href={facture.pdfPath} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors inline-block">
-                              PDF Archive
-                            </a>
-                          ) : (
-                            <span className="text-xs text-gray-400 italic">Non archivé</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'boutique' && (
-          <div>
-            {selectedPeriod?.commandes.length === 0 ? (
-              <p className="text-center text-gray-500 py-6">Aucune vente enregistrée pour ce mois.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-300">
-                      <th className="text-left py-3 px-4 font-bold">Numéro Commande</th>
-                      <th className="text-left py-3 px-4 font-bold">Client</th>
-                      <th className="text-left py-3 px-4 font-bold">Date de Vente</th>
-                      <th className="text-right py-3 px-4 font-bold">Total Payé</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedPeriod?.commandes.map((cmd) => (
-                      <tr key={cmd.id} className="border-b border-gray-100 hover:bg-slate-50/50 transition-colors">
-                        <td className="py-3 px-4 font-mono font-medium text-xs text-slate-800">{cmd.numeroCommande}</td>
-                        <td className="py-3 px-4 font-medium text-slate-700">{cmd.prenom} {cmd.nom}</td>
-                        <td className="py-3 px-4 text-slate-600 text-xs">
-                          {new Date(cmd.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                        <td className="text-right py-3 px-4 font-bold text-green-700">+{cmd.total.toFixed(2)} €</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
+        {/* Contenu de l'onglet Comptabilité */}
         {activeTab === 'comptabilite' && (
           <TransactionTable
             transactions={selectedPeriod?.transactions || []}
@@ -410,12 +332,125 @@ export default function FinancesManager() {
           />
         )}
 
+        {/* Contenu de l'onglet Factures Entraîneurs */}
+        {activeTab === 'coaches' && (
+          <div>
+            {selectedPeriod?.factures.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center py-12 px-4 bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl">
+                <span className="text-3xl mb-2">🏊</span>
+                <p className="font-bold text-slate-800 text-sm">Aucune facture entraîneur pour ce mois</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                  Les factures générées ou envoyées par les entraîneurs pour {moisNoms[selectedMois - 1]} {selectedAnnee} apparaîtront automatiquement ici.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
+                        <th className="py-3 px-4">Numéro</th>
+                        <th className="py-3 px-4">Entraîneur</th>
+                        <th className="py-3 px-4 text-right">Montant</th>
+                        <th className="py-3 px-4 text-center">Statut</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {selectedPeriod?.factures.map((facture) => (
+                        <tr key={facture.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3.5 px-4 font-mono font-bold text-slate-700 text-xs">{facture.numero}</td>
+                          <td className="py-3.5 px-4 font-extrabold text-slate-900">
+                            {facture.coach.prenom} {facture.coach.nom || ''}
+                          </td>
+                          <td className="text-right py-3.5 px-4 font-black text-slate-900 text-sm">
+                            {facture.montantTotal.toFixed(2)} €
+                          </td>
+                          <td className="text-center py-3.5 px-4">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${statutsLabels[facture.statut]?.color || 'bg-slate-100 text-slate-800'}`}>
+                              {statutsLabels[facture.statut]?.label || facture.statut}
+                            </span>
+                          </td>
+                          <td className="text-right py-3.5 px-4 space-x-2">
+                            {facture.statut !== 'payee' && (
+                              <button
+                                onClick={() => handleMarkAsPaid(facture.id)}
+                                disabled={updatingId === facture.id}
+                                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-100 hover:bg-emerald-200 text-emerald-900 transition-colors disabled:opacity-50 cursor-pointer"
+                              >
+                                {updatingId === facture.id ? 'Virement...' : '✓ Marquer Payée'}
+                              </button>
+                            )}
+                            {facture.pdfPath ? (
+                              <a href={facture.pdfPath} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors inline-block cursor-pointer">
+                                📄 PDF Archive
+                              </a>
+                            ) : (
+                              <span className="text-xs text-slate-400 italic">Non archivé</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Contenu de l'onglet Ventes Boutique */}
+        {activeTab === 'boutique' && (
+          <div>
+            {selectedPeriod?.commandes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center py-12 px-4 bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl">
+                <span className="text-3xl mb-2">🛍️</span>
+                <p className="font-bold text-slate-800 text-sm">Aucune vente boutique pour ce mois</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                  Les achats réalisés sur la boutique officielle pour {moisNoms[selectedMois - 1]} {selectedAnnee} s&apos;afficheront ici.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
+                        <th className="py-3 px-4">N° Commande</th>
+                        <th className="py-3 px-4">Adhérent / Client</th>
+                        <th className="py-3 px-4">Date de Paiement</th>
+                        <th className="text-right py-3 px-4">Montant Encaissé</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {selectedPeriod?.commandes.map((cmd) => (
+                        <tr key={cmd.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3.5 px-4 font-mono font-bold text-slate-700 text-xs">{cmd.numeroCommande}</td>
+                          <td className="py-3.5 px-4 font-bold text-slate-800">{cmd.prenom} {cmd.nom}</td>
+                          <td className="py-3.5 px-4 text-slate-500 font-medium">
+                            {new Date(cmd.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="text-right py-3.5 px-4 font-black text-emerald-700 text-sm">+{cmd.total.toFixed(2)} €</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Contenu de l'onglet Catégories */}
         {activeTab === 'categories' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-950">
-                Gestion des Catégories de Saisie
-              </h3>
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">
+                  Catégories de Saisie Comptable
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">Structure des postes de recettes et dépenses du club</p>
+              </div>
               <button
                 onClick={() => {
                   setEditingCat(null)
@@ -424,70 +459,75 @@ export default function FinancesManager() {
                   setNewCatCode('')
                   setIsAddCatModalOpen(true)
                 }}
-                className="px-4 py-2 bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
               >
-                ➕ Nouvelle catégorie
+                <span>➕</span>
+                <span>Nouvelle catégorie</span>
               </button>
             </div>
             
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-300">
-                    <th className="text-left py-3 px-4 font-bold">Code</th>
-                    <th className="text-left py-3 px-4 font-bold">Nom / Désignation</th>
-                    <th className="text-left py-3 px-4 font-bold">Type</th>
-                    <th className="text-center py-3 px-4 font-bold">Système</th>
-                    <th className="text-right py-3 px-4 font-bold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {categories.map((cat) => (
-                    <tr key={cat.id} className="border-b border-gray-100 hover:bg-slate-50/50 transition-colors">
-                      <td className="py-3 px-4 font-mono text-xs text-slate-500">{cat.code}</td>
-                      <td className="py-3 px-4 font-bold text-slate-800 text-xs">{cat.nom}</td>
-                      <td className="py-3 px-4 text-xs">
-                        <span className={`px-2.5 py-0.5 rounded font-semibold ${
-                          cat.type === 'recette' ? 'bg-emerald-50 text-emerald-700' :
-                          cat.type === 'depense' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'
-                        }`}>
-                          {cat.type === 'recette' ? 'Recette' :
-                           cat.type === 'depense' ? 'Dépense' : 'Double (Valorisation)'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center text-xs">
-                        {cat.systeme ? (
-                          <span className="text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Oui</span>
-                        ) : (
-                          <span className="text-slate-400">Non</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-right space-x-2">
-                        <button
-                          onClick={() => {
-                            setEditingCat(cat)
-                            setNewCatNom(cat.nom)
-                            setNewCatType(cat.type)
-                            setNewCatCode(cat.code)
-                            setIsAddCatModalOpen(true)
-                          }}
-                          className="px-2.5 py-1 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
-                        >
-                          Modifier
-                        </button>
-                        {!cat.systeme && (
-                          <button
-                            onClick={() => handleDeleteCategory(cat)}
-                            className="px-2.5 py-1 text-xs font-bold text-red-650 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
-                          >
-                            Supprimer
-                          </button>
-                        )}
-                      </td>
+            <div className="rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
+                      <th className="py-3 px-4">Code</th>
+                      <th className="py-3 px-4">Désignation</th>
+                      <th className="py-3 px-4">Type de Flux</th>
+                      <th className="text-center py-3 px-4">Type Système</th>
+                      <th className="text-right py-3 px-4">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {categories.map((cat) => (
+                      <tr key={cat.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-600">{cat.code}</td>
+                        <td className="py-3.5 px-4 font-bold text-slate-900">{cat.nom}</td>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            cat.type === 'recette' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/60' :
+                            cat.type === 'depense' ? 'bg-rose-50 text-rose-800 border border-rose-200/60' : 'bg-amber-50 text-amber-800 border border-amber-200/60'
+                          }`}>
+                            {cat.type === 'recette' ? 'Recette (+)' :
+                             cat.type === 'depense' ? 'Dépense (-)' : 'Double / Valorisation'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          {cat.systeme ? (
+                            <span className="text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 text-[10px]">Système</span>
+                          ) : (
+                            <span className="text-slate-400 text-[10px]">Personnalisé</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right space-x-2">
+                          <button
+                            onClick={() => {
+                              setEditingCat(cat)
+                              setNewCatNom(cat.nom)
+                              setNewCatType(cat.type)
+                              setNewCatCode(cat.code)
+                              setIsAddCatModalOpen(true)
+                            }}
+                            className="px-2.5 py-1 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                            aria-label={`Modifier la catégorie ${cat.nom}`}
+                          >
+                            Modifier
+                          </button>
+                          {!cat.systeme && (
+                            <button
+                              onClick={() => handleDeleteCategory(cat)}
+                              className="px-2.5 py-1 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                              aria-label={`Supprimer la catégorie ${cat.nom}`}
+                            >
+                              Supprimer
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

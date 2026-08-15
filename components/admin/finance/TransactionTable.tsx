@@ -60,29 +60,29 @@ export default function TransactionTable({ transactions, categories, onDelete, o
   return (
     <div>
       {/* Header avec filtres, recherche et actions */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4 border-b border-slate-100 pb-4">
+      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-4 border-b border-slate-100 pb-4">
         {/* Filtres par type */}
-        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200/50">
           <button
             onClick={() => setTxFilter('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              txFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              txFilter === 'all' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             Tout ({transactions.length})
           </button>
           <button
             onClick={() => setTxFilter('recette')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              txFilter === 'recette' ? 'bg-emerald-50 text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              txFilter === 'recette' ? 'bg-emerald-50 text-emerald-800 shadow-2xs font-extrabold' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             Recettes ({transactions.filter(t => t.type === 'recette').length})
           </button>
           <button
             onClick={() => setTxFilter('depense')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              txFilter === 'depense' ? 'bg-rose-50 text-rose-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              txFilter === 'depense' ? 'bg-rose-50 text-rose-800 shadow-2xs font-extrabold' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             Dépenses ({transactions.filter(t => t.type === 'depense').length})
@@ -93,112 +93,136 @@ export default function TransactionTable({ transactions, categories, onDelete, o
         <div className="flex items-center gap-2 flex-wrap">
           <input
             type="text"
-            placeholder="Rechercher..."
+            placeholder="Rechercher écriture..."
+            aria-label="Rechercher une opération comptable"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:border-slate-400 w-40"
+            className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 w-48 transition-all"
           />
           {filteredTransactions.length > 0 && (
             <button
               onClick={exportCSV}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors flex items-center gap-1"
+              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
             >
-              Export CSV
+              <span>📥</span>
+              <span>Export CSV</span>
             </button>
           )}
           <button
             onClick={() => onAddNew()}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
-            Nouvelle opération
+            <span>➕</span>
+            <span>Nouvelle opération</span>
           </button>
         </div>
       </div>
 
       {/* Tableau */}
       {filteredTransactions.length === 0 ? (
-        <p className="text-center text-gray-500 py-6">
-          {searchQuery ? 'Aucun résultat pour cette recherche.' : txFilter === 'all'
-            ? 'Aucune transaction enregistrée pour ce mois.'
-            : txFilter === 'recette'
-              ? 'Aucune recette enregistrée pour ce mois.'
-              : 'Aucune dépense enregistrée pour ce mois.'}
-        </p>
+        <div className="flex flex-col items-center justify-center text-center py-12 px-4 bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl">
+          <span className="text-3xl mb-2">📒</span>
+          <p className="font-bold text-slate-800 text-sm">
+            {searchQuery ? 'Aucun résultat trouvé pour cette recherche' : 'Aucune écriture comptable pour ce mois'}
+          </p>
+          <p className="text-xs text-slate-500 mt-1 max-w-sm">
+            {searchQuery ? 'Essayez un autre mot-clé ou réinitialisez le filtre.' : 'Utilisez les boutons Recette ou Dépense pour enregistrer une nouvelle opération.'}
+          </p>
+        </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-300">
-                <th className="text-left py-3 px-4 font-bold">Date</th>
-                <th className="text-left py-3 px-4 font-bold">Type</th>
-                <th className="text-left py-3 px-4 font-bold">Catégorie</th>
-                <th className="text-left py-3 px-4 font-bold">Libellé</th>
-                <th className="text-right py-3 px-4 font-bold">Montant</th>
-                <th className="text-center py-3 px-4 font-bold">Justificatif</th>
-                <th className="text-right py-3 px-4 font-bold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTransactions.map((tx) => (
-                <tr key={tx.id} className="border-b border-gray-100 hover:bg-slate-50/50 transition-colors">
-                  <td className="py-3 px-4 text-slate-500 font-mono text-xs">
-                    {new Date(tx.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                  </td>
-                  <td className="py-3 px-4 font-semibold text-xs">
-                    <span className={`px-2 py-0.5 rounded ${tx.type === 'recette' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                      {tx.type === 'recette' ? 'Recette' : 'Dépense'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 font-medium text-slate-600 text-xs">
-                    {getCategoryLabel(tx.categorie)}
-                  </td>
-                  <td className="py-3 px-4 font-bold text-slate-800 text-xs">{tx.libelle}</td>
-                  <td className={`text-right py-3 px-4 font-black ${tx.type === 'recette' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {tx.type === 'recette' ? '+' : '-'}{tx.montant.toFixed(2)} €
-                  </td>
-                  <td className="text-center py-3 px-4">
-                    {tx.justificatif ? (
-                      <a href={tx.justificatif} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all inline-flex items-center gap-1">
-                        Consulter
-                      </a>
-                    ) : (
-                      <span className="text-xs text-slate-400 italic">Aucun</span>
-                    )}
-                  </td>
-                  <td className="text-right py-3 px-4">
-                    <button
-                      onClick={() => setDeleteConfirm({ isOpen: true, id: tx.id })}
-                      className="text-red-500 hover:text-red-700 text-xs font-bold transition-colors"
-                    >
-                      Supprimer
-                    </button>
-                  </td>
+        <div className="rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4">Type</th>
+                  <th className="py-3 px-4">Catégorie</th>
+                  <th className="py-3 px-4">Libellé</th>
+                  <th className="py-3 px-4 text-right">Montant</th>
+                  <th className="py-3 px-4 text-center">Justificatif</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredTransactions.map((tx) => (
+                  <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3.5 px-4 text-slate-600 font-mono font-medium text-xs">
+                      {new Date(tx.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-xs">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] ${
+                        tx.type === 'recette'
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/60'
+                          : 'bg-rose-50 text-rose-800 border border-rose-200/60'
+                      }`}>
+                        {tx.type === 'recette' ? 'Recette' : 'Dépense'}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-xs font-bold text-slate-800">
+                      {getCategoryLabel(tx.categorie)}
+                    </td>
+                    <td className="py-3.5 px-4 text-xs font-medium text-slate-900">
+                      {tx.libelle}
+                    </td>
+                    <td className={`py-3.5 px-4 text-right font-black text-sm ${
+                      tx.type === 'recette' ? 'text-emerald-700' : 'text-rose-700'
+                    }`}>
+                      {tx.type === 'recette' ? '+' : '-'}{tx.montant.toFixed(2)} €
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      {tx.justificatif ? (
+                        <a
+                          href={tx.justificatif}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold inline-block cursor-pointer transition-colors"
+                        >
+                          📎 Voir
+                        </a>
+                      ) : (
+                        <span className="text-slate-300 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={() => setDeleteConfirm({ isOpen: true, id: tx.id })}
+                        className="px-2.5 py-1 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                        aria-label={`Supprimer l'écriture ${tx.libelle}`}
+                      >
+                        Supprimer
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {/* Dialog de confirmation de suppression */}
+      {/* Modal Confirmation Suppression */}
       {deleteConfirm.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-lg max-w-md w-full shadow-xl">
-            <div className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="text-3xl">ℹ️</div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">Confirmer la suppression</h3>
-                  <p className="text-gray-600">Voulez-vous vraiment supprimer cette opération et son justificatif ?</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-3 p-4 bg-gray-50 rounded-b-lg">
-              <button onClick={() => setDeleteConfirm({ isOpen: false, id: null })} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 font-medium">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="modal-delete-title">
+          <div className="bg-white rounded-3xl border border-slate-200/80 p-6 max-w-sm w-full shadow-lg m-4 space-y-4">
+            <h3 id="modal-delete-title" className="text-base font-extrabold text-slate-950">
+              Supprimer l&apos;opération ?
+            </h3>
+            <p className="text-xs text-slate-500 font-light leading-relaxed">
+              Cette action est irréversible. L&apos;opération sera définitivement retirée des calculs de trésorerie.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setDeleteConfirm({ isOpen: false, id: null })}
+                className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              >
                 Annuler
               </button>
-              <button onClick={handleDeleteConfirm} className="flex-1 px-4 py-2 text-white rounded-lg font-medium bg-red-600 hover:bg-red-700">
-                Supprimer
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors cursor-pointer"
+              >
+                Confirmer
               </button>
             </div>
           </div>
