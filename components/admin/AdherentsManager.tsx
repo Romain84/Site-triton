@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Search, Filter, Download, CheckCircle, AlertTriangle, UserCheck, Shield, Sparkles, Plus, Waves, Award, Tag, Mail, CreditCard, Ticket } from 'lucide-react'
+import { Search, Download, Waves, Tag } from 'lucide-react'
 
 interface LicencieFFN {
   id: string
@@ -22,8 +22,6 @@ interface LicencieFFN {
   prixLicenceFFN: number
   montantPaye: number
   modePaiement: string
-  passSportCode?: string
-  passSportValidated?: boolean
   chequeNumber?: string
   chequeBank?: string
   desiredEncashmentDate?: string
@@ -76,14 +74,12 @@ export default function AdherentsManager() {
       acceptReglement: true,
       montantCotisation: 235,
       prixLicenceFFN: 45,
-      montantPaye: 230,
-      modePaiement: 'Pass\'Sport (50€) + Chèque',
-      passSportCode: '25-AB12-34CD',
-      passSportValidated: true,
+      montantPaye: 280,
+      modePaiement: 'Chèque',
       chequeNumber: '8492041',
       chequeBank: 'Crédit Mutuel',
       desiredEncashmentDate: '2026-10-10',
-      tags: ['Pass\'Sport 50€', 'Chèque 3X']
+      tags: ['Chèque 3X']
     },
     {
       id: 'm-3',
@@ -100,11 +96,11 @@ export default function AdherentsManager() {
       certificatMedicalFFN: true,
       droitImage: true,
       acceptReglement: true,
-      montantCotisation: 245,
+      montantCotisation: 220,
       prixLicenceFFN: 45,
-      montantPaye: 290,
-      modePaiement: 'Virement SEPA',
-      tags: ['Aquagym', 'Donateur Association']
+      montantPaye: 265,
+      modePaiement: 'CB (1X)',
+      tags: ['Donateur Association']
     },
     {
       id: 'm-4',
@@ -130,8 +126,8 @@ export default function AdherentsManager() {
   ])
 
   const toggleValidation = (id: string) => {
-    setLicencies((prev) =>
-      prev.map((l) => {
+    setLicencies(
+      licencies.map((l) => {
         if (l.id === id) {
           const nextStatus = l.statutDossier === 'valid' ? 'missing_docs' : 'valid'
           return {
@@ -146,31 +142,8 @@ export default function AdherentsManager() {
     )
   }
 
-  const exportPassSportLCA = () => {
-    const passSportMembers = licencies.filter((l) => l.passSportCode && l.passSportValidated)
-    const headers = ['Code Pass\'Sport', 'Nom Beneficiaire', 'Prenom Beneficiaire', 'Date de Naissance', 'Montant Duit', 'N Licence FFN', 'Email Parent']
-    const rows = passSportMembers.map((l) => [
-      l.passSportCode,
-      l.nom,
-      l.prenom,
-      l.dateNaissance,
-      '50.00',
-      l.licenseNumberFFN,
-      l.email
-    ])
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `pass_sport_remboursement_lca_triton_${new Date().toISOString().split('T')[0]}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
   const exportExtraNatCSV = () => {
-    const headers = ['N Licence FFN', 'N Club FFN', 'Nom', 'Prenom', 'Categorie FFN', 'Email', 'Telephone', 'Statut Licence', 'PassSport Code', 'Cheque N', 'Banque', 'Date Encaissement', 'Tags']
+    const headers = ['N Licence FFN', 'N Club FFN', 'Nom', 'Prenom', 'Categorie FFN', 'Email', 'Telephone', 'Statut Licence', 'Cheque N', 'Banque', 'Date Encaissement', 'Tags']
     const rows = licencies.map((l) => [
       l.licenseNumberFFN,
       '084300',
@@ -180,7 +153,6 @@ export default function AdherentsManager() {
       l.email,
       l.telephone,
       l.statutDossier === 'valid' ? 'VALIDE' : 'EN_ATTENTE',
-      l.passSportCode || '',
       l.chequeNumber || '',
       l.chequeBank || '',
       l.desiredEncashmentDate || '',
@@ -201,7 +173,6 @@ export default function AdherentsManager() {
     const matchesSearch =
       `${l.prenom} ${l.nom}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       l.licenseNumberFFN.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (l.passSportCode && l.passSportCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
       l.memberNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       l.groupe.toLowerCase().includes(searchTerm.toLowerCase())
 
@@ -213,7 +184,6 @@ export default function AdherentsManager() {
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 text-white p-6 rounded-2xl border border-slate-800 shadow-md">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -227,13 +197,6 @@ export default function AdherentsManager() {
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
-            onClick={exportPassSportLCA}
-            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm transition-all flex items-center gap-1.5"
-          >
-            <Ticket className="w-4 h-4" />
-            <span>Export Pass'Sport LCA (50€)</span>
-          </button>
-          <button
             onClick={exportExtraNatCSV}
             className="px-3.5 py-2.5 rounded-xl bg-primary text-slate-950 font-extrabold text-xs shadow-sm hover:bg-primary-dark transition-all flex items-center gap-1.5"
           >
@@ -243,14 +206,14 @@ export default function AdherentsManager() {
         </div>
       </div>
 
-      {/* Filters & Tags Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Rechercher par N° Licence FFN, code Pass'Sport (ex: 25-AB12), nom..."
+              placeholder="Rechercher par N° Licence FFN, nom..."
+              aria-label="Rechercher par numéro de licence FFN ou par nom"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-slate-900 outline-none"
@@ -262,7 +225,7 @@ export default function AdherentsManager() {
               <button
                 key={st}
                 onClick={() => setStatusFilter(st as any)}
-                className={`px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                   statusFilter === st
                     ? 'bg-slate-900 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -274,16 +237,15 @@ export default function AdherentsManager() {
           </div>
         </div>
 
-        {/* Tags Selector */}
         <div className="flex items-center gap-2 pt-1 overflow-x-auto text-xs">
-          <span className="text-[11px] font-extrabold text-slate-400 uppercase flex items-center gap-1">
+          <span className="text-[11px] font-extrabold text-slate-500 uppercase flex items-center gap-1">
             <Tag className="w-3 h-3" /> Tags:
           </span>
-          {['all', 'Pass\'Sport 50€', 'Chèque 3X', 'Compétiteur', 'Officiel FFN', 'Donateur Association'].map((tg) => (
+          {['all', 'Chèque 3X', 'Compétiteur', 'Officiel FFN', 'Donateur Association'].map((tg) => (
             <button
               key={tg}
               onClick={() => setSelectedTag(tg)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
                 selectedTag === tg
                   ? 'bg-triton-blue text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -295,7 +257,6 @@ export default function AdherentsManager() {
         </div>
       </div>
 
-      {/* Table of FFN Swimmers */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -304,7 +265,7 @@ export default function AdherentsManager() {
                 <th className="py-3 px-4">N° Licence FFN</th>
                 <th className="py-3 px-4">Nageur & Tuteurs</th>
                 <th className="py-3 px-4">Catégorie & Tags</th>
-                <th className="py-3 px-4">Pass'Sport & Règlements</th>
+                <th className="py-3 px-4">Règlements</th>
                 <th className="py-3 px-4 text-center">Statut FFN</th>
                 <th className="py-3 px-4 text-right">Actions Admin</th>
               </tr>
@@ -315,7 +276,7 @@ export default function AdherentsManager() {
                   <td className="py-3 px-4 font-mono font-bold text-primary">{l.licenseNumberFFN}</td>
                   <td className="py-3 px-4 font-extrabold text-slate-900">
                     {l.prenom} {l.nom}
-                    <div className="text-[10px] text-slate-400 font-normal">{l.email}</div>
+                    <div className="text-[10px] text-slate-500 font-normal">{l.email}</div>
                   </td>
                   <td className="py-3 px-4 font-bold text-slate-800">
                     <span className="px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-700">
@@ -332,11 +293,6 @@ export default function AdherentsManager() {
                   <td className="py-3 px-4 font-bold text-slate-800">
                     <div>{l.montantPaye} € / {l.montantCotisation + l.prixLicenceFFN} €</div>
                     <div className="text-[10px] text-slate-500 font-normal">{l.modePaiement}</div>
-                    {l.passSportCode && (
-                      <div className="text-[10px] text-emerald-700 font-mono mt-0.5 flex items-center gap-1">
-                        <Ticket className="w-3 h-3" /> Pass'Sport {l.passSportCode} (-50€)
-                      </div>
-                    )}
                     {l.chequeNumber && (
                       <div className="text-[10px] text-slate-500 font-mono mt-0.5">
                         Chèque N°{l.chequeNumber} ({l.chequeBank})
@@ -357,7 +313,8 @@ export default function AdherentsManager() {
                   <td className="py-3 px-4 text-right space-y-1">
                     <button
                       onClick={() => toggleValidation(l.id)}
-                      className="w-full px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white font-bold text-[11px] transition-all block"
+                      aria-label={`${l.statutDossier === 'valid' ? 'Invalider la licence de' : 'Valider la licence FFN de'} ${l.prenom} ${l.nom}`}
+                      className="w-full px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white font-bold text-[11px] transition-all block cursor-pointer"
                     >
                       {l.statutDossier === 'valid' ? 'Invalider' : 'Valider FFN'}
                     </button>

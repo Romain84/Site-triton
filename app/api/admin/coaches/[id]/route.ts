@@ -186,9 +186,27 @@ export async function DELETE(
       return apiError('Coach non trouvé', 404, undefined, 'COACH_NOT_FOUND')
     }
 
-    await prisma.coach.delete({
-      where: { id },
-    })
+    // Supprimer les assignations de plannings et le coach dans une transaction
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.coachPlanning.deleteMany({
+          where: { coachId: id },
+        })
+        await tx.coach.delete({
+          where: { id },
+        })
+      })
+    } catch (dbError) {
+      if (dbError instanceof Prisma.PrismaClientKnownRequestError && dbError.code === 'P2003') {
+        return apiError(
+          'Ce coach possède un historique (factures, remplacements, événements). Désactivez son profil plutôt que de le supprimer pour conserver l\'historique comptable.',
+          400,
+          undefined,
+          'COACH_HAS_HISTORY'
+        )
+      }
+      throw dbError
+    }
 
     return apiSuccess({ message: 'Coach supprimé avec succès' })
   } catch (error) {

@@ -363,7 +363,6 @@ model Settings {
   ovhServiceName               String?  @default("vps-248c64f5.vps.ovh.net")
   instagramAccountId           String?
   instagramAccessToken         String?
-  passSportApiKey              String?
 
   @@map("settings")
 }
@@ -831,6 +830,9 @@ model Visite {
   ville      String?  @default("Inconnu")
   latitude   Float?   @default(43.8333)
   longitude  Float?   @default(5.0333)
+  codePostal String?
+  fai        String?
+  timezone   String?  @default("Europe/Paris")
   page       String?  @default("/")
   appareil   String?  @default("Desktop")
   navigateur String?  @default("Navigateur")

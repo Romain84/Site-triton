@@ -12,7 +12,7 @@ const GroupesManager = lazy(() => import('@/components/admin/GroupesManager'))
 const ParametresManager = lazy(() => import('@/components/admin/ParametresManager'))
 const PlanningTournantManager = lazy(() => import('@/components/admin/PlanningTournantManager'))
 const PlanningFixeManager = lazy(() => import('@/components/admin/PlanningFixeManager'))
-import EvenementsManager from '@/components/admin/EvenementsManager'
+const EvenementsManager = lazy(() => import('@/components/admin/EvenementsManager'))
 const ActualitesManager = lazy(() => import('@/components/admin/ActualitesManager'))
 const GalerieManager = lazy(() => import('@/components/admin/GalerieManager'))
 const VacancesManager = lazy(() => import('@/components/admin/VacancesManager'))

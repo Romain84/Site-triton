@@ -41,7 +41,9 @@ const PRISMA_MODELS = [
   'transactionComptable',
   'chatbotTokenLog',
   'categorieComptable',
-  'inscriptionBlock'
+  'inscriptionBlock',
+  'podiumSaison',
+  'visite'
 ]
 
 // GET: Exporter toute la base de données au format JSON

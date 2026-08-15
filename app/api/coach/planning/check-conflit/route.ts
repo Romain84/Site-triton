@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireCoach } from '@/lib/api/guards'
 
+function getIsoWeekNumber(d: Date): number {
+  const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+  const dayNum = date.getUTCDay() || 7
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+  return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireCoach()
@@ -22,45 +30,92 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const targetDate = new Date(dateStr)
-    if (isNaN(targetDate.getTime())) {
+    // Parsing sécurisé sans décalage de fuseau horaire
+    const parts = dateStr.split('-').map(Number)
+    if (parts.length !== 3 || parts.some(isNaN)) {
+      return NextResponse.json(
+        { error: 'Format de date invalide (attendu: YYYY-MM-DD)' },
+        { status: 400 }
+      )
+    }
+    const [year, month, day] = parts
+    if (month < 1 || month > 12 || day < 1 || day > 31) {
       return NextResponse.json(
         { error: 'Format de date invalide (attendu: YYYY-MM-DD)' },
         { status: 400 }
       )
     }
 
-    const startOfDay = new Date(targetDate)
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(targetDate)
-    endOfDay.setHours(23, 59, 59, 999)
+    const targetDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+    const startOfDay = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
+    const endOfDay = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999))
 
-    // 1. Cours réguliers (Planning via CoachPlanning)
+    // 1. Cours réguliers (Planning fixe via CoachPlanning)
     const daysOfWeek = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
-    const jourCible = daysOfWeek[targetDate.getDay()]
+    const jourCible = daysOfWeek[targetDate.getUTCDay()]
+    const weekNumber = getIsoWeekNumber(targetDate)
+    const isEvenWeek = weekNumber % 2 === 0
 
-    const planningsFixes = await prisma.planning.findMany({
+    // Vérifier si cette date tombe pendant les vacances scolaires impactant la facturation/planning
+    const estEnVacances = await prisma.periodeVacances.findFirst({
       where: {
-        jourSemaine: jourCible,
         actif: true,
-        coachs: {
-          some: {
-            coachId,
-          },
-        },
+        impacteFacturation: true,
+        dateDebut: { lte: endOfDay },
+        dateFin: { gte: startOfDay },
       },
     })
 
-    const overlapFixe = planningsFixes.find(
-      (p) => heureDebut < p.heureFin && p.heureDebut < heureFin
-    )
-
-    if (overlapFixe) {
-      return NextResponse.json({
-        conflict: true,
-        type: 'planning_fixe',
-        description: `Cours régulier planifié le ${jourCible} de ${overlapFixe.heureDebut} à ${overlapFixe.heureFin}`,
+    if (!estEnVacances) {
+      // Récupérer les séances annulées du jour
+      const seancesAnnulees = await prisma.seanceAnnulee.findMany({
+        where: {
+          date: { gte: startOfDay, lte: endOfDay },
+        },
       })
+
+      const planningsFixes = await prisma.planning.findMany({
+        where: {
+          jourSemaine: jourCible,
+          actif: true,
+          coachs: {
+            some: {
+              coachId,
+            },
+          },
+        },
+        include: {
+          groupe: true,
+        },
+      })
+
+      for (const p of planningsFixes) {
+        // Si le cours est sur semaine impaire et que nous sommes en semaine paire, aucun cours n'a lieu
+        if (p.semaineImpaire && isEvenWeek) {
+          continue
+        }
+
+        // Vérifier si ce créneau spécifique est annulé ce jour
+        const estAnnule = seancesAnnulees.some((sa) => {
+          if (!sa.planningId && !sa.groupeId && !sa.coachId) return true
+          if (sa.coachId && sa.coachId === coachId) return true
+          if (sa.planningId && sa.planningId === p.id) return true
+          if (sa.groupeId && p.groupeId && sa.groupeId === p.groupeId) return true
+          return false
+        })
+
+        if (estAnnule) {
+          continue
+        }
+
+        if (heureDebut < p.heureFin && p.heureDebut < heureFin) {
+          return NextResponse.json({
+            conflict: true,
+            type: 'planning_fixe',
+            description: `Cours régulier "${p.groupe?.nom || 'Groupe'}" planifié le ${jourCible} de ${p.heureDebut} à ${p.heureFin}`,
+          })
+        }
+      }
     }
 
     // 2. Événements tournants (EvenementTournant)
@@ -87,7 +142,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // 4. Remplacements déjà acceptés (Remplacement)
+    // 3. Remplacements déjà acceptés (Remplacement)
     const remplacements = await prisma.remplacement.findMany({
       where: {
         coachRemplacantId: coachId,

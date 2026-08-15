@@ -42,8 +42,8 @@
   {
     "categorie": "Inscriptions",
     "question": "Puis-je payer la cotisation en plusieurs fois ?",
-    "reponse": "Oui, le club accepte les paiements en **3 fois sans frais** (par chèque ou par carte bancaire en ligne). Nous acceptons également les Chèques-Vacances ANCV, les Coupons Sport et le Pass'Sport de l'État pour réduire votre cotisation.",
-    "motsCles": "paiement, payer, plusieurs fois, 3 fois, cheques vacances, ancv, coupons sport, pass sport, tarif, reduction",
+    "reponse": "Oui, le club accepte les paiements en **3 fois sans frais** (par chèque ou par carte bancaire en ligne). Nous acceptons également les Chèques-Vacances ANCV et les Coupons Sport pour régler votre cotisation.",
+    "motsCles": "paiement, payer, plusieurs fois, 3 fois, cheques vacances, ancv, coupons sport, tarif, reglement",
     "priorite": 1,
     "actif": true
   },

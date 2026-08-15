@@ -32,7 +32,7 @@ export default function CookieBanner() {
   if (!showBanner) return null
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 text-white shadow-2xl animate-slide-up">
+    <aside role="region" aria-label="Gestion des cookies et confidentialité" className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 text-white shadow-2xl animate-slide-up">
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex-1">
@@ -48,19 +48,19 @@ export default function CookieBanner() {
           <div className="flex gap-3 flex-shrink-0">
             <button
               onClick={refuseCookies}
-              className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors font-medium"
+              className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors font-medium cursor-pointer"
             >
               Refuser
             </button>
             <button
               onClick={acceptCookies}
-              className="px-6 py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors font-medium"
+              className="px-6 py-2 bg-primary hover:bg-primary-dark rounded-lg transition-colors font-medium cursor-pointer"
             >
               Accepter
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </aside>
   )
 }

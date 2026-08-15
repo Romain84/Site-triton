@@ -28,7 +28,11 @@ export async function GET(request: NextRequest) {
       ],
     })
 
-    return NextResponse.json({ produits })
+    return NextResponse.json({ produits }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
+    })
   } catch (error) {
     logger.error('Erreur lors du chargement des produits', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

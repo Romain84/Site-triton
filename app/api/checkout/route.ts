@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = getCleanBaseUrl(request)
 
     // Générer un numéro de commande unique
-    const numeroCommande = `CMD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+    const numeroCommande = `CMD-${Date.now()}-${Math.random().toString(36).substring(2, 11).toUpperCase()}`
 
     // Calculer le total et vérifier les stocks - UTILISER UNIQUEMENT LES PRIX SERVEUR
     let sousTotal = 0
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
         prixUnitaire += (produit as any).prixFlocage || 0
       }
 
-      sousTotal += prixUnitaire * item.quantite
+      sousTotal = Math.round((sousTotal + prixUnitaire * item.quantite) * 100) / 100
 
       // Construire la description de la variante et de la personnalisation
       const descriptionParts = []
@@ -233,7 +233,7 @@ export async function POST(request: NextRequest) {
         nomNageur: customerInfo.nomNageur,
         sousTotal,
         fraisLivraison,
-        total: sousTotal + fraisLivraison,
+        total: Math.round((sousTotal + fraisLivraison) * 100) / 100,
         noteClient: customerInfo.note || null,
         lignes: processedItems,
       })

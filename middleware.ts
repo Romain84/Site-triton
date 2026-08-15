@@ -98,12 +98,18 @@ export async function middleware(request: NextRequest) {
   }
 
 
-  // Protection des routes coach.
+  // Protection des routes coach (HTML et API).
   const isPublicCoachRoute = ['/coach/login', '/coach/mot-de-passe-oublie', '/coach/reset-password'].includes(pathname)
-  if (pathname.startsWith('/coach') && !isPublicCoachRoute) {
+  const isApiCoachRoute = pathname.startsWith('/api/coach')
+  const isCoachPage = pathname.startsWith('/coach') && !isPublicCoachRoute
+
+  if (isCoachPage || isApiCoachRoute) {
     const token = request.cookies.get('coach_session')?.value
 
     if (!token) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+      }
       return NextResponse.redirect(new URL('/coach/login', request.url))
     }
 
@@ -111,6 +117,9 @@ export async function middleware(request: NextRequest) {
       await jwtVerify(token, getSessionSecretKey())
       return response
     } catch {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Session expirée ou invalide' }, { status: 401 })
+      }
       return NextResponse.redirect(new URL('/coach/login', request.url))
     }
   }

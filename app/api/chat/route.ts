@@ -3,6 +3,7 @@ import { getChatResponse } from '@/lib/genkit-chat'
 import { rateLimiter } from '@/lib/rate-limiter'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
+import { getClientIp } from '@/lib/api/request'
 
 const chatLogger = logger.withContext('Chat')
 
@@ -62,9 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Get user IP for rate limiting
-    const ip = request.headers.get('x-forwarded-for') ||
-               request.headers.get('x-real-ip') ||
-               'unknown'
+    const ip = getClientIp(request)
 
     // Check rate limit
     const rateLimitResult = rateLimiter.checkLimit(ip)
@@ -184,9 +183,7 @@ export async function POST(request: NextRequest) {
 // GET endpoint to check rate limit status and monthly quota
 export async function GET(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for') ||
-               request.headers.get('x-real-ip') ||
-               'unknown'
+    const ip = getClientIp(request)
 
     const stats = rateLimiter.getStats(ip)
     const rateLimitResult = rateLimiter.checkLimitReadOnly(ip)

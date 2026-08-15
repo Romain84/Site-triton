@@ -76,14 +76,14 @@ export default function Header() {
               <Link href="/inscription" className="px-4 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-all">Inscriptions 2026-2027</Link>
               <a href="https://tritonapp.fr" target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-all">Performance</a>
               <span className="w-px h-4 bg-slate-200 mx-1" />
-              <Link href="/coach/login" className="px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors">Coach</Link>
-              <Link href="/admin/login" className="px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors">Admin</Link>
+              <Link href="/coach/login" className="px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors">Coach</Link>
+              <Link href="/admin/login" className="px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors">Admin</Link>
               {showCart && <CartIcon />}
             </div>
 
             <div className="md:hidden absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
               {showCart && <CartIcon />}
-              <button className="p-2 text-slate-700 hover:bg-slate-50 rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label="Toggle menu" aria-expanded={isMobileMenuOpen} aria-controls="mobile-nav">
+              <button className="p-2 text-slate-700 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label={isMobileMenuOpen ? "Fermer le menu de navigation" : "Ouvrir le menu de navigation"} aria-expanded={isMobileMenuOpen} aria-controls="mobile-nav">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   {isMobileMenuOpen ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
                 </svg>

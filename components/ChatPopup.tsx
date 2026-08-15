@@ -506,28 +506,30 @@ export default function ChatPopup() {
                   }`}
                 >
                   {formatMessageContent(message.content, message.role)}
-                  <p className={`text-[10px] mt-1.5 font-medium ${message.role === 'user' ? 'text-white/70' : 'text-slate-400'}`}>
+                  <p className={`text-[11px] mt-1.5 font-medium ${message.role === 'user' ? 'text-white/90' : 'text-slate-500'}`}>
                     {message.timestamp.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
 
                 {/* Thumbs Feedback (sous le message assistant, sauf le premier) */}
                 {message.role === 'assistant' && index > 0 && (
-                  <div className="flex items-center gap-2.5 mt-1.5 ml-2.5 text-[10px] text-slate-400 bg-white/50 backdrop-blur px-2.5 py-1 rounded-full border border-slate-100/60 shadow-2xs">
-                    <span className="font-semibold text-slate-500">Pertinent ?</span>
+                  <div className="flex items-center gap-2.5 mt-1.5 ml-2.5 text-xs text-slate-600 bg-white/70 backdrop-blur px-2.5 py-1 rounded-full border border-slate-200/60 shadow-2xs">
+                    <span className="font-semibold text-slate-600">Pertinent ?</span>
                     <button
                       onClick={() => handleFeedback(index, 'up')}
                       disabled={message.feedbackSent !== undefined}
-                      className={`transition-all duration-200 hover:scale-125 hover:text-green-600 ${message.feedbackSent === 'up' ? 'text-green-600 scale-125 animate-bounce' : ''}`}
+                      className={`transition-all duration-200 hover:scale-125 hover:text-green-600 cursor-pointer ${message.feedbackSent === 'up' ? 'text-green-600 scale-125 animate-bounce' : ''}`}
                       title="Oui, très utile"
+                      aria-label="Oui, cette réponse est très utile"
                     >
                       👍
                     </button>
                     <button
                       onClick={() => handleFeedback(index, 'down')}
                       disabled={message.feedbackSent !== undefined}
-                      className={`transition-all duration-200 hover:scale-125 hover:text-rose-600 ${message.feedbackSent === 'down' ? 'text-rose-600 scale-125 animate-bounce' : ''}`}
+                      className={`transition-all duration-200 hover:scale-125 hover:text-rose-600 cursor-pointer ${message.feedbackSent === 'down' ? 'text-rose-600 scale-125 animate-bounce' : ''}`}
                       title="Non, pas pertinent"
+                      aria-label="Non, cette réponse n'est pas pertinente"
                     >
                       👎
                     </button>

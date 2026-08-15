@@ -96,11 +96,13 @@ function toSafeSettings(
     return null
   }
 
-  const { smtpPassword, ...rest } = settings
+  const { smtpPassword, instagramAccessToken, ...rest } = settings
 
   return {
     ...rest,
     smtpPasswordConfigured: Boolean(smtpPassword),
+    instagramConfigured: Boolean(instagramAccessToken),
+    instagramAccessToken: instagramAccessToken ? '••••••••' : null,
   }
 }
 
@@ -299,6 +301,8 @@ export async function PUT(request: NextRequest) {
           datesTests,
           interSaisonActif,
           texteFiligrane,
+          instagramAccountId: instagramAccountId || null,
+          instagramAccessToken: instagramAccessToken || null,
         },
         select: settingsSelect,
       })

@@ -74,13 +74,6 @@ export default function MonClubTunnel({ groupes, inscriptionUrl }: MonClubTunnel
   const [guardian2Email, setGuardian2Email] = useState<string>('')
   const [parentsStatus, setParentsStatus] = useState<'COUPLE' | 'SEPARES'>('COUPLE')
 
-  // Pass'Sport State & Verification
-  const [hasPassSport, setHasPassSport] = useState<boolean>(false)
-  const [passSportCode, setPassSportCode] = useState<string>('')
-  const [isPassSportValidating, setIsPassSportValidating] = useState<boolean>(false)
-  const [isPassSportValidated, setIsPassSportValidated] = useState<boolean>(false)
-  const [passSportError, setPassSportError] = useState<string>('')
-
   // Offline Payment Details
   const [chequeNumber, setChequeNumber] = useState<string>('')
   const [chequeBank, setChequeBank] = useState<string>('')
@@ -93,52 +86,14 @@ export default function MonClubTunnel({ groupes, inscriptionUrl }: MonClubTunnel
   const [acceptReglementInterieur, setAcceptReglementInterieur] = useState<boolean>(true)
 
   // Payment
-  const [paymentMethod, setPaymentMethod] = useState<'CB_3X' | 'CB_1X' | 'CHEQUE_3X' | 'VIREMENT_SEPA' | 'ANCV' | 'PASS_SPORT' | 'CAF'>('PASS_SPORT')
+  const [paymentMethod, setPaymentMethod] = useState<'CB_3X' | 'CB_1X' | 'CHEQUE_3X' | 'VIREMENT_SEPA' | 'ANCV' | 'CAF'>('VIREMENT_SEPA')
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false)
   const [generatedMemberNumber, setGeneratedMemberNumber] = useState<string>('')
 
   const selectedGroupe = groupes.find((g) => g.id === selectedGroupeId) || groupes[0]
   const licenceFFNPrice = selectedGroupe?.prixLicence || 45
   const cotisationClubPrice = selectedGroupe?.tarif || 240
-  const passSportDiscount = isPassSportValidated ? 50 : 0
-  const totalPrice = Math.max(0, cotisationClubPrice + licenceFFNPrice - passSportDiscount)
-
-  const verifyPassSport = async () => {
-    setPassSportError('')
-    if (!passSportCode || passSportCode.trim().length < 8) {
-      setPassSportError("Le code Pass'Sport doit comporter au moins 8 caractères (ex: 25-AB12-34CD).")
-      setIsPassSportValidated(false)
-      return
-    }
-
-    setIsPassSportValidating(true)
-    try {
-      const res = await fetch('/api/pass-sport/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: passSportCode,
-          nom: lastName,
-          prenom: firstName,
-          dateNaissance: dateOfBirth
-        })
-      })
-
-      const data = await res.json()
-      setIsPassSportValidating(false)
-
-      if (data.success && data.valid) {
-        setIsPassSportValidated(true)
-      } else {
-        setIsPassSportValidated(false)
-        setPassSportError(data.error || "Code Pass'Sport invalide ou non reconnu par l'API du Ministère.")
-      }
-    } catch {
-      setIsPassSportValidating(false)
-      setIsPassSportValidated(false)
-      setPassSportError("Impossible de contacter le serveur de vérification Pass'Sport.")
-    }
-  }
+  const totalPrice = Math.max(0, cotisationClubPrice + licenceFFNPrice)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -180,19 +135,10 @@ export default function MonClubTunnel({ groupes, inscriptionUrl }: MonClubTunnel
             <span className="text-xs font-bold text-slate-900">{selectedDay} ({selectedTime}) · {selectedPoolLine}</span>
           </div>
 
-          {isPassSportValidated && (
-            <div className="flex justify-between items-center border-b border-slate-200 pb-2 text-xs">
-              <span className="font-bold text-emerald-700 uppercase flex items-center gap-1">
-                <Ticket className="w-3.5 h-3.5" /> Pass'Sport Validé (Ministère)
-              </span>
-              <span className="font-black text-emerald-700">Code: {passSportCode.toUpperCase()} (-50.00 €)</span>
-            </div>
-          )}
-
           <div className="flex justify-between items-center border-b border-slate-200 pb-2">
             <span className="text-xs font-bold text-slate-500 uppercase">Décomposition Tarif Net</span>
             <span className="text-xs font-bold text-slate-900">
-              Cotisation {cotisationClubPrice}€ + FFN {licenceFFNPrice}€ {isPassSportValidated && '- 50€ Pass\'Sport'} = <strong className="text-base text-triton-blue font-black">{totalPrice} €</strong>
+              Cotisation {cotisationClubPrice}€ + FFN {licenceFFNPrice}€ = <strong className="text-base text-triton-blue font-black">{totalPrice} €</strong>
             </span>
           </div>
 
@@ -247,7 +193,7 @@ export default function MonClubTunnel({ groupes, inscriptionUrl }: MonClubTunnel
             Adhésion & Licence FFN — Saison 2026-2027
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 font-light max-w-xl">
-            Inscrivez-vous au club de natation de Cavaillon (Piscine Alphonse Roudière). Formulaires d'adhésion, choix du groupe de niveau, créneau d'entraînement et déduction Pass'Sport.
+            Inscrivez-vous au club de natation de Cavaillon (Piscine Alphonse Roudière). Formulaires d'adhésion, choix du groupe de niveau et créneau d'entraînement.
           </p>
         </div>
       </div>
@@ -260,18 +206,19 @@ export default function MonClubTunnel({ groupes, inscriptionUrl }: MonClubTunnel
             { num: 2, label: '2. Groupe Natation' },
             { num: 3, label: '3. Créneau Bassin' },
             { num: 4, label: '4. Tuteurs & Médical' },
-            { num: 5, label: '5. Pass\'Sport & Règlement' }
+            { num: 5, label: '5. Règlement & Validation' }
           ].map((s) => (
             <button
               key={s.num}
               type="button"
               onClick={() => setStep(s.num)}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all whitespace-nowrap ${
+              aria-current={step === s.num ? 'step' : undefined}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                 step === s.num
                   ? 'bg-slate-900 text-white shadow-md'
                   : step > s.num
                   ? 'bg-blue-50 text-triton-blue'
-                  : 'text-slate-400 hover:text-slate-700'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               <span>{s.label}</span>
@@ -321,7 +268,7 @@ export default function MonClubTunnel({ groupes, inscriptionUrl }: MonClubTunnel
                   {isMinor && <CheckCircle2 className="w-5 h-5 text-slate-900" />}
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed font-light">
-                  Inscription pour un enfant (Éligible au Pass'Sport 50€ du Ministère des Sports).
+                  Inscription pour un enfant.
                 </p>
               </div>
             </div>
@@ -599,87 +546,19 @@ export default function MonClubTunnel({ groupes, inscriptionUrl }: MonClubTunnel
                 onClick={() => setStep(5)}
                 className="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-2"
               >
-                <span>Pass'Sport & Règlement</span>
+                <span>Règlement & Validation</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         )}
 
-        {/* STEP 5: PASS'SPORT & RÈGLEMENT */}
+        {/* STEP 5: RÈGLEMENT */}
         {step === 5 && (
           <div className="space-y-6 animate-fade-in">
             <div className="border-b border-slate-100 pb-3">
-              <h3 className="text-lg font-black text-slate-900">Étape 5 : Validation Pass'Sport & Choix du Règlement</h3>
-              <p className="text-xs text-slate-500">Saisissez votre code Pass'Sport du Ministère pour déduire 50,00 € immédiatement.</p>
-            </div>
-
-            {/* PASS'SPORT VERIFICATION MODULE */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-triton-blue/30 rounded-2xl p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Ticket className="w-5 h-5 text-triton-blue" />
-                  <h4 className="text-sm font-black text-slate-900">Bénéficiez-vous du Pass'Sport de l'État (50,00 €) ?</h4>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-600 text-white">
-                  Ministère des Sports
-                </span>
-              </div>
-
-              <p className="text-xs text-slate-600 font-light">
-                Le Pass'Sport est une allocation de 50 € versée par l'État pour financer l'inscription dans notre club de natation. Saisissez votre code individuel transmis par le Ministère.
-              </p>
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={passSportCode}
-                    onChange={(e) => {
-                      setPassSportCode(e.target.value.toUpperCase())
-                      setIsPassSportValidated(false)
-                      setPassSportError('')
-                    }}
-                    placeholder="Code Pass'Sport (ex: 25-AB12-34CD)"
-                    className="w-full text-xs font-mono font-bold p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-triton-blue outline-none uppercase"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={verifyPassSport}
-                  disabled={isPassSportValidating || isPassSportValidated}
-                  className={`px-5 py-3 rounded-xl font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2 shrink-0 ${
-                    isPassSportValidated
-                      ? 'bg-emerald-600 text-white cursor-default'
-                      : 'bg-triton-blue hover:bg-blue-700 text-white'
-                  }`}
-                >
-                  {isPassSportValidating ? (
-                    <span>Vérification Ministère...</span>
-                  ) : isPassSportValidated ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Pass'Sport Valide (-50 €)</span>
-                    </>
-                  ) : (
-                    <span>Vérifier mon Code Pass'Sport</span>
-                  )}
-                </button>
-              </div>
-
-              {passSportError && (
-                <p className="text-xs text-red-600 font-bold flex items-center gap-1 pt-1">
-                  <AlertCircle className="w-3.5 h-3.5" /> {passSportError}
-                </p>
-              )}
-
-              {isPassSportValidated && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-800 font-bold flex items-center justify-between animate-fade-in">
-                  <span>✓ Code Pass'Sport {passSportCode} validé ! Une déduction immédiate de 50,00 € est appliquée.</span>
-                  <span className="text-emerald-900 font-black text-sm">-50,00 €</span>
-                </div>
-              )}
+              <h3 className="text-lg font-black text-slate-900">Étape 5 : Choix du Mode de Règlement</h3>
+              <p className="text-xs text-slate-500">Sélectionnez votre modalité de paiement pour finaliser votre adhésion.</p>
             </div>
 
             {/* TOTAL PRICE SUMMARY */}
@@ -688,14 +567,9 @@ export default function MonClubTunnel({ groupes, inscriptionUrl }: MonClubTunnel
                 <span className="text-xs text-slate-400 font-bold uppercase">Total Net à Régler pour la Saison</span>
                 <div className="flex items-baseline gap-2">
                   <p className="text-3xl font-black text-primary">{totalPrice} €</p>
-                  {isPassSportValidated && (
-                    <span className="text-xs line-through text-slate-400 font-bold">
-                      {cotisationClubPrice + licenceFFNPrice} €
-                    </span>
-                  )}
                 </div>
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  Cotisation {cotisationClubPrice}€ + Licence FFN {licenceFFNPrice}€ {isPassSportValidated && '(-50€ Pass\'Sport Ministère)'}
+                  Cotisation {cotisationClubPrice}€ + Licence FFN {licenceFFNPrice}€
                 </p>
               </div>
               <div className="text-right text-xs text-slate-300">
@@ -708,7 +582,6 @@ export default function MonClubTunnel({ groupes, inscriptionUrl }: MonClubTunnel
               <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider">Modes de Règlement du Solde</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
-                  { id: 'PASS_SPORT', label: 'Pass\'Sport (Déduction 50€) + Solde Virement/Chèque', desc: 'Règlement du solde par virement ou chèque' },
                   { id: 'VIREMENT_SEPA', label: 'Virement SEPA Direct & QR Code (0 € de frais)', desc: 'IBAN Crédit Mutuel du club avec QR Code SEPA' },
                   { id: 'CHEQUE_3X', label: 'Chèques au club (1X ou 3X)', desc: 'À remettre lors des tests ou de la rentrée au bassin' },
                   { id: 'ANCV', label: 'Chèques Vacances ANCV / Connect', desc: 'Règlement papier ou ANCV Connect' },

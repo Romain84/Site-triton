@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import * as bcrypt from 'bcrypt'
 import { createCoachSession } from '@/lib/auth/session'
@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { logger } from '@/lib/logger'
 import { formRateLimiter } from '@/lib/rate-limiter'
 import { apiError, apiSuccess } from '@/lib/api/response'
+import { getClientIp } from '@/lib/api/request'
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -14,9 +15,7 @@ const loginSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for') ||
-      request.headers.get('x-real-ip') ||
-      'unknown'
+    const ip = getClientIp(request)
     const rateLimitResult = formRateLimiter.checkLimit(ip, 'auth-coach-login')
     if (!rateLimitResult.allowed) {
       return apiError(rateLimitResult.message || 'Trop de requêtes', 429)
@@ -27,11 +26,15 @@ export async function POST(request: NextRequest) {
 
     // Trouver le coach
     const coach = await prisma.coach.findUnique({
-      where: { email, actif: true },
+      where: { email },
     })
 
     if (!coach || !coach.password) {
       return apiError('Identifiants incorrects', 401)
+    }
+
+    if (!coach.actif) {
+      return apiError('Ce compte a été désactivé', 403)
     }
 
     // Vérifier le mot de passe

@@ -317,22 +317,25 @@ export default function CoachesManager() {
                       <div className="flex items-center justify-center gap-2 flex-wrap">
                         <button
                           onClick={() => handleOpenModal(coach)}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer"
+                          aria-label={`Modifier le profil de ${coach.prenom} ${coach.nom || ''}`}
                         >
                           Modifier
                         </button>
                         <span className="text-gray-300">|</span>
                         <button
                           onClick={() => handleOpenResetModal(coach)}
-                          className="text-orange-600 hover:text-orange-800 text-sm font-medium"
+                          className="text-orange-600 hover:text-orange-800 text-sm font-medium cursor-pointer"
                           title="Réinitialiser le mot de passe"
+                          aria-label={`Réinitialiser le mot de passe de ${coach.prenom} ${coach.nom || ''}`}
                         >
                           Mot de passe
                         </button>
                         <span className="text-gray-300">|</span>
                         <button
                           onClick={() => handleDelete(coach.id)}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                          className="text-red-600 hover:text-red-800 text-sm font-medium cursor-pointer"
+                          aria-label={`Supprimer le profil de ${coach.prenom} ${coach.nom || ''}`}
                         >
                           Supprimer
                         </button>
@@ -348,9 +351,9 @@ export default function CoachesManager() {
 
       {/* Modal Créer/Modifier */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-coach-title">
           <div className="bg-white rounded-lg p-6 md:p-8 max-w-2xl w-full my-8 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-2xl font-bold mb-6">
+            <h3 id="modal-coach-title" className="text-2xl font-bold mb-6">
               {editingCoach ? 'Modifier le coach' : 'Nouveau coach'}
             </h3>
 

@@ -131,6 +131,8 @@ async function resolveGeoIp(ip: string, requestHeaders?: Headers) {
   return { pays: 'France', codePays: 'FR', region: 'Vaucluse', ville: 'Cavaillon', latitude: 43.8333, longitude: 5.0333, codePostal: '84300', fai: 'Inconnu', timezone: 'Europe/Paris' }
 }
 
+import { getClientIp } from '@/lib/api/request'
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
@@ -149,55 +151,33 @@ export async function POST(request: NextRequest) {
     else if (/firefox/i.test(userAgent)) navigateur = 'Firefox'
     else if (/edg/i.test(userAgent)) navigateur = 'Edge'
 
-    // Récupération de l'IP
-    const rawIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-                  request.headers.get('x-real-ip') ||
-                  '127.0.0.1'
-
+    // Récupération propre de l'IP
+    const rawIp = getClientIp(request)
     const cleanIp = rawIp.replace('::ffff:', '')
-
-    // Auto-création de la table si manquante (garantie de structure)
-    try {
-      await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "visites" (
-          "id" TEXT NOT NULL PRIMARY KEY,
-          "ip" TEXT,
-          "pays" TEXT DEFAULT 'France',
-          "codePays" TEXT DEFAULT 'FR',
-          "region" TEXT,
-          "ville" TEXT DEFAULT 'Inconnu',
-          "latitude" DOUBLE PRECISION DEFAULT 43.8333,
-          "longitude" DOUBLE PRECISION DEFAULT 5.0333,
-          "codePostal" TEXT,
-          "fai" TEXT,
-          "timezone" TEXT DEFAULT 'Europe/Paris',
-          "page" TEXT DEFAULT '/',
-          "appareil" TEXT DEFAULT 'Desktop',
-          "navigateur" TEXT DEFAULT 'Navigateur',
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-      `)
-      // Migration colonnes pour bases existantes
-      await prisma.$executeRawUnsafe(`ALTER TABLE "visites" ADD COLUMN IF NOT EXISTS "codePostal" TEXT;`)
-      await prisma.$executeRawUnsafe(`ALTER TABLE "visites" ADD COLUMN IF NOT EXISTS "fai" TEXT;`)
-      await prisma.$executeRawUnsafe(`ALTER TABLE "visites" ADD COLUMN IF NOT EXISTS "timezone" TEXT DEFAULT 'Europe/Paris';`)
-    } catch {
-      // Ignorer si existante
-    }
 
     // 1. Géolocalisation avec fallback multi-fournisseurs et cache
     const geo = await resolveGeoIp(cleanIp, request.headers)
 
-    // 2. Générer l'ID et exécuter l'INSERT immédiatement
-    const id = `v_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    // 2. Insertion standard via Prisma ORM
+    const visite = await prisma.visite.create({
+      data: {
+        ip: cleanIp,
+        pays: geo.pays,
+        codePays: geo.codePays,
+        region: geo.region,
+        ville: geo.ville,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+        codePostal: geo.codePostal,
+        fai: geo.fai,
+        timezone: geo.timezone,
+        page,
+        appareil,
+        navigateur,
+      },
+    })
 
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO "visites" ("id", "ip", "pays", "codePays", "region", "ville", "latitude", "longitude", "codePostal", "fai", "timezone", "page", "appareil", "navigateur", "createdAt")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW());`,
-      id, cleanIp, geo.pays, geo.codePays, geo.region, geo.ville, geo.latitude, geo.longitude, geo.codePostal, geo.fai, geo.timezone, page, appareil, navigateur
-    )
-
-    return NextResponse.json({ success: true, id, ville: geo.ville, ip: cleanIp })
+    return NextResponse.json({ success: true, id: visite.id, ville: geo.ville, ip: cleanIp })
   } catch (error) {
     console.error('Erreur analytics track POST:', error)
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 })
@@ -211,39 +191,30 @@ export async function GET(request: NextRequest) {
   let appareil = 'Desktop'
   if (/mobile/i.test(userAgent)) appareil = 'Mobile'
 
-  const rawIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1'
+  const rawIp = getClientIp(request)
   const cleanIp = rawIp.replace('::ffff:', '')
 
-  const id = `v_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
   const geo = await resolveGeoIp(cleanIp)
 
   try {
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "visites" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "ip" TEXT,
-        "pays" TEXT DEFAULT 'France',
-        "codePays" TEXT DEFAULT 'FR',
-        "region" TEXT,
-        "ville" TEXT DEFAULT 'Inconnu',
-        "latitude" DOUBLE PRECISION DEFAULT 43.8333,
-        "longitude" DOUBLE PRECISION DEFAULT 5.0333,
-        "codePostal" TEXT,
-        "fai" TEXT,
-        "timezone" TEXT DEFAULT 'Europe/Paris',
-        "page" TEXT DEFAULT '/',
-        "appareil" TEXT DEFAULT 'Desktop',
-        "navigateur" TEXT DEFAULT 'Navigateur',
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-    `)
-
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO "visites" ("id", "ip", "pays", "codePays", "region", "ville", "latitude", "longitude", "codePostal", "fai", "timezone", "page", "appareil", "navigateur", "createdAt")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW());`,
-      id, cleanIp, geo.pays, geo.codePays, geo.region, geo.ville, geo.latitude, geo.longitude, geo.codePostal, geo.fai, geo.timezone, page, appareil, 'Mobile Test'
-    )
-    return NextResponse.json({ success: true, message: 'Visite de test enregistrée avec succès !', id, ip: cleanIp, ville: geo.ville })
+    const visite = await prisma.visite.create({
+      data: {
+        ip: cleanIp,
+        pays: geo.pays,
+        codePays: geo.codePays,
+        region: geo.region,
+        ville: geo.ville,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+        codePostal: geo.codePostal,
+        fai: geo.fai,
+        timezone: geo.timezone,
+        page,
+        appareil,
+        navigateur: 'Mobile Test',
+      },
+    })
+    return NextResponse.json({ success: true, message: 'Visite de test enregistrée avec succès !', id: visite.id, ip: cleanIp, ville: geo.ville })
   } catch (err) {
     return NextResponse.json({ success: false, error: String(err) }, { status: 500 })
   }

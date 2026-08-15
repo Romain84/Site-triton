@@ -138,7 +138,7 @@ export default function CartDrawer() {
                     )}
 
                     {/* Prix unitaire */}
-                    <p className="text-xs font-semibold text-slate-400">
+                    <p className="text-xs font-semibold text-slate-600">
                       {item.prix.toFixed(2)} €
                     </p>
                   </div>
@@ -148,8 +148,9 @@ export default function CartDrawer() {
                     {/* Bouton de suppression */}
                     <button
                       onClick={() => removeItem(item.produitId, item.varianteId, item.textePersonnalise)}
-                      className="text-slate-350 hover:text-red-500 transition-colors p-1 rounded-md"
+                      className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md cursor-pointer"
                       title="Supprimer l'article"
+                      aria-label={`Supprimer ${item.nom} du panier`}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -160,16 +161,18 @@ export default function CartDrawer() {
                     <div className="flex items-center gap-1 border border-slate-200/80 rounded-lg p-0.5 bg-slate-50/50 shadow-2xs">
                       <button
                         onClick={() => updateQuantity(item.produitId, item.quantite - 1, item.varianteId, item.textePersonnalise)}
-                        className="w-5 h-5 rounded hover:bg-white border border-transparent hover:border-slate-200/40 text-slate-500 hover:text-slate-800 text-xs font-bold flex items-center justify-center transition-all active:scale-95"
+                        className="w-5 h-5 rounded hover:bg-white border border-transparent hover:border-slate-200/40 text-slate-600 hover:text-slate-900 text-xs font-bold flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                        aria-label={`Diminuer la quantité de ${item.nom}`}
                       >
                         -
                       </button>
-                      <span className="w-5 text-center text-xs font-bold text-slate-800">
+                      <span className="w-5 text-center text-xs font-bold text-slate-800" aria-label={`Quantité: ${item.quantite}`}>
                         {item.quantite}
                       </span>
                       <button
                         onClick={() => updateQuantity(item.produitId, item.quantite + 1, item.varianteId, item.textePersonnalise)}
-                        className="w-5 h-5 rounded hover:bg-white border border-transparent hover:border-slate-200/40 text-slate-500 hover:text-slate-800 text-xs font-bold flex items-center justify-center transition-all active:scale-95"
+                        className="w-5 h-5 rounded hover:bg-white border border-transparent hover:border-slate-200/40 text-slate-600 hover:text-slate-900 text-xs font-bold flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                        aria-label={`Augmenter la quantité de ${item.nom}`}
                       >
                         +
                       </button>
@@ -185,11 +188,11 @@ export default function CartDrawer() {
         {items.length > 0 && (
           <div className="p-5 border-t border-slate-100 bg-white space-y-4">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500 font-semibold">Total intermédiaire</span>
+              <span className="text-slate-600 font-semibold">Total intermédiaire</span>
               <span className="text-xl font-black text-slate-900">{totalPrice.toFixed(2)} €</span>
             </div>
 
-            <p className="text-[10px] text-slate-400 leading-normal font-light">
+            <p className="text-xs text-slate-500 leading-normal font-light">
               TVA incluse. Les frais de retrait ou de livraison seront calculés lors de l&apos;étape suivante.
             </p>
 

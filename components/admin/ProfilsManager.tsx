@@ -285,18 +285,20 @@ export default function ProfilsManager({ currentUser }: ProfilsManagerProps) {
                             <button
                               onClick={() => openEditModal(user)}
                               className="px-2.5 py-1 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                              aria-label={`Modifier l'utilisateur ${user.prenom || ''} ${user.nom || ''}`}
                             >
                               Modifier
                             </button>
                             <button
                               onClick={() => setDeleteConfirm({ isOpen: true, id: user.id })}
                               className="px-2.5 py-1 text-xs font-bold text-red-650 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                              aria-label={`Supprimer l'utilisateur ${user.prenom || ''} ${user.nom || ''}`}
                             >
                               Supprimer
                             </button>
                           </>
                         ) : (
-                          <span className="text-xs text-slate-400 italic">Lecture seule</span>
+                          <span className="text-xs text-slate-500 italic">Lecture seule</span>
                         )}
                       </td>
                     </tr>
@@ -317,19 +319,19 @@ export default function ProfilsManager({ currentUser }: ProfilsManagerProps) {
 
       {/* Modal d'ajout / modification de compte */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="modal-user-title">
           <div className="bg-white rounded-3xl border border-slate-200/80 p-6 md:p-8 max-w-md w-full shadow-lg m-4 space-y-6">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-950">
+              <h3 id="modal-user-title" className="text-sm font-extrabold uppercase tracking-wider text-slate-950">
                 {editingUser ? 'Modifier le compte' : 'Créer un nouveau compte'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-650 font-bold cursor-pointer">✕</button>
+              <button onClick={() => setIsModalOpen(false)} aria-label="Fermer la fenêtre modale" className="text-slate-400 hover:text-slate-650 font-bold cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-sm font-light text-slate-750">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="prenom" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Prénom *</label>
+                  <label htmlFor="prenom" className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">Prénom *</label>
                   <input
                     type="text"
                     id="prenom"
@@ -397,8 +399,10 @@ export default function ProfilsManager({ currentUser }: ProfilsManagerProps) {
                     <option value="superviseur">Superviseur</option>
                     <option value="tresorier">Trésorier</option>
                     <option value="president">Président</option>
-                    <option value="coach">Coach</option>
                   </select>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Les comptes coachs sont gérés dans l&apos;onglet <strong>Profils Entraîneurs</strong>.
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Statut du compte</label>

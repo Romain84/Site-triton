@@ -7,6 +7,8 @@ import { logger } from '@/lib/logger'
 import { apiError, apiSuccess } from '@/lib/api/response'
 import { formRateLimiter } from '@/lib/rate-limiter'
 
+import { getClientIp } from '@/lib/api/request'
+
 const log = logger.withContext('Auth')
 
 const resetPasswordSchema = z.object({
@@ -16,9 +18,7 @@ const resetPasswordSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for') ||
-      request.headers.get('x-real-ip') ||
-      'unknown'
+    const ip = getClientIp(request)
 
     const rateLimitResult = formRateLimiter.checkLimit(ip, 'auth-admin-reset-password')
     if (!rateLimitResult.allowed) {

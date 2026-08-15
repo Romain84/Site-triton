@@ -25,7 +25,7 @@ export async function createCoachSession(coach: CoachSession) {
   const cookieStore = await cookies()
   cookieStore.set('coach_session', token, {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/',
@@ -72,7 +72,7 @@ export async function createAdminSession(admin: AdminSession) {
   const cookieStore = await cookies()
   cookieStore.set('admin_session', token, {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/',
