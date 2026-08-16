@@ -629,33 +629,6 @@ export default function GroupesManager() {
           )}
         </div>
 
-        {/* Section Facturation Coach */}
-        <div className="border-b pb-4">
-          <h4 className="text-lg font-semibold mb-4 text-gray-700 flex items-center gap-2">
-            Facturation coach
-            <HelpTooltip title="Temps facturé">
-              Permet de fixer la durée facturée (en minutes) pour chaque cours de ce groupe. Exemple: 60 min = 1h00 facturée par cours. Laisser vide = facturation de la durée réelle.
-            </HelpTooltip>
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Temps à facturer (minutes)
-              </label>
-              <input
-                type="number"
-                value={tempsFacture}
-                onChange={(e) => setTempsFacture(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="60"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Ex: Cours de 45min facturé 60min. Laisser vide = durée réelle.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Section Compétition */}
         <div className="border-b pb-4">
           <h4 className="text-lg font-semibold mb-4 text-gray-700 flex items-center gap-2">
@@ -872,9 +845,6 @@ export default function GroupesManager() {
                       <div className="font-medium">{groupe.nom}</div>
                       {groupe.ageMin && groupe.ageMax && (
                         <div className="text-xs text-gray-500">{groupe.ageMin}-{groupe.ageMax} ans</div>
-                      )}
-                      {groupe.tempsFacture && (
-                        <div className="text-xs text-blue-600">⏱️ {groupe.tempsFacture}min facturées</div>
                       )}
                     </td>
                     <td className="py-3 px-4 text-center">

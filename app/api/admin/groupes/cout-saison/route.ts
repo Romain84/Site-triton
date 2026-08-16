@@ -889,7 +889,26 @@ function isPPGouPetitBassin(planning: {
   const groupeNomLow = (planning.groupe?.nom || '').toLowerCase()
   const groupeNiveauLow = (planning.groupe?.niveau || '').toLowerCase()
 
-  const keywords = ['ppg', 'petit', 'pb', 'bnssa', 'apprentissage', 'jardin', 'bebe', 'bébé', 'ecole', 'école']
+  const keywords = [
+    'ppg',
+    'préparation physique',
+    'preparation physique',
+    'petit',
+    'pb',
+    'bnssa',
+    'ssa',
+    'artistique',
+    'synchro',
+    'aquafitness',
+    'aquagym',
+    'apprentissage',
+    'jardin',
+    'bebe',
+    'bébé',
+    'ecole',
+    'école',
+    'enf'
+  ]
 
   return keywords.some((kw) =>
     lieuLow.includes(kw) ||
@@ -898,22 +917,20 @@ function isPPGouPetitBassin(planning: {
   )
 }
 
+function arrondirDemiHeureSuperieure(dureeHeures: number): number {
+  return Math.ceil(dureeHeures * 2) / 2
+}
+
 function getPlanningDuree(planning: {
   heureDebut: string
   heureFin: string
   semaineImpaire?: boolean | null
-  groupe?: { tempsFacture?: number | null } | null
 }): number {
   const start = parseTimeToMinutes(planning.heureDebut)
   const end = parseTimeToMinutes(planning.heureFin)
   const dureeReelle = Math.max(0, (end - start) / 60)
-  const tempsFacture = (planning.groupe?.tempsFacture ?? 0) / 60
-
-  // Si "Temps à facturer" est configuré (ex: 45min arrondi à 60min ou 1h15 arrondi à 1h30/90min),
-  // on utilise le temps à facturer s'il est supérieur ou égal à la durée réelle.
-  let dureeBase = tempsFacture > 0 ? Math.max(dureeReelle, tempsFacture) : dureeReelle
-
-  return planning.semaineImpaire ? dureeBase / 2 : dureeBase
+  const dureeArrondie = arrondirDemiHeureSuperieure(dureeReelle)
+  return planning.semaineImpaire ? dureeArrondie / 2 : dureeArrondie
 }
 
 function parseTimeToMinutes(t: string): number {
@@ -928,13 +945,13 @@ function calculerHeuresEffectivesCoach(
     heureDebut: string
     heureFin: string
     lieu?: string | null
-    groupe?: { nom?: string | null; niveau?: string | null; tempsFacture?: number | null } | null
+    groupe?: { nom?: string | null; niveau?: string | null } | null
   },
   plannings: any[]
 ): number {
   const dureeFacturee = getPlanningDuree(targetPlanning)
 
-  // En mode optimisé, PPG et Petit Bassin ne sont pas optimisés -> facturés à 100% de leur durée
+  // En mode optimisé, PPG, Petit Bassin, BNSSA, Natation Artistique et AquaFitness ne sont pas optimisés -> facturés à 100% de leur durée
   if (isPPGouPetitBassin(targetPlanning)) {
     return dureeFacturee
   }
@@ -943,7 +960,7 @@ function calculerHeuresEffectivesCoach(
   const end = parseTimeToMinutes(targetPlanning.heureFin)
   if (end <= start) return 0
 
-  // Récupérer uniquement les créneaux optimisables (non PPG / non Petit Bassin) de ce coach ce même jour de la semaine
+  // Récupérer uniquement les créneaux optimisables (non PPG / non Petit Bassin / non Artistique) de ce coach ce même jour de la semaine
   const coachSlotsDuJour = plannings
     .filter((p) =>
       p.jourSemaine === targetPlanning.jourSemaine &&

@@ -219,9 +219,8 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     const occurences = dates.length
 
     if (occurences > 0) {
-      const dureeHeures = (creneau.tempsFacture && creneau.tempsFacture > 0)
-        ? creneau.tempsFacture / 60
-        : calculerDuree(creneau.heureDebut, creneau.heureFin)
+      const dureeReelle = calculerDuree(creneau.heureDebut, creneau.heureFin)
+      const dureeHeures = Math.ceil(dureeReelle * 2) / 2
       const totalHrs = dureeHeures * occurences
       heuresPlanningFixe += totalHrs
       const groupesStr = creneau.groupes.join(', ')
