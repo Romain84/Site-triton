@@ -44,25 +44,44 @@ interface PlanningInteractifProps {
 
 const JOURS_ORDRE = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
 
-const CATEGORIES = {
+const CATEGORIES: Record<string, string> = {
   all: 'Tous',
   enf: 'ENF',
   avenirs: 'Avenirs',
-  benjamins: 'Benjamins',
-  juniors: 'Juniors',
-  adultes: 'Adultes',
-  loisirs: 'Loisir',
+  competition: 'Compétition',
+  loisir: 'Loisir',
   autres: 'Autres',
 }
 
 function categoriseGroupe(nom: string): string {
-  const u = nom.toUpperCase()
-  if (u.includes('ENF')) return 'enf'
-  if (u.includes('AVENIRS')) return 'avenirs'
-  if (u.includes('BENJAMINS')) return 'benjamins'
-  if (u.includes('JUNIORS')) return 'juniors'
-  if (u.includes('ADULTES') || u.includes('MAÎTRES') || u.includes('MAITRES')) return 'adultes'
-  if (u.includes('LOISIRS')) return 'loisirs'
+  const u = (nom || '').toUpperCase().trim()
+
+  // 1. ENF (École de Natation Française)
+  if (u.includes('ENF') || u.includes('ECOLE DE NATATION') || u.includes('ÉCOLE DE NATATION')) {
+    return 'enf'
+  }
+
+  // 2. Loisir (Avenirs loisirs, Jeunes loisirs, Juniors loisirs, Adultes loisirs 1 & 2)
+  if (u.includes('LOISIR')) {
+    return 'loisir'
+  }
+
+  // 3. Avenirs (Avenirs 1, Avenirs 2, Avenirs 3)
+  if (u.includes('AVENIR')) {
+    return 'avenirs'
+  }
+
+  // 4. Compétition (Benjamins 1 & 2, Juniors Compétition, Adultes Compétition, PPG Compétition)
+  if (
+    u.includes('COMPÉTITION') ||
+    u.includes('COMPETITION') ||
+    u.includes('BENJAMIN') ||
+    (u.includes('PPG') && !u.includes('ARTISTIQUE'))
+  ) {
+    return 'competition'
+  }
+
+  // 5. Autres (AquaFitness, Natation Artistique, PPG Artistique, BNSSA, etc.)
   return 'autres'
 }
 
@@ -1186,7 +1205,7 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
                               className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${color.badge}`}
                               style={color.badgeStyle}
                             >
-                              {session.groupe ? categoriseGroupe(session.groupe.nom).toUpperCase() : 'AUTRE'}
+                              {session.groupe ? (CATEGORIES[categoriseGroupe(session.groupe.nom)] || 'Autre').toUpperCase() : 'AUTRE'}
                             </span>
                             <span className="md:hidden text-xs font-black text-slate-700">
                               {session.heureDebut} - {session.heureFin}
@@ -1270,7 +1289,7 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
                                   className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${color.badge}`}
                                   style={color.badgeStyle}
                                 >
-                                  {session.groupe ? categoriseGroupe(session.groupe.nom).toUpperCase() : 'AUTRE'}
+                                  {session.groupe ? (CATEGORIES[categoriseGroupe(session.groupe.nom)] || 'Autre').toUpperCase() : 'AUTRE'}
                                 </span>
                                 <h3 className="text-sm font-black text-slate-900 mt-1">
                                   {session.nomSession || session.groupe?.nom}
@@ -1331,7 +1350,7 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
                               className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider mt-1 ${color.badge}`}
                               style={color.badgeStyle}
                             >
-                              {categoriseGroupe(groupe.nom)}
+                              {CATEGORIES[categoriseGroupe(groupe.nom)] || 'Autre'}
                             </span>
                           </div>
                         </td>
