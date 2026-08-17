@@ -53,6 +53,54 @@ const CATEGORIES: Record<string, string> = {
   autres: 'Autres',
 }
 
+function groupeMatchesFiltre(nom: string, filtre: string): boolean {
+  if (!filtre || filtre === 'all') return true
+  const u = (nom || '').toUpperCase().trim()
+
+  switch (filtre) {
+    case 'enf':
+      return u.includes('ENF') || u.includes('ECOLE DE NATATION') || u.includes('ÉCOLE DE NATATION')
+
+    case 'avenirs':
+      // Intègre Avenirs 1, 2, 3 ET Avenirs loisirs
+      return u.includes('AVENIR')
+
+    case 'competition':
+      return (
+        u.includes('COMPÉTITION') ||
+        u.includes('COMPETITION') ||
+        u.includes('BENJAMIN') ||
+        (u.includes('PPG') && !u.includes('ARTISTIQUE'))
+      )
+
+    case 'loisir':
+      // Intègre Avenirs loisirs, Jeunes loisirs, Juniors loisirs, Adultes loisirs 1 & 2
+      return u.includes('LOISIR')
+
+    case 'autres':
+      return (
+        u.includes('AQUAFITNESS') ||
+        u.includes('AQUAGYM') ||
+        u.includes('ARTISTIQUE') ||
+        u.includes('SYNCHRO') ||
+        u.includes('BNSSA') ||
+        u.includes('SSA') ||
+        (!u.includes('ENF') &&
+          !u.includes('ECOLE DE NATATION') &&
+          !u.includes('ÉCOLE DE NATATION') &&
+          !u.includes('AVENIR') &&
+          !u.includes('COMPÉTITION') &&
+          !u.includes('COMPETITION') &&
+          !u.includes('BENJAMIN') &&
+          !u.includes('LOISIR') &&
+          !u.includes('PPG'))
+      )
+
+    default:
+      return true
+  }
+}
+
 function categoriseGroupe(nom: string): string {
   const u = (nom || '').toUpperCase().trim()
 
@@ -984,8 +1032,7 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
     if (selectedGroupeObj) {
       return groupe.id === selectedGroupeObj.id
     }
-    if (filtre === 'all') return true
-    return categoriseGroupe(groupe.nom) === filtre
+    return groupeMatchesFiltre(groupe.nom, filtre)
   })
 
   // Plannings filtrés par groupe actif
@@ -998,8 +1045,7 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
       return matchesId || matchesName
     }
     if (!p.groupe) return false
-    if (filtre === 'all') return true
-    return categoriseGroupe(p.groupe.nom) === filtre
+    return groupeMatchesFiltre(p.groupe.nom, filtre)
   })
 
   // Organiser les plannings par jour et groupe
