@@ -8,7 +8,7 @@ const comptabiliteLogger = logger.withContext('ComptabiliteAPI')
 
 const transactionSchema = z.object({
   type: z.enum(['recette', 'depense']),
-  categorie: z.enum(['subvention', 'cotisation', 'don', 'achat_materiel', 'frais_fonctionnement', 'facture_externe', 'autre']),
+  categorie: z.string().min(1, 'La catégorie est requise').max(100),
   libelle: z.string().min(2, 'Le libellé doit faire au moins 2 caractères').max(250),
   montant: z.number().positive('Le montant doit être positif'),
   date: z.string().transform((str) => new Date(str)),

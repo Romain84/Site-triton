@@ -97,6 +97,7 @@ export default function TransactionModal({ isOpen, onClose, onSuccess, categorie
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!txCategorie) return toast.error('Veuillez sélectionner une catégorie')
     if (!txLibelle.trim()) return toast.error('Veuillez saisir un libellé')
     if (!txMontant || parseFloat(txMontant) <= 0) return toast.error('Le montant doit être positif')
     if (!txDate) return toast.error('Veuillez sélectionner une date')
