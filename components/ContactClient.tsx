@@ -1,19 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import ContactForm from '@/components/ContactForm'
-import GroupeFinder from '@/components/GroupeFinder'
-import { Sparkles, Compass, MessageSquare, Clock, MapPin, Mail } from 'lucide-react'
+import { Sparkles, MapPin, Mail } from 'lucide-react'
 
 export default function ContactClient() {
-  const [showFinder, setShowFinder] = useState(false)
-
-  const openChatWithQuestion = (question: string) => {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('open-triton-chat', { detail: { question } }))
-    }
-  }
-
   return (
     <div className="min-h-screen pt-36 sm:pt-40 pb-28 bg-slate-50">
       <div className="container mx-auto px-4 max-w-6xl space-y-10">
@@ -25,85 +15,11 @@ export default function ContactClient() {
             <span>Assistance Club & Contact</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
-            Une question ? Contactez-nous
+            Contactez-nous
           </h1>
           <p className="text-sm sm:text-base text-slate-600 font-normal">
-            Trouvez votre réponse en quelques secondes ou laissez un message à l&apos;équipe bénévole.
+            Une question ? Envoyez un message à l&apos;équipe bénévole ou retrouvez les coordonnées ci-dessous.
           </p>
-        </div>
-
-        {/* ─── BANNIÈRE ASSISTANT IA & RACCOURCIS RAPIDES ─── */}
-        <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 space-y-5">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-5">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="flex h-2.5 w-2.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
-                </span>
-                <span className="text-xs font-black uppercase tracking-wider text-cyan-400">
-                  Réponse Instantanée 24/7
-                </span>
-              </div>
-              <h2 className="text-lg sm:text-xl font-black text-white">
-                Gagnez du temps avant d&apos;envoyer un email !
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-300 font-light max-w-2xl">
-                Notre assistant virtuel intelligent connaît tous les tarifs, horaires, démarches et plannings du club pour répondre immédiatement à votre question.
-              </p>
-            </div>
-
-            <button
-              onClick={() => setShowFinder(true)}
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black text-xs sm:text-sm shadow-md transition-all shrink-0 cursor-pointer uppercase tracking-wider"
-            >
-              <Compass className="w-4 h-4" />
-              🧭 Trouver mon groupe en 3 clics
-            </button>
-          </div>
-
-          {/* Quick Questions Pills */}
-          <div className="space-y-2">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              💡 Questions les plus fréquentes (cliquez pour une réponse immédiate) :
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => openChatWithQuestion('Quels sont les horaires et créneaux pour un enfant ?')}
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white text-xs font-bold border border-white/10 transition-all text-left cursor-pointer flex items-center gap-1.5"
-              >
-                🕒 Horaires pour un enfant
-              </button>
-
-              <button
-                onClick={() => openChatWithQuestion('Quels sont les tarifs 2026-2027 et peut-on payer avec le Pass Sport ou les chèques ANCV ?')}
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white text-xs font-bold border border-white/10 transition-all text-left cursor-pointer flex items-center gap-1.5"
-              >
-                💶 Tarifs, Pass&apos;Sport & ANCV
-              </button>
-
-              <button
-                onClick={() => openChatWithQuestion('Y a-t-il des cours de natation pendant les vacances scolaires ?')}
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white text-xs font-bold border border-white/10 transition-all text-left cursor-pointer flex items-center gap-1.5"
-              >
-                🏊 Cours pendant les vacances
-              </button>
-
-              <button
-                onClick={() => openChatWithQuestion('Comment s\'inscrire et quels documents fournir (certificat médical) ?')}
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white text-xs font-bold border border-white/10 transition-all text-left cursor-pointer flex items-center gap-1.5"
-              >
-                📝 Inscription & Certificat médical
-              </button>
-
-              <button
-                onClick={() => openChatWithQuestion('Puis-je faire une séance d\'essai au club ?')}
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white text-xs font-bold border border-white/10 transition-all text-left cursor-pointer flex items-center gap-1.5"
-              >
-                🎯 Séance d&apos;essai
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* ─── FORMULAIRE & COORDONNÉES ─── */}
@@ -198,32 +114,23 @@ export default function ContactClient() {
 
       {/* Mobile Quick Bar */}
       <div className="fixed bottom-4 left-4 right-4 z-40 md:hidden pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-950/90 backdrop-blur border border-slate-800 shadow-2xl p-2 text-white">
-          <button
-            onClick={() => setShowFinder(true)}
-            className="text-center py-2.5 rounded-xl bg-cyan-400 text-slate-950 text-xs font-black"
+        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-white/95 backdrop-blur border border-slate-200 shadow-lg p-2">
+          <a
+            href="mailto:tritoncavaillon@gmail.com"
+            className="text-center py-2.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold"
           >
-            🧭 Trouver mon groupe
-          </button>
+            ✉️ Email
+          </a>
           <a
             href="https://www.google.com/maps/dir/?api=1&destination=Piscine+couverte+Alphonse+Roudiere+Cavaillon"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-center py-2.5 rounded-xl bg-white/10 text-white text-xs font-extrabold"
+            className="text-center py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold"
           >
             📍 Itinéraire
           </a>
         </div>
       </div>
-
-      {/* MODALE SIMULATEUR */}
-      {showFinder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
-          <div className="relative w-full max-w-3xl my-8">
-            <GroupeFinder onClose={() => setShowFinder(false)} />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
