@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import GroupeFinder from '@/components/GroupeFinder'
 
 export interface GroupeData {
   id: string
@@ -175,6 +176,7 @@ export function categoriserGroupe(nom: string, isCompetition?: boolean | null): 
 export default function GroupesClient({ groupes, plannings = [], interSaison, texteFiligrane }: GroupesClientProps) {
   const [selectedCategory, setSelectedCategory] = useState<CategorieGroupeKey>('all')
   const [planningModalGroupe, setPlanningModalGroupe] = useState<GroupeData | null>(null)
+  const [showFinderModal, setShowFinderModal] = useState<boolean>(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -209,7 +211,24 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
     : []
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-10">
+      {/* Bannière Simulateur de Groupe */}
+      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white rounded-3xl p-5 md:p-6 shadow-md border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 max-w-4xl mx-auto print:hidden">
+        <div className="flex items-center gap-3 text-left">
+          <span className="text-3xl p-2.5 bg-white/10 rounded-2xl shrink-0">🧭</span>
+          <div>
+            <h3 className="text-sm md:text-base font-black text-white">Vous hésitez entre plusieurs groupes ?</h3>
+            <p className="text-xs text-slate-300 font-light mt-0.5">Répondez à 2 questions pour obtenir la recommandation exacte avec horaires et tarifs.</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowFinderModal(true)}
+          className="px-5 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black text-xs uppercase tracking-wider shadow-sm transition-all shrink-0 cursor-pointer"
+        >
+          Trouver mon groupe en 3 clics
+        </button>
+      </div>
+
       {/* Filtres par catégorie sous forme de pilules tactiles */}
       <div className="flex flex-wrap justify-center gap-2 max-w-4xl mx-auto print:hidden">
         <button
@@ -471,6 +490,16 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
                 Fermer
               </button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* MODALE SIMULATEUR DE GROUPE */}
+      {mounted && showFinderModal && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-3xl my-8">
+            <GroupeFinder onClose={() => setShowFinderModal(false)} />
           </div>
         </div>,
         document.body

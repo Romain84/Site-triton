@@ -65,7 +65,8 @@ type HomeData = {
 
 const accesRapides = [
   { href: '/planning', titre: 'Planning', description: 'Consulter les créneaux' },
-  { href: '/groupes', titre: 'Groupes', description: 'Trouver son niveau' },
+  { href: '/groupes', titre: 'Groupes & Niveaux', description: 'Trouver son groupe en 3 clics' },
+  { href: '/inscription', titre: 'Inscriptions', description: 'Tarifs & démarches en ligne' },
   { href: '/actualites', titre: 'Actualités', description: 'Suivre la vie du club' },
 ]
 
@@ -239,6 +240,51 @@ export default async function HomePage() {
             <p className="text-base md:text-lg text-slate-500 leading-relaxed max-w-2xl font-light">
               Bienvenue au club de natation de Cavaillon. Formations tous âges, entraînements loisirs, natation artistique, aquagym et compétitions FFN de haut niveau.
             </p>
+
+            {/* Quick Access Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <Link
+                href="/groupes"
+                className="group p-4 bg-white hover:bg-cyan-50/50 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-cyan-300 transition-all flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl p-2 bg-slate-50 rounded-xl group-hover:scale-105 transition-transform">🧭</span>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900 group-hover:text-cyan-800 uppercase tracking-wider">Quel groupe choisir ?</h4>
+                    <p className="text-[11px] text-slate-500 font-medium">Trouver mon niveau en 3 clics</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-slate-400 group-hover:text-cyan-600 transition-transform group-hover:translate-x-0.5">→</span>
+              </Link>
+
+              <Link
+                href="/planning"
+                className="group p-4 bg-white hover:bg-cyan-50/50 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-cyan-300 transition-all flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl p-2 bg-slate-50 rounded-xl group-hover:scale-105 transition-transform">📅</span>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900 group-hover:text-cyan-800 uppercase tracking-wider">Planning 2026-2027</h4>
+                    <p className="text-[11px] text-slate-500 font-medium">Consulter les créneaux</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-slate-400 group-hover:text-cyan-600 transition-transform group-hover:translate-x-0.5">→</span>
+              </Link>
+
+              <Link
+                href="/inscription"
+                className="group p-4 bg-slate-900 hover:bg-slate-800 rounded-2xl border border-slate-900 text-white shadow-xs hover:shadow-md transition-all flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl p-2 bg-white/10 rounded-xl group-hover:scale-105 transition-transform">📋</span>
+                  <div>
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider">Inscriptions en ligne</h4>
+                    <p className="text-[11px] text-slate-300 font-medium">Tarifs & démarches</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-cyan-400 transition-transform group-hover:translate-x-0.5">→</span>
+              </Link>
+            </div>
 
             {stats.unavailable && (
               <p className="mt-4 text-xs font-medium text-amber-700 bg-amber-50/50 border border-amber-200/60 rounded-lg px-4 py-3">

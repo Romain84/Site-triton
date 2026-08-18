@@ -194,6 +194,23 @@ export default function ChatPopup() {
     }
   }, [])
 
+  // Écouter l'événement global pour ouvrir le chat depuis n'importe quel bouton
+  useEffect(() => {
+    const handleOpenChat = (e: Event) => {
+      const customEvent = e as CustomEvent<{ question?: string }>
+      setIsOpen(true)
+      setShowBadge(false)
+      if (customEvent.detail?.question) {
+        setTimeout(() => {
+          sendMessage(customEvent.detail.question!)
+        }, 100)
+      }
+    }
+
+    window.addEventListener('open-triton-chat', handleOpenChat)
+    return () => window.removeEventListener('open-triton-chat', handleOpenChat)
+  }, [])
+
   // Masquer le badge après première ouverture
   useEffect(() => {
     if (isOpen && typeof window !== 'undefined') {

@@ -7,6 +7,7 @@ import ToastProvider from '@/components/ToastProvider'
 import CartDrawer from '@/components/cart/CartDrawer'
 import { ConfirmDialogProvider } from '@/components/ConfirmDialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import ChatPopup from '@/components/ChatPopup'
 
 export default function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -25,6 +26,7 @@ export default function AppProviders({ children }: { children: ReactNode }) {
           <ConfirmDialogProvider>
             {children}
             <CartDrawer />
+            <ChatPopup />
             <ToastProvider />
           </ConfirmDialogProvider>
         </CartProvider>
