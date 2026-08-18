@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { getCurrentSeasonLabel, isInterSaisonActive } from '@/lib/season-utils'
 import { sanitizeHtml } from '@/lib/sanitize'
-import InscriptionFinderButton from '@/components/inscription/InscriptionFinderButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -156,9 +155,6 @@ export default async function InscriptionPage() {
           {ctaBlocks.map(block => (
             <CtaBlock key={block.id} block={block} inscriptionUrl={inscriptionUrl} />
           ))}
-
-          {/* Simulateur Trouver mon groupe */}
-          <InscriptionFinderButton />
 
           {/* Content Grid */}
           {(mainBlocks.length > 0 || sidebarBlocks.length > 0) && (
