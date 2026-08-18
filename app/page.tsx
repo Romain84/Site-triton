@@ -245,44 +245,60 @@ export default async function HomePage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
               <Link
                 href="/groupes"
-                className="group p-4 bg-white hover:bg-cyan-50/50 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-cyan-300 transition-all flex items-center justify-between"
+                className="group p-4 bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200 shadow-xs hover:border-primary/40 transition-all flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl p-2 bg-slate-50 rounded-xl group-hover:scale-105 transition-transform">🧭</span>
+                  <div className="p-2 bg-emerald-50 text-primary border border-emerald-100 rounded-xl group-hover:scale-105 transition-transform">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="currentColor"/>
+                    </svg>
+                  </div>
                   <div>
-                    <h4 className="text-xs font-black text-slate-900 group-hover:text-cyan-800 uppercase tracking-wider">Quel groupe choisir ?</h4>
-                    <p className="text-[11px] text-slate-500 font-medium">Trouver mon niveau en 3 clics</p>
+                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-primary transition-colors uppercase tracking-wider">Groupes & Niveaux</h4>
+                    <p className="text-xs text-slate-500 font-medium">Trouver votre groupe</p>
                   </div>
                 </div>
-                <span className="text-xs font-bold text-slate-400 group-hover:text-cyan-600 transition-transform group-hover:translate-x-0.5">→</span>
+                <span className="text-xs font-bold text-slate-400 group-hover:text-primary transition-transform group-hover:translate-x-0.5">→</span>
               </Link>
 
               <Link
                 href="/planning"
-                className="group p-4 bg-white hover:bg-cyan-50/50 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-sm hover:border-cyan-300 transition-all flex items-center justify-between"
+                className="group p-4 bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200 shadow-xs hover:border-primary/40 transition-all flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl p-2 bg-slate-50 rounded-xl group-hover:scale-105 transition-transform">📅</span>
+                  <div className="p-2 bg-sky-50 text-sky-700 border border-sky-100 rounded-xl group-hover:scale-105 transition-transform">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/>
+                      <line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/>
+                      <line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/>
+                      <line x1="3" y1="10" x2="21" y2="10" strokeWidth="2"/>
+                    </svg>
+                  </div>
                   <div>
-                    <h4 className="text-xs font-black text-slate-900 group-hover:text-cyan-800 uppercase tracking-wider">Planning 2026-2027</h4>
-                    <p className="text-[11px] text-slate-500 font-medium">Consulter les créneaux</p>
+                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-primary transition-colors uppercase tracking-wider">Planning</h4>
+                    <p className="text-xs text-slate-500 font-medium">Consulter les créneaux</p>
                   </div>
                 </div>
-                <span className="text-xs font-bold text-slate-400 group-hover:text-cyan-600 transition-transform group-hover:translate-x-0.5">→</span>
+                <span className="text-xs font-bold text-slate-400 group-hover:text-primary transition-transform group-hover:translate-x-0.5">→</span>
               </Link>
 
               <Link
                 href="/inscription"
-                className="group p-4 bg-slate-900 hover:bg-slate-800 rounded-2xl border border-slate-900 text-white shadow-xs hover:shadow-md transition-all flex items-center justify-between"
+                className="group p-4 bg-primary hover:bg-primary-dark rounded-2xl border border-primary text-white shadow-xs hover:shadow-md transition-all flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl p-2 bg-white/10 rounded-xl group-hover:scale-105 transition-transform">📋</span>
+                  <div className="p-2 bg-white/15 text-white rounded-xl group-hover:scale-105 transition-transform">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                  </div>
                   <div>
-                    <h4 className="text-xs font-black text-white uppercase tracking-wider">Inscriptions en ligne</h4>
-                    <p className="text-[11px] text-slate-300 font-medium">Tarifs & démarches</p>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">Inscriptions</h4>
+                    <p className="text-xs text-emerald-100 font-medium">Tarifs & démarches</p>
                   </div>
                 </div>
-                <span className="text-xs font-bold text-cyan-400 transition-transform group-hover:translate-x-0.5">→</span>
+                <span className="text-xs font-bold text-emerald-200 transition-transform group-hover:translate-x-0.5">→</span>
               </Link>
             </div>
 

@@ -212,20 +212,25 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
 
   return (
     <div className="space-y-10">
-      {/* Bannière Simulateur de Groupe */}
-      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white rounded-3xl p-5 md:p-6 shadow-md border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 max-w-4xl mx-auto print:hidden">
-        <div className="flex items-center gap-3 text-left">
-          <span className="text-3xl p-2.5 bg-white/10 rounded-2xl shrink-0">🧭</span>
+      {/* Bannière Aide au Choix du Groupe */}
+      <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 max-w-4xl mx-auto print:hidden">
+        <div className="flex items-center gap-3.5 text-left">
+          <div className="p-2.5 bg-emerald-50 text-primary border border-emerald-200/60 rounded-xl shrink-0">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="currentColor"/>
+            </svg>
+          </div>
           <div>
-            <h3 className="text-sm md:text-base font-black text-white">Vous hésitez entre plusieurs groupes ?</h3>
-            <p className="text-xs text-slate-300 font-light mt-0.5">Répondez à 2 questions pour obtenir la recommandation exacte avec horaires et tarifs.</p>
+            <h3 className="text-sm md:text-base font-bold text-slate-900">Besoin d&apos;aide pour choisir votre groupe ?</h3>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Identifiez facilement le groupe et les créneaux adaptés à l&apos;âge et au niveau du nageur.</p>
           </div>
         </div>
         <button
           onClick={() => setShowFinderModal(true)}
-          className="px-5 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black text-xs uppercase tracking-wider shadow-sm transition-all shrink-0 cursor-pointer"
+          className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-colors shrink-0 cursor-pointer"
         >
-          Trouver mon groupe en 3 clics
+          Trouver mon groupe
         </button>
       </div>
 
@@ -497,7 +502,7 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
 
       {/* MODALE SIMULATEUR DE GROUPE */}
       {mounted && showFinderModal && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
           <div className="relative w-full max-w-3xl my-8">
             <GroupeFinder onClose={() => setShowFinderModal(false)} />
           </div>
