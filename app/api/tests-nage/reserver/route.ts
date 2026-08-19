@@ -8,15 +8,15 @@ import crypto from 'crypto'
 const reserverSchema = z.object({
   creneauId: z.string().min(1, 'Le créneau est requis'),
   candidatId: z.string().optional().nullable(),
-  nomEnfant: z.string().min(2, "Le nom de l'enfant doit comporter au moins 2 caractères"),
-  prenomEnfant: z.string().min(2, "Le prénom de l'enfant doit comporter au moins 2 caractères"),
+  nomEnfant: z.string().min(1, "Le nom de l'enfant est requis"),
+  prenomEnfant: z.string().min(1, "Le prénom de l'enfant est requis"),
   dateNaissance: z.string().optional().nullable(),
-  age: z.number().int().min(3).max(99).optional().nullable(),
+  age: z.number().int().optional().nullable(),
   nomParent: z.string().optional().nullable(),
-  emailParent: z.string().email('Adresse email invalide'),
-  telephoneParent: z.string().min(6, 'Numéro de téléphone invalide'),
+  emailParent: z.string().min(1, "L'adresse email est requise").email('Adresse email invalide'),
+  telephoneParent: z.string().min(1, "Le numéro de téléphone est requis"),
   niveauEstime: z.string().optional().nullable(),
-  remarques: z.string().max(500).optional().nullable(),
+  remarques: z.string().max(1000).optional().nullable(),
 })
 
 function formatCalendarDateTime(date: Date, timeStr: string): string {
@@ -81,15 +81,19 @@ export async function POST(request: NextRequest) {
 
       // 4. Si rattaché à un candidat pré-enregistré, mettre à jour son statut
       if (validated.candidatId) {
-        await tx.candidatTestNage.update({
-          where: { id: validated.candidatId },
-          data: {
-            statut: 'planifie',
-            emailParent: validated.emailParent.trim().toLowerCase(),
-            telephoneParent: validated.telephoneParent.trim(),
-            nomParent: validated.nomParent || undefined,
-          },
-        })
+        try {
+          await tx.candidatTestNage.updateMany({
+            where: { id: validated.candidatId },
+            data: {
+              statut: 'planifie',
+              emailParent: validated.emailParent.trim().toLowerCase(),
+              telephoneParent: validated.telephoneParent.trim(),
+              nomParent: validated.nomParent ? validated.nomParent.trim() : undefined,
+            },
+          })
+        } catch (candidatErr) {
+          console.warn('Erreur mise à jour statut candidat:', candidatErr)
+        }
       }
 
       return {
@@ -235,8 +239,10 @@ export async function POST(request: NextRequest) {
     console.error('Erreur réservation test de nage:', error)
 
     if (error instanceof z.ZodError) {
+      const fieldErrors = error.flatten().fieldErrors
+      const firstErrorMessage = Object.values(fieldErrors).flat()[0] || 'Veuillez vérifier les informations saisies'
       return NextResponse.json(
-        { error: 'Veuillez vérifier les informations saisies', details: error.flatten() },
+        { error: firstErrorMessage, details: error.flatten() },
         { status: 400 }
       )
     }

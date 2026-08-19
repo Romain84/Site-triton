@@ -139,6 +139,12 @@ export default function TestNageBooking() {
     setEmailParent(c.emailParent || '')
     setTelephoneParent(c.telephoneParent || '')
     setSearchQuery(`${c.nom} ${c.prenom}`)
+
+    if (!c.emailParent || !c.telephoneParent) {
+      toast('Enfant sélectionné ! Veuillez renseigner votre email et téléphone ci-dessous pour la confirmation.', { icon: '📝' })
+    } else {
+      toast.success('Informations pré-remplies !')
+    }
   }
 
   const handleClearSelectedCandidat = () => {
@@ -163,10 +169,15 @@ export default function TestNageBooking() {
     if (!selectedCreneau) return toast.error('Veuillez sélectionner un créneau')
     if (!nomEnfant.trim()) return toast.error("Veuillez saisir le nom de l'enfant")
     if (!prenomEnfant.trim()) return toast.error("Veuillez saisir le prénom de l'enfant")
-    if (!emailParent.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailParent)) {
-      return toast.error('Veuillez saisir une adresse email valide')
+    if (!emailParent.trim()) {
+      return toast.error("Veuillez saisir votre adresse email pour recevoir la confirmation")
     }
-    if (!telephoneParent.trim()) return toast.error('Veuillez saisir un numéro de téléphone')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailParent.trim())) {
+      return toast.error("L'adresse email n'est pas valide (ex: parent@exemple.fr)")
+    }
+    if (!telephoneParent.trim()) {
+      return toast.error('Veuillez saisir un numéro de téléphone')
+    }
 
     setSubmitting(true)
     try {
@@ -179,7 +190,7 @@ export default function TestNageBooking() {
           nomEnfant: nomEnfant.trim(),
           prenomEnfant: prenomEnfant.trim(),
           nomParent: nomParent.trim() || null,
-          emailParent: emailParent.trim(),
+          emailParent: emailParent.trim().toLowerCase(),
           telephoneParent: telephoneParent.trim(),
           remarques: remarques.trim() || null,
         }),
