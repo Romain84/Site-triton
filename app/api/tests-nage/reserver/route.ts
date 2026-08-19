@@ -197,6 +197,12 @@ export async function POST(request: NextRequest) {
               </ul>
             </div>
 
+            <div style="text-align: center; margin: 24px 0;">
+              <a href="${baseUrl}/tests-de-nage?token=${token}" style="display: inline-block; background-color: #f8fafc; color: #475569; border: 1px solid #cbd5e1; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-size: 13px; font-weight: bold;">
+                🔄 Modifier ou annuler mon créneau
+              </a>
+            </div>
+
             <p style="font-size: 13px; color: #64748b; margin-top: 24px;">
               En cas d'empêchement ou pour toute question, vous pouvez contacter le club à l'adresse : <a href="mailto:tritoncavaillon@gmail.com" style="color: #15803d; font-weight: bold;">tritoncavaillon@gmail.com</a>.
             </p>
