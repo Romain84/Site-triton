@@ -12,14 +12,15 @@ import {
   Euro, 
   Waves, 
   ArrowRight, 
-  CheckCircle2, 
   MessageSquare,
   HelpCircle,
-  Clock,
-  Mail
+  Mail,
+  ChevronDown,
+  X
 } from 'lucide-react'
 
 export default function ContactClient() {
+  const [showContactForm, setShowContactForm] = useState(false)
   const [showFinderModal, setShowFinderModal] = useState(false)
 
   return (
@@ -55,10 +56,10 @@ export default function ContactClient() {
                 </span>
               </div>
               <h2 className="text-lg font-black text-slate-900">
-                Quel groupe pour mon enfant ou pour moi ?
+                Quel groupe choisir ?
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                École de natation (ENF 1, 2, 3), Sauv&apos;nage, Compétition, Loisirs Ados ou AquaFitness : identifiez instantanément le groupe adapté selon l&apos;âge et le niveau aquatique.
+                École de natation, Sauv&apos;nage, Compétition ou Loisirs : découvrez la section adaptée selon l&apos;âge et le niveau aquatique.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
@@ -68,7 +69,7 @@ export default function ContactClient() {
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
               >
                 <Compass className="w-3.5 h-3.5" />
-                <span>Simulateur de groupe (3 clics)</span>
+                <span>Trouver mon groupe (3 clics)</span>
               </button>
               <Link
                 href="/groupes"
@@ -88,14 +89,14 @@ export default function ContactClient() {
                   <Calendar className="w-5 h-5" />
                 </div>
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  Planning 2025-2026
+                  Piscine Alphonse Roudière
                 </span>
               </div>
               <h2 className="text-lg font-black text-slate-900">
-                Horaires et jours des entraînements
+                Horaires des entraînements
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Tous les créneaux par catégorie et par groupe à la Piscine couverte Alphonse Roudière (mercredi, samedi matin, soirs de semaine).
+                Consultez tous les créneaux par catégorie et par jour (mercredi, samedi matin, soirs de semaine).
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
@@ -104,12 +105,12 @@ export default function ContactClient() {
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-xs"
               >
                 <Calendar className="w-3.5 h-3.5" />
-                <span>Consulter le planning des séances</span>
+                <span>Voir le planning des séances</span>
               </Link>
             </div>
           </div>
 
-          {/* CARTE 3 : TARIFS, PASS'SPORT & PAIEMENT */}
+          {/* CARTE 3 : TARIFS & PAIEMENT */}
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs hover:border-amber-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4">
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
@@ -121,10 +122,10 @@ export default function ContactClient() {
                 </span>
               </div>
               <h2 className="text-lg font-black text-slate-900">
-                Tarifs, Pass&apos;Sport (-50€) & Facilités
+                Tarifs & Modalités
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Cotisations forfaitaires annuelles avec licence FFN incluse. Nous acceptons la déduction Pass&apos;Sport (50 €), les chèques vacances ANCV et le paiement en 3 fois.
+                Cotisations annuelles avec licence FFN incluse. Pass&apos;Sport, chèques vacances ANCV et paiement en 3 fois acceptés.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
@@ -133,7 +134,7 @@ export default function ContactClient() {
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors shadow-xs"
               >
                 <Euro className="w-3.5 h-3.5" />
-                <span>Consulter la grille des tarifs</span>
+                <span>Consulter les tarifs</span>
               </Link>
             </div>
           </div>
@@ -150,10 +151,10 @@ export default function ContactClient() {
                 </span>
               </div>
               <h2 className="text-lg font-black text-slate-900">
-                Tests de nage & Inscriptions en ligne
+                Tests de niveau & Inscription
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Réservez un créneau de test de niveau de 5 min (obligatoire pour les nouveaux) ou complétez directement votre dossier d&apos;adhésion en ligne.
+                Réservez un créneau de test de 5 min (pour les nouveaux) ou réalisez directement votre inscription en ligne.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
@@ -176,7 +177,7 @@ export default function ContactClient() {
 
         </div>
 
-        {/* ─── SÉPARATEUR CONTACT AVEC EXPLICATION ─── */}
+        {/* ─── SÉPARATEUR CONTACT AVEC BOUTON DÉROULANT ─── */}
         <div className="pt-6 border-t border-slate-200">
           <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-md">
             <div className="space-y-2">
@@ -188,119 +189,149 @@ export default function ContactClient() {
                 Votre demande n&apos;est pas listée ci-dessus ?
               </h2>
               <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
-                Remplissez le formulaire ci-dessous. Le bureau bénévole vous répondra sous 48h à 72h ouvrées.
+                Vous avez un cas particulier ? Notre bureau bénévole vous répondra sous 48h à 72h ouvrées.
               </p>
             </div>
-            <a
-              href="#contact-form"
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white text-slate-900 font-extrabold text-xs sm:text-sm hover:bg-slate-100 transition-colors shrink-0 cursor-pointer"
+            <button
+              type="button"
+              onClick={() => {
+                setShowContactForm((prev) => {
+                  const next = !prev
+                  if (next) {
+                    setTimeout(() => {
+                      document.getElementById('contact-form-section')?.scrollIntoView({ behavior: 'smooth' })
+                    }, 100)
+                  }
+                  return next
+                })
+              }}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white text-slate-900 font-extrabold text-xs sm:text-sm hover:bg-slate-100 transition-colors shrink-0 cursor-pointer shadow-sm"
             >
               <MessageSquare className="w-4 h-4 text-primary" />
-              <span>Accéder au formulaire de contact</span>
-            </a>
+              <span>{showContactForm ? 'Masquer le formulaire' : '✉️ Écrire au bureau bénévole'}</span>
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showContactForm ? 'rotate-180' : ''}`} />
+            </button>
           </div>
         </div>
 
-        {/* ─── FORMULAIRE & COORDONNÉES ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Formulaire Intelligent avec Interception */}
-          <div id="contact-form" className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6 scroll-mt-28">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                <MessageSquare className="w-6 h-6 text-primary" />
-                <span>Envoyez un message au bureau</span>
-              </h2>
-              <p className="text-xs text-slate-500 font-medium mt-1">
-                Merci de préciser au maximum votre demande afin de nous permettre de la traiter rapidement.
-              </p>
-            </div>
-            <ContactForm />
-          </div>
-
-          {/* Coordonnées & Accès */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-5">
-              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-                <MapPin className="w-5 h-5 text-cyan-600" />
-                <span>Coordonnées & Piscine</span>
-              </h3>
-
-              <div className="space-y-4 text-xs sm:text-sm text-slate-700">
+        {/* ─── FORMULAIRE & COORDONNÉES (AFFICHÉ UNIQUEMENT APRÈS CLIC) ─── */}
+        {showContactForm && (
+          <div id="contact-form-section" className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fade-in scroll-mt-28">
+            {/* Formulaire Intelligent avec Interception */}
+            <div id="contact-form" className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div>
-                  <p className="font-extrabold text-slate-900">Triton Club Cavaillon</p>
-                  <p className="text-slate-600">Piscine couverte Alphonse Roudière</p>
-                  <p className="text-slate-600">Avenue Jean Moulin, quartier La Clède</p>
-                  <p className="font-mono text-slate-800 font-bold">84300 Cavaillon</p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100">
-                  <p className="font-bold text-slate-900 flex items-center gap-1.5 mb-1">
-                    <Mail className="w-4 h-4 text-cyan-600" /> Secrétariat du club
-                  </p>
-                  <p className="text-slate-600 text-xs">
-                    Gestion associative bénévole · Réponse sous 48h à 72h via le formulaire de contact.
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                    <MessageSquare className="w-6 h-6 text-primary" />
+                    <span>Envoyez un message au bureau</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 font-medium mt-1">
+                    Précisez votre demande afin de nous permettre de la traiter rapidement.
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setShowContactForm(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  title="Fermer le formulaire"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-
-              {/* Réseaux sociaux */}
-              <div className="pt-2 border-t border-slate-100">
-                <p className="font-bold text-slate-900 text-xs mb-3">Réseaux sociaux & Actualités</p>
-                <div className="flex gap-3">
-                  <a
-                    href="https://www.facebook.com/Triton.C.Cavaillon"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-colors shadow-xs"
-                    aria-label="Facebook"
-                  >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/></svg>
-                  </a>
-                  <a
-                    href="https://www.instagram.com/tritoncavaillon"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-10 h-10 bg-pink-600 text-white rounded-xl flex items-center justify-center hover:bg-pink-700 transition-colors shadow-xs"
-                    aria-label="Instagram"
-                  >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
-                  </a>
-                </div>
-              </div>
+              <ContactForm />
             </div>
 
-            {/* Plan d'accès */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm space-y-3">
-              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                <span>🗺️ Localisation de la piscine</span>
-              </h3>
-              <div className="aspect-video bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
-                <iframe
-                  src="https://www.google.com/maps?q=Piscine+couverte+Alphonse+Roudiere+Cavaillon&output=embed"
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  title="Localisation Triton Club Cavaillon"
-                />
+            {/* Coordonnées & Accès */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-5">
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <MapPin className="w-5 h-5 text-cyan-600" />
+                  <span>Coordonnées & Piscine</span>
+                </h3>
+
+                <div className="space-y-4 text-xs sm:text-sm text-slate-700">
+                  <div>
+                    <p className="font-extrabold text-slate-900">Triton Club Cavaillon</p>
+                    <p className="text-slate-600">Piscine couverte Alphonse Roudière</p>
+                    <p className="text-slate-600">Avenue Jean Moulin, quartier La Clède</p>
+                    <p className="font-mono text-slate-800 font-bold">84300 Cavaillon</p>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100">
+                    <p className="font-bold text-slate-900 flex items-center gap-1.5 mb-1">
+                      <Mail className="w-4 h-4 text-cyan-600" /> Secrétariat du club
+                    </p>
+                    <p className="text-slate-600 text-xs">
+                      Gestion associative bénévole · Réponse sous 48h à 72h via le formulaire de contact.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Réseaux sociaux */}
+                <div className="pt-2 border-t border-slate-100">
+                  <p className="font-bold text-slate-900 text-xs mb-3">Réseaux sociaux & Actualités</p>
+                  <div className="flex gap-3">
+                    <a
+                      href="https://www.facebook.com/Triton.C.Cavaillon"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-colors shadow-xs"
+                      aria-label="Facebook"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/></svg>
+                    </a>
+                    <a
+                      href="https://www.instagram.com/tritoncavaillon"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-10 h-10 bg-pink-600 text-white rounded-xl flex items-center justify-center hover:bg-pink-700 transition-colors shadow-xs"
+                      aria-label="Instagram"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Plan d'accès */}
+              <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm space-y-3">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <span>🗺️ Localisation de la piscine</span>
+                </h3>
+                <div className="aspect-video bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
+                  <iframe
+                    src="https://www.google.com/maps?q=Piscine+couverte+Alphonse+Roudiere+Cavaillon&output=embed"
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title="Localisation Triton Club Cavaillon"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
       </div>
 
       {/* Mobile Quick Bar */}
       <div className="fixed bottom-4 left-4 right-4 z-40 md:hidden pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="grid grid-cols-2 gap-2 rounded-2xl bg-white/95 backdrop-blur border border-slate-200 shadow-lg p-2">
-          <a
-            href="#contact-form"
-            className="text-center py-2.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold"
+          <button
+            type="button"
+            onClick={() => {
+              setShowContactForm(true)
+              setTimeout(() => {
+                document.getElementById('contact-form-section')?.scrollIntoView({ behavior: 'smooth' })
+              }, 100)
+            }}
+            className="text-center py-2.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold cursor-pointer"
           >
             ✉️ Écrire au club
-          </a>
+          </button>
           <a
             href="https://www.google.com/maps/dir/?api=1&destination=Piscine+couverte+Alphonse+Roudiere+Cavaillon"
             target="_blank"

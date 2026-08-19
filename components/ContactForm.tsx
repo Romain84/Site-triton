@@ -230,7 +230,7 @@ export default function ContactForm() {
               </li>
               <li className="flex items-start gap-2">
                 <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                <span>Règlement par CB (1x ou 3x), chèques, virement, ANCV et Pass&apos;Sport (50 €).</span>
+                <span>Règlement par CB (1x ou 3x), chèques, virement, ANCV et Pass&apos;Sport.</span>
               </li>
             </ul>
             <div className="pt-1">
@@ -306,7 +306,7 @@ export default function ContactForm() {
               <li>• École de natation : 220 € / an (licence FFN incluse)</li>
               <li>• Loisirs Ados & AquaFitness : 220 € à 240 € / an</li>
               <li>• Compétition : 240 € à 330 € / an</li>
-              <li className="font-bold text-amber-900">• Pass&apos;Sport (50 € de réduction immédiate) et chèques vacances ANCV acceptés.</li>
+              <li className="font-bold text-amber-900">• Pass&apos;Sport et chèques vacances ANCV acceptés.</li>
             </ul>
             <div className="pt-1">
               <Link
