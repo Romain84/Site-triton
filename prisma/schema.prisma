@@ -842,3 +842,95 @@ model Visite {
   @@index([codePays])
   @@map("visites")
 }
+
+model SessionTestNage {
+  id                 String             @id @default(cuid())
+  titre              String
+  description        String?
+  lieu               String             @default("Piscine couverte Alphonse Roudière")
+  date               DateTime
+  heureDebut         String             // "14:00"
+  heureFin           String             // "17:00"
+  dureeMinutes       Int                @default(5)
+  capaciteParCreneau Int                @default(2)
+  consignes          String?            @default("Prévoir un maillot de bain, un bonnet de bain et des lunettes. Merci de vous présenter 5 minutes avant le début de votre créneau.")
+  actif              Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  creneaux           CreneauTestNage[]
+  candidats          CandidatTestNage[]
+
+  @@index([date])
+  @@index([actif])
+  @@map("sessions_tests_nage")
+}
+
+model CreneauTestNage {
+  id           String                @id @default(cuid())
+  sessionId    String
+  heureDebut   String                // "14:00"
+  heureFin     String                // "14:05"
+  capacite     Int                   @default(2)
+  actif        Boolean               @default(true)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  session      SessionTestNage       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  inscriptions InscriptionTestNage[]
+
+  @@index([sessionId])
+  @@index([heureDebut])
+  @@map("creneaux_tests_nage")
+}
+
+model CandidatTestNage {
+  id               String                @id @default(cuid())
+  sessionId        String?
+  nom              String
+  prenom           String
+  dateNaissance    DateTime?
+  age              Int?
+  nomParent        String?
+  emailParent      String?
+  telephoneParent  String?
+  statut           String                @default("a_planifier") // "a_planifier", "planifie", "present", "absent", "annule"
+  groupeRecommande String?
+  commentaireCoach String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  session          SessionTestNage?      @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  inscriptions     InscriptionTestNage[]
+
+  @@index([nom])
+  @@index([prenom])
+  @@index([statut])
+  @@map("candidats_tests_nage")
+}
+
+model InscriptionTestNage {
+  id               String            @id @default(cuid())
+  creneauId        String
+  candidatId       String?
+  nomEnfant        String
+  prenomEnfant     String
+  dateNaissance    DateTime?
+  age              Int?
+  nomParent        String?
+  emailParent      String
+  telephoneParent  String
+  niveauEstime     String?
+  remarques        String?
+  statut           String            @default("inscrit") // "inscrit", "present", "absent", "annule"
+  groupeRecommande String?
+  commentaireCoach String?
+  token            String?           @unique
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  creneau          CreneauTestNage   @relation(fields: [creneauId], references: [id], onDelete: Cascade)
+  candidat         CandidatTestNage? @relation(fields: [candidatId], references: [id], onDelete: SetNull)
+
+  @@index([creneauId])
+  @@index([candidatId])
+  @@index([emailParent])
+  @@index([statut])
+  @@map("inscriptions_tests_nage")
+}

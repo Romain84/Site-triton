@@ -28,6 +28,7 @@ const DonsManager = lazy(() => import('@/components/admin/DonsManager'))
 const SystemVersionsManager = lazy(() => import('@/components/admin/SystemVersionsManager'))
 const PodiumsManager = lazy(() => import('@/components/admin/PodiumsManager'))
 const VisiteursManager = lazy(() => import('@/components/admin/VisiteursManager'))
+const TestsNageManager = lazy(() => import('@/components/admin/TestsNageManager'))
 
 // Loading component
 const TabLoading = () => (
@@ -39,7 +40,7 @@ const TabLoading = () => (
   </div>
 )
 
-type Tab = 'dashboard' | 'visiteurs' | 'profils' | 'podiums' | 'factures' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
+type Tab = 'dashboard' | 'visiteurs' | 'profils' | 'podiums' | 'tests-nage' | 'factures' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
 
 const CATEGORIES = [
   {
@@ -60,6 +61,7 @@ const CATEGORIES = [
     title: 'Sportif',
     items: [
       { id: 'profils', label: 'Profils', icon: '👥' },
+      { id: 'tests-nage', label: 'Tests de Nage & Niveau', icon: '⏱️' },
       { id: 'podiums', label: 'Podiums & Bilan Saison', icon: '🏅' },
       { id: 'groupes', label: 'Groupes / Jauges', icon: '👥' },
       { id: 'remplacements', label: 'Remplacements', icon: '🔄' },
@@ -322,6 +324,7 @@ const CATEGORIES = [
             {activeTab === 'dashboard' && <DashboardTab currentUser={currentUser} />}
             {activeTab === 'visiteurs' && <VisiteursTab />}
             {activeTab === 'profils' && <ProfilsTab currentUser={currentUser} />}
+            {activeTab === 'tests-nage' && <TestsNageTab />}
             {activeTab === 'podiums' && <PodiumsTab />}
             {activeTab === 'factures' && <FacturesTab />}
             {activeTab === 'finances' && <FinancesTab />}
@@ -781,6 +784,11 @@ function DonsTab({ currentUser }: { currentUser: { id: string; email: string; ro
 // System Versions Tab
 function SystemVersionsTab() {
   return <SystemVersionsManager />
+}
+
+// Tests Nage Tab
+function TestsNageTab() {
+  return <TestsNageManager />
 }
 
 // Podiums Tab

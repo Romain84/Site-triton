@@ -1,0 +1,753 @@
+'use client'
+
+import React, { useState, useEffect, useMemo } from 'react'
+import { 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  User, 
+  Users, 
+  Check, 
+  Search, 
+  Sparkles, 
+  ArrowLeft, 
+  ArrowRight, 
+  CheckCircle2, 
+  AlertCircle,
+  Phone,
+  Mail,
+  Waves,
+  Printer
+} from 'lucide-react'
+import toast from 'react-hot-toast'
+import { formatLongDateFr } from '@/lib/date'
+
+interface CreneauItem {
+  id: string
+  heureDebut: string
+  heureFin: string
+  capacite: number
+  nbInscrits: number
+  placesRestantes: number
+  estComplet: boolean
+}
+
+interface SessionItem {
+  id: string
+  titre: string
+  description: string | null
+  lieu: string
+  date: string
+  heureDebut: string
+  heureFin: string
+  dureeMinutes: number
+  capaciteParCreneau: number
+  consignes: string | null
+  creneaux: CreneauItem[]
+}
+
+interface CandidatItem {
+  id: string
+  nom: string
+  prenom: string
+  age: number | null
+  dateNaissance: string | null
+  nomParent: string | null
+  emailParent: string | null
+  telephoneParent: string | null
+}
+
+export default function TestNageBooking() {
+  const [sessions, setSessions] = useState<SessionItem[]>([])
+  const [candidats, setCandidats] = useState<CandidatItem[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Navigation steps: 1 = Choix créneau, 2 = Formulaire, 3 = Confirmation
+  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('')
+  const [selectedCreneau, setSelectedCreneau] = useState<CreneauItem | null>(null)
+
+  // Mode hybride : recherche candidat pré-enregistré vs saisie libre
+  const [isManualEntry, setIsManualEntry] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCandidat, setSelectedCandidat] = useState<CandidatItem | null>(null)
+
+  // Champs du formulaire
+  const [nomEnfant, setNomEnfant] = useState('')
+  const [prenomEnfant, setPrenomEnfant] = useState('')
+  const [age, setAge] = useState<string>('')
+  const [nomParent, setNomParent] = useState('')
+  const [emailParent, setEmailParent] = useState('')
+  const [telephoneParent, setTelephoneParent] = useState('')
+  const [niveauEstime, setNiveauEstime] = useState('Débutant')
+  const [remarques, setRemarques] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  // Données de confirmation
+  const [confirmationData, setConfirmationData] = useState<{
+    id: string
+    nomEnfant: string
+    prenomEnfant: string
+    date: string
+    heureDebut: string
+    heureFin: string
+    lieu: string
+    consignes: string | null
+  } | null>(null)
+
+  // Chargement des sessions et candidats
+  const fetchPublicData = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/tests-nage')
+      const data = await res.json()
+      if (res.ok && data.sessions) {
+        setSessions(data.sessions)
+        setCandidats(data.candidats || [])
+        if (data.sessions.length > 0 && !selectedSessionId) {
+          setSelectedSessionId(data.sessions[0].id)
+        }
+      }
+    } catch (err) {
+      console.error('Erreur chargement tests-nage:', err)
+      toast.error('Impossible de charger les créneaux disponibles')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchPublicData()
+  }, [])
+
+  const currentSession = useMemo(() => {
+    return sessions.find((s) => s.id === selectedSessionId) || sessions[0] || null
+  }, [sessions, selectedSessionId])
+
+  // Filtrage des candidats pour l'autocomplétion
+  const filteredCandidats = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q || q.length < 2) return []
+    return candidats.filter((c) => {
+      const fullName = `${c.nom} ${c.prenom}`.toLowerCase()
+      const reverseName = `${c.prenom} ${c.nom}`.toLowerCase()
+      return fullName.includes(q) || reverseName.includes(q)
+    }).slice(0, 5)
+  }, [searchQuery, candidats])
+
+  // Sélection d'un candidat pré-rempli
+  const handleSelectCandidat = (c: CandidatItem) => {
+    setSelectedCandidat(c)
+    setNomEnfant(c.nom)
+    setPrenomEnfant(c.prenom)
+    setAge(c.age ? c.age.toString() : '')
+    setNomParent(c.nomParent || '')
+    setEmailParent(c.emailParent || '')
+    setTelephoneParent(c.telephoneParent || '')
+    setSearchQuery(`${c.nom} ${c.prenom}`)
+  }
+
+  const handleClearSelectedCandidat = () => {
+    setSelectedCandidat(null)
+    setSearchQuery('')
+    setNomEnfant('')
+    setPrenomEnfant('')
+    setAge('')
+    setNomParent('')
+    setEmailParent('')
+    setTelephoneParent('')
+  }
+
+  const handleSelectCreneau = (cr: CreneauItem) => {
+    if (cr.estComplet) return
+    setSelectedCreneau(cr)
+    setStep(2)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleSubmitReservation = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedCreneau) return toast.error('Veuillez sélectionner un créneau')
+    if (!nomEnfant.trim()) return toast.error("Veuillez saisir le nom de l'enfant")
+    if (!prenomEnfant.trim()) return toast.error("Veuillez saisir le prénom de l'enfant")
+    if (!emailParent.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailParent)) {
+      return toast.error('Veuillez saisir une adresse email valide')
+    }
+    if (!telephoneParent.trim()) return toast.error('Veuillez saisir un numéro de téléphone')
+
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/tests-nage/reserver', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          creneauId: selectedCreneau.id,
+          candidatId: selectedCandidat?.id || null,
+          nomEnfant: nomEnfant.trim(),
+          prenomEnfant: prenomEnfant.trim(),
+          age: age ? parseInt(age, 10) : null,
+          nomParent: nomParent.trim() || null,
+          emailParent: emailParent.trim(),
+          telephoneParent: telephoneParent.trim(),
+          niveauEstime,
+          remarques: remarques.trim() || null,
+        }),
+      })
+
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setConfirmationData(data.data)
+        setStep(3)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        toast.success('Votre créneau est confirmé !')
+      } else {
+        toast.error(data.error || "Une erreur est survenue lors de l'enregistrement")
+        // Rafraîchir les créneaux au cas où le créneau viendrait d'être pris
+        fetchPublicData()
+      }
+    } catch {
+      toast.error('Erreur de connexion au serveur. Veuillez réessayer.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-medium text-slate-500">Chargement des créneaux de test...</p>
+      </div>
+    )
+  }
+
+  if (sessions.length === 0) {
+    return (
+      <div className="bg-white rounded-3xl p-8 md:p-12 border border-slate-200 text-center max-w-2xl mx-auto space-y-4 shadow-xs">
+        <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+          <Calendar className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900">Aucune session de test ouverte pour le moment</h2>
+        <p className="text-sm text-slate-600 font-normal leading-relaxed">
+          Les créneaux de tests de nage pour la rentrée ne sont pas encore ouverts ou sont temporairement clôturés.
+          Pour toute question, vous pouvez contacter le club par email à <a href="mailto:tritoncavaillon@gmail.com" className="text-primary font-bold underline">tritoncavaillon@gmail.com</a>.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* ─── EN-TÊTE PRINCIPAL ─── */}
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold uppercase tracking-wider border border-emerald-200">
+          <Waves className="w-3.5 h-3.5 text-primary" />
+          <span>Tests de Nage & Niveau · Rentrée</span>
+        </div>
+        <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+          Réservation de votre Test de Niveau
+        </h1>
+        <p className="text-xs md:text-sm text-slate-600 max-w-2xl mx-auto font-medium">
+          Ce test individuel de <strong>5 minutes</strong> dans l&apos;eau permet à nos éducateurs diplômés d&apos;évaluer l&apos;aisance aquatique de votre enfant pour lui proposer le groupe le plus adapté.
+        </p>
+      </div>
+
+      {/* ─── FIL D'ARIANE / PROGRESSION ─── */}
+      {step < 3 && (
+        <div className="flex items-center justify-center gap-2 max-w-md mx-auto">
+          <div className="flex items-center gap-2">
+            <span className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
+              step >= 1 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'
+            }`}>
+              1
+            </span>
+            <span className={`text-xs font-bold ${step >= 1 ? 'text-slate-900' : 'text-slate-400'}`}>
+              Créneau horaire
+            </span>
+          </div>
+          <div className={`w-12 h-0.5 ${step >= 2 ? 'bg-primary' : 'bg-slate-200'}`} />
+          <div className="flex items-center gap-2">
+            <span className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
+              step >= 2 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'
+            }`}>
+              2
+            </span>
+            <span className={`text-xs font-bold ${step >= 2 ? 'text-slate-900' : 'text-slate-400'}`}>
+              Informations
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ─── ÉTAPE 1 : CHOIX DU CRÉNEAU HORAIRE ─── */}
+      {step === 1 && currentSession && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Sélecteur de session si plusieurs dates */}
+          {sessions.length > 1 && (
+            <div className="flex flex-wrap items-center justify-center gap-2 bg-slate-100 p-1.5 rounded-2xl max-w-lg mx-auto">
+              {sessions.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setSelectedSessionId(s.id)}
+                  className={`flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    selectedSessionId === s.id
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {formatLongDateFr(s.date)}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Fiche d'information de la session */}
+          <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg md:text-xl font-black text-slate-900">
+                  {currentSession.titre}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-1">
+                  <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>{currentSession.lieu}</span>
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 shrink-0">
+                <Calendar className="w-4 h-4 text-primary" />
+                <span>{formatLongDateFr(currentSession.date)}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-slate-600">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary shrink-0" />
+                <span>Durée du test : <strong>{currentSession.dureeMinutes} min</strong></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary shrink-0" />
+                <span>Capacité : <strong>Max {currentSession.capaciteParCreneau} enfants</strong> par créneau</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5 text-slate-700">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Disponible
+                </span>
+                <span className="flex items-center gap-1.5 text-slate-400">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300" /> Complet
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Grille des créneaux de 5 min */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-primary" />
+              <span>Choisissez votre heure de passage (créneaux de 5 min) :</span>
+            </h4>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+              {currentSession.creneaux.map((cr) => (
+                <button
+                  key={cr.id}
+                  disabled={cr.estComplet}
+                  onClick={() => handleSelectCreneau(cr)}
+                  className={`p-3 rounded-2xl border transition-all text-center flex flex-col items-center justify-center space-y-1 ${
+                    cr.estComplet
+                      ? 'bg-slate-50 border-slate-200 text-slate-400 opacity-60 cursor-not-allowed'
+                      : 'bg-white border-slate-200 hover:border-primary hover:shadow-xs cursor-pointer group'
+                  }`}
+                >
+                  <span className={`text-sm font-black font-mono ${
+                    cr.estComplet ? 'text-slate-400' : 'text-slate-900 group-hover:text-primary'
+                  }`}>
+                    {cr.heureDebut}
+                  </span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    cr.estComplet
+                      ? 'bg-slate-100 text-slate-400 border-slate-200'
+                      : cr.placesRestantes === 1
+                      ? 'bg-amber-50 text-amber-800 border-amber-200'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  }`}>
+                    {cr.estComplet ? 'Complet' : `${cr.placesRestantes} ${cr.placesRestantes > 1 ? 'places' : 'place'}`}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── ÉTAPE 2 : FORMULAIRE D'INSCRIPTION RAPIDE (HYBRIDE) ─── */}
+      {step === 2 && selectedCreneau && currentSession && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Récapitulatif du créneau choisi */}
+          <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-4 md:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white uppercase tracking-wider">
+                  Créneau sélectionné
+                </span>
+                <span className="text-xs font-bold text-slate-700">
+                  {formatLongDateFr(currentSession.date)}
+                </span>
+              </div>
+              <h3 className="text-xl font-black text-slate-900">
+                De {selectedCreneau.heureDebut} à {selectedCreneau.heureFin}
+              </h3>
+              <p className="text-xs text-slate-600">
+                {currentSession.lieu} · Test individuel de {currentSession.dureeMinutes} minutes
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="inline-flex items-center gap-1.5 text-xs text-slate-700 hover:text-slate-900 font-bold bg-white border border-slate-200 px-3.5 py-2 rounded-xl transition-colors cursor-pointer shrink-0"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Modifier l&apos;horaire
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmitReservation} className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-xs space-y-6">
+            
+            {/* ─── RECHERCHE HYBRIDE DU CANDIDAT DANS LE LISTING ─── */}
+            {!isManualEntry && candidats.length > 0 && (
+              <div className="space-y-3 bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
+                    🔍 Votre enfant est déjà pré-inscrit au club ?
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsManualEntry(true)
+                      handleClearSelectedCandidat()
+                    }}
+                    className="text-xs text-primary hover:underline font-bold cursor-pointer"
+                  >
+                    Nouvel arrivant ? Saisie libre
+                  </button>
+                </div>
+
+                {!selectedCandidat ? (
+                  <div className="space-y-2 relative">
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Tapez le nom ou prénom de votre enfant..."
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-primary focus:outline-none text-sm font-medium"
+                      />
+                    </div>
+
+                    {/* Liste des résultats d'autocomplétion */}
+                    {filteredCandidats.length > 0 && (
+                      <div className="absolute z-10 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden divide-y divide-slate-100">
+                        {filteredCandidats.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => handleSelectCandidat(c)}
+                            className="w-full px-4 py-3 text-left hover:bg-emerald-50/50 flex items-center justify-between transition-colors cursor-pointer"
+                          >
+                            <div>
+                              <p className="text-sm font-bold text-slate-900">
+                                {c.nom} {c.prenom}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {c.age ? `${c.age} ans` : ''} {c.emailParent ? `· ${c.emailParent}` : ''}
+                              </p>
+                            </div>
+                            <span className="text-xs font-bold text-primary bg-emerald-50 px-2.5 py-1 rounded-lg">
+                              Sélectionner
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-white border border-emerald-200 rounded-xl p-3.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-emerald-100 text-emerald-800 rounded-lg">
+                        <Check className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">
+                          {selectedCandidat.nom} {selectedCandidat.prenom}
+                        </p>
+                        <p className="text-xs text-slate-500">Informations retrouvées et pré-remplies</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClearSelectedCandidat}
+                      className="text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Changer
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isManualEntry && (
+              <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+                <span className="text-slate-600 font-medium">Mode saisie libre pour nouvel enfant</span>
+                <button
+                  type="button"
+                  onClick={() => setIsManualEntry(false)}
+                  className="text-primary font-bold hover:underline cursor-pointer"
+                >
+                  🔍 Rechercher dans la liste
+                </button>
+              </div>
+            )}
+
+            {/* ─── CHAMPS IDENTITÉ ENFANT ─── */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <User className="w-4 h-4 text-primary" />
+                <span>1. Identité de l&apos;enfant</span>
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Nom de l&apos;enfant *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={nomEnfant}
+                    onChange={(e) => setNomEnfant(e.target.value)}
+                    placeholder="DUPONT"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium uppercase"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Prénom de l&apos;enfant *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={prenomEnfant}
+                    onChange={(e) => setPrenomEnfant(e.target.value)}
+                    placeholder="Lucas"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Âge de l&apos;enfant
+                  </label>
+                  <input
+                    type="number"
+                    min="3"
+                    max="20"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    placeholder="Ex: 7"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Niveau approximatif estimé
+                  </label>
+                  <select
+                    value={niveauEstime}
+                    onChange={(e) => setNiveauEstime(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium cursor-pointer"
+                  >
+                    <option value="Débutant">Débutant (découvre l&apos;eau / ne sait pas nager)</option>
+                    <option value="Aisance aquatique">À l&apos;aise (met la tête sous l&apos;eau, flotte)</option>
+                    <option value="Apprentissage">Sait se déplacer sans aide sur quelques mètres</option>
+                    <option value="Nageur 25m+">Nage au moins 25m en grand bassin</option>
+                    <option value="Perfectionnement">Maîtrise plusieurs nages</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* ─── CHAMPS COORDONNÉES PARENT ─── */}
+            <div className="space-y-4 pt-2">
+              <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <Phone className="w-4 h-4 text-primary" />
+                <span>2. Coordonnées du responsable</span>
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Email de contact (pour la confirmation) *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={emailParent}
+                    onChange={(e) => setEmailParent(e.target.value)}
+                    placeholder="parent@exemple.fr"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Téléphone *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={telephoneParent}
+                    onChange={(e) => setTelephoneParent(e.target.value)}
+                    placeholder="06 00 00 00 00"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Nom & Prénom du parent (optionnel)
+                </label>
+                <input
+                  type="text"
+                  value={nomParent}
+                  onChange={(e) => setNomParent(e.target.value)}
+                  placeholder="Jean Dupont"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Remarques ou particularités à signaler au coach (optionnel)
+                </label>
+                <textarea
+                  rows={2}
+                  value={remarques}
+                  onChange={(e) => setRemarques(e.target.value)}
+                  placeholder="Ex: appréhende un peu le grand bassin, a déjà fait des cours l'an dernier..."
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
+                />
+              </div>
+            </div>
+
+            {/* ─── BOUTON DE VALIDATION ─── */}
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 py-3.5 px-6 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-sm transition-colors shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {submitting ? (
+                  <span>Confirmation en cours...</span>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Confirmer la réservation du test</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ─── ÉTAPE 3 : CONFIRMATION RÉUSSIE ─── */}
+      {step === 3 && confirmationData && (
+        <div className="bg-white rounded-3xl p-6 md:p-10 border border-slate-200 shadow-sm space-y-8 animate-fade-in max-w-2xl mx-auto">
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center mx-auto shadow-xs">
+              <Check className="w-8 h-8 stroke-[3]" />
+            </div>
+            <h2 className="text-2xl md:text-3xl font-black text-slate-900">
+              Réservation confirmée !
+            </h2>
+            <p className="text-xs md:text-sm text-slate-600 font-medium">
+              Un email récapitulatif a été envoyé à <strong>{emailParent}</strong>.
+            </p>
+          </div>
+
+          {/* Fiche récapitulative */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 md:p-6 space-y-4 text-xs md:text-sm">
+            <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
+              <span className="font-bold text-slate-500 uppercase text-xs">Candidat :</span>
+              <span className="font-black text-slate-900 text-base">
+                {confirmationData.prenomEnfant} {confirmationData.nomEnfant}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
+              <span className="font-bold text-slate-500 uppercase text-xs">Date du test :</span>
+              <span className="font-bold text-slate-900">
+                {formatLongDateFr(confirmationData.date)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
+              <span className="font-bold text-slate-500 uppercase text-xs">Créneau horaire :</span>
+              <span className="font-black text-primary text-base">
+                {confirmationData.heureDebut} – {confirmationData.heureFin}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-500 uppercase text-xs">Lieu :</span>
+              <span className="font-bold text-slate-900 text-right">
+                {confirmationData.lieu}
+              </span>
+            </div>
+          </div>
+
+          {/* Consignes bassin */}
+          <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-4 md:p-5 text-xs text-emerald-950 space-y-2">
+            <p className="font-bold text-emerald-900 flex items-center gap-1.5">
+              <AlertCircle className="w-4 h-4 text-primary shrink-0" />
+              Consignes pratiques pour le jour du test :
+            </p>
+            <ul className="space-y-1 text-emerald-800/90 font-medium pl-5 list-disc">
+              <li>Présentez-vous au bord du bassin <strong>5 minutes avant l&apos;heure</strong> indiquée.</li>
+              <li>Équipement requis : <strong>maillot de bain, bonnet de bain et lunettes</strong>.</li>
+              <li>L&apos;entraîneur vous communiquera le groupe conseillé à l&apos;issue des 5 minutes de test.</li>
+            </ul>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <button
+              onClick={() => window.print()}
+              className="flex-1 py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              Imprimer le récapitulatif
+            </button>
+            <button
+              onClick={() => {
+                setStep(1)
+                setSelectedCreneau(null)
+                handleClearSelectedCandidat()
+                setConfirmationData(null)
+                fetchPublicData()
+              }}
+              className="flex-1 py-3 px-4 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              Inscrire un autre enfant
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
