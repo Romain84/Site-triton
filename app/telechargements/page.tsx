@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Téléchargements',
@@ -179,10 +180,10 @@ export default function TelechargementPage() {
           <h3 className="font-bold text-lg mb-2 text-yellow-800">💡 Besoin d&apos;aide ?</h3>
           <p className="text-yellow-700">
             Si vous rencontrez des difficultés pour télécharger ou remplir ces documents,
-            n&apos;hésitez pas à nous contacter par email à{' '}
-            <a href="mailto:tritoncavaillon@gmail.com" className="underline font-semibold">
-              tritoncavaillon@gmail.com
-            </a>
+            n&apos;hésitez pas à{' '}
+            <Link href="/contact" className="underline font-semibold text-yellow-900 hover:text-black">
+              consulter notre assistance ou nous contacter
+            </Link>
             .
           </p>
         </div>

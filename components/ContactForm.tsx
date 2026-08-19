@@ -10,7 +10,8 @@ import {
   Euro, 
   Check, 
   Info,
-  ArrowRight
+  ArrowRight,
+  Waves
 } from 'lucide-react'
 import GroupeFinder from '@/components/GroupeFinder'
 
@@ -182,39 +183,62 @@ export default function ContactForm() {
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors duration-150 outline-none text-sm font-medium text-slate-800 cursor-pointer"
           >
             <option value="">Sélectionnez un sujet</option>
-            <option value="inscription">Inscription et adhésion</option>
+            <option value="test_nage">Tests de niveau & Rentrée</option>
             <option value="renseignement">Choix du groupe et niveau</option>
             <option value="planning">Horaires et planning des créneaux</option>
-            <option value="tarifs">Tarifs et modalités de paiement</option>
+            <option value="tarifs">Tarifs, Pass&apos;Sport et paiement</option>
+            <option value="inscription">Inscription et adhésion en ligne</option>
             <option value="competition">Compétitions FFN</option>
-            <option value="autre">Autre demande</option>
+            <option value="autre">Autre demande spécifique</option>
           </select>
           {state?.fieldErrors?.sujet && <p className="text-red-500 text-xs font-medium mt-1.5">{state.fieldErrors.sujet}</p>}
         </div>
 
-        {/* ─── INFORMATION CONTEXTUELLE HARMONISÉE ─── */}
+        {/* ─── INFORMATION CONTEXTUELLE HARMONISÉE (INTERCEPTION INTELLIGENTE) ─── */}
+        {selectedSujet === 'test_nage' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-3 animate-fade-in text-xs text-blue-900">
+            <div className="flex items-center gap-1.5 font-black text-blue-950">
+              <Waves className="w-4 h-4 text-blue-700" />
+              <span>Tests de niveau de rentrée (5 minutes)</span>
+            </div>
+            <p className="text-blue-800 font-medium leading-relaxed">
+              Pour les nouveaux enfants, le test de niveau est obligatoire avant l&apos;inscription pour déterminer le bon groupe. Choisissez votre créneau horaire en ligne en 1 clic :
+            </p>
+            <div className="pt-1 flex flex-wrap items-center gap-2">
+              <Link
+                href="/tests-de-nage"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-colors shadow-xs"
+              >
+                <Waves className="w-3.5 h-3.5" />
+                <span>Réserver un créneau de test</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        )}
+
         {selectedSujet === 'inscription' && (
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 animate-fade-in text-xs text-slate-700">
             <div className="flex items-center gap-1.5 text-slate-900 font-bold">
               <Info className="w-4 h-4 text-primary" />
-              <span>Modalités d&apos;inscription</span>
+              <span>Modalités d&apos;inscription & Pièces à fournir</span>
             </div>
             <ul className="space-y-1.5 text-slate-600 font-medium">
               <li className="flex items-start gap-2">
                 <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                <span>Les inscriptions s&apos;effectuent en ligne via notre plateforme sécurisée.</span>
+                <span>Les inscriptions se font 100% en ligne sur notre plateforme.</span>
               </li>
               <li className="flex items-start gap-2">
                 <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                <span>Règlement possible par CB (1x ou 3x), chèques, virement, ANCV et Pass&apos;Sport.</span>
+                <span>Règlement par CB (1x ou 3x), chèques, virement, ANCV et Pass&apos;Sport (50 €).</span>
               </li>
             </ul>
             <div className="pt-1">
               <Link
                 href="/inscription"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold text-xs transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-xs transition-colors shadow-xs"
               >
-                <span>Accéder à la page inscription</span>
+                <span>Accéder aux inscriptions en ligne</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -222,42 +246,50 @@ export default function ContactForm() {
         )}
 
         {selectedSujet === 'renseignement' && (
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 animate-fade-in text-xs text-slate-700">
-            <div className="flex items-center gap-1.5 text-slate-900 font-bold">
-              <Compass className="w-4 h-4 text-primary" />
-              <span>Aide au choix du groupe</span>
+          <div className="bg-cyan-50 border border-cyan-200 rounded-2xl p-4 space-y-3 animate-fade-in text-xs text-cyan-900">
+            <div className="flex items-center gap-1.5 text-cyan-950 font-black">
+              <Compass className="w-4 h-4 text-cyan-700" />
+              <span>Identifier le groupe adapté en 3 questions</span>
             </div>
-            <p className="text-slate-600 font-medium leading-relaxed">
-              Le club accueille les nageurs de 4 ans aux adultes en sections École de Natation, Loisirs, Compétition et Disciplines Spécifiques.
+            <p className="text-cyan-800 font-medium leading-relaxed">
+              Le club accueille les nageurs dès 4 ans jusqu&apos;aux adultes (École de natation, Sauv&apos;nage, Compétition, Loisirs, AquaFitness).
             </p>
-            <div className="pt-1">
+            <div className="pt-1 flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowFinderModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold text-xs transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-xs transition-colors cursor-pointer shadow-xs"
               >
-                <span>Identifier le groupe adapté</span>
+                <Compass className="w-3.5 h-3.5" />
+                <span>Lancer le simulateur de groupe</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
+              <Link
+                href="/groupes"
+                className="inline-flex items-center gap-1 px-3 py-2 bg-white hover:bg-cyan-100 text-cyan-900 border border-cyan-200 rounded-xl font-bold text-xs transition-colors"
+              >
+                <span>Voir les fiches des groupes</span>
+              </Link>
             </div>
           </div>
         )}
 
         {selectedSujet === 'planning' && (
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 animate-fade-in text-xs text-slate-700">
-            <div className="flex items-center gap-1.5 text-slate-900 font-bold">
-              <Calendar className="w-4 h-4 text-primary" />
-              <span>Planning et créneaux</span>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-3 animate-fade-in text-xs text-emerald-900">
+            <div className="flex items-center gap-1.5 text-emerald-950 font-black">
+              <Calendar className="w-4 h-4 text-emerald-700" />
+              <span>Planning des entraînements 2025-2026</span>
             </div>
-            <p className="text-slate-600 font-medium leading-relaxed">
-              Le planning des entraînements par groupe, jour et bassin est consultable en ligne.
+            <p className="text-emerald-800 font-medium leading-relaxed">
+              Tous les créneaux par catégorie et par jour sont consultables en libre accès.
             </p>
             <div className="pt-1">
               <Link
                 href="/planning"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold text-xs transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-colors shadow-xs"
               >
-                <span>Consulter le planning</span>
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Consulter le planning des séances</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -265,23 +297,24 @@ export default function ContactForm() {
         )}
 
         {selectedSujet === 'tarifs' && (
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 animate-fade-in text-xs text-slate-700">
-            <div className="flex items-center gap-1.5 text-slate-900 font-bold">
-              <Euro className="w-4 h-4 text-primary" />
-              <span>Tarifs de la saison</span>
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3 animate-fade-in text-xs text-amber-900">
+            <div className="flex items-center gap-1.5 text-amber-950 font-black">
+              <Euro className="w-4 h-4 text-amber-700" />
+              <span>Tarifs et aides financières (Pass&apos;Sport & ANCV)</span>
             </div>
-            <ul className="space-y-1 text-slate-600 font-medium">
-              <li>• École de natation : 220 € / an</li>
-              <li>• Groupes loisirs & AquaFitness : 220 € à 240 € / an</li>
-              <li>• Groupes compétition : 240 € à 330 € / an</li>
-              <li className="text-slate-500 italic">Licence fédérale FFN incluse dans la cotisation.</li>
+            <ul className="space-y-1 text-amber-800 font-medium">
+              <li>• École de natation : 220 € / an (licence FFN incluse)</li>
+              <li>• Loisirs Ados & AquaFitness : 220 € à 240 € / an</li>
+              <li>• Compétition : 240 € à 330 € / an</li>
+              <li className="font-bold text-amber-900">• Pass&apos;Sport (50 € de réduction immédiate) et chèques vacances ANCV acceptés.</li>
             </ul>
             <div className="pt-1">
               <Link
-                href="/groupes"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold text-xs transition-colors"
+                href="/inscription#tarifs"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs transition-colors shadow-xs"
               >
-                <span>Voir les détails des groupes</span>
+                <Euro className="w-3.5 h-3.5" />
+                <span>Voir la grille complète des tarifs</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -292,15 +325,15 @@ export default function ContactForm() {
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 animate-fade-in text-xs text-slate-700">
             <div className="flex items-center gap-1.5 text-slate-900 font-bold">
               <Info className="w-4 h-4 text-primary" />
-              <span>Section Compétition</span>
+              <span>Section Compétition & Calendrier FFN</span>
             </div>
             <p className="text-slate-600 font-medium leading-relaxed">
-              Retrouvez les plannings d&apos;entraînements (eau + PPG) et le calendrier des compétitions officielles de la saison.
+              Retrouvez les créneaux d&apos;entraînements (eau + PPG) et le calendrier des compétitions départementales, régionales et nationales.
             </p>
             <div className="pt-1">
               <Link
                 href="/calendrier"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold text-xs transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-xs transition-colors shadow-xs"
               >
                 <span>Voir le calendrier des compétitions</span>
                 <ArrowRight className="w-3.5 h-3.5" />

@@ -44,15 +44,14 @@ export default function Footer() {
           <Link href="/politique-confidentialite" className="text-slate-300 hover:text-white transition-colors">Confidentialité</Link>
         </div>
 
-        {/* Right: Contact Email & Socials */}
+        {/* Right: Contact Link & Socials */}
         <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-slate-400">
-          <a 
-            href="mailto:tritoncavaillon@gmail.com" 
-            aria-label="Envoyer un email au club"
-            className="hover:text-white transition-colors lowercase tracking-normal text-slate-300"
+          <Link 
+            href="/contact" 
+            className="hover:text-white transition-colors tracking-normal text-slate-300 font-bold"
           >
-            tritoncavaillon@gmail.com
-          </a>
+            Nous contacter & FAQ
+          </Link>
           <span className="text-slate-700">•</span>
           <a 
             href="https://www.facebook.com/Triton.C.Cavaillon" 

@@ -4,7 +4,7 @@ import { sanitizeHtml } from '@/lib/sanitize'
 import { formRateLimiter } from '@/lib/rate-limiter'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
-import { sanitizeEmailHeader, sendEmail } from '@/lib/email'
+import { sanitizeEmailHeader, sendEmail, queueEmail } from '@/lib/email'
 import { apiError, apiSuccess } from '@/lib/api/response'
 import { getClientIp } from '@/lib/api/request'
 
@@ -138,6 +138,47 @@ Date et heure d'envoi : ${formattedDate}
     }
 
     contactLogger.info('Message de contact reçu et transmis par email', { nom, email, sujet, ip, userAgent })
+
+    // Envoi de l'accusé de réception avec liens d'auto-résolution
+    try {
+      const baseUrl = process.env.NEXTAUTH_URL || 'https://triton-club-cavaillon.fr'
+      await queueEmail({
+        to: sanitizeEmailHeader(email),
+        subject: `Accusé de réception de votre message - Triton Club Cavaillon`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6;">
+            <div style="background-color: #0284c7; padding: 24px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 22px;">Triton Club Cavaillon</h1>
+              <p style="color: #e0f2fe; margin: 6px 0 0 0; font-size: 14px;">Accusé de réception de votre message</p>
+            </div>
+
+            <div style="background-color: #ffffff; padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
+              <p>Bonjour <strong>${sanitizedNom}</strong>,</p>
+              <p>Nous vous confirmons la bonne réception de votre message concernant : <strong>${sanitizedSujet}</strong>.</p>
+              <p>Notre équipe de bénévoles prendra connaissance de votre demande et vous répondra sous <strong>48h à 72h ouvrées</strong>.</p>
+
+              <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 18px; margin: 24px 0;">
+                <p style="margin-top: 0; font-weight: bold; color: #0369a1; font-size: 14px;">💡 Votre question concerne l'un de ces sujets fréquents ?</p>
+                <p style="font-size: 13px; color: #0c4a6e; margin-bottom: 12px;">Vous trouverez la réponse ou la démarche immédiatement en ligne :</p>
+                <ul style="padding-left: 20px; font-size: 13px; color: #0c4a6e; margin: 0; line-height: 1.8;">
+                  <li><a href="${baseUrl}/tests-de-nage" style="color: #0284c7; font-weight: bold; text-decoration: underline;">🏊 Réserver un créneau de test de niveau</a> (tests de 5 min)</li>
+                  <li><a href="${baseUrl}/groupes" style="color: #0284c7; font-weight: bold; text-decoration: underline;">🧭 Trouver le groupe adapté selon l'âge et le niveau</a></li>
+                  <li><a href="${baseUrl}/planning" style="color: #0284c7; font-weight: bold; text-decoration: underline;">📅 Planning et horaires des entraînements</a></li>
+                  <li><a href="${baseUrl}/inscription#tarifs" style="color: #0284c7; font-weight: bold; text-decoration: underline;">💳 Tarifs, Pass'Sport (-50€) et chèques ANCV</a></li>
+                  <li><a href="${baseUrl}/inscription" style="color: #0284c7; font-weight: bold; text-decoration: underline;">📝 Démarches d'inscription en ligne</a></li>
+                </ul>
+              </div>
+
+              <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 24px; font-size: 12px; color: #64748b;">
+                <p style="margin: 0;">Triton Club Cavaillon · Piscine couverte Alphonse Roudière · 84300 Cavaillon</p>
+              </div>
+            </div>
+          </div>
+        `,
+      })
+    } catch (err) {
+      contactLogger.warn('Erreur lors de l\'envoi de l\'accusé de réception', err)
+    }
 
     return apiSuccess({ message: 'Message envoyé avec succès' })
   } catch (error) {

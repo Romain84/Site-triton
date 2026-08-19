@@ -1,37 +1,217 @@
 'use client'
 
+import React, { useState } from 'react'
+import Link from 'next/link'
 import ContactForm from '@/components/ContactForm'
-import { Sparkles, MapPin, Mail } from 'lucide-react'
+import GroupeFinder from '@/components/GroupeFinder'
+import { 
+  Sparkles, 
+  MapPin, 
+  Compass, 
+  Calendar, 
+  Euro, 
+  Waves, 
+  ArrowRight, 
+  CheckCircle2, 
+  MessageSquare,
+  HelpCircle,
+  Clock,
+  Mail
+} from 'lucide-react'
 
 export default function ContactClient() {
+  const [showFinderModal, setShowFinderModal] = useState(false)
+
   return (
     <div className="min-h-screen pt-36 sm:pt-40 pb-28 bg-slate-50">
-      <div className="container mx-auto px-4 max-w-6xl space-y-10">
+      <div className="container mx-auto px-4 max-w-6xl space-y-12">
         
         {/* Header Title */}
-        <div className="text-center max-w-2xl mx-auto space-y-3">
+        <div className="text-center max-w-3xl mx-auto space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-50 text-cyan-700 text-xs font-black uppercase tracking-wider border border-cyan-200/60">
             <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
             <span>Assistance Club & Contact</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
-            Contactez-nous
+            Comment pouvons-nous vous aider ?
           </h1>
-          <p className="text-sm sm:text-base text-slate-600 font-normal">
-            Une question ? Envoyez un message à l&apos;équipe bénévole ou retrouvez les coordonnées ci-dessous.
+          <p className="text-sm sm:text-base text-slate-600 font-normal max-w-2xl mx-auto">
+            Gagnez du temps : <strong className="text-slate-900">90% des réponses à vos questions</strong> sont accessibles immédiatement en 1 clic ci-dessous.
           </p>
+        </div>
+
+        {/* ─── ENTONNOIR D'AIGUILLAGE : 4 RÉPONSES RAPIDES ─── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          
+          {/* CARTE 1 : GROUPE & NIVEAU */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs hover:border-cyan-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4">
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-2xl bg-cyan-50 text-cyan-700 flex items-center justify-center">
+                  <Compass className="w-5 h-5" />
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-cyan-50 text-cyan-800 border border-cyan-200">
+                  Dès 4 ans & adultes
+                </span>
+              </div>
+              <h2 className="text-lg font-black text-slate-900">
+                Quel groupe pour mon enfant ou pour moi ?
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                École de natation (ENF 1, 2, 3), Sauv&apos;nage, Compétition, Loisirs Ados ou AquaFitness : identifiez instantanément le groupe adapté selon l&apos;âge et le niveau aquatique.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowFinderModal(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>Simulateur de groupe (3 clics)</span>
+              </button>
+              <Link
+                href="/groupes"
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+              >
+                <span>Toutes les sections</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          </div>
+
+          {/* CARTE 2 : HORAIRES & PLANNING */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4">
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  Planning 2025-2026
+                </span>
+              </div>
+              <h2 className="text-lg font-black text-slate-900">
+                Horaires et jours des entraînements
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Tous les créneaux par catégorie et par groupe à la Piscine couverte Alphonse Roudière (mercredi, samedi matin, soirs de semaine).
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+              <Link
+                href="/planning"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-xs"
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Consulter le planning des séances</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* CARTE 3 : TARIFS, PASS'SPORT & PAIEMENT */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs hover:border-amber-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4">
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center">
+                  <Euro className="w-5 h-5" />
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200">
+                  Pass&apos;Sport & ANCV
+                </span>
+              </div>
+              <h2 className="text-lg font-black text-slate-900">
+                Tarifs, Pass&apos;Sport (-50€) & Facilités
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Cotisations forfaitaires annuelles avec licence FFN incluse. Nous acceptons la déduction Pass&apos;Sport (50 €), les chèques vacances ANCV et le paiement en 3 fois.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+              <Link
+                href="/inscription#tarifs"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors shadow-xs"
+              >
+                <Euro className="w-3.5 h-3.5" />
+                <span>Consulter la grille des tarifs</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* CARTE 4 : TESTS DE NAGE & ADHÉSION */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs hover:border-blue-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4">
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center">
+                  <Waves className="w-5 h-5" />
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-50 text-blue-800 border border-blue-200">
+                  Rentrée sportive
+                </span>
+              </div>
+              <h2 className="text-lg font-black text-slate-900">
+                Tests de nage & Inscriptions en ligne
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Réservez un créneau de test de niveau de 5 min (obligatoire pour les nouveaux) ou complétez directement votre dossier d&apos;adhésion en ligne.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+              <Link
+                href="/tests-de-nage"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-xs"
+              >
+                <Waves className="w-3.5 h-3.5" />
+                <span>Réserver un test de niveau</span>
+              </Link>
+              <Link
+                href="/inscription"
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+              >
+                <span>M&apos;inscrire en ligne</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          </div>
+
+        </div>
+
+        {/* ─── SÉPARATEUR CONTACT AVEC EXPLICATION ─── */}
+        <div className="pt-6 border-t border-slate-200">
+          <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-md">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-800 text-cyan-400 text-xs font-bold">
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>Demande spécifique</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white">
+                Votre demande n&apos;est pas listée ci-dessus ?
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
+                Remplissez le formulaire ci-dessous. Le bureau bénévole vous répondra sous 48h à 72h ouvrées.
+              </p>
+            </div>
+            <a
+              href="#contact-form"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white text-slate-900 font-extrabold text-xs sm:text-sm hover:bg-slate-100 transition-colors shrink-0 cursor-pointer"
+            >
+              <MessageSquare className="w-4 h-4 text-primary" />
+              <span>Accéder au formulaire de contact</span>
+            </a>
+          </div>
         </div>
 
         {/* ─── FORMULAIRE & COORDONNÉES ─── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Formulaire Intelligent */}
-          <div id="contact-form" className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
+          {/* Formulaire Intelligent avec Interception */}
+          <div id="contact-form" className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6 scroll-mt-28">
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                ✉️ Envoyez-nous un message
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <MessageSquare className="w-6 h-6 text-primary" />
+                <span>Envoyez un message au bureau</span>
               </h2>
               <p className="text-xs text-slate-500 font-medium mt-1">
-                Remplissez les champs ci-dessous si votre demande nécessite l&apos;intervention du bureau bénévole.
+                Merci de préciser au maximum votre demande afin de nous permettre de la traiter rapidement.
               </p>
             </div>
             <ContactForm />
@@ -55,11 +235,11 @@ export default function ContactClient() {
 
                 <div className="pt-2 border-t border-slate-100">
                   <p className="font-bold text-slate-900 flex items-center gap-1.5 mb-1">
-                    <Mail className="w-4 h-4 text-cyan-600" /> Email officiel
+                    <Mail className="w-4 h-4 text-cyan-600" /> Secrétariat du club
                   </p>
-                  <a href="mailto:tritoncavaillon@gmail.com" className="text-cyan-700 hover:text-cyan-900 font-bold underline font-mono text-xs">
-                    tritoncavaillon@gmail.com
-                  </a>
+                  <p className="text-slate-600 text-xs">
+                    Gestion associative bénévole · Réponse sous 48h à 72h via le formulaire de contact.
+                  </p>
                 </div>
               </div>
 
@@ -116,10 +296,10 @@ export default function ContactClient() {
       <div className="fixed bottom-4 left-4 right-4 z-40 md:hidden pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="grid grid-cols-2 gap-2 rounded-2xl bg-white/95 backdrop-blur border border-slate-200 shadow-lg p-2">
           <a
-            href="mailto:tritoncavaillon@gmail.com"
+            href="#contact-form"
             className="text-center py-2.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold"
           >
-            ✉️ Email
+            ✉️ Écrire au club
           </a>
           <a
             href="https://www.google.com/maps/dir/?api=1&destination=Piscine+couverte+Alphonse+Roudiere+Cavaillon"
@@ -131,6 +311,15 @@ export default function ContactClient() {
           </a>
         </div>
       </div>
+
+      {/* MODALE SIMULATEUR DE GROUPE */}
+      {showFinderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-3xl my-8">
+            <GroupeFinder onClose={() => setShowFinderModal(false)} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

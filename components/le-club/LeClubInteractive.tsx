@@ -323,10 +323,10 @@ export default function LeClubInteractive() {
               </div>
               <div className="text-slate-650 font-normal text-sm space-y-2.5 pl-0.5">
                 <p>
-                  Des questions ? Écrivez-nous à : <br />
-                  <a href="mailto:tritoncavaillon@gmail.com" className="text-primary hover:underline font-bold mt-1 inline-block">
-                    tritoncavaillon@gmail.com
-                  </a>
+                  Des questions ? Consultez notre FAQ ou écrivez-nous : <br />
+                  <Link href="/contact" className="text-primary hover:underline font-bold mt-1 inline-block">
+                    Page Contact & Assistance
+                  </Link>
                 </p>
               </div>
             </div>
