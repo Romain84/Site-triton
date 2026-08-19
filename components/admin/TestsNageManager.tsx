@@ -498,7 +498,7 @@ export default function TestsNageManager() {
       {currentSession && (
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 print:hidden">
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Créneaux 5 min</span>
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Créneaux ({currentSession.dureeMinutes} min)</span>
             <span className="text-xl font-black text-slate-900">{currentSession.stats.nbCreneaux}</span>
           </div>
 

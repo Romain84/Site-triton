@@ -9,15 +9,12 @@ import {
   Users, 
   Check, 
   Search, 
-  Sparkles, 
   ArrowLeft, 
-  ArrowRight, 
   CheckCircle2, 
-  AlertCircle,
-  Phone,
-  Mail,
-  Waves,
-  Printer
+  AlertCircle, 
+  Phone, 
+  Waves, 
+  Printer 
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatLongDateFr } from '@/lib/date'
@@ -75,11 +72,9 @@ export default function TestNageBooking() {
   // Champs du formulaire
   const [nomEnfant, setNomEnfant] = useState('')
   const [prenomEnfant, setPrenomEnfant] = useState('')
-  const [age, setAge] = useState<string>('')
   const [nomParent, setNomParent] = useState('')
   const [emailParent, setEmailParent] = useState('')
   const [telephoneParent, setTelephoneParent] = useState('')
-  const [niveauEstime, setNiveauEstime] = useState('Débutant')
   const [remarques, setRemarques] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -140,7 +135,6 @@ export default function TestNageBooking() {
     setSelectedCandidat(c)
     setNomEnfant(c.nom)
     setPrenomEnfant(c.prenom)
-    setAge(c.age ? c.age.toString() : '')
     setNomParent(c.nomParent || '')
     setEmailParent(c.emailParent || '')
     setTelephoneParent(c.telephoneParent || '')
@@ -152,7 +146,6 @@ export default function TestNageBooking() {
     setSearchQuery('')
     setNomEnfant('')
     setPrenomEnfant('')
-    setAge('')
     setNomParent('')
     setEmailParent('')
     setTelephoneParent('')
@@ -185,11 +178,9 @@ export default function TestNageBooking() {
           candidatId: selectedCandidat?.id || null,
           nomEnfant: nomEnfant.trim(),
           prenomEnfant: prenomEnfant.trim(),
-          age: age ? parseInt(age, 10) : null,
           nomParent: nomParent.trim() || null,
           emailParent: emailParent.trim(),
           telephoneParent: telephoneParent.trim(),
-          niveauEstime,
           remarques: remarques.trim() || null,
         }),
       })
@@ -248,7 +239,7 @@ export default function TestNageBooking() {
           Réservation de votre Test de Niveau
         </h1>
         <p className="text-xs md:text-sm text-slate-600 max-w-2xl mx-auto font-medium">
-          Ce test individuel de <strong>5 minutes</strong> dans l&apos;eau permet à nos éducateurs diplômés d&apos;évaluer l&apos;aisance aquatique de votre enfant pour lui proposer le groupe le plus adapté.
+          Ce test individuel de <strong>{currentSession?.dureeMinutes || 5} minutes</strong> dans l&apos;eau permet à nos éducateurs diplômés d&apos;évaluer l&apos;aisance aquatique de votre enfant pour lui proposer le groupe le plus adapté.
         </p>
       </div>
 
@@ -339,11 +330,11 @@ export default function TestNageBooking() {
             </div>
           </div>
 
-          {/* Grille des créneaux de 5 min */}
+          {/* Grille des créneaux */}
           <div className="space-y-3">
             <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Clock className="w-4 h-4 text-primary" />
-              <span>Choisissez votre heure de passage (créneaux de 5 min) :</span>
+              <span>Choisissez votre heure de passage (créneaux de {currentSession.dureeMinutes} min) :</span>
             </h4>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
@@ -460,7 +451,7 @@ export default function TestNageBooking() {
                                 {c.nom} {c.prenom}
                               </p>
                               <p className="text-xs text-slate-500">
-                                {c.age ? `${c.age} ans` : ''} {c.emailParent ? `· ${c.emailParent}` : ''}
+                                {c.emailParent ? `${c.emailParent}` : ''} {c.telephoneParent ? `· ${c.telephoneParent}` : ''}
                               </p>
                             </div>
                             <span className="text-xs font-bold text-primary bg-emerald-50 px-2.5 py-1 rounded-lg">
@@ -545,40 +536,6 @@ export default function TestNageBooking() {
                   />
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    Âge de l&apos;enfant
-                  </label>
-                  <input
-                    type="number"
-                    min="3"
-                    max="20"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    placeholder="Ex: 7"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    Niveau approximatif estimé
-                  </label>
-                  <select
-                    value={niveauEstime}
-                    onChange={(e) => setNiveauEstime(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium cursor-pointer"
-                  >
-                    <option value="Débutant">Débutant (découvre l&apos;eau / ne sait pas nager)</option>
-                    <option value="Aisance aquatique">À l&apos;aise (met la tête sous l&apos;eau, flotte)</option>
-                    <option value="Apprentissage">Sait se déplacer sans aide sur quelques mètres</option>
-                    <option value="Nageur 25m+">Nage au moins 25m en grand bassin</option>
-                    <option value="Perfectionnement">Maîtrise plusieurs nages</option>
-                  </select>
-                </div>
-              </div>
             </div>
 
             {/* ─── CHAMPS COORDONNÉES PARENT ─── */}
@@ -591,7 +548,7 @@ export default function TestNageBooking() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    Email de contact (pour la confirmation) *
+                    Email de contact *
                   </label>
                   <input
                     type="email"
@@ -620,7 +577,7 @@ export default function TestNageBooking() {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Nom & Prénom du parent (optionnel)
+                  Nom & Prénom du parent
                 </label>
                 <input
                   type="text"
@@ -633,7 +590,7 @@ export default function TestNageBooking() {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Remarques ou particularités à signaler au coach (optionnel)
+                  Remarques ou particularités à signaler au coach
                 </label>
                 <textarea
                   rows={2}
@@ -712,16 +669,15 @@ export default function TestNageBooking() {
             </div>
           </div>
 
-          {/* Consignes bassin */}
+          {/* Consignes hall d'entrée */}
           <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-4 md:p-5 text-xs text-emerald-950 space-y-2">
             <p className="font-bold text-emerald-900 flex items-center gap-1.5">
               <AlertCircle className="w-4 h-4 text-primary shrink-0" />
               Consignes pratiques pour le jour du test :
             </p>
             <ul className="space-y-1 text-emerald-800/90 font-medium pl-5 list-disc">
-              <li>Présentez-vous au bord du bassin <strong>5 minutes avant l&apos;heure</strong> indiquée.</li>
+              <li>Présentez-vous dans le hall d&apos;entrée de la piscine <strong>5 minutes avant l&apos;heure</strong> de votre créneau.</li>
               <li>Équipement requis : <strong>maillot de bain, bonnet de bain et lunettes</strong>.</li>
-              <li>L&apos;entraîneur vous communiquera le groupe conseillé à l&apos;issue des 5 minutes de test.</li>
             </ul>
           </div>
 

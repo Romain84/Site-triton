@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
             
             <div style="background-color: #f8fafc; border-left: 4px solid #15803d; padding: 16px; margin: 20px 0; border-radius: 6px;">
               <p style="margin: 0 0 8px;">📅 <strong>Date :</strong> ${dateFormatted}</p>
-              <p style="margin: 0 0 8px;">⏰ <strong>Créneau précis :</strong> ${result.creneau.heureDebut} à ${result.creneau.heureFin} (durée : 5 minutes)</p>
+              <p style="margin: 0 0 8px;">⏰ <strong>Créneau précis :</strong> ${result.creneau.heureDebut} à ${result.creneau.heureFin} (durée : ${result.session.dureeMinutes} minutes)</p>
               <p style="margin: 0 0 8px;">📍 <strong>Lieu :</strong> ${result.session.lieu}</p>
               <p style="margin: 0;">ℹ️ <strong>Session :</strong> ${result.session.titre}</p>
             </div>
@@ -111,9 +111,9 @@ export async function POST(request: NextRequest) {
             <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; padding: 16px; border-radius: 8px; margin: 20px 0;">
               <h3 style="margin: 0 0 8px; color: #065f46; font-size: 14px;">🩱 Consignes importantes pour le test :</h3>
               <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #047857;">
-                <li>Merci de vous présenter <strong>5 minutes avant l'heure</strong> de votre créneau au bord du bassin.</li>
+                <li>Merci de vous présenter <strong>5 minutes avant l'heure</strong> de votre créneau dans le hall d'entrée de la piscine.</li>
                 <li>Prévoir impérativement : <strong>maillot de bain, bonnet de bain et lunettes de natation</strong>.</li>
-                <li>Le test dure 5 minutes avec un entraîneur diplômé du club pour orienter votre enfant vers le groupe le plus adapté.</li>
+                <li>Le test dure ${result.session.dureeMinutes} minutes avec un éducateur diplômé du club.</li>
               </ul>
             </div>
 
