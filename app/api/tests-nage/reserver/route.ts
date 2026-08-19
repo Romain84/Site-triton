@@ -19,12 +19,23 @@ const reserverSchema = z.object({
   remarques: z.string().max(500).optional().nullable(),
 })
 
+function formatCalendarDateTime(date: Date, timeStr: string): string {
+  const [h, m] = timeStr.split(':').map(Number)
+  const d = new Date(date)
+  const y = d.getFullYear()
+  const mon = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const hour = String(h).padStart(2, '0')
+  const min = String(m).padStart(2, '0')
+  return `${y}${mon}${day}T${hour}${min}00`
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const validated = reserverSchema.parse(body)
 
-    // Token unique pour l'inscription
+    // Token unique pour l'inscription et le téléchargement iCal
     const token = crypto.randomBytes(16).toString('hex')
 
     // Transaction atomique pour éviter toute sur-réservation
@@ -44,9 +55,9 @@ export async function POST(request: NextRequest) {
         throw new Error('Ce créneau n\'est plus disponible.')
       }
 
-      // 2. Vérifier la capacité maximale (2 nageurs par défaut)
+      // 2. Vérifier la capacité maximale
       if (creneau.inscriptions.length >= creneau.capacite) {
-        throw new Error('Ce créneau de 5 minutes est désormais complet. Veuillez sélectionner un autre horaire.')
+        throw new Error(`Ce créneau de ${creneau.session.dureeMinutes} minutes est désormais complet. Veuillez sélectionner un autre horaire.`)
       }
 
       // 3. Créer l'inscription
@@ -88,9 +99,48 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Envoi de l'email de confirmation aux parents (en tâche de fond sécurisée)
+    // Envoi de l'email de confirmation aux parents avec ajout à l'agenda
     try {
       const dateFormatted = formatLongDateFr(result.session.date)
+      const dtStart = formatCalendarDateTime(result.session.date, result.creneau.heureDebut)
+      const dtEnd = formatCalendarDateTime(result.session.date, result.creneau.heureFin)
+
+      const eventTitle = `Test de Nage - ${result.inscription.prenomEnfant} ${result.inscription.nomEnfant}`
+      const eventDesc = `Test individuel de niveau de natation (${result.session.dureeMinutes} min).\nLieu : ${result.session.lieu}\nConsignes : Merci de vous présenter dans le hall d'entrée 5 minutes avant l'heure de votre créneau avec maillot de bain, bonnet et lunettes.`
+
+      const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${dtStart}/${dtEnd}&ctz=Europe/Paris&details=${encodeURIComponent(eventDesc)}&location=${encodeURIComponent(result.session.lieu)}`
+      
+      const outlookStart = `${dtStart.substring(0, 4)}-${dtStart.substring(4, 6)}-${dtStart.substring(6, 8)}T${dtStart.substring(9, 11)}:${dtStart.substring(11, 13)}:00`
+      const outlookEnd = `${dtEnd.substring(0, 4)}-${dtEnd.substring(4, 6)}-${dtEnd.substring(6, 8)}T${dtEnd.substring(9, 11)}:${dtEnd.substring(11, 13)}:00`
+      const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&subject=${encodeURIComponent(eventTitle)}&startdt=${outlookStart}&enddt=${outlookEnd}&body=${encodeURIComponent(eventDesc)}&location=${encodeURIComponent(result.session.lieu)}`
+
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://triton-cavaillon.fr'
+      const icsDownloadUrl = `${baseUrl}/api/tests-nage/ics?token=${token}`
+
+      const icsAttachment = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Triton Club Cavaillon//Tests de Nage//FR',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        'BEGIN:VEVENT',
+        `UID:test-nage-${result.inscription.id}@triton-cavaillon.fr`,
+        `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
+        `DTSTART;TZID=Europe/Paris:${dtStart}`,
+        `DTEND;TZID=Europe/Paris:${dtEnd}`,
+        `SUMMARY:${eventTitle}`,
+        `DESCRIPTION:${eventDesc.replace(/\n/g, '\\n')}`,
+        `LOCATION:${result.session.lieu}`,
+        'STATUS:CONFIRMED',
+        'BEGIN:VALARM',
+        'TRIGGER:-PT30M',
+        'ACTION:DISPLAY',
+        'DESCRIPTION:Rappel : Test de Nage au Triton Club Cavaillon dans 30 minutes',
+        'END:VALARM',
+        'END:VEVENT',
+        'END:VCALENDAR',
+      ].join('\r\n')
+
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6;">
           <div style="background-color: #15803d; color: #ffffff; padding: 24px; text-align: center; border-radius: 12px 12px 0 0;">
@@ -106,6 +156,32 @@ export async function POST(request: NextRequest) {
               <p style="margin: 0 0 8px;">⏰ <strong>Créneau précis :</strong> ${result.creneau.heureDebut} à ${result.creneau.heureFin} (durée : ${result.session.dureeMinutes} minutes)</p>
               <p style="margin: 0 0 8px;">📍 <strong>Lieu :</strong> ${result.session.lieu}</p>
               <p style="margin: 0;">ℹ️ <strong>Session :</strong> ${result.session.titre}</p>
+            </div>
+
+            <!-- ─── BOUTONS AJOUT À L'AGENDA ─── -->
+            <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: center;">
+              <p style="margin: 0 0 10px; font-size: 13px; font-weight: bold; color: #1e293b;">
+                📅 Ajouter ce test à votre calendrier :
+              </p>
+              <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin: 0 auto;">
+                <tr>
+                  <td style="padding: 4px;">
+                    <a href="${gcalUrl}" target="_blank" style="display: inline-block; background-color: #15803d; color: #ffffff; text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: bold;">
+                      + Google Agenda
+                    </a>
+                  </td>
+                  <td style="padding: 4px;">
+                    <a href="${outlookUrl}" target="_blank" style="display: inline-block; background-color: #0284c7; color: #ffffff; text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: bold;">
+                      + Outlook
+                    </a>
+                  </td>
+                  <td style="padding: 4px;">
+                    <a href="${icsDownloadUrl}" target="_blank" style="display: inline-block; background-color: #475569; color: #ffffff; text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: bold;">
+                      Apple / iCal (.ics)
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </div>
 
             <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; padding: 16px; border-radius: 8px; margin: 20px 0;">
@@ -129,6 +205,13 @@ export async function POST(request: NextRequest) {
         to: result.inscription.emailParent,
         subject: `Confirmation Test de Nage : ${result.inscription.prenomEnfant} ${result.inscription.nomEnfant} (${result.creneau.heureDebut})`,
         html: emailHtml,
+        attachments: [
+          {
+            filename: `test-nage-${result.inscription.prenomEnfant.toLowerCase()}.ics`,
+            content: icsAttachment,
+            contentType: 'text/calendar; charset=utf-8',
+          },
+        ],
       })
     } catch (mailErr) {
       console.warn("Impossible d'envoyer l'email de confirmation du test de nage:", mailErr)

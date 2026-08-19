@@ -681,6 +681,37 @@ export default function TestNageBooking() {
             </ul>
           </div>
 
+          {/* Boutons Ajout à l'agenda */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center space-y-2.5">
+            <p className="text-xs font-bold text-slate-700">📅 Enregistrer ce rendez-vous dans votre calendrier :</p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <a
+                href={(() => {
+                  const dateStr = confirmationData.date.split('T')[0].replace(/-/g, '')
+                  const hDeb = confirmationData.heureDebut.replace(':', '') + '00'
+                  const hFin = confirmationData.heureFin.replace(':', '') + '00'
+                  const title = `Test de Nage - ${confirmationData.prenomEnfant} ${confirmationData.nomEnfant}`
+                  const desc = `Test individuel de natation au Triton Club Cavaillon.\nLieu : ${confirmationData.lieu}\nPrésentez-vous dans le hall d'entrée 5 minutes avant avec maillot, bonnet et lunettes.`
+                  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${dateStr}T${hDeb}/${dateStr}T${hFin}&ctz=Europe/Paris&details=${encodeURIComponent(desc)}&location=${encodeURIComponent(confirmationData.lieu)}`
+                })()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs text-center transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                <span>+ Google Agenda</span>
+              </a>
+              <a
+                href={`/api/tests-nage/ics?id=${confirmationData.id}`}
+                download
+                className="flex-1 py-2.5 px-3 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 font-bold text-xs text-center transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                <span>Apple / Outlook (.ics)</span>
+              </a>
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button
               onClick={() => window.print()}
