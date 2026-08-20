@@ -10,41 +10,41 @@ import { encryptSmtpPassword } from '@/lib/email'
 const adminLogger = logger.withContext('Admin')
 
 const updateSettingsSchema = z.object({
-  tauxHoraire: z.coerce.number().min(0),
-  forfaitCompetition: z.coerce.number().min(0),
-  nbCompetitionsAnnee: z.coerce.number().int().min(0).default(20),
-  nbDemiJourneesParCompetition: z.coerce.number().int().min(0).default(2),
-  forfaitRegionalActif: z.boolean().optional().default(false),
-  montantForfaitRegional: z.coerce.number().min(0).optional().default(50),
-  reductionEnfantBureau: z.coerce.number().min(0).max(100).optional().default(50),
-  boutiqueOuverte: z.boolean().optional().default(true),
-  facturationElectronique: z.boolean().optional().default(false),
-  emailClub: z.string().email().or(z.literal('')).optional().default(''),
+  tauxHoraire: z.coerce.number().min(0).optional(),
+  forfaitCompetition: z.coerce.number().min(0).optional(),
+  nbCompetitionsAnnee: z.coerce.number().int().min(0).optional(),
+  nbDemiJourneesParCompetition: z.coerce.number().int().min(0).optional(),
+  forfaitRegionalActif: z.boolean().optional(),
+  montantForfaitRegional: z.coerce.number().min(0).optional(),
+  reductionEnfantBureau: z.coerce.number().min(0).max(100).optional(),
+  boutiqueOuverte: z.boolean().optional(),
+  facturationElectronique: z.boolean().optional(),
+  emailClub: z.string().email().or(z.literal('')).optional(),
   logoUrl: z.string().url().or(z.literal('')).nullable().optional(),
   statutsUrl: z.string().or(z.literal('')).nullable().optional(),
   reglementPiscineUrl: z.string().or(z.literal('')).nullable().optional(),
   reglementClubUrl: z.string().or(z.literal('')).nullable().optional(),
   formulaireLicenceFfnUrl: z.string().or(z.literal('')).nullable().optional(),
-  afficherBoutonTest: z.boolean().optional().default(true),
+  afficherBoutonTest: z.boolean().optional(),
   signaturePresidentUrl: z.string().url().or(z.literal('')).nullable().optional(),
-  nomSignataireRecu: z.string().max(255).optional().default('Le Président'),
-  titreSignataireRecu: z.string().max(255).optional().default('Président'),
+  nomSignataireRecu: z.string().max(255).optional(),
+  titreSignataireRecu: z.string().max(255).optional(),
   signatureTresoriereUrl: z.string().url().or(z.literal('')).nullable().optional(),
-  nomTresoriereRecu: z.string().max(255).optional().default('La Trésorière'),
-  titreTresoriereRecu: z.string().max(255).optional().default('Trésorière'),
-  smtpHost: z.string().max(255).optional().default(''),
-  smtpPort: z.coerce.number().int().min(1).max(65535).optional().default(587),
-  smtpUser: z.string().max(255).optional().default(''),
+  nomTresoriereRecu: z.string().max(255).optional(),
+  titreTresoriereRecu: z.string().max(255).optional(),
+  smtpHost: z.string().max(255).optional(),
+  smtpPort: z.coerce.number().int().min(1).max(65535).optional(),
+  smtpUser: z.string().max(255).optional(),
   smtpPassword: z.string().max(500).optional(),
   inscriptionUrl: z.string().max(500).nullable().optional(),
-  nomClub: z.string().max(255).optional().default(''),
-  soldeDepartSaison: z.coerce.number().min(0).optional().default(0),
-  chatbotModel: z.string().optional().default('mistral-small'),
-  debutCoursNormal: z.string().max(255).optional().default('Lundi 21 Septembre 2026'),
-  debutCoursBnssa: z.string().max(255).optional().default('Jeudi 1er Octobre 2026'),
-  datesTests: z.array(z.string()).optional().default([]),
-  interSaisonActif: z.boolean().optional().default(false),
-  texteFiligrane: z.string().max(255).optional().default('Saison 2025 - 2026'),
+  nomClub: z.string().max(255).optional(),
+  soldeDepartSaison: z.coerce.number().min(0).optional(),
+  chatbotModel: z.string().optional(),
+  debutCoursNormal: z.string().max(255).optional(),
+  debutCoursBnssa: z.string().max(255).optional(),
+  datesTests: z.array(z.string()).optional(),
+  interSaisonActif: z.boolean().optional(),
+  texteFiligrane: z.string().max(255).optional(),
   instagramAccountId: z.string().max(255).nullable().optional(),
   instagramAccessToken: z.string().max(2000).nullable().optional(),
 })
@@ -134,6 +134,8 @@ export async function GET() {
           statutsUrl: null,
           reglementPiscineUrl: null,
           reglementClubUrl: null,
+          formulaireLicenceFfnUrl: null,
+          afficherBoutonTest: true,
           signaturePresidentUrl: null,
           nomSignataireRecu: 'Le Président',
           titreSignataireRecu: 'Président',
@@ -181,42 +183,48 @@ export async function PUT(request: NextRequest) {
       return apiError('Données invalides', 400, validation.error.flatten())
     }
 
-    const {
-      tauxHoraire,
-      forfaitCompetition,
-      nbCompetitionsAnnee,
-      nbDemiJourneesParCompetition,
-      forfaitRegionalActif,
-      montantForfaitRegional,
-      reductionEnfantBureau,
-      boutiqueOuverte,
-      emailClub,
-      logoUrl,
-      statutsUrl,
-      reglementPiscineUrl,
-      reglementClubUrl,
-      signaturePresidentUrl,
-      nomSignataireRecu,
-      titreSignataireRecu,
-      signatureTresoriereUrl,
-      nomTresoriereRecu,
-      titreTresoriereRecu,
-      smtpHost,
-      smtpPort,
-      smtpUser,
-      smtpPassword,
-      inscriptionUrl,
-      nomClub,
-      soldeDepartSaison,
-      chatbotModel,
-      debutCoursNormal,
-      debutCoursBnssa,
-      datesTests,
-      interSaisonActif,
-      texteFiligrane,
-      instagramAccountId,
-      instagramAccessToken,
-    } = validation.data
+    const val = validation.data
+    const encryptedSmtpPassword = val.smtpPassword ? encryptSmtpPassword(val.smtpPassword) : undefined
+
+    // Build update object only with provided fields
+    const updateData: Record<string, any> = {}
+    if (val.tauxHoraire !== undefined) updateData.tauxHoraire = val.tauxHoraire
+    if (val.forfaitCompetition !== undefined) updateData.forfaitCompetition = val.forfaitCompetition
+    if (val.nbCompetitionsAnnee !== undefined) updateData.nbCompetitionsAnnee = val.nbCompetitionsAnnee
+    if (val.nbDemiJourneesParCompetition !== undefined) updateData.nbDemiJourneesParCompetition = val.nbDemiJourneesParCompetition
+    if (val.forfaitRegionalActif !== undefined) updateData.forfaitRegionalActif = val.forfaitRegionalActif
+    if (val.montantForfaitRegional !== undefined) updateData.montantForfaitRegional = val.montantForfaitRegional
+    if (val.reductionEnfantBureau !== undefined) updateData.reductionEnfantBureau = val.reductionEnfantBureau
+    if (val.boutiqueOuverte !== undefined) updateData.boutiqueOuverte = val.boutiqueOuverte
+    if (val.facturationElectronique !== undefined) updateData.facturationElectronique = val.facturationElectronique
+    if (val.emailClub !== undefined) updateData.emailClub = val.emailClub
+    if (val.logoUrl !== undefined) updateData.logoUrl = val.logoUrl || null
+    if (val.statutsUrl !== undefined) updateData.statutsUrl = val.statutsUrl || null
+    if (val.reglementPiscineUrl !== undefined) updateData.reglementPiscineUrl = val.reglementPiscineUrl || null
+    if (val.reglementClubUrl !== undefined) updateData.reglementClubUrl = val.reglementClubUrl || null
+    if (val.formulaireLicenceFfnUrl !== undefined) updateData.formulaireLicenceFfnUrl = val.formulaireLicenceFfnUrl || null
+    if (val.afficherBoutonTest !== undefined) updateData.afficherBoutonTest = val.afficherBoutonTest
+    if (val.signaturePresidentUrl !== undefined) updateData.signaturePresidentUrl = val.signaturePresidentUrl || null
+    if (val.nomSignataireRecu !== undefined) updateData.nomSignataireRecu = val.nomSignataireRecu
+    if (val.titreSignataireRecu !== undefined) updateData.titreSignataireRecu = val.titreSignataireRecu
+    if (val.signatureTresoriereUrl !== undefined) updateData.signatureTresoriereUrl = val.signatureTresoriereUrl || null
+    if (val.nomTresoriereRecu !== undefined) updateData.nomTresoriereRecu = val.nomTresoriereRecu
+    if (val.titreTresoriereRecu !== undefined) updateData.titreTresoriereRecu = val.titreTresoriereRecu
+    if (val.inscriptionUrl !== undefined) updateData.inscriptionUrl = val.inscriptionUrl || null
+    if (val.smtpHost !== undefined) updateData.smtpHost = val.smtpHost
+    if (val.smtpPort !== undefined) updateData.smtpPort = val.smtpPort
+    if (val.smtpUser !== undefined) updateData.smtpUser = val.smtpUser
+    if (val.nomClub !== undefined) updateData.nomClub = val.nomClub
+    if (val.soldeDepartSaison !== undefined) updateData.soldeDepartSaison = val.soldeDepartSaison
+    if (val.chatbotModel !== undefined) updateData.chatbotModel = val.chatbotModel
+    if (val.debutCoursNormal !== undefined) updateData.debutCoursNormal = val.debutCoursNormal
+    if (val.debutCoursBnssa !== undefined) updateData.debutCoursBnssa = val.debutCoursBnssa
+    if (val.datesTests !== undefined) updateData.datesTests = val.datesTests
+    if (val.interSaisonActif !== undefined) updateData.interSaisonActif = val.interSaisonActif
+    if (val.texteFiligrane !== undefined) updateData.texteFiligrane = val.texteFiligrane
+    if (val.instagramAccountId !== undefined) updateData.instagramAccountId = val.instagramAccountId || null
+    if (val.instagramAccessToken !== undefined) updateData.instagramAccessToken = val.instagramAccessToken || null
+    if (encryptedSmtpPassword !== undefined) updateData.smtpPassword = encryptedSmtpPassword
 
     // Get existing settings id or create new
     const existingSettings = await prisma.settings.findFirst({
@@ -224,89 +232,54 @@ export async function PUT(request: NextRequest) {
     })
 
     let settings
-    const encryptedSmtpPassword = smtpPassword ? encryptSmtpPassword(smtpPassword) : undefined
 
     if (existingSettings) {
       // Update existing
       settings = await prisma.settings.update({
         where: { id: existingSettings.id },
-        data: {
-          tauxHoraire,
-          forfaitCompetition,
-          nbCompetitionsAnnee,
-          nbDemiJourneesParCompetition,
-          forfaitRegionalActif: forfaitRegionalActif ?? false,
-          montantForfaitRegional,
-          reductionEnfantBureau,
-          boutiqueOuverte: boutiqueOuverte ?? true,
-          emailClub,
-          logoUrl: logoUrl || null,
-          statutsUrl: statutsUrl || null,
-          reglementPiscineUrl: reglementPiscineUrl || null,
-          reglementClubUrl: reglementClubUrl || null,
-          signaturePresidentUrl: signaturePresidentUrl || null,
-          nomSignataireRecu,
-          titreSignataireRecu,
-          signatureTresoriereUrl: signatureTresoriereUrl || null,
-          nomTresoriereRecu,
-          titreTresoriereRecu,
-          inscriptionUrl,
-          smtpHost,
-          smtpPort,
-          smtpUser,
-          nomClub,
-          soldeDepartSaison,
-          chatbotModel,
-          debutCoursNormal,
-          debutCoursBnssa,
-          datesTests,
-          interSaisonActif,
-          texteFiligrane,
-          instagramAccountId: instagramAccountId || null,
-          instagramAccessToken: instagramAccessToken || null,
-          // Only update password if provided
-          ...(encryptedSmtpPassword && { smtpPassword: encryptedSmtpPassword }),
-        },
+        data: updateData,
         select: settingsSelect,
       })
     } else {
       // Create new
       settings = await prisma.settings.create({
         data: {
-          tauxHoraire,
-          forfaitCompetition,
-          nbCompetitionsAnnee,
-          nbDemiJourneesParCompetition,
-          forfaitRegionalActif: forfaitRegionalActif ?? false,
-          montantForfaitRegional,
-          reductionEnfantBureau,
-          boutiqueOuverte: boutiqueOuverte ?? true,
-          emailClub,
-          logoUrl: logoUrl || null,
-          statutsUrl: statutsUrl || null,
-          reglementPiscineUrl: reglementPiscineUrl || null,
-          reglementClubUrl: reglementClubUrl || null,
-          signaturePresidentUrl: signaturePresidentUrl || null,
-          nomSignataireRecu,
-          titreSignataireRecu,
-          signatureTresoriereUrl: signatureTresoriereUrl || null,
-          nomTresoriereRecu,
-          titreTresoriereRecu,
-          inscriptionUrl,
-          smtpHost,
-          smtpPort,
-          smtpUser,
+          tauxHoraire: val.tauxHoraire ?? 35,
+          forfaitCompetition: val.forfaitCompetition ?? 150,
+          nbCompetitionsAnnee: val.nbCompetitionsAnnee ?? 20,
+          nbDemiJourneesParCompetition: val.nbDemiJourneesParCompetition ?? 2,
+          forfaitRegionalActif: val.forfaitRegionalActif ?? false,
+          montantForfaitRegional: val.montantForfaitRegional ?? 50,
+          reductionEnfantBureau: val.reductionEnfantBureau ?? 50,
+          boutiqueOuverte: val.boutiqueOuverte ?? true,
+          emailClub: val.emailClub ?? '',
+          logoUrl: val.logoUrl || null,
+          statutsUrl: val.statutsUrl || null,
+          reglementPiscineUrl: val.reglementPiscineUrl || null,
+          reglementClubUrl: val.reglementClubUrl || null,
+          formulaireLicenceFfnUrl: val.formulaireLicenceFfnUrl || null,
+          afficherBoutonTest: val.afficherBoutonTest ?? true,
+          signaturePresidentUrl: val.signaturePresidentUrl || null,
+          nomSignataireRecu: val.nomSignataireRecu ?? 'Le Président',
+          titreSignataireRecu: val.titreSignataireRecu ?? 'Président',
+          signatureTresoriereUrl: val.signatureTresoriereUrl || null,
+          nomTresoriereRecu: val.nomTresoriereRecu ?? 'La Trésorière',
+          titreTresoriereRecu: val.titreTresoriereRecu ?? 'Trésorière',
+          inscriptionUrl: val.inscriptionUrl || null,
+          smtpHost: val.smtpHost ?? '',
+          smtpPort: val.smtpPort ?? 587,
+          smtpUser: val.smtpUser ?? '',
           smtpPassword: encryptedSmtpPassword || '',
-          nomClub: nomClub ?? '',
-          soldeDepartSaison,
-          chatbotModel,
-          debutCoursNormal,
-          debutCoursBnssa,
-          datesTests,
-          interSaisonActif,
-          texteFiligrane,
-          instagramAccountId: instagramAccountId || null,
-          instagramAccessToken: instagramAccessToken || null,
+          nomClub: val.nomClub ?? '',
+          soldeDepartSaison: val.soldeDepartSaison ?? 0,
+          chatbotModel: val.chatbotModel ?? 'mistral-small',
+          debutCoursNormal: val.debutCoursNormal ?? 'Lundi 21 Septembre 2026',
+          debutCoursBnssa: val.debutCoursBnssa ?? 'Jeudi 1er Octobre 2026',
+          datesTests: val.datesTests ?? ['Mercredi 16 Septembre 2026', 'Vendredi 18 Septembre 2026'],
+          interSaisonActif: val.interSaisonActif ?? false,
+          texteFiligrane: val.texteFiligrane ?? 'Saison 2025 - 2026',
+          instagramAccountId: val.instagramAccountId || null,
+          instagramAccessToken: val.instagramAccessToken || null,
         },
         select: settingsSelect,
       })
