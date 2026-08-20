@@ -2,48 +2,56 @@
   {
     "categorie": "Général",
     "question": "Où se trouve le Triton Club Cavaillon ?",
-    "reponse": "Les entraînements du club se déroulent à la **piscine municipale Alphonse de Coubertin**, située Avenue Pierre de Coubertin, 84300 Cavaillon.",
-    "motsCles": "adresse, lieu, piscine, coubertin, localisation, ou se trouve, entrainement",
+    "reponse": "Les entraînements du club se déroulent à la **piscine municipale Alphonse Roudière**, située Avenue Jean Moulin, Quartier La Clède, 84300 Cavaillon.",
+    "motsCles": "adresse, lieu, piscine, roudiere, localisation, ou se trouve, entrainement",
     "priorite": 1,
     "actif": true
   },
   {
     "categorie": "Général",
     "question": "Comment contacter le club ?",
-    "reponse": "Vous pouvez nous contacter par e-mail à **tritoncavaillon@gmail.com** ou directement en utilisant le formulaire de contact disponible sur notre site web.",
-    "motsCles": "contact, email, mail, secretariat, joindre, ecrire",
+    "reponse": "Le Triton Club Cavaillon est géré par une équipe de bénévoles. Pour nous contacter, la meilleure solution est d'utiliser notre **[formulaire de contact](/contact)** en ligne ou de nous écrire par e-mail à **tritoncavaillon@gmail.com**.\n\n*Note : Le club ne dispose pas de permanence physique au bord du bassin ni d'accueil téléphonique.*",
+    "motsCles": "contact, email, mail, secretariat, joindre, ecrire, permanence, telephone",
     "priorite": 1,
     "actif": true
   },
   {
     "categorie": "Inscriptions",
     "question": "Comment s'inscrire au club ?",
-    "reponse": "L'inscription peut se faire :\n1. **En ligne** via notre plateforme partenaire [MonClub] (https://tritoncavaillon.monclub.app/login).\n2. **Sur place** au secrétariat de la piscine municipale Coubertin au début de la saison.\n\nVous devrez fournir un dossier complet contenant le certificat médical et une photo d'identité.",
+    "reponse": "L'inscription se fait **exclusivement en ligne** via la plateforme partenaire **[MonClub](https://tritoncavaillon.monclub.app/login)** (accessible directement depuis notre [page d'inscription](/inscription)).\n\nIl n'est pas possible de s'inscrire par e-mail ni au bord du bassin.",
     "motsCles": "inscription, inscrire, adhesion, dossier, formulaire, rejoindre, monclub",
     "priorite": 2,
     "actif": true
   },
   {
     "categorie": "Inscriptions",
+    "question": "Comment annuler une inscription ou changer de groupe ?",
+    "reponse": "Pour toute demande d'annulation d'inscription, de désinscription ou de modification de groupe, **la seule possibilité est de contacter directement le secrétariat du club** via notre **[formulaire de contact](/contact)** ou par e-mail à **tritoncavaillon@gmail.com** en précisant le nom, prénom de l'adhérent et le motif. Notre équipe bénévole traitera votre demande.",
+    "motsCles": "annuler, annulation, inscription, changer groupe, desinscription, resiliation, remboursement, refaire inscription",
+    "priorite": 3,
+    "actif": true
+  },
+  {
+    "categorie": "Inscriptions",
     "question": "Quels sont les documents obligatoires pour l'inscription ?",
-    "reponse": "Pour finaliser votre inscription, vous devez obligatoirement fournir :\n1. Un **certificat médical** de non-contre-indication à la pratique de la natation (de moins d'un an).\n2. Une **photo d'identité** récente.\n3. Le règlement de la cotisation annuelle.",
-    "motsCles": "document, pieces, certificat medical, photo, obligatoire, dossier, inscription",
+    "reponse": "Pour finaliser votre adhésion :\n1. **Questionnaire relatif à l'état de santé** (le certificat médical n'est requis que si vous avez répondu \"Oui\" à au moins une question pour les mineurs).\n2. **Formulaire de licence officiel FFN** téléchargeable sur le site.\n3. **Règlement de la cotisation annuelle**.\n\n*Note : Aucun justificatif de domicile ni photo d'identité n'est exigé.*",
+    "motsCles": "document, pieces, certificat medical, photo, obligatoire, dossier, inscription, justificatif",
     "priorite": 2,
     "actif": true
   },
   {
     "categorie": "Inscriptions",
     "question": "Le certificat médical est-il obligatoire chaque année ?",
-    "reponse": "Oui, pour la natation en club affilié à la FFN, un **certificat médical de non-contre-indication à la pratique de la natation** datant de moins d'un an est requis lors de toute nouvelle inscription ou renouvellement pour les mineurs et adultes.",
-    "motsCles": "certificat, medical, medecin, obligatoire, validite, chaque annee",
-    "priorite": 1,
+    "reponse": "Pour les **mineurs**, le certificat médical n'est pas obligatoire si le questionnaire de santé ne révèle aucune contre-indication (toutes les réponses sont \"Non\"). Un certificat médical de moins de 6 mois n'est demandé que si au moins une réponse est \"Oui\". Pour les **majeurs**, les règles applicables sont celles de la Fédération Française de Natation (FFN).",
+    "motsCles": "certificat, medical, medecin, obligatoire, validite, chaque annee, mineur, majeur",
+    "priorite": 2,
     "actif": true
   },
   {
     "categorie": "Inscriptions",
     "question": "Puis-je payer la cotisation en plusieurs fois ?",
-    "reponse": "Oui, le club accepte les paiements en **3 fois sans frais** (par chèque ou par carte bancaire en ligne). Nous acceptons également les Chèques-Vacances ANCV et les Coupons Sport pour régler votre cotisation.",
-    "motsCles": "paiement, payer, plusieurs fois, 3 fois, cheques vacances, ancv, coupons sport, tarif, reglement",
+    "reponse": "Oui, le club accepte les paiements en **3 fois sans frais** (par carte bancaire sur MonClub ou par chèque). Nous acceptons également le Pass'Sport, les Chèques-Vacances ANCV et les Coupons Sport pour régler votre cotisation.",
+    "motsCles": "paiement, payer, plusieurs fois, 3 fois, cheques vacances, ancv, coupons sport, tarif, reglement, pass sport",
     "priorite": 1,
     "actif": true
   },
