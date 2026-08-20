@@ -351,6 +351,8 @@ model Settings {
   statutsUrl                   String?  @default("https://www.tritoncavaillon.fr/wp-content/uploads/2017/07/20150616statut.pdf")
   reglementPiscineUrl          String?
   reglementClubUrl             String?
+  formulaireLicenceFfnUrl      String?
+  afficherBoutonTest           Boolean  @default(true)
   signaturePresidentUrl        String?
   nomSignataireRecu            String?  @default("Le Président")
   titreSignataireRecu          String?  @default("Président")

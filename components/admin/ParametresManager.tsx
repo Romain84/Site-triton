@@ -23,6 +23,8 @@ interface Settings {
   statutsUrl: string | null
   reglementPiscineUrl: string | null
   reglementClubUrl: string | null
+  formulaireLicenceFfnUrl?: string | null
+  afficherBoutonTest?: boolean
   signaturePresidentUrl: string | null
   nomSignataireRecu: string | null
   titreSignataireRecu: string | null
@@ -69,6 +71,8 @@ export default function ParametresManager() {
   const [statutsUrl, setStatutsUrl] = useState('')
   const [reglementPiscineUrl, setReglementPiscineUrl] = useState('')
   const [reglementClubUrl, setReglementClubUrl] = useState('')
+  const [formulaireLicenceFfnUrl, setFormulaireLicenceFfnUrl] = useState('')
+  const [afficherBoutonTest, setAfficherBoutonTest] = useState(true)
   const [signaturePresidentUrl, setSignaturePresidentUrl] = useState('')
   const [nomSignataireRecu, setNomSignataireRecu] = useState('Le Président')
   const [titreSignataireRecu, setTitreSignataireRecu] = useState('Président')
@@ -97,6 +101,7 @@ export default function ParametresManager() {
   const [uploadingStatuts, setUploadingStatuts] = useState(false)
   const [uploadingReglementPiscine, setUploadingReglementPiscine] = useState(false)
   const [uploadingReglementClub, setUploadingReglementClub] = useState(false)
+  const [uploadingFormulaireLicenceFfn, setUploadingFormulaireLicenceFfn] = useState(false)
 
   useEffect(() => {
     fetchSettings()
@@ -123,6 +128,8 @@ export default function ParametresManager() {
         setStatutsUrl(s.statutsUrl || '')
         setReglementPiscineUrl(s.reglementPiscineUrl || '')
         setReglementClubUrl(s.reglementClubUrl || '')
+        setFormulaireLicenceFfnUrl(s.formulaireLicenceFfnUrl || '')
+        setAfficherBoutonTest(s.afficherBoutonTest ?? true)
         setSignaturePresidentUrl(s.signaturePresidentUrl || '')
         setNomSignataireRecu(s.nomSignataireRecu || 'Le Président')
         setTitreSignataireRecu(s.titreSignataireRecu || 'Président')
@@ -389,6 +396,48 @@ export default function ParametresManager() {
     }
   }
 
+  const handleFormulaireLicenceFfnUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return
+    const file = e.target.files[0]
+
+    if (file.type !== 'application/pdf') {
+      setError('Seulement les fichiers PDF sont autorisés')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Fichier trop volumineux (Max 5MB)')
+      return
+    }
+
+    setUploadingFormulaireLicenceFfn(true)
+    setError('')
+    setSuccess('')
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const res = await fetch(`/api/admin/upload-pdf`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Erreur lors de l\'upload')
+      }
+
+      const result = await res.json()
+      setFormulaireLicenceFfnUrl(result.path)
+      setSuccess('Formulaire de licence FFN uploadé avec succès ! N\'oubliez pas d\'enregistrer.')
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setUploadingFormulaireLicenceFfn(false)
+      e.target.value = ''
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -414,6 +463,8 @@ export default function ParametresManager() {
           statutsUrl: statutsUrl || null,
           reglementPiscineUrl: reglementPiscineUrl || null,
           reglementClubUrl: reglementClubUrl || null,
+          formulaireLicenceFfnUrl: formulaireLicenceFfnUrl || null,
+          afficherBoutonTest,
           signaturePresidentUrl: signaturePresidentUrl || null,
           nomSignataireRecu: nomSignataireRecu || 'Le Président',
           titreSignataireRecu: titreSignataireRecu || 'Président',
@@ -468,6 +519,8 @@ export default function ParametresManager() {
       statutsUrl !== (settings.statutsUrl || '') ||
       reglementPiscineUrl !== (settings.reglementPiscineUrl || '') ||
       reglementClubUrl !== (settings.reglementClubUrl || '') ||
+      formulaireLicenceFfnUrl !== (settings.formulaireLicenceFfnUrl || '') ||
+      afficherBoutonTest !== (settings.afficherBoutonTest ?? true) ||
       signaturePresidentUrl !== (settings.signaturePresidentUrl || '') ||
       nomSignataireRecu !== (settings.nomSignataireRecu || 'Le Président') ||
       titreSignataireRecu !== (settings.titreSignataireRecu || 'Président') ||
@@ -510,6 +563,8 @@ export default function ParametresManager() {
           statutsUrl: statutsUrl || null,
           reglementPiscineUrl: reglementPiscineUrl || null,
           reglementClubUrl: reglementClubUrl || null,
+          formulaireLicenceFfnUrl: formulaireLicenceFfnUrl || null,
+          afficherBoutonTest,
           signaturePresidentUrl: signaturePresidentUrl || null,
           nomSignataireRecu: nomSignataireRecu || 'Le Président',
           titreSignataireRecu: titreSignataireRecu || 'Président',
@@ -993,6 +1048,23 @@ export default function ParametresManager() {
                       ))}
                     </div>
                   )}
+
+                  <div className="pt-4 mt-4 border-t border-slate-100">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={afficherBoutonTest}
+                        onChange={(e) => setAfficherBoutonTest(e.target.checked)}
+                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer mt-0.5"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 block">Afficher le bouton direct « Réserver un test de niveau » sur la page Inscription</span>
+                        <p className="text-[10px] text-gray-500 mt-0.5">
+                          Si coché, un bouton de réservation directe vers la page des tests (/tests-de-nage) est mis en évidence dans le guide de la page Inscription.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               </div>
 
@@ -1418,7 +1490,46 @@ export default function ParametresManager() {
               </div>
 
               {/* Uploads PDF Documents */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Formulaire Licence FFN */}
+                <div className="card p-5 space-y-4 border-2 border-primary/20 bg-primary/5">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">🏊 Formulaire FFN</h3>
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-primary/20 text-primary-dark px-2 py-0.5 rounded-full">Adhésion</span>
+                  </div>
+                  <div className="w-24 h-24 border border-slate-200 bg-white rounded-xl flex flex-col items-center justify-center text-center p-2 mx-auto shadow-2xs">
+                    {formulaireLicenceFfnUrl ? (
+                      <>
+                        <span className="text-primary text-3xl">📄</span>
+                        <span className="text-[8px] text-gray-500 truncate max-w-full font-mono mt-1">{formulaireLicenceFfnUrl.substring(formulaireLicenceFfnUrl.lastIndexOf('/') + 1)}</span>
+                      </>
+                    ) : (
+                      <span className="text-gray-400 text-[10px]">Aucun PDF</span>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleFormulaireLicenceFfnUpload}
+                    disabled={uploadingFormulaireLicenceFfn}
+                    className="block w-full text-[10px] text-gray-500"
+                  />
+                  {uploadingFormulaireLicenceFfn && <p className="text-blue-600 text-[10px] font-bold text-center">Upload en cours...</p>}
+                  {formulaireLicenceFfnUrl && (
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/60 text-[10px]">
+                      <a
+                        href={formulaireLicenceFfnUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary font-bold hover:underline"
+                      >
+                        Visualiser
+                      </a>
+                      <button type="button" onClick={() => setFormulaireLicenceFfnUrl('')} className="text-red-500 hover:text-red-700 font-bold">Retirer</button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Statuts */}
                 <div className="card p-5 space-y-4">
                   <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 border-b pb-2">📜 Statuts du Club</h3>
