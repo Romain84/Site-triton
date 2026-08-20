@@ -98,18 +98,6 @@ export default async function InscriptionPage() {
     )
   }
 
-  // Separate sidebar blocks from main content blocks
-  const sidebarTypes = ['rules', 'tests', 'access']
-  const fullWidthTypes = ['hero', 'banner', 'cta', 'bnssa', 'contact']
-  
-  const heroBlocks = blocks.filter(b => b.type === 'hero')
-  const bannerBlocks = blocks.filter(b => b.type === 'banner')
-  const ctaBlocks = blocks.filter(b => b.type === 'cta')
-  const mainBlocks = blocks.filter(b => !fullWidthTypes.includes(b.type) && !sidebarTypes.includes(b.type))
-  const sidebarBlocks = blocks.filter(b => sidebarTypes.includes(b.type))
-  const bnssaBlocks = blocks.filter(b => b.type === 'bnssa')
-  const contactBlocks = blocks.filter(b => b.type === 'contact')
-
   const interSaison = isInterSaisonActive(settings?.interSaisonActif)
   const texteFiligrane = settings?.texteFiligrane || getCurrentSeasonLabel()
 
@@ -126,7 +114,7 @@ export default async function InscriptionPage() {
         />
       )}
 
-      <div className="container mx-auto px-4 max-w-5xl space-y-8 animate-fade-in-up relative z-20">
+      <div className="container mx-auto px-4 max-w-5xl space-y-12 animate-fade-in-up relative z-20">
         {/* Inter-season banner */}
         {interSaison && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-xs">
@@ -141,48 +129,8 @@ export default async function InscriptionPage() {
         )}
 
         <div className={`${interSaison ? "opacity-55 grayscale-[50%] blur-[0.6px] pointer-events-auto" : ""} space-y-12`}>
-          {/* Hero blocks */}
-          {heroBlocks.map(block => (
-            <HeroBlock key={block.id} block={block} />
-          ))}
-
-          {/* Banner blocks */}
-          {bannerBlocks.map(block => (
-            <BannerBlock key={block.id} block={block} />
-          ))}
-
-          {/* CTA blocks */}
-          {ctaBlocks.map(block => (
-            <CtaBlock key={block.id} block={block} inscriptionUrl={inscriptionUrl} />
-          ))}
-
-          {/* Content Grid */}
-          {(mainBlocks.length > 0 || sidebarBlocks.length > 0) && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Main columns */}
-              <div className="lg:col-span-2 space-y-8">
-                {mainBlocks.map(block => (
-                  <BlockRenderer key={block.id} block={block} dbGroupes={dbGroupes} settings={settings} />
-                ))}
-              </div>
-
-              {/* Sidebar */}
-              <div className="space-y-8">
-                {sidebarBlocks.map(block => (
-                  <BlockRenderer key={block.id} block={block} dbGroupes={dbGroupes} settings={settings} isSidebar />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* BNSSA blocks */}
-          {bnssaBlocks.map(block => (
-            <BnssaBlock key={block.id} block={block} />
-          ))}
-
-          {/* Contact blocks */}
-          {contactBlocks.map(block => (
-            <ContactBlock key={block.id} block={block} />
+          {blocks.map(block => (
+            <BlockRenderer key={block.id} block={block} dbGroupes={dbGroupes} settings={settings} />
           ))}
         </div>
       </div>
@@ -195,18 +143,22 @@ interface BlockRendererProps {
   block: BlockData
   dbGroupes: Groupe[]
   settings: any
-  isSidebar?: boolean
 }
 
-function BlockRenderer({ block, dbGroupes, settings, isSidebar }: BlockRendererProps) {
+function BlockRenderer({ block, dbGroupes, settings }: BlockRendererProps) {
   switch (block.type) {
+    case 'hero': return <HeroBlock block={block} />
+    case 'banner': return <BannerBlock block={block} />
+    case 'cta': return <CtaBlock block={block} inscriptionUrl={settings?.inscriptionUrl || 'https://monclub.fr'} />
     case 'groups-table': return <GroupsTableBlock block={block} settings={settings} />
     case 'pricing': return <PricingBlock block={block} dbGroupes={dbGroupes} />
     case 'financial-aid': return <FinancialAidBlock block={block} />
     case 'richtext': return <RichtextBlock block={block} />
-    case 'rules': return <RulesBlock block={block} settings={settings} isSidebar={isSidebar} />
-    case 'tests': return <TestsBlock block={block} settings={settings} isSidebar={isSidebar} />
-    case 'access': return <AccessBlock block={block} isSidebar={isSidebar} />
+    case 'rules': return <RulesBlock block={block} settings={settings} />
+    case 'tests': return <TestsBlock block={block} settings={settings} />
+    case 'access': return <AccessBlock block={block} />
+    case 'bnssa': return <BnssaBlock block={block} />
+    case 'contact': return <ContactBlock block={block} />
     default: return null
   }
 }
