@@ -168,16 +168,21 @@ export default function TestsNageManager() {
   const [relanceCustomMessage, setRelanceCustomMessage] = useState('')
   const [relancing, setRelancing] = useState(false)
 
+  const [afficherBoutonTest, setAfficherBoutonTest] = useState<boolean>(true)
+  const [togglingBoutonTest, setTogglingBoutonTest] = useState(false)
+
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [resSessions, resCandidats] = await Promise.all([
+      const [resSessions, resCandidats, resSettings] = await Promise.all([
         fetch('/api/admin/tests-nage/sessions'),
         fetch('/api/admin/tests-nage/candidats'),
+        fetch('/api/admin/parametres'),
       ])
 
       const dataSessions = await resSessions.json()
       const dataCandidats = await resCandidats.json()
+      const dataSettings = await resSettings.json()
 
       if (resSessions.ok && dataSessions.sessions) {
         setSessions(dataSessions.sessions)
@@ -187,6 +192,9 @@ export default function TestsNageManager() {
       }
       if (resCandidats.ok && dataCandidats.candidats) {
         setCandidats(dataCandidats.candidats)
+      }
+      if (resSettings.ok && dataSettings.settings) {
+        setAfficherBoutonTest(dataSettings.settings.afficherBoutonTest ?? true)
       }
     } catch (err) {
       console.error('Erreur chargement admin tests-nage:', err)
@@ -199,6 +207,28 @@ export default function TestsNageManager() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  const handleToggleBoutonTest = async () => {
+    const newValue = !afficherBoutonTest
+    setTogglingBoutonTest(true)
+    try {
+      const res = await fetch('/api/admin/parametres', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ afficherBoutonTest: newValue }),
+      })
+      if (res.ok) {
+        setAfficherBoutonTest(newValue)
+        toast.success(newValue ? 'Bouton de test activé sur la page Inscription' : 'Bouton de test masqué sur la page Inscription')
+      } else {
+        toast.error('Erreur lors de la mise à jour')
+      }
+    } catch {
+      toast.error('Erreur réseau')
+    } finally {
+      setTogglingBoutonTest(false)
+    }
+  }
 
   const currentSession = useMemo(() => {
     return sessions.find((s) => s.id === selectedSessionId) || sessions[0] || null
@@ -541,6 +571,41 @@ export default function TestsNageManager() {
             <span>Créer une session</span>
           </button>
         </div>
+      </div>
+
+      {/* ─── BANDEAU DE VISIBILITÉ DU BOUTON TEST SUR LA PAGE INSCRIPTION ─── */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 print:hidden">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg ${afficherBoutonTest ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+            {afficherBoutonTest ? '👁️' : '🙈'}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-black text-slate-900">
+                Bouton de réservation sur la page Inscription (/inscription)
+              </h3>
+              <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${afficherBoutonTest ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
+                {afficherBoutonTest ? 'Actif & Visible sur le site' : 'Masqué sur le site'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Contrôle l&apos;affichage du bouton direct « Réserver un test de niveau » dans le guide de la page Inscription.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleToggleBoutonTest}
+          disabled={togglingBoutonTest}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-3xs shrink-0 ${
+            afficherBoutonTest
+              ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
+              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+          }`}
+        >
+          {togglingBoutonTest ? 'Mise à jour...' : afficherBoutonTest ? 'Masquer le bouton du site' : 'Afficher le bouton sur le site'}
+        </button>
       </div>
 
       {/* ─── BANDEAU DE STATISTIQUES GLOBAL ─── */}

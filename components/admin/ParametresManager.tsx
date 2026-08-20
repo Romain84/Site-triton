@@ -1050,20 +1050,33 @@ export default function ParametresManager() {
                   )}
 
                   <div className="pt-4 mt-4 border-t border-slate-100">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={afficherBoutonTest}
-                        onChange={(e) => setAfficherBoutonTest(e.target.checked)}
-                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer mt-0.5"
-                      />
-                      <div>
-                        <span className="text-xs font-bold text-slate-900 block">Afficher le bouton direct « Réserver un test de niveau » sur la page Inscription</span>
-                        <p className="text-[10px] text-gray-500 mt-0.5">
-                          Si coché, un bouton de réservation directe vers la page des tests (/tests-de-nage) est mis en évidence dans le guide de la page Inscription.
-                        </p>
+                    <div className="bg-cyan-50/70 border border-cyan-200/80 rounded-2xl p-4 flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <span className="text-xl">🏊</span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-slate-900">
+                              Bouton direct « Réserver un test de niveau » sur la page Inscription
+                            </span>
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${afficherBoutonTest ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
+                              {afficherBoutonTest ? 'Actif' : 'Désactivé'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                            Si cette case est cochée, le bouton de redirection vers la prise de rendez-vous (/tests-de-nage) est affiché dans l&apos;Étape 1 du guide sur la page Inscription.
+                          </p>
+                        </div>
                       </div>
-                    </label>
+                      <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+                        <input
+                          type="checkbox"
+                          checked={afficherBoutonTest}
+                          onChange={(e) => setAfficherBoutonTest(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>

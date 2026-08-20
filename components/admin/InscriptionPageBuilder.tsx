@@ -150,6 +150,8 @@ export default function InscriptionPageBuilder() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [hasChanges, setHasChanges] = useState(false)
+  const [afficherBoutonTest, setAfficherBoutonTest] = useState(true)
+  const [togglingBoutonTest, setTogglingBoutonTest] = useState(false)
 
   const addMenuRef = useRef<HTMLDivElement>(null)
 
@@ -157,12 +159,20 @@ export default function InscriptionPageBuilder() {
   const fetchBlocks = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/admin/inscription-page')
-      const data = await res.json()
-      if (data.success) {
-        setBlocks(data.blocks)
+      const [resBlocks, resSettings] = await Promise.all([
+        fetch('/api/admin/inscription-page'),
+        fetch('/api/admin/parametres'),
+      ])
+      const dataBlocks = await resBlocks.json()
+      const dataSettings = await resSettings.json()
+
+      if (dataBlocks.success) {
+        setBlocks(dataBlocks.blocks)
       } else {
         setError('Erreur lors du chargement des blocs')
+      }
+      if (resSettings.ok && dataSettings.settings) {
+        setAfficherBoutonTest(dataSettings.settings.afficherBoutonTest ?? true)
       }
     } catch (err) {
       setError(getErrorMessage(err))
@@ -170,6 +180,29 @@ export default function InscriptionPageBuilder() {
       setLoading(false)
     }
   }, [])
+
+  const handleToggleBoutonTest = async () => {
+    const newValue = !afficherBoutonTest
+    setTogglingBoutonTest(true)
+    try {
+      const res = await fetch('/api/admin/parametres', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ afficherBoutonTest: newValue }),
+      })
+      if (res.ok) {
+        setAfficherBoutonTest(newValue)
+        setSuccess(newValue ? 'Bouton de test activé sur la page Inscription' : 'Bouton de test masqué sur la page Inscription')
+        setTimeout(() => setSuccess(''), 3000)
+      } else {
+        setError('Erreur lors de la mise à jour')
+      }
+    } catch {
+      setError('Erreur réseau')
+    } finally {
+      setTogglingBoutonTest(false)
+    }
+  }
 
   useEffect(() => {
     fetchBlocks()
@@ -378,6 +411,41 @@ export default function InscriptionPageBuilder() {
             <span>👁</span> Prévisualiser
           </a>
         </div>
+      </div>
+
+      {/* ─── BANDEAU DE CONTRÔLE RAPIDE DU BOUTON TEST ─── */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base ${afficherBoutonTest ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+            {afficherBoutonTest ? '🏊' : '🙈'}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-900">
+                Bouton direct « Réserver un test de niveau » sur la page Inscription
+              </span>
+              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${afficherBoutonTest ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
+                {afficherBoutonTest ? 'Visible' : 'Masqué'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Affiche le bouton de réservation vers /tests-de-nage dans l&apos;étape 1 du guide d&apos;inscription.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleToggleBoutonTest}
+          disabled={togglingBoutonTest}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-3xs shrink-0 ${
+            afficherBoutonTest
+              ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
+              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+          }`}
+        >
+          {togglingBoutonTest ? 'Mise à jour...' : afficherBoutonTest ? 'Masquer le bouton' : 'Afficher le bouton'}
+        </button>
       </div>
 
       {/* ─── Feedback Messages ────────────────────── */}
