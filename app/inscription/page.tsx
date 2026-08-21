@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { getCurrentSeasonLabel, isInterSaisonActive } from '@/lib/season-utils'
 import { sanitizeHtml } from '@/lib/sanitize'
+import InscriptionStickyNav, { NavItem } from '@/components/InscriptionStickyNav'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +51,7 @@ async function getBlocks(): Promise<BlockData[]> {
 
 async function getGroupes(): Promise<Groupe[]> {
   try {
-    const list = await prisma.groupe.findMany({
+    return await prisma.groupe.findMany({
       where: {
         actif: true,
         OR: [
@@ -59,15 +60,33 @@ async function getGroupes(): Promise<Groupe[]> {
         ],
       },
       orderBy: { ordre: 'asc' },
-    }) as unknown as Groupe[]
-    return list.sort((a, b) => {
-      const ageA = a.ageMin ?? 999
-      const ageB = b.ageMin ?? 999
-      if (ageA !== ageB) return ageA - ageB
-      return (a.ordre || 0) - (b.ordre || 0)
+      select: {
+        id: true,
+        nom: true,
+        niveau: true,
+        tarif: true,
+        tarif1Cours: true,
+        libelleOption1: true,
+        libelleOption2: true,
+        prixLicence: true,
+        caution: true,
+        nbCompetitions: true,
+        nbCompetitionsCaution: true,
+        annule: true,
+        ageMin: true,
+        ordre: true,
+      },
     })
   } catch {
     return []
+  }
+}
+
+async function getSettings() {
+  try {
+    return await prisma.settings.findFirst()
+  } catch {
+    return null
   }
 }
 
@@ -78,13 +97,11 @@ function sanitize(html: string): string {
 
 // ─── Main Page ──────────────────────────────────────────
 export default async function InscriptionPage() {
-  const [blocks, settings, dbGroupes] = await Promise.all([
+  const [blocks, dbGroupes, settings] = await Promise.all([
     getBlocks(),
-    prisma.settings.findFirst(),
     getGroupes(),
+    getSettings(),
   ])
-
-  const inscriptionUrl = settings?.inscriptionUrl || 'https://monclub.fr'
 
   // If no blocks configured, show fallback
   if (blocks.length === 0) {
@@ -101,6 +118,47 @@ export default async function InscriptionPage() {
   const interSaison = isInterSaisonActive(settings?.interSaisonActif)
   const texteFiligrane = settings?.texteFiligrane || getCurrentSeasonLabel()
 
+  // Génération dynamique des éléments du sommaire rapide pour les blocs actifs
+  const navItems: NavItem[] = blocks
+    .filter(b => !['hero', 'banner', 'contact'].includes(b.type))
+    .map(b => {
+      let label = b.titre || ''
+      let emoji = ''
+      if (b.type === 'groups-table') {
+        label = 'Groupes & Plannings'
+        emoji = '🏊'
+      } else if (b.type === 'pricing') {
+        label = 'Tarifs'
+        emoji = '💰'
+      } else if (b.type === 'financial-aid') {
+        label = 'Aides financières'
+        emoji = '🎟️'
+      } else if (b.type === 'rules') {
+        label = 'Modalités & Santé'
+        emoji = '📋'
+      } else if (b.type === 'tests') {
+        label = 'Tests de niveau'
+        emoji = '⏱️'
+      } else if (b.type === 'access') {
+        label = 'Cartes d\'accès'
+        emoji = '🔑'
+      } else if (b.type === 'bnssa') {
+        label = 'Formation SSA'
+        emoji = '🛟'
+      } else if (b.type === 'cta') {
+        label = 'MonClub'
+        emoji = '👉'
+      } else {
+        label = b.titre || 'Section'
+      }
+
+      return {
+        id: `section-${b.id}`,
+        label,
+        emoji,
+      }
+    })
+
   return (
     <main className={`min-h-screen pt-36 pb-20 relative overflow-hidden transition-colors ${interSaison ? 'bg-slate-50/80' : 'bg-slate-50/50'}`}>
       {/* Watermark overlaying all content */}
@@ -114,7 +172,7 @@ export default async function InscriptionPage() {
         />
       )}
 
-      <div className="container mx-auto px-4 max-w-5xl space-y-12 animate-fade-in-up relative z-20">
+      <div className="container mx-auto px-4 max-w-5xl space-y-8 animate-fade-in-up relative z-20">
         {/* Inter-season banner */}
         {interSaison && (
           <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-5 shadow-xs">
@@ -130,9 +188,14 @@ export default async function InscriptionPage() {
           </div>
         )}
 
+        {/* Sommaire Rapide Flottant / Sticky Navigation */}
+        <InscriptionStickyNav items={navItems} inscriptionUrl={settings?.inscriptionUrl || 'https://monclub.fr'} />
+
         <div className={`${interSaison ? "opacity-55 grayscale-[50%] blur-[0.6px] pointer-events-auto" : ""} space-y-12`}>
           {blocks.map(block => (
-            <BlockRenderer key={block.id} block={block} dbGroupes={dbGroupes} settings={settings} />
+            <div key={block.id} id={`section-${block.id}`} className="scroll-mt-36">
+              <BlockRenderer block={block} dbGroupes={dbGroupes} settings={settings} />
+            </div>
           ))}
         </div>
       </div>
