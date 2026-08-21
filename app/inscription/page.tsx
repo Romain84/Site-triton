@@ -584,165 +584,243 @@ function AccessBlock({ block }: { block: BlockData }) {
 
 // ─── BNSSA / SSA Block ──────────────────────────────────
 function BnssaBlock({ block }: { block: BlockData }) {
-  const c = block.contenu
-  const formation = (c.formation as string[]) || []
-  const examen = (c.examen as string[]) || []
-
-  const candidats = (c.candidats as { titulaireBnssa?: string; nouveauCandidat?: string }) || {}
+  const c = block.contenu || {}
 
   return (
-    <section className="p-6 md:p-8 space-y-8 bg-slate-900 text-slate-100 shadow-md rounded-2xl relative overflow-hidden border border-slate-800">
-      {/* Header */}
-      <div className="space-y-2">
+    <section className="card p-6 md:p-10 space-y-8 bg-white border border-slate-200/90 shadow-sm rounded-2xl">
+      {/* 1. Header & Introduction */}
+      <div className="border-b border-slate-100 pb-5 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-cyan-300 font-bold text-[11px] uppercase tracking-wider bg-cyan-950 px-3 py-1 rounded-md border border-cyan-700/60">
-            {(c.label as string) || 'Arrêté du 29 juillet 2026 (JO du 01/08/2026)'}
+          <span className="text-xs font-bold uppercase tracking-wider bg-sky-50 text-sky-800 border border-sky-200 px-3 py-1 rounded-full">
+            Le BNSSA évolue vers le SSA
           </span>
-          <span className="text-slate-300 font-medium text-[11px] bg-slate-800 px-3 py-1 rounded-md border border-slate-700">
-            Entrée en vigueur : 1ᵉʳ octobre 2026
+          <span className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+            Entrée en vigueur : 1er octobre 2026
           </span>
         </div>
-        <h2 className="text-2xl md:text-3xl font-black font-display tracking-tight text-white">
-          {block.titre || 'Formation SSA (Surveillant Sauveteur Aquatique) & Secourisme'}
+        <h2 className="text-2xl md:text-3xl font-black font-display tracking-tight text-slate-900 flex items-center gap-2.5">
+          <span>🛟</span> Formation SSA – Surveillant Sauveteur Aquatique
         </h2>
-        <p className="text-sm text-slate-300 font-normal">
-          Le <strong>BNSSA</strong> évolue et devient le <strong>SSA (Surveillant Sauveteur Aquatique)</strong> pour toutes les nouvelles sessions.
-        </p>
-      </div>
-
-      {/* Description */}
-      {c.description && (
-        <div className="text-sm text-slate-200 leading-relaxed font-normal bg-slate-800/60 p-4 rounded-xl border border-slate-700/60"
-             dangerouslySetInnerHTML={{ __html: sanitize(c.description as string) }} />
-      )}
-
-      {/* Situation des Candidats */}
-      <div className="space-y-3">
-        <h3 className="font-bold text-xs text-slate-300 uppercase tracking-wider">
-          Dispositions réglementaires selon la situation du candidat :
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs leading-relaxed">
-          <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 space-y-1.5">
-            <span className="font-bold text-amber-300 text-xs block uppercase tracking-wider">Titulaire d&apos;un BNSSA déjà obtenu</span>
-            <p className="text-slate-300 font-normal">
-              {candidats.titulaireBnssa || "Le diplôme reste valable. Équivalence SSA reconnue sous réserve d'un PSE2 à jour et de la réalisation d'une formation continue d'adaptation dans les 3 ans."}
-            </p>
-          </div>
-          <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 space-y-1.5">
-            <span className="font-bold text-cyan-300 text-xs block uppercase tracking-wider">Nouveau candidat</span>
-            <p className="text-slate-300 font-normal">
-              {candidats.nouveauCandidat || "Présentation directe au nouveau diplôme SSA. Le PSE2 est requis en prérequis obligatoire pour la délivrance du titre."}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Grille des Tarifs */}
-      <div className="space-y-3">
-        <h3 className="font-bold text-xs text-slate-300 uppercase tracking-wider">
-          Tarifs et Formules de formation :
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-          {/* Formule Surveillance */}
-          <div className="bg-slate-800/90 border border-emerald-500/60 rounded-xl p-4 space-y-2 relative">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">
-              Formule Surveillance Partenaire
-            </span>
-            <div className="text-2xl font-black text-white font-mono">500 €</div>
-            <p className="text-slate-300 font-normal leading-relaxed text-[11px]">
-              Tarif préférentiel si engagement à réaliser <strong>4 journées de surveillance avec la Croix-Blanche</strong> durant la saison (PSE1 requis).
-            </p>
-            <div className="text-[10px] text-slate-300 bg-slate-900/80 p-2.5 rounded-lg border border-slate-700 leading-normal">
-              Règlement initial de 750 € à l&apos;inscription. Remise de 250 € remboursée a posteriori après validation des 4 journées de surveillance.
-            </div>
-          </div>
-
-          {/* Formule Plein Tarif */}
-          <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 space-y-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Session SSA Plein Tarif
-            </span>
-            <div className="text-2xl font-black text-white font-mono">750 €</div>
-            <p className="text-slate-300 font-normal leading-relaxed text-[11px]">
-              Formation complète SSA (40h d&apos;apprentissage en présentiel au club). Sans engagement de surveillance partenaire.
-            </p>
-            <div className="text-[10px] text-slate-400 pt-1">
-              Paiement échelonné en 3 fois sans frais disponible en ligne.
-            </div>
-          </div>
-
-          {/* Pack PSE1 + PSE2 */}
-          <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 space-y-2 md:col-span-2 lg:col-span-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 block">
-              Pack PSE1 + PSE2
-            </span>
-            <div className="text-2xl font-black text-white font-mono">590 €</div>
-            <p className="text-slate-300 font-normal leading-relaxed text-[11px]">
-              Formation de premiers secours en équipe (niveaux 1 et 2) dispensée en partenariat avec la Croix-Blanche.
-            </p>
-            <div className="text-[10px] text-slate-400 pt-1">
-              Modules requis pour la validation du diplôme SSA.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Déroulement de la Formation */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm font-normal">
-        <div className="space-y-3 bg-slate-800/50 p-5 rounded-xl border border-slate-700/80">
-          <h4 className="font-bold text-slate-200 text-xs uppercase tracking-wider">
-            Organisation pédagogique (40h)
-          </h4>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            Formation de 35 h minimum en présentiel (40 h programmées au club). Le détail des enseignements sera ajusté dès publication de la circulaire d&apos;application.
+        <div className="text-sm md:text-base text-slate-700 font-normal leading-relaxed pt-1 space-y-1">
+          <p>
+            À compter du <strong>1er octobre 2026</strong>, le dispositif de formation évolue : le BNSSA est remplacé par le <strong>SSA</strong> pour les nouveaux candidats.
           </p>
-          <ul className="list-disc list-inside space-y-1.5 text-slate-200 text-xs pt-1">
-            {formation.map((item, i) => (
-              <li key={i} dangerouslySetInnerHTML={{ __html: sanitize(item) }} />
-            ))}
+          <p className="text-slate-600">
+            Le Triton Club Cavaillon propose une formation complète permettant de préparer les candidats au nouveau diplôme <strong>SSA (Surveillant Sauveteur Aquatique)</strong>.
+          </p>
+        </div>
+      </div>
+
+      {/* 2. Conditions d'accès */}
+      <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 md:p-6 space-y-3">
+        <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
+          <span>👤</span> Conditions d&apos;accès
+        </h3>
+        <p className="text-sm text-slate-700 font-normal">
+          La formation est ouverte aux personnes souhaitant se former au métier de surveillant sauveteur aquatique.
+        </p>
+        <div className="space-y-1.5 pt-1">
+          <p className="text-xs font-bold text-slate-900 uppercase tracking-wide">Pour intégrer la formation, il faut notamment :</p>
+          <ul className="space-y-1.5 text-sm text-slate-700 font-normal">
+            <li className="flex items-start gap-2">
+              <span className="text-primary font-bold">•</span>
+              <span>avoir <strong>17 ans révolus</strong> au moment de l&apos;examen (mars/avril) ;</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary font-bold">•</span>
+              <span>être <strong>apte</strong> à la pratique de la natation et du sauvetage aquatique ;</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary font-bold">•</span>
+              <span><strong>réussir le test natatoire</strong> préalable ;</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary font-bold">•</span>
+              <span>être en mesure de suivre l&apos;ensemble des formations prévues.</span>
+            </li>
           </ul>
         </div>
-
-        {examen.length > 0 && (
-          <div className="space-y-3 bg-slate-800/50 p-5 rounded-xl border border-slate-700/80">
-            <h4 className="font-bold text-slate-200 text-xs uppercase tracking-wider">
-              Épreuves et certification
-            </h4>
-            <ol className="list-decimal list-inside space-y-1.5 text-slate-200 text-xs">
-              {examen.map((item, i) => (
-                <li key={i} dangerouslySetInnerHTML={{ __html: sanitize(item) }} />
-              ))}
-            </ol>
-          </div>
-        )}
+        <div className="pt-2 text-xs font-semibold text-slate-600 border-t border-slate-200/60">
+          La session sera ouverte à partir de <strong>6 candidats minimum</strong>.
+        </div>
       </div>
 
-      {/* Conditions et Prérequis */}
-      <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 space-y-3">
-        <h4 className="font-bold text-xs text-slate-300 uppercase tracking-wider">
-          Conditions d&apos;accès et prérequis :
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          <div className="bg-slate-900/90 p-3 rounded-lg border border-slate-700/70">
-            <span className="font-bold text-slate-200 block text-xs">Âge requis</span>
-            <span className="text-slate-400 text-[11px] mt-0.5 block">17 ans révolus lors de l&apos;examen</span>
+      {/* 3. Une formation complète & Secourisme */}
+      <div className="space-y-4">
+        <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
+          <span>🏊</span> Une formation complète
+        </h3>
+        <p className="text-sm text-slate-700 font-normal">
+          Le tarif de la formation SSA comprend l&apos;ensemble du parcours de formation, notamment :
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-5 rounded-2xl bg-sky-50/60 border border-sky-200 space-y-2">
+            <span className="font-extrabold text-xs uppercase tracking-wider text-sky-900 block">
+              Formation SSA
+            </span>
+            <p className="text-sm text-slate-800 font-normal leading-relaxed">
+              Formation théorique et pratique au sauvetage et à la surveillance aquatique.
+            </p>
           </div>
-
-          <div className="bg-slate-900/90 p-3 rounded-lg border border-slate-700/70">
-            <span className="font-bold text-slate-200 block text-xs">Test natatoire</span>
-            <span className="text-slate-400 text-[11px] mt-0.5 block">Validé au préalable par un MNS</span>
-          </div>
-
-          <div className="bg-slate-900/90 p-3 rounded-lg border border-slate-700/70">
-            <span className="font-bold text-slate-200 block text-xs">Secourisme</span>
-            <span className="text-slate-400 text-[11px] mt-0.5 block">PSE1 + PSE2 requis</span>
-          </div>
-
-          <div className="bg-slate-900/90 p-3 rounded-lg border border-slate-700/70">
-            <span className="font-bold text-slate-200 block text-xs">Effectif</span>
-            <span className="text-slate-400 text-[11px] mt-0.5 block">Minimum 6 candidats par session</span>
+          <div className="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-2">
+            <span className="font-extrabold text-xs uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+              <span>🚑</span> PSE1 + PSE2
+            </span>
+            <p className="text-sm text-slate-800 font-normal leading-relaxed">
+              Les formations Premiers Secours en Équipe de niveau 1 et de niveau 2 sont <strong>comprises dans le tarif</strong> de la formation SSA.
+            </p>
+            <p className="text-xs text-slate-600 font-medium">
+              Elles sont réalisées avec notre partenaire <strong>Croix-Blanche</strong>. Vous n&apos;avez donc pas à vous inscrire séparément au PSE1 et au PSE2.
+            </p>
           </div>
         </div>
+      </div>
+
+      {/* 4. Tarifs & Réduction surveillance */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Tarif complet */}
+        <div className="bg-slate-900 text-white rounded-2xl p-6 space-y-3 flex flex-col justify-between shadow-xs">
+          <div className="space-y-1">
+            <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+              <span>💰</span> Tarif de la formation complète
+            </h3>
+            <p className="text-xs text-slate-400 font-light">
+              Tout inclus : Formation SSA + Pack PSE1 + Pack PSE2
+            </p>
+          </div>
+          <div className="py-2">
+            <div className="text-4xl md:text-5xl font-black font-mono text-white">
+              750 €
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-400 border-t border-slate-800 pt-2">
+            Paiement en 3 fois sans frais disponible lors de l&apos;adhésion en ligne.
+          </p>
+        </div>
+
+        {/* Formule avec engagement */}
+        <div className="bg-emerald-950 text-white rounded-2xl p-6 space-y-3 shadow-xs border border-emerald-700/60">
+          <div className="space-y-1">
+            <h3 className="font-extrabold text-xs uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+              <span>🤝</span> Possibilité de réduire le coût de la formation
+            </h3>
+            <p className="text-xs text-emerald-100 font-light leading-relaxed">
+              Une formule permettant de bénéficier d&apos;un <strong>remboursement de 250 €</strong> est proposée aux candidats qui s&apos;engagent à effectuer <strong>4 journées de surveillance avec la Croix-Blanche</strong> pendant la saison.
+            </p>
+          </div>
+
+          <div className="bg-emerald-900/50 p-3.5 rounded-xl border border-emerald-800 text-xs space-y-1 font-mono">
+            <div className="flex justify-between text-slate-300">
+              <span>Tarif initial de la formation :</span>
+              <span className="font-bold text-white">750 €</span>
+            </div>
+            <div className="flex justify-between text-emerald-300">
+              <span>Engagement surveillance (4 j) :</span>
+              <span className="font-bold text-emerald-300">- 250 €</span>
+            </div>
+            <div className="flex justify-between text-white font-black text-sm border-t border-emerald-700/70 pt-1">
+              <span>Coût final net :</span>
+              <span className="text-amber-300">500 €</span>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-emerald-200/80 italic leading-snug">
+            * Cette possibilité est soumise à l&apos;acceptation de l&apos;engagement et aux modalités définies avec la Croix-Blanche.
+          </p>
+        </div>
+      </div>
+
+      {/* 5. Test Natatoire & Début de formation */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 md:p-6 space-y-2">
+          <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <span>🏊</span> Test natatoire
+          </h3>
+          <p className="text-sm text-slate-700 font-normal leading-relaxed">
+            Avant le début de la formation, un test natatoire devra être <strong>validé par un MNS</strong>.
+          </p>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Ce test permet de vérifier que le candidat possède les capacités aquatiques nécessaires pour suivre la formation.
+          </p>
+          <p className="text-xs text-slate-500 italic pt-1">
+            Les modalités du test seront communiquées aux candidats inscrits ultérieurement.
+          </p>
+        </div>
+
+        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 md:p-6 space-y-2">
+          <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <span>📅</span> Début de la formation
+          </h3>
+          <p className="text-xs text-slate-600">La formation débutera à partir du :</p>
+          <div className="text-base font-black text-slate-900 bg-white border border-slate-200 px-3.5 py-2 rounded-xl inline-block">
+            Jeudi 1er octobre 2026
+          </div>
+          <p className="text-xs text-slate-600 leading-relaxed pt-1">
+            Les dates et horaires précis des séances seront communiqués aux candidats après constitution du groupe.
+          </p>
+          <p className="text-xs font-bold text-slate-800">
+            Effectif minimum : 6 candidats.
+          </p>
+        </div>
+      </div>
+
+      {/* 6. Déjà titulaire du BNSSA ? */}
+      <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-5 md:p-6 space-y-3">
+        <h3 className="font-extrabold text-sm text-amber-950 uppercase tracking-wider flex items-center gap-2">
+          <span>⚠️</span> Vous êtes déjà titulaire du BNSSA ?
+        </h3>
+        <p className="text-sm text-amber-900 font-normal leading-relaxed">
+          Si vous êtes déjà titulaire du BNSSA, vous n&apos;avez pas à suivre l&apos;intégralité de la formation initiale SSA.
+          Des dispositions spécifiques peuvent s&apos;appliquer selon votre situation et la validité de vos qualifications de secourisme.
+        </p>
+        <div className="pt-1 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <span className="text-xs font-semibold text-amber-800">
+            Contactez le club afin que nous puissions vous indiquer la démarche adaptée :
+          </span>
+          <Link
+            href="/contact"
+            className="px-4 py-2 bg-amber-900 hover:bg-amber-950 text-white rounded-xl text-xs font-bold transition-all shadow-xs shrink-0"
+          >
+            Nous contacter
+          </Link>
+        </div>
+      </div>
+
+      {/* 7. À retenir */}
+      <div className="bg-slate-950 text-white rounded-2xl p-6 md:p-8 space-y-4 shadow-sm border border-slate-800">
+        <h3 className="font-extrabold text-sm uppercase tracking-wider text-amber-300 flex items-center gap-2">
+          <span>📌</span> À retenir
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs md:text-sm">
+          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
+            <span className="font-extrabold text-white block text-sm">
+              Formation complète :
+            </span>
+            <div className="font-black text-amber-300 font-mono text-base">
+              SSA + PSE1 + PSE2 = 750 €
+            </div>
+            <p className="text-slate-300 text-xs leading-relaxed font-light">
+              Le PSE1 et le PSE2 sont inclus dans le prix et ne nécessitent donc pas d&apos;inscription ou de paiement supplémentaire.
+            </p>
+          </div>
+
+          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
+            <span className="font-extrabold text-white block text-sm">
+              Formule avec engagement Croix-Blanche :
+            </span>
+            <div className="font-black text-emerald-400 font-mono text-base">
+              750 € – 250 € remboursés = 500 €
+            </div>
+            <p className="text-slate-300 text-xs leading-relaxed font-light">
+              Remise remboursée après la réalisation des 4 journées de surveillance avec la Croix-Blanche → coût final 500 €.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 8. Avertissement officiel */}
+      <div className="text-xs text-slate-500 italic bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center leading-relaxed">
+        ⚠️ Les modalités définitives de la formation SSA pourront être ajustées en fonction de la publication des textes réglementaires et de la circulaire d&apos;application.
       </div>
     </section>
   )
