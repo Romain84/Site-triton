@@ -58,7 +58,7 @@
   {
     "categorie": "Groupes & Tarifs",
     "question": "Quels sont les tarifs pour la saison ?",
-    "reponse": "Voici les tarifs annuels par groupe (licence FFN incluse) :\n- **École de Natation (ENF 1 & 2)** : 270 €\n- **Avenirs (1, 2, 3)** : 320 €\n- **Benjamins (1 & 2)** : 380 €\n- **Juniors Compétition** : 420 €\n- **Adultes Compétition** : 450 €\n- **Jeunes / Juniors Loisirs** : 300 €\n- **Adultes Loisirs** : 350 €\n- **Natation Artistique** : 400 €\n- **AquaGym** : 250 €\n- **BNSSA** : 600 €",
+    "reponse": "Voici les tarifs annuels par groupe (licence FFN incluse) :\n- **École de Natation (ENF 1 & 2)** : 270 €\n- **Avenirs (1, 2, 3)** : 320 €\n- **Benjamins (1 & 2)** : 380 €\n- **Juniors Compétition** : 420 €\n- **Adultes Compétition** : 450 €\n- **Jeunes / Juniors Loisirs** : 300 €\n- **Adultes Loisirs** : 350 €\n- **Natation Artistique** : 400 €\n- **AquaGym** : 250 €\n- **SSA (ex-BNSSA)** : 750 € (tarif plein) ou 500 € (avec 4 jours de surveillance Croix-Blanche)",
     "motsCles": "tarif, prix, cout, prix, cotisation, annee, licence, tarif annuel",
     "priorite": 3,
     "actif": true
@@ -129,10 +129,10 @@
   },
   {
     "categorie": "Groupes & Tarifs",
-    "question": "Proposez-vous la formation BNSSA ?",
-    "reponse": "Oui, le club propose une préparation au **BNSSA** (Brevet National de Sécurité et de Sauvetage Aquatique). La formation comprend des entraînements de sauvetage en piscine et des cours théoriques de réglementation. Le tarif annuel est de **600 €**.",
-    "motsCles": "bnssa, sauvetage, maitre nageur, sauveteur, examen, diplome, secourisme, formation",
-    "priorite": 2,
+    "question": "Proposez-vous la formation BNSSA / SSA ?",
+    "reponse": "Oui, le club prépare au diplôme de **SSA (Surveillant Sauveteur Aquatique)**, qui remplace le BNSSA dès le 1ᵉʳ octobre 2026 (Arrêté du 29/07/2026).\n\n- **Volume horaire :** 40h de formation prévues en présentiel avec pack secourisme **PSE1 + PSE2** inclus (avec la Croix-Blanche).\n- **Tarifs :** **750 €** en tarif plein, ou **500 €** si vous effectuez 4 journées de surveillance avec la Croix-Blanche (remise de 250 € remboursée a posteriori). Le pack PSE1+PSE2 seul est à 590 €.\n- **Conditions :** Avoir **17 ans révolus** (au moment de l'examen), **test natatoire obligatoire** validé par un Maître-Nageur (MNS) et 6 candidats minimum pour ouvrir la session.",
+    "motsCles": "bnssa, ssa, sauvetage, maitre nageur, sauveteur, surveillant sauveteur aquatique, examen, diplome, secourisme, formation, pse1, pse2, 750, 500, croix blanche",
+    "priorite": 3,
     "actif": true
   }
 ]

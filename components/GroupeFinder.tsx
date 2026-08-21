@@ -201,17 +201,17 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     inscriptionUrl: '/inscription'
   },
   bnssa: {
-    nom: 'Formation BNSSA',
+    nom: 'Formation SSA (ex-BNSSA)',
     categorie: 'Sauvetage & Surveillance',
     badgeBg: 'bg-amber-50 border-amber-200',
     badgeText: 'text-amber-800',
-    age: 'Dès 16 ans (bon nageur requis)',
+    age: 'Dès 17 ans (test de nage MNS requis)',
     bassin: 'Grand Bassin',
     creneaux: ['Vendredi soir & Samedi matin'],
-    tarif: '220 € / an (+ frais d\'examen)',
-    description: 'Préparation complète au Brevet National de Sécurité et de Sauvetage Aquatique pour exercer la surveillance de baignade.',
-    pointsForts: ['Formateurs diplômés d\'État', 'Préparation physique et technique', 'Diplôme professionnel'],
-    planningUrl: '/planning',
+    tarif: '500 € (avec 4 j surveillance) / 750 € (tarif plein)',
+    description: 'Formation officielle de Surveillant Sauveteur Aquatique (SSA - Arrêté du 29/07/2026) avec pack secourisme PSE1+PSE2 (40h prévues).',
+    pointsForts: ['Diplôme d\'État officiel SSA', 'Pack secourisme PSE1+PSE2 inclus', 'Avantage surveillance Croix-Blanche (500 €)'],
+    planningUrl: '/horaires',
     inscriptionUrl: '/inscription'
   }
 }
@@ -658,14 +658,14 @@ export default function GroupeFinder({ embedded = false, onClose }: GroupeFinder
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-sm font-bold text-slate-900 group-hover:text-primary">
-                        Formation BNSSA / Surveillance Aquatique
+                        Formation SSA (ex-BNSSA) / Sauvetage
                       </h4>
                       <p className="text-xs text-slate-500 font-medium mt-1">
-                        Préparation diplômante aux épreuves de sauveteur aquatique (dès 16 ans).
+                        Préparation diplômante au sauvetage aquatique (dès 17 ans, test MNS).
                       </p>
                     </div>
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 shrink-0">
-                      BNSSA
+                      SSA
                     </span>
                   </div>
                 </button>

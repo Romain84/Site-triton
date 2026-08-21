@@ -83,11 +83,11 @@ const BLOCK_TYPES: BlockTypeInfo[] = [
   },
   {
     type: 'bnssa',
-    label: 'Section BNSSA',
+    label: 'Section SSA (ex-BNSSA)',
     emoji: '🛟',
-    description: 'Formation & Diplôme BNSSA',
-    defaultTitre: 'Formation & Diplôme BNSSA',
-    defaultContenu: { emoji: '🛟', label: '', description: '', avertissement: '', formation: [], examen: [], ageRequis: '', prerequis: '' },
+    description: 'Formation & Diplôme SSA / Secourisme PSE1-2',
+    defaultTitre: 'Formation SSA (Surveillant Sauveteur Aquatique) & Secourisme',
+    defaultContenu: { emoji: '🛟', label: 'RÉFORME 2026', description: '', avertissement: '', formation: [], examen: [], ageRequis: '17 ans révolus', prerequis: 'Test natatoire validé par un MNS + PSE1/PSE2' },
   },
   {
     type: 'rules',

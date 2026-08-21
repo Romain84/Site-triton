@@ -128,8 +128,8 @@ export const CATEGORIES_CONFIG: Record<Exclude<CategorieGroupeKey, 'all'>, Categ
   },
   autres: {
     key: 'autres',
-    titre: 'Activités & Autres Pratiques',
-    sousTitre: 'AquaGym, Natation Artistique et séances de remise en forme aquatique',
+    titre: 'Sauvetage SSA, AquaGym & Artistique',
+    sousTitre: 'Formation SSA (ex-BNSSA), AquaGym, Natation Artistique et remise en forme aquatique',
     icon: '',
     badgeBg: 'bg-fuchsia-100/80',
     badgeText: 'text-fuchsia-800 border-fuchsia-200',
@@ -165,8 +165,8 @@ export function categoriserGroupe(nom: string, isCompetition?: boolean | null): 
     return 'competition'
   }
 
-  // 4. AUTRES
-  if (u.includes('AQUA') || u.includes('ARTISTIQUE') || u.includes('SYNCHRO') || u.includes('REMISE EN FORME')) {
+  // 4. AUTRES (AquaGym, Natation Artistique, BNSSA, SSA, etc.)
+  if (u.includes('AQUA') || u.includes('ARTISTIQUE') || u.includes('SYNCHRO') || u.includes('REMISE EN FORME') || u.includes('BNSSA') || u.includes('SSA') || u.includes('SAUVETAGE')) {
     return 'autres'
   }
 

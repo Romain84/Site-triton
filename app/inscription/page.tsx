@@ -289,7 +289,7 @@ function GroupsTableBlock({ block, settings }: { block: BlockData; settings: any
 
       <div className="bg-rose-50 border border-rose-100 text-rose-800 p-5 rounded-xl text-center text-sm font-bold space-y-1.5">
         <p className="text-base">📅 Début des cours : {settings?.debutCoursNormal || 'Date à confirmer'}</p>
-        <p className="text-xs font-semibold text-rose-800 uppercase">Section BNSSA uniquement à partir du {settings?.debutCoursBnssa || 'Date à confirmer'}</p>
+        <p className="text-xs font-semibold text-rose-800 uppercase">Section SSA (ex-BNSSA) uniquement à partir du {settings?.debutCoursBnssa || 'Jeudi 1er Octobre 2026'}</p>
       </div>
     </section>
   )
@@ -308,7 +308,7 @@ function PricingBlock({ block, dbGroupes }: { block: BlockData; dbGroupes: Group
     { title: 'Compétition', description: 'Entraînements intensifs avec participation obligatoire aux compétitions départementales, régionales ou nationales.', groupes: dbGroupes.filter(g => g.niveau === 'competition') },
     { title: 'Natation Artistique', description: 'Discipline mêlant grâce, gymnastique et natation sur des rythmes musicaux.', groupes: dbGroupes.filter(g => g.niveau === 'artistique') },
     { title: 'Bien-être & AquaGym', description: 'Activités douces ou toniques dans l\'eau pour rester en forme physique.', groupes: dbGroupes.filter(g => g.niveau === 'aquagym') },
-    { title: 'Sauvetage & BNSSA', description: 'Formation professionnelle aux épreuves théoriques et physiques du brevet de sauvetage aquatique.', groupes: dbGroupes.filter(g => g.niveau === 'bnssa') },
+    { title: 'Sauvetage & SSA (ex-BNSSA)', description: 'Formation professionnelle de Surveillant Sauveteur Aquatique (SSA) et secourisme PSE1/PSE2.', groupes: dbGroupes.filter(g => ['bnssa', 'ssa'].includes(g.niveau || '') || (g.nom || '').toUpperCase().includes('BNSSA') || (g.nom || '').toUpperCase().includes('SSA')) },
   ]
 
   return (
@@ -583,56 +583,141 @@ function AccessBlock({ block, isSidebar }: { block: BlockData; isSidebar?: boole
   )
 }
 
-// ─── BNSSA Block ────────────────────────────────────────
+// ─── BNSSA / SSA Block ──────────────────────────────────
 function BnssaBlock({ block }: { block: BlockData }) {
   const c = block.contenu
   const formation = (c.formation as string[]) || []
   const examen = (c.examen as string[]) || []
+  const conditions = (c.conditions as string[]) || [
+    'Avoir 17 ans révolus (au moment de l\'examen)',
+    'Prérequis natatoire validé au préalable par un Maître-Nageur (test d\'entrée au club)',
+    'PSE1 + PSE2 compris dans la formation / requis',
+    'Ouverture de la session sous réserve de 6 candidats minimum'
+  ]
+
+  const candidats = (c.candidats as { titulaireBnssa?: string; nouveauCandidat?: string }) || {}
+  const tarifs = (c.tarifs as Record<string, string>) || {}
 
   return (
-    <section className="p-6 md:p-8 space-y-6 bg-indigo-950 text-slate-100 shadow-md rounded-2xl relative overflow-hidden border border-indigo-900/60">
-      <div className="absolute right-0 top-0 text-7xl opacity-5 pointer-events-none select-none translate-x-4 -translate-y-4">
+    <section className="p-6 md:p-8 space-y-8 bg-indigo-950 text-slate-100 shadow-md rounded-2xl relative overflow-hidden border border-indigo-900/60">
+      <div className="absolute right-0 top-0 text-8xl opacity-5 pointer-events-none select-none translate-x-4 -translate-y-4">
         {(c.emoji as string) || '🛟'}
       </div>
 
-      <div className="space-y-1.5">
-        {c.label && (
-          <span className="text-indigo-200 font-extrabold text-xs uppercase tracking-widest bg-indigo-900 px-3 py-1 rounded-full border border-indigo-800">
-            {c.label as string}
+      {/* Header */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-amber-300 font-extrabold text-[11px] uppercase tracking-widest bg-amber-950/80 px-3 py-1 rounded-full border border-amber-500/40">
+            {(c.label as string) || 'RÉFORME OFFICIELLE 2026 • ARRÊTÉ DU 29 JUILLET 2026 (JO DU 01/08/2026)'}
           </span>
-        )}
-        <h2 className="text-xl md:text-2xl font-black font-display tracking-tight text-white flex items-center gap-2">
-          {(c.emoji as string) || '🛟'} {block.titre}
+          <span className="text-indigo-200 font-bold text-[11px] bg-indigo-900/80 px-3 py-1 rounded-full border border-indigo-700/60">
+            Entrée en vigueur : 1ᵉʳ octobre 2026
+          </span>
+        </div>
+        <h2 className="text-2xl md:text-3xl font-black font-display tracking-tight text-white flex items-center gap-2.5">
+          <span>{(c.emoji as string) || '🛟'}</span> {block.titre || 'Formation SSA (Surveillant Sauveteur Aquatique) & Secourisme'}
         </h2>
+        <p className="text-sm text-indigo-200 font-medium">
+          Le <strong>BNSSA</strong> évolue et devient le <strong>SSA (Surveillant Sauveteur Aquatique)</strong> pour toutes les nouvelles sessions.
+        </p>
       </div>
 
-      <div className="text-sm text-slate-100 leading-relaxed font-light space-y-3">
-        {c.description && (
-          <p dangerouslySetInnerHTML={{ __html: sanitize(c.description as string) }} />
-        )}
-        {c.avertissement && (
-          <p>
-            <em className="text-white not-italic font-medium bg-indigo-900/40 px-1 py-0.5 rounded border border-indigo-800/40"
-               dangerouslySetInnerHTML={{ __html: sanitize(c.avertissement as string) }} />
-          </p>
-        )}
-      </div>
+      {/* Description */}
+      {c.description && (
+        <div className="text-sm text-slate-200 leading-relaxed font-light space-y-2 bg-indigo-900/20 p-4 rounded-xl border border-indigo-900/40"
+             dangerouslySetInnerHTML={{ __html: sanitize(c.description as string) }} />
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm font-light">
-        {formation.length > 0 && (
-          <div className="space-y-3 bg-indigo-900/30 p-5 rounded-xl border border-indigo-900/60">
-            <h4 className="font-extrabold text-indigo-200 text-xs uppercase tracking-wide">📚 Contenu de la Formation</h4>
-            <ol className="list-decimal list-inside space-y-1.5 text-slate-100">
-              {formation.map((item, i) => (
-                <li key={i} dangerouslySetInnerHTML={{ __html: sanitize(item) }} />
-              ))}
-            </ol>
+      {/* ─── BANDEAU SITUATION DES CANDIDATS (Arrêté 29 juillet 2026) ─── */}
+      <div className="space-y-3">
+        <h3 className="font-extrabold text-xs text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+          <span>⚖️</span> Ce qui change pour les candidats :
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs leading-relaxed">
+          <div className="bg-indigo-900/40 border border-indigo-800/80 rounded-xl p-4 space-y-1.5">
+            <span className="font-extrabold text-amber-200 text-xs block uppercase">🎓 BNSSA déjà obtenu</span>
+            <p className="text-slate-200 font-normal">
+              {candidats.titulaireBnssa || "Votre diplôme reste valable ! Équivalence SSA reconnue si votre PSE2 est à jour + réalisation d'une formation continue d'adaptation dans les 3 ans."}
+            </p>
           </div>
-        )}
+          <div className="bg-indigo-900/40 border border-indigo-800/80 rounded-xl p-4 space-y-1.5">
+            <span className="font-extrabold text-cyan-200 text-xs block uppercase">🆕 Nouveau candidat</span>
+            <p className="text-slate-200 font-normal">
+              {candidats.nouveauCandidat || "Vous passerez directement le diplôme SSA. Le PSE2 est requis en prérequis obligatoire pour l'obtention."}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── GRILLE DES TARIFS DU CLUB ─── */}
+      <div className="space-y-3">
+        <h3 className="font-extrabold text-xs text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+          <span>💰</span> Tarifs et Formules prévus par le club :
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+          {/* Formule Surveillance */}
+          <div className="bg-emerald-950/40 border-2 border-emerald-500/50 rounded-2xl p-4 space-y-2 relative">
+            <span className="absolute top-3 right-3 text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-slate-950 px-2 py-0.5 rounded-full">
+              Avantage Partenaire
+            </span>
+            <div className="font-extrabold text-sm text-emerald-200">Session SSA avec Surveillance</div>
+            <div className="text-2xl font-black text-white font-mono">500 €</div>
+            <p className="text-emerald-100 font-light leading-relaxed text-[11px]">
+              Tarif réduit pour le candidat effectuant <strong>4 journées de surveillance avec la Croix-Blanche</strong> pendant la saison (PSE1 requis pour y participer).
+            </p>
+            <div className="text-[10px] text-emerald-300 font-semibold bg-emerald-900/40 p-2 rounded-lg border border-emerald-800/60">
+              * Paiement obligatoire de 750 € à l&apos;inscription, la réduction de 250 € est <strong>remboursée a posteriori</strong> par le club.
+            </div>
+          </div>
+
+          {/* Formule Plein Tarif */}
+          <div className="bg-indigo-900/30 border border-indigo-800/80 rounded-2xl p-4 space-y-2">
+            <div className="font-extrabold text-sm text-slate-200">Session SSA Tarif Plein</div>
+            <div className="text-2xl font-black text-white font-mono">750 €</div>
+            <p className="text-slate-300 font-light leading-relaxed text-[11px]">
+              Session complète de formation SSA (40h en présentiel prévues au club). Sans engagement de surveillance partenaire.
+            </p>
+            <div className="text-[10px] text-slate-400 font-medium pt-2">
+              Paiement en 3 fois sans frais disponible lors de l&apos;adhésion en ligne.
+            </div>
+          </div>
+
+          {/* Pack PSE1 + PSE2 */}
+          <div className="bg-indigo-900/30 border border-indigo-800/80 rounded-2xl p-4 space-y-2 md:col-span-2 lg:col-span-1">
+            <div className="font-extrabold text-sm text-cyan-200">Pack PSE1 + PSE2 seul</div>
+            <div className="text-2xl font-black text-white font-mono">590 €</div>
+            <p className="text-slate-300 font-light leading-relaxed text-[11px]">
+              Formation de secourisme complète organisée en partenariat avec la <strong>Croix-Blanche</strong>.
+            </p>
+            <div className="text-[10px] text-cyan-300/80 font-medium pt-2">
+              Indispensable pour valider le diplôme SSA.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── DÉROULEMENT DE LA FORMATION ─── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm font-light">
+        <div className="space-y-3 bg-indigo-900/30 p-5 rounded-xl border border-indigo-900/60">
+          <h4 className="font-extrabold text-indigo-200 text-xs uppercase tracking-wide flex items-center gap-1.5">
+            <span>📚</span> Organisation de la Formation (40h)
+          </h4>
+          <p className="text-xs text-slate-300 leading-relaxed italic">
+            Formation SSA : 35 h minimum en présentiel réglementaire (40 h prévues au club). Le détail officiel complet de l&apos;apprentissage sera diffusé dès parution de la circulaire.
+          </p>
+          <ul className="list-disc list-inside space-y-1.5 text-slate-100 text-xs pt-1">
+            {formation.map((item, i) => (
+              <li key={i} dangerouslySetInnerHTML={{ __html: sanitize(item) }} />
+            ))}
+          </ul>
+        </div>
+
         {examen.length > 0 && (
           <div className="space-y-3 bg-indigo-900/30 p-5 rounded-xl border border-indigo-900/60">
-            <h4 className="font-extrabold text-indigo-200 text-xs uppercase tracking-wide">⏱️ Contenu de l&apos;Examen</h4>
-            <ol className="list-decimal list-inside space-y-1.5 text-slate-100">
+            <h4 className="font-extrabold text-indigo-200 text-xs uppercase tracking-wide flex items-center gap-1.5">
+              <span>⏱️</span> Épreuves & Examen
+            </h4>
+            <ol className="list-decimal list-inside space-y-1.5 text-slate-100 text-xs">
               {examen.map((item, i) => (
                 <li key={i} dangerouslySetInnerHTML={{ __html: sanitize(item) }} />
               ))}
@@ -641,17 +726,45 @@ function BnssaBlock({ block }: { block: BlockData }) {
         )}
       </div>
 
-      {(c.ageRequis || c.prerequis) && (
-        <div className="bg-indigo-900/50 p-4 rounded-xl text-center text-sm border border-indigo-800 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-medium text-slate-100">
-          {c.ageRequis && (
-            <span>🔞 <strong className="text-white font-semibold">Âge requis :</strong> {c.ageRequis as string}</span>
-          )}
-          {c.ageRequis && c.prerequis && <span className="text-indigo-300">|</span>}
-          {c.prerequis && (
-            <span>💪 <strong className="text-white font-semibold">Prérequis :</strong> {c.prerequis as string}</span>
-          )}
+      {/* ─── PRÉREQUIS & CONDITIONS OBLIGATOIRES ─── */}
+      <div className="bg-indigo-900/60 p-4 md:p-5 rounded-xl border border-indigo-800 space-y-3">
+        <h4 className="font-extrabold text-xs text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
+          <span>📋</span> Conditions d&apos;inscription et prérequis indispensables :
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <div className="bg-indigo-950/70 p-3 rounded-lg border border-indigo-800/80 flex items-start gap-2.5">
+            <span className="text-base">🔞</span>
+            <div>
+              <span className="font-bold text-white block">Âge requis</span>
+              <span className="text-slate-300 text-[11px]">Avoir 17 ans minimum (au moment de l&apos;examen)</span>
+            </div>
+          </div>
+
+          <div className="bg-indigo-950/70 p-3 rounded-lg border border-indigo-800/80 flex items-start gap-2.5">
+            <span className="text-base">🏊</span>
+            <div>
+              <span className="font-bold text-white block">Test Natatoire</span>
+              <span className="text-slate-300 text-[11px]">Prérequis validé par un Maître-Nageur (MNS)</span>
+            </div>
+          </div>
+
+          <div className="bg-indigo-950/70 p-3 rounded-lg border border-indigo-800/80 flex items-start gap-2.5">
+            <span className="text-base">🩹</span>
+            <div>
+              <span className="font-bold text-white block">Secourisme</span>
+              <span className="text-slate-300 text-[11px]">PSE1 + PSE2 compris dans la formation / requis</span>
+            </div>
+          </div>
+
+          <div className="bg-indigo-950/70 p-3 rounded-lg border border-indigo-800/80 flex items-start gap-2.5">
+            <span className="text-base">👥</span>
+            <div>
+              <span className="font-bold text-white block">Effectif Session</span>
+              <span className="text-slate-300 text-[11px]">6 candidats minimum pour l&apos;ouverture</span>
+            </div>
+          </div>
         </div>
-      )}
+      </div>
     </section>
   )
 }
