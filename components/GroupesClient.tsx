@@ -341,7 +341,7 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
 
                       {/* Tarifs, Cautions & Actions */}
                       <div className="border-t border-slate-100 pt-4 space-y-4 mt-auto">
-                        {(typeof groupe.tarif === 'number' || typeof groupe.tarif1Cours === 'number' || typeof groupe.prixLicence === 'number' || typeof groupe.caution === 'number') && (
+                        {typeof groupe.tarif === 'number' || typeof groupe.tarif1Cours === 'number' || typeof groupe.prixLicence === 'number' || typeof groupe.caution === 'number' ? (
                           <div className={`space-y-3 ${groupe.annule ? 'opacity-35 grayscale select-none pointer-events-none' : ''}`}>
                             {typeof groupe.tarif1Cours === 'number' ? (
                               <div className="space-y-2 bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
@@ -358,16 +358,16 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
                                   </span>
                                 </div>
                               </div>
-                            ) : (
+                            ) : typeof groupe.tarif === 'number' ? (
                               <div className="flex items-center justify-between gap-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-100">
                                 <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Tarif annuel global</span>
                                 <span className="text-2xl font-black text-slate-950">
                                   {((groupe.tarif || 0) + (groupe.prixLicence || 0)).toFixed(2)} €
                                 </span>
                               </div>
-                            )}
+                            ) : null}
 
-                            {((groupe.nom || '').toUpperCase().includes('SSA') || (groupe.nom || '').toUpperCase().includes('BNSSA')) && (
+                            {typeof groupe.tarif === 'number' && ((groupe.nom || '').toUpperCase().includes('SSA') || (groupe.nom || '').toUpperCase().includes('BNSSA')) && (
                               <p className="text-[10px] text-slate-500 italic px-1 leading-normal">
                                 * Paiement initial obligatoire de {((groupe.tarif || 0) + (groupe.prixLicence || 0)).toFixed(0)} € à l&apos;inscription. Le remboursement de 250 € est effectué après réalisation des 4 journées de surveillance avec la Croix-Blanche.
                               </p>
@@ -399,6 +399,15 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
                                 )}
                               </div>
                             )}
+                          </div>
+                        ) : (
+                          <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 text-center space-y-1 shadow-2xs">
+                            <span className="text-xs font-black text-amber-950 uppercase tracking-wide block">
+                              Tarif en attente
+                            </span>
+                            <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
+                              Le tarif sera fixé et communiqué dès publication du référentiel officiel.
+                            </p>
                           </div>
                         )}
 

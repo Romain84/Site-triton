@@ -7,10 +7,6 @@ async function getGroupes() {
     const list = await prisma.groupe.findMany({
       where: {
         actif: true,
-        OR: [
-          { tarif: { not: null } },
-          { tarif1Cours: { not: null } },
-        ],
       },
       orderBy: { ordre: 'asc' },
       select: {
