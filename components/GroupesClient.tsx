@@ -401,12 +401,12 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
                             )}
                           </div>
                         ) : (
-                          <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 text-center space-y-1 shadow-2xs">
-                            <span className="text-xs font-black text-amber-950 uppercase tracking-wide block">
-                              Tarif en attente
+                          <div className="bg-sky-50/70 border border-sky-200/80 rounded-2xl p-4 text-center space-y-1 shadow-2xs">
+                            <span className="text-xs font-black text-sky-950 uppercase tracking-wide block">
+                              Formation Diplômante SSA
                             </span>
-                            <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
-                              Le tarif sera fixé et communiqué dès publication du référentiel officiel.
+                            <p className="text-[11px] text-sky-800 font-medium leading-relaxed">
+                              Cursus complet théorique et pratique + Secourisme PSE1 & PSE2 inclus.
                             </p>
                           </div>
                         )}
