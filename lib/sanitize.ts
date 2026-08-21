@@ -8,7 +8,7 @@ import DOMPurify from 'isomorphic-dompurify'
 export function sanitizeHtml(dirty: string): string {
   return DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: [
-      'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'sub', 'sup',
+      'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'sub', 'sup', 'mark',
       'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
       'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'hr', 'img', 'span', 'div',
       'table', 'thead', 'tbody', 'tr', 'th', 'td', 'iframe'
