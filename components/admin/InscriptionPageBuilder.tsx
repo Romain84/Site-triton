@@ -86,8 +86,49 @@ const BLOCK_TYPES: BlockTypeInfo[] = [
     label: 'Section SSA (ex-BNSSA)',
     emoji: '🛟',
     description: 'Formation & Diplôme SSA / Secourisme PSE1-2',
-    defaultTitre: 'Formation SSA (Surveillant Sauveteur Aquatique) & Secourisme',
-    defaultContenu: { label: 'RÉFORME 2026', description: '', avertissement: '', formation: [], examen: [], ageRequis: '17 ans révolus', prerequis: 'Test natatoire validé par un MNS + PSE1/PSE2' },
+    defaultTitre: 'Formation SSA – Surveillant Sauveteur Aquatique',
+    defaultContenu: {
+      label: 'Le BNSSA évolue vers le SSA',
+      changement: 'À compter du 1er octobre 2026, le dispositif de formation évolue : le BNSSA est remplacé par le SSA pour les nouveaux candidats.',
+      introClub: 'Le Triton Club Cavaillon propose une formation complète permettant de préparer les candidats au nouveau diplôme SSA (Surveillant Sauveteur Aquatique).',
+      conditionsAcces: {
+        texte: 'La formation est ouverte aux personnes souhaitant se former au métier de surveillant sauveteur aquatique.',
+        points: [
+          'avoir 17 ans révolus au moment de l\'examen (mars/avril) ;',
+          'être apte à la pratique de la natation et du sauvetage aquatique ;',
+          'réussir le test natatoire préalable ;',
+          'être en mesure de suivre l\'ensemble des formations prévues.'
+        ],
+        effectif: 'La session sera ouverte à partir de 6 candidats minimum.'
+      },
+      formationComplete: {
+        intro: 'Le tarif de la formation SSA comprend l\'ensemble du parcours de formation, notamment :',
+        formationSsa: 'Formation théorique et pratique au sauvetage et à la surveillance aquatique.',
+        secourisme: {
+          titre: 'PSE1 + PSE2',
+          texte: 'Les formations Premiers Secours en Équipe de niveau 1 et de niveau 2 sont comprises dans le tarif de la formation SSA. Elles sont réalisées avec notre partenaire Croix-Blanche. Vous n\'avez donc pas à vous inscrire séparément au PSE1 et au PSE2.'
+        }
+      },
+      tarifComplet: 750,
+      formuleReduction: {
+        texte: 'Une formule permettant de bénéficier d\'un remboursement de 250 € est proposée aux candidats qui s\'engagent à effectuer 4 journées de surveillance avec la Croix-Blanche pendant la saison.',
+        note: 'Cette possibilité est soumise à l\'acceptation de l\'engagement et aux modalités définies avec la Croix-Blanche.'
+      },
+      testNatatoire: {
+        intro: 'Avant le début de la formation, un test natatoire devra être validé par un MNS.',
+        explication: 'Ce test permet de vérifier que le candidat possède les capacités aquatiques nécessaires pour suivre la formation.',
+        modalites: 'Les modalités du test seront communiquées aux candidats inscrits ultérieurement.'
+      },
+      debutFormation: {
+        date: 'Jeudi 1er octobre 2026',
+        horaires: 'Les dates et horaires précis des séances seront communiqués aux candidats après constitution du groupe.',
+        effectif: 'Effectif minimum : 6 candidats.'
+      },
+      dejaTitulaireBnssa: {
+        texte: 'Si vous êtes déjà titulaire du BNSSA, vous n\'avez pas à suivre l\'intégralité de la formation initiale SSA. Des dispositions spécifiques peuvent s\'appliquer selon votre situation et la validité de vos qualifications de secourisme.'
+      },
+      avertissement: 'Les modalités définitives de la formation SSA pourront être ajustées en fonction de la publication des textes réglementaires et de la circulaire d\'application.'
+    },
   },
   {
     type: 'rules',
@@ -982,61 +1023,104 @@ function TestsFields({ contenu, onChange }: FieldProps) {
   )
 }
 
-// ─── BNSSA Fields ───────────────────────────────────────
+// ─── BNSSA / SSA Fields ─────────────────────────────────
 function BnssaFields({ contenu, onChange }: FieldProps) {
-  const formation = (contenu.formation as string[]) || []
-  const examen = (contenu.examen as string[]) || []
+  const conditionsAcces = (contenu.conditionsAcces as { texte?: string; points?: string[]; effectif?: string }) || {}
+  const points = conditionsAcces.points || [
+    'avoir 17 ans révolus au moment de l\'examen (mars/avril) ;',
+    'être apte à la pratique de la natation et du sauvetage aquatique ;',
+    'réussir le test natatoire préalable ;',
+    'être en mesure de suivre l\'ensemble des formations prévues.'
+  ]
+
+  const formationComplete = (contenu.formationComplete as { intro?: string; formationSsa?: string; secourisme?: { titre?: string; texte?: string } }) || {}
+  const secourisme = formationComplete.secourisme || {}
+
+  const formuleReduction = (contenu.formuleReduction as { texte?: string; note?: string }) || {}
+  const testNatatoire = (contenu.testNatatoire as { intro?: string; explication?: string; modalites?: string }) || {}
+  const debutFormation = (contenu.debutFormation as { date?: string; horaires?: string; effectif?: string }) || {}
+  const dejaTitulaireBnssa = (contenu.dejaTitulaireBnssa as { texte?: string; action?: string }) || {}
 
   return (
     <>
-      <TextInput label="Label" value={(contenu.label as string) || ''} onChange={v => onChange('label', v)} placeholder="Formation Professionnelle" />
-      <TextArea label="Description principale (HTML)" value={(contenu.description as string) || ''} onChange={v => onChange('description', v)} rows={4} />
-      <TextArea label="Avertissement" value={(contenu.avertissement as string) || ''} onChange={v => onChange('avertissement', v)} rows={3} />
-
-      {/* Formation items */}
-      <div className="space-y-1.5">
-        <FieldLabel>Contenu de la formation</FieldLabel>
-        {formation.map((item, i) => (
-          <div key={i} className="flex gap-2">
-            <input
-              type="text"
-              value={item}
-              onChange={(e) => {
-                const newF = [...formation]
-                newF[i] = e.target.value
-                onChange('formation', newF)
-              }}
-              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-primary/30 outline-none"
-            />
-            <button onClick={() => onChange('formation', formation.filter((_, idx) => idx !== i))} className="text-rose-400 hover:text-rose-600 text-xs px-1">✕</button>
-          </div>
-        ))}
-        <button onClick={() => onChange('formation', [...formation, ''])} className="text-xs text-primary font-bold hover:underline">+ Ajouter</button>
+      {/* 1. Header & Contexte */}
+      <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+        <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block">1. En-tête & Contexte</span>
+        <TextInput label="Sous-titre / Badge" value={(contenu.label as string) || ''} onChange={v => onChange('label', v)} placeholder="Le BNSSA évolue vers le SSA" />
+        <TextArea label="Texte réforme du 1er octobre 2026" value={(contenu.changement as string) || ''} onChange={v => onChange('changement', v)} rows={2} placeholder="À compter du 1er octobre 2026..." />
+        <TextArea label="Présentation de l'offre du club" value={(contenu.introClub as string) || ''} onChange={v => onChange('introClub', v)} rows={2} placeholder="Le Triton Club Cavaillon propose..." />
       </div>
 
-      {/* Examen items */}
-      <div className="space-y-1.5">
-        <FieldLabel>Contenu de l&apos;examen</FieldLabel>
-        {examen.map((item, i) => (
-          <div key={i} className="flex gap-2">
-            <input
-              type="text"
-              value={item}
-              onChange={(e) => {
-                const newE = [...examen]
-                newE[i] = e.target.value
-                onChange('examen', newE)
-              }}
-              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-primary/30 outline-none"
-            />
-            <button onClick={() => onChange('examen', examen.filter((_, idx) => idx !== i))} className="text-rose-400 hover:text-rose-600 text-xs px-1">✕</button>
-          </div>
-        ))}
-        <button onClick={() => onChange('examen', [...examen, ''])} className="text-xs text-primary font-bold hover:underline">+ Ajouter</button>
+      {/* 2. Conditions d'accès */}
+      <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+        <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block">2. Conditions d&apos;accès</span>
+        <TextInput label="Introduction conditions" value={conditionsAcces.texte || ''} onChange={v => onChange('conditionsAcces', { ...conditionsAcces, texte: v })} placeholder="La formation est ouverte..." />
+        
+        <div className="space-y-1.5">
+          <FieldLabel>Critères d&apos;admission</FieldLabel>
+          {points.map((p, i) => (
+            <div key={i} className="flex gap-2">
+              <input
+                type="text"
+                value={p}
+                onChange={(e) => {
+                  const newP = [...points]
+                  newP[i] = e.target.value
+                  onChange('conditionsAcces', { ...conditionsAcces, points: newP })
+                }}
+                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-primary/30 outline-none"
+              />
+              <button
+                onClick={() => {
+                  const newP = points.filter((_, idx) => idx !== i)
+                  onChange('conditionsAcces', { ...conditionsAcces, points: newP })
+                }}
+                className="text-rose-400 hover:text-rose-600 text-xs px-1"
+              >✕</button>
+            </div>
+          ))}
+          <button
+            onClick={() => {
+              const newP = [...points, '']
+              onChange('conditionsAcces', { ...conditionsAcces, points: newP })
+            }}
+            className="text-xs text-primary font-bold hover:underline"
+          >+ Ajouter un critère</button>
+        </div>
+
+        <TextInput label="Effectif minimum" value={conditionsAcces.effectif || ''} onChange={v => onChange('conditionsAcces', { ...conditionsAcces, effectif: v })} placeholder="La session sera ouverte à partir de 6 candidats minimum." />
       </div>
 
-      <TextInput label="Âge requis" value={(contenu.ageRequis as string) || ''} onChange={v => onChange('ageRequis', v)} />
-      <TextInput label="Prérequis" value={(contenu.prerequis as string) || ''} onChange={v => onChange('prerequis', v)} />
+      {/* 3. Formation SSA & Secourisme */}
+      <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+        <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block">3. Formation complète (SSA + PSE)</span>
+        <TextArea label="Contenu théorique & pratique SSA" value={formationComplete.formationSsa || ''} onChange={v => onChange('formationComplete', { ...formationComplete, formationSsa: v })} rows={2} placeholder="Formation théorique et pratique..." />
+        <TextInput label="Titre secourisme" value={secourisme.titre || ''} onChange={v => onChange('formationComplete', { ...formationComplete, secourisme: { ...secourisme, titre: v } })} placeholder="PSE1 + PSE2" />
+        <TextArea label="Détails secourisme partenaire Croix-Blanche" value={secourisme.texte || ''} onChange={v => onChange('formationComplete', { ...formationComplete, secourisme: { ...secourisme, texte: v } })} rows={3} placeholder="Les formations PSE1 et PSE2 sont comprises..." />
+      </div>
+
+      {/* 4. Tarifs & Réduction */}
+      <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+        <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block">4. Tarifs & Remboursement surveillance</span>
+        <TextInput label="Tarif complet (€)" value={String(contenu.tarifComplet ?? '750')} onChange={v => onChange('tarifComplet', v)} placeholder="750" />
+        <TextArea label="Explication réduction surveillance (250 €)" value={formuleReduction.texte || ''} onChange={v => onChange('formuleReduction', { ...formuleReduction, texte: v })} rows={3} placeholder="Une formule permettant de bénéficier..." />
+        <TextInput label="Note engagement Croix-Blanche" value={formuleReduction.note || ''} onChange={v => onChange('formuleReduction', { ...formuleReduction, note: v })} placeholder="Cette possibilité est soumise à l'acceptation..." />
+      </div>
+
+      {/* 5. Test Natatoire & Début */}
+      <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+        <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block">5. Test natatoire & Lancement</span>
+        <TextInput label="Validation test MNS" value={testNatatoire.intro || ''} onChange={v => onChange('testNatatoire', { ...testNatatoire, intro: v })} placeholder="Avant le début de la formation, un test..." />
+        <TextInput label="Date de début de formation" value={debutFormation.date || ''} onChange={v => onChange('debutFormation', { ...debutFormation, date: v })} placeholder="Jeudi 1er octobre 2026" />
+        <TextInput label="Horaires et constitution" value={debutFormation.horaires || ''} onChange={v => onChange('debutFormation', { ...debutFormation, horaires: v })} placeholder="Les dates et horaires précis des séances..." />
+      </div>
+
+      {/* 6. Titulaire BNSSA & Avertissement */}
+      <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+        <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block">6. Déjà titulaire BNSSA & Réglementation</span>
+        <TextArea label="Consignes pour les titulaires du BNSSA" value={dejaTitulaireBnssa.texte || ''} onChange={v => onChange('dejaTitulaireBnssa', { ...dejaTitulaireBnssa, texte: v })} rows={3} placeholder="Si vous êtes déjà titulaire du BNSSA..." />
+        <TextArea label="Avertissement officiel réglementaire" value={(contenu.avertissement as string) || ''} onChange={v => onChange('avertissement', v)} rows={2} placeholder="Les modalités définitives de la formation..." />
+      </div>
     </>
   )
 }
