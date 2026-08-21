@@ -420,7 +420,7 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
                             <span>Planning {slotsCount > 0 ? `(${slotsCount})` : ''}</span>
                           </button>
                           <a
-                            href={`/inscription?groupe=${encodeURIComponent(groupe.nom)}`}
+                            href={((groupe.nom || '').toUpperCase().includes('SSA') || (groupe.nom || '').toUpperCase().includes('BNSSA')) ? '/inscription#ssa' : `/inscription?groupe=${encodeURIComponent(groupe.nom)}`}
                             className="flex-1 text-center bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs uppercase tracking-wider py-3 px-3 rounded-xl transition-all shadow-xs active:scale-[0.99] flex items-center justify-center gap-1.5"
                           >
                             <span>S&apos;inscrire à ce groupe</span>
