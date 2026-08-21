@@ -11,9 +11,14 @@ export interface NavItem {
 interface InscriptionStickyNavProps {
   items: NavItem[]
   inscriptionUrl?: string
+  onSelectItem?: (id: string) => void
 }
 
-export default function InscriptionStickyNav({ items, inscriptionUrl = 'https://monclub.fr' }: InscriptionStickyNavProps) {
+export default function InscriptionStickyNav({
+  items,
+  inscriptionUrl = 'https://monclub.fr',
+  onSelectItem,
+}: InscriptionStickyNavProps) {
   const [activeId, setActiveId] = useState<string>(items[0]?.id || '')
 
   useEffect(() => {
@@ -42,6 +47,15 @@ export default function InscriptionStickyNav({ items, inscriptionUrl = 'https://
 
   const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault()
+    if (onSelectItem) {
+      onSelectItem(id)
+    }
+
+    // Mise à jour de l'URL hash sans recharger la page
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `#${id}`)
+    }
+
     const element = document.getElementById(id)
     if (element) {
       const offset = 140
@@ -52,7 +66,7 @@ export default function InscriptionStickyNav({ items, inscriptionUrl = 'https://
 
       window.scrollTo({
         top: offsetPosition,
-        behavior: 'smooth'
+        behavior: 'smooth',
       })
       setActiveId(id)
     }

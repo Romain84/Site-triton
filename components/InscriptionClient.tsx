@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { sanitizeHtml } from '@/lib/sanitize'
 import InscriptionStickyNav, { NavItem } from '@/components/InscriptionStickyNav'
@@ -62,36 +62,148 @@ export default function InscriptionClient({
     (b) => !['hero', 'banner', 'cta', 'contact'].includes(b.type)
   )
 
-  // Mode d'affichage : 'accordeon' (exclusif) ou 'tout' (déplié)
-  const [displayMode, setDisplayMode] = useState<'accordeon' | 'tout'>('accordeon')
-
   // ID du bloc actuellement ouvert en mode accordéon exclusif (le 1er par défaut)
   const [openBlockId, setOpenBlockId] = useState<string | null>(contentBlocks[0]?.id || null)
 
-  // Bascule l'accordéon exclusif : ouvre le bloc cliqué et ferme automatiquement le précédent
-  const toggleBlock = (blockId: string) => {
-    if (openBlockId === blockId) {
-      // Si on clique sur le bloc déjà ouvert, on le referme
-      setOpenBlockId(null)
-    } else {
-      // Ouvre le nouveau bloc et referme automatiquement le précédent
-      setOpenBlockId(blockId)
-      
-      // Défilement doux vers l'en-tête du volet
+  // Fonction de recherche de bloc par identifiant ou alias d'ancrage (ex: 'tarifs', 'ssa', 'groupes', etc.)
+  const findBlockForIdentifier = (ident: string): BlockData | undefined => {
+    if (!ident) return undefined
+    const clean = ident.toLowerCase().replace(/^#/, '').replace(/^section-/, '').trim()
+
+    // 1. Recherche par ID exact
+    const byId = contentBlocks.find(
+      (b) => b.id === clean || b.id.toLowerCase() === clean
+    )
+    if (byId) return byId
+
+    // 2. Recherche par Type direct
+    const byType = contentBlocks.find((b) => b.type.toLowerCase() === clean)
+    if (byType) return byType
+
+    // 3. Recherche par alias conviviaux
+    if (['tarifs', 'tarif', 'pricing', 'prix', 'cotisation', 'cotisations'].includes(clean)) {
+      return contentBlocks.find((b) => b.type === 'pricing')
+    }
+    if (['groupes', 'groupe', 'groups-table', 'plannings', 'planning'].includes(clean)) {
+      return contentBlocks.find((b) => b.type === 'groups-table')
+    }
+    if (['aides', 'aide', 'financial-aid', 'pass-sport', 'ancv', 'reductions'].includes(clean)) {
+      return contentBlocks.find((b) => b.type === 'financial-aid')
+    }
+    if (['modalites', 'modalite', 'rules', 'sante', 'reglement', 'medical', 'ffn'].includes(clean)) {
+      return contentBlocks.find((b) => b.type === 'rules')
+    }
+    if (['tests', 'test', 'tests-de-nage', 'niveau'].includes(clean)) {
+      return contentBlocks.find((b) => b.type === 'tests')
+    }
+    if (['acces', 'access', 'badge', 'badges', 'cartes'].includes(clean)) {
+      return contentBlocks.find((b) => b.type === 'access')
+    }
+    if (['ssa', 'bnssa', 'sauvetage', 'secourisme', 'pse'].includes(clean)) {
+      return contentBlocks.find((b) => b.type === 'bnssa')
+    }
+
+    return undefined
+  }
+
+  // Ouvre le bloc visé et fait défiler la page de manière fluide vers lui
+  const openAndScrollTo = (ident: string) => {
+    const targetBlock = findBlockForIdentifier(ident)
+    if (targetBlock) {
+      setOpenBlockId(targetBlock.id)
       setTimeout(() => {
-        const el = document.getElementById(`section-${blockId}`)
+        const el = document.getElementById(`section-${targetBlock.id}`)
         if (el) {
-          const offset = 130
+          const offset = 140
           const bodyRect = document.body.getBoundingClientRect().top
           const elementRect = el.getBoundingClientRect().top
           const elementPosition = elementRect - bodyRect
           window.scrollTo({
             top: elementPosition - offset,
-            behavior: 'smooth'
+            behavior: 'smooth',
           })
         }
-      }, 50)
+      }, 80)
     }
+  }
+
+  // Gestion du lien direct par URL (ex: /inscription#tarifs, /inscription?section=ssa, etc.)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    // 1. Détection via Hash d'ancrage (ex: #tarifs, #ssa, #groupes)
+    if (window.location.hash) {
+      openAndScrollTo(window.location.hash)
+    }
+
+    // 2. Détection via Query Parameters (ex: ?section=ssa, ?onglet=tarifs, ?groupe=SSA)
+    const params = new URLSearchParams(window.location.search)
+    const sectionParam =
+      params.get('section') ||
+      params.get('onglet') ||
+      params.get('tab') ||
+      params.get('bloc')
+    if (sectionParam) {
+      openAndScrollTo(sectionParam)
+    } else {
+      const groupeParam = params.get('groupe')
+      if (groupeParam) {
+        if (
+          groupeParam.toUpperCase().includes('SSA') ||
+          groupeParam.toUpperCase().includes('BNSSA')
+        ) {
+          openAndScrollTo('ssa')
+        } else {
+          openAndScrollTo('pricing')
+        }
+      }
+    }
+
+    // 3. Écoute des changements de hash (clics sur des liens internes avec href="#...")
+    const handleHashChange = () => {
+      if (window.location.hash) {
+        openAndScrollTo(window.location.hash)
+      }
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [contentBlocks])
+
+  // Bascule l'accordéon exclusif : ouvre le bloc cliqué et referme automatiquement le précédent
+  const toggleBlock = (blockId: string) => {
+    if (openBlockId === blockId) {
+      // Si on reclique sur le bloc déjà ouvert, on le referme
+      setOpenBlockId(null)
+    } else {
+      // Ouvre le nouveau bloc et referme automatiquement le précédent
+      setOpenBlockId(blockId)
+
+      // Mise à jour de l'URL hash
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', `#section-${blockId}`)
+      }
+
+      // Défilement doux vers l'en-tête du volet
+      setTimeout(() => {
+        const el = document.getElementById(`section-${blockId}`)
+        if (el) {
+          const offset = 140
+          const bodyRect = document.body.getBoundingClientRect().top
+          const elementRect = el.getBoundingClientRect().top
+          const elementPosition = elementRect - bodyRect
+          window.scrollTo({
+            top: elementPosition - offset,
+            behavior: 'smooth',
+          })
+        }
+      }, 60)
+    }
+  }
+
+  // Clic depuis la barre Sticky Nav
+  const handleStickyNavSelect = (itemId: string) => {
+    openAndScrollTo(itemId)
   }
 
   // Éléments du sommaire de navigation
@@ -189,55 +301,13 @@ export default function InscriptionClient({
         <InscriptionStickyNav
           items={navItems}
           inscriptionUrl={settings?.inscriptionUrl || 'https://monclub.fr'}
+          onSelectItem={handleStickyNavSelect}
         />
 
-        {/* 5. Contrôle du mode d'affichage (Volets exclusifs vs Tout déplier) */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-2xs">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-800">Affichage de la page :</span>
-            <span className="text-[11px] font-medium text-slate-500 hidden sm:inline">
-              {displayMode === 'accordeon'
-                ? 'Cliquez sur une section pour l’ouvrir (referme la précédente).'
-                : 'Toutes les sections sont visibles en continu.'}
-            </span>
-          </div>
-
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setDisplayMode('accordeon')
-                if (!openBlockId && contentBlocks.length > 0) {
-                  setOpenBlockId(contentBlocks[0].id)
-                }
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                displayMode === 'accordeon'
-                  ? 'bg-white text-slate-950 shadow-xs scale-[1.02]'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <span>📂 Volets exclusifs</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setDisplayMode('tout')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                displayMode === 'tout'
-                  ? 'bg-white text-slate-950 shadow-xs scale-[1.02]'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <span>📄 Tout afficher</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 6. Contenu des Volets / Sections */}
+        {/* 5. Contenu des Volets / Sections en accordéon exclusif */}
         <div className={`${interSaison ? 'opacity-55 grayscale-[50%] blur-[0.6px]' : ''} space-y-4`}>
           {contentBlocks.map((block, index) => {
-            const isOpen = displayMode === 'tout' || openBlockId === block.id
+            const isOpen = openBlockId === block.id
             const stepNumber = String(index + 1).padStart(2, '0')
             const summary = getBlockSummary(block)
 
@@ -248,71 +318,63 @@ export default function InscriptionClient({
                 className="scroll-mt-36 transition-all duration-200"
               >
                 {/* En-tête cliquable de l'accordéon */}
-                {displayMode === 'accordeon' ? (
-                  <div
-                    onClick={() => toggleBlock(block.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && toggleBlock(block.id)}
-                    className={`p-5 md:p-6 rounded-2xl border-2 transition-all cursor-pointer select-none flex items-center justify-between gap-4 ${
-                      isOpen
-                        ? 'bg-white border-primary shadow-md ring-2 ring-primary/20 rounded-b-none border-b-0'
-                        : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3.5 md:gap-4 min-w-0">
-                      {/* Numéro de section */}
-                      <span
-                        className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center font-black text-xs md:text-sm font-mono shrink-0 transition-colors ${
-                          isOpen
-                            ? 'bg-primary text-slate-950 shadow-xs'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {stepNumber}
-                      </span>
+                <div
+                  onClick={() => toggleBlock(block.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && toggleBlock(block.id)}
+                  className={`p-5 md:p-6 rounded-2xl border-2 transition-all cursor-pointer select-none flex items-center justify-between gap-4 ${
+                    isOpen
+                      ? 'bg-white border-primary shadow-md ring-2 ring-primary/20 rounded-b-none border-b-0'
+                      : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
+                  }`}
+                >
+                  <div className="flex items-center gap-3.5 md:gap-4 min-w-0">
+                    {/* Numéro de section */}
+                    <span
+                      className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center font-black text-xs md:text-sm font-mono shrink-0 transition-colors ${
+                        isOpen
+                          ? 'bg-primary text-slate-950 shadow-xs'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      {stepNumber}
+                    </span>
 
-                      {/* Titre & Résumé */}
-                      <div className="min-w-0">
-                        <h2 className="text-base md:text-lg font-black text-slate-900 tracking-tight truncate">
-                          {block.titre || 'Section d\'information'}
-                        </h2>
-                        <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                          {summary}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Flèche Chevron Rotative */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] font-bold text-slate-400 hidden sm:inline uppercase tracking-wider">
-                        {isOpen ? 'Refermer' : 'Ouvrir'}
-                      </span>
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 text-slate-600 font-bold transition-transform duration-200 ${
-                          isOpen ? 'rotate-180 bg-primary/20 text-primary-dark' : 'rotate-0'
-                        }`}
-                      >
-                        ▾
-                      </div>
+                    {/* Titre & Résumé */}
+                    <div className="min-w-0">
+                      <h2 className="text-base md:text-lg font-black text-slate-900 tracking-tight truncate">
+                        {block.titre || 'Section d\'information'}
+                      </h2>
+                      <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                        {summary}
+                      </p>
                     </div>
                   </div>
-                ) : null}
+
+                  {/* Flèche Chevron Rotative */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] font-bold text-slate-400 hidden sm:inline uppercase tracking-wider">
+                      {isOpen ? 'Refermer' : 'Ouvrir'}
+                    </span>
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 text-slate-600 font-bold transition-transform duration-200 ${
+                        isOpen ? 'rotate-180 bg-primary/20 text-primary-dark' : 'rotate-0'
+                      }`}
+                    >
+                      ▾
+                    </div>
+                  </div>
+                </div>
 
                 {/* Corps de la section (affiché si ouvert) */}
                 {isOpen && (
-                  <div
-                    className={`${
-                      displayMode === 'accordeon'
-                        ? 'bg-white border-2 border-t-0 border-primary rounded-b-2xl p-6 md:p-8 shadow-md animate-fade-in'
-                        : ''
-                    }`}
-                  >
+                  <div className="bg-white border-2 border-t-0 border-primary rounded-b-2xl p-6 md:p-8 shadow-md animate-fade-in">
                     <BlockRenderer
                       block={block}
                       dbGroupes={dbGroupes}
                       settings={settings}
-                      hideCardBorder={displayMode === 'accordeon'}
+                      hideCardBorder={true}
                     />
                   </div>
                 )}
@@ -321,7 +383,7 @@ export default function InscriptionClient({
           })}
         </div>
 
-        {/* 7. Bloc de Contact final */}
+        {/* 6. Bloc de Contact final */}
         {contactBlock && <ContactBlock block={contactBlock} />}
       </div>
     </main>
