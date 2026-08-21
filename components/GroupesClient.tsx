@@ -367,6 +367,12 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
                               </div>
                             )}
 
+                            {((groupe.nom || '').toUpperCase().includes('SSA') || (groupe.nom || '').toUpperCase().includes('BNSSA')) && (
+                              <p className="text-[10px] text-slate-500 italic px-1 leading-normal">
+                                * Paiement initial obligatoire de {((groupe.tarif || 0) + (groupe.prixLicence || 0)).toFixed(0)} € à l&apos;inscription. Le remboursement de 250 € est effectué après réalisation des 4 journées de surveillance avec la Croix-Blanche.
+                              </p>
+                            )}
+
                             {typeof groupe.prixLicence === 'number' && groupe.prixLicence > 0 && (
                               <p className="text-[11px] text-slate-500 flex justify-between items-center px-1 font-medium">
                                 <span>Dont licence fédérale FFN obligatoire :</span>
