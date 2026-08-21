@@ -117,14 +117,16 @@ export default async function GroupesPage() {
         
         {/* Inter-season banner */}
         {interSaison && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-xs">
-            <span className="text-xl">⚠️</span>
-            <div>
-              <h4 className="font-extrabold text-amber-900 text-sm">Mode Inter-Saison</h4>
-              <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
-                Les groupes d&apos;entraînement et tarifs présentés ci-dessous concernent la <strong>{texteFiligrane}</strong>. Ils sont affichés à titre indicatif et sont en cours de mise à jour pour la nouvelle saison.
-              </p>
+          <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-5 shadow-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded">
+                Information
+              </span>
+              <h4 className="font-bold text-amber-950 text-sm">Mode Inter-Saison</h4>
             </div>
+            <p className="text-xs text-amber-800 mt-1.5 leading-relaxed">
+              Les groupes d&apos;entraînement et tarifs présentés ci-dessous concernent la <strong>{texteFiligrane}</strong>. Ils sont affichés à titre indicatif et sont en cours de mise à jour pour la nouvelle saison.
+            </p>
           </div>
         )}
 

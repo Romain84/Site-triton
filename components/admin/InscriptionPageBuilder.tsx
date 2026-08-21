@@ -39,7 +39,7 @@ const BLOCK_TYPES: BlockTypeInfo[] = [
     emoji: '📢',
     description: 'Bannière d\'alerte colorée',
     defaultTitre: 'Nouvelle information',
-    defaultContenu: { emoji: '📢', couleur: 'sky', texte: '' },
+    defaultContenu: { couleur: 'sky', texte: '' },
   },
   {
     type: 'cta',
@@ -47,7 +47,7 @@ const BLOCK_TYPES: BlockTypeInfo[] = [
     emoji: '👉',
     description: 'Carte avec bouton cliquable',
     defaultTitre: 'Accès rapide',
-    defaultContenu: { label: 'Accès Direct', description: '', boutonTexte: 'Cliquez ici', boutonEmoji: '👉', urlSource: 'settings' },
+    defaultContenu: { label: 'Accès Direct', description: '', boutonTexte: 'Inscription en ligne', urlSource: 'settings' },
   },
   {
     type: 'pricing',
@@ -55,7 +55,7 @@ const BLOCK_TYPES: BlockTypeInfo[] = [
     emoji: '💰',
     description: 'Grille tarifaire depuis la base de données',
     defaultTitre: 'Tarifs - Adhésion Annuelle',
-    defaultContenu: { emoji: '💰', badges: [], noteCaution: '', precisionsPaiement: [] },
+    defaultContenu: { badges: [], noteCaution: '', precisionsPaiement: [] },
   },
   {
     type: 'groups-table',
@@ -63,7 +63,7 @@ const BLOCK_TYPES: BlockTypeInfo[] = [
     emoji: '🏊',
     description: 'Répartition par année de naissance',
     defaultTitre: 'Répartition des Groupes & Plannings',
-    defaultContenu: { emoji: '🏊', introTexte: '', lignes: [] },
+    defaultContenu: { introTexte: '', lignes: [] },
   },
   {
     type: 'richtext',
@@ -79,7 +79,7 @@ const BLOCK_TYPES: BlockTypeInfo[] = [
     emoji: '⏱️',
     description: 'Dates des tests nouveaux adhérents',
     defaultTitre: 'Tests pour Nouveaux Adhérents',
-    defaultContenu: { emoji: '⏱️', intro: '', lieu: '', datesSource: 'settings' },
+    defaultContenu: { intro: '', lieu: '', datesSource: 'settings' },
   },
   {
     type: 'bnssa',
@@ -87,7 +87,7 @@ const BLOCK_TYPES: BlockTypeInfo[] = [
     emoji: '🛟',
     description: 'Formation & Diplôme SSA / Secourisme PSE1-2',
     defaultTitre: 'Formation SSA (Surveillant Sauveteur Aquatique) & Secourisme',
-    defaultContenu: { emoji: '🛟', label: 'RÉFORME 2026', description: '', avertissement: '', formation: [], examen: [], ageRequis: '17 ans révolus', prerequis: 'Test natatoire validé par un MNS + PSE1/PSE2' },
+    defaultContenu: { label: 'RÉFORME 2026', description: '', avertissement: '', formation: [], examen: [], ageRequis: '17 ans révolus', prerequis: 'Test natatoire validé par un MNS + PSE1/PSE2' },
   },
   {
     type: 'rules',
@@ -95,7 +95,7 @@ const BLOCK_TYPES: BlockTypeInfo[] = [
     emoji: '📋',
     description: 'Règles et formulaires de santé',
     defaultTitre: 'Modalités & Santé',
-    defaultContenu: { emoji: '📝', items: [], questionnaireSante: {}, honorabilite: {} },
+    defaultContenu: { items: [], questionnaireSante: {}, honorabilite: {} },
   },
   {
     type: 'access',
@@ -103,7 +103,7 @@ const BLOCK_TYPES: BlockTypeInfo[] = [
     emoji: '🔑',
     description: 'Info cartes d\'accès',
     defaultTitre: 'Distribution des Accès',
-    defaultContenu: { emoji: '🔑', texte: '' },
+    defaultContenu: { texte: '' },
   },
   {
     type: 'financial-aid',
@@ -111,7 +111,7 @@ const BLOCK_TYPES: BlockTypeInfo[] = [
     emoji: '💸',
     description: 'Pass\'Sport et remboursements',
     defaultTitre: 'Aides financières & Remboursements',
-    defaultContenu: { emoji: '💸', sections: [] },
+    defaultContenu: { sections: [] },
   },
   {
     type: 'contact',

@@ -117,14 +117,16 @@ export default async function InscriptionPage() {
       <div className="container mx-auto px-4 max-w-5xl space-y-12 animate-fade-in-up relative z-20">
         {/* Inter-season banner */}
         {interSaison && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-xs">
-            <span className="text-xl">⚠️</span>
-            <div>
-              <h4 className="font-extrabold text-amber-900 text-sm">Mode Inter-Saison</h4>
-              <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
-                Les tarifs et modalités d&apos;inscription présentés ci-dessous concernent la <strong>{texteFiligrane}</strong>. Ils sont affichés à titre indicatif et sont en cours de mise à jour pour la nouvelle saison.
-              </p>
+          <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-5 shadow-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded">
+                Information
+              </span>
+              <h4 className="font-bold text-amber-950 text-sm">Mode Inter-Saison</h4>
             </div>
+            <p className="text-xs text-amber-800 mt-1.5 leading-relaxed">
+              Les tarifs et modalités d&apos;inscription présentés ci-dessous concernent la <strong>{texteFiligrane}</strong>. Ils sont affichés à titre indicatif et sont en cours de mise à jour pour la nouvelle saison.
+            </p>
           </div>
         )}
 
@@ -168,7 +170,7 @@ function HeroBlock({ block }: { block: BlockData }) {
   const c = block.contenu
   return (
     <div className="text-center space-y-4 max-w-3xl mx-auto">
-      <span className="text-primary font-bold text-sm uppercase tracking-widest bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20">
+      <span className="text-primary font-bold text-xs uppercase tracking-widest bg-primary/10 px-3.5 py-1 rounded-full border border-primary/20">
         {(c.saison as string) || 'Saison'}
       </span>
       {block.titre && (
@@ -188,26 +190,23 @@ function BannerBlock({ block }: { block: BlockData }) {
   const c = block.contenu
   const couleur = (c.couleur as string) || 'sky'
   const colorClasses: Record<string, string> = {
-    sky: 'bg-sky-50 border-sky-500 text-sky-900',
-    amber: 'bg-amber-50 border-amber-500 text-amber-900',
-    rose: 'bg-rose-50 border-rose-500 text-rose-900',
-    emerald: 'bg-emerald-50 border-emerald-500 text-emerald-900',
+    sky: 'bg-sky-50/80 border-sky-500 text-sky-950',
+    amber: 'bg-amber-50/80 border-amber-500 text-amber-950',
+    rose: 'bg-rose-50/80 border-rose-500 text-rose-950',
+    emerald: 'bg-emerald-50/80 border-emerald-500 text-emerald-950',
   }
 
   return (
     <div className={`border-l-4 p-6 rounded-r-2xl shadow-xs ${colorClasses[couleur] || colorClasses.sky}`}>
-      <div className="flex items-start gap-4">
-        <span className="text-3xl">{(c.emoji as string) || '📢'}</span>
-        <div className="space-y-1.5 flex-1">
-          {block.titre && (
-            <h4 className="font-extrabold text-base uppercase tracking-wide"
-                dangerouslySetInnerHTML={{ __html: sanitize(block.titre) }} />
-          )}
-          {c.texte && (
-            <div className="text-sm md:text-base font-normal leading-relaxed"
-                 dangerouslySetInnerHTML={{ __html: sanitize(c.texte as string) }} />
-          )}
-        </div>
+      <div className="space-y-1.5">
+        {block.titre && (
+          <h4 className="font-extrabold text-base uppercase tracking-wide"
+              dangerouslySetInnerHTML={{ __html: sanitize(block.titre) }} />
+        )}
+        {c.texte && (
+          <div className="text-sm md:text-base font-normal leading-relaxed text-slate-700"
+               dangerouslySetInnerHTML={{ __html: sanitize(c.texte as string) }} />
+        )}
       </div>
     </div>
   )
@@ -243,7 +242,7 @@ function CtaBlock({ block, inscriptionUrl }: { block: BlockData; inscriptionUrl:
           rel="noopener noreferrer"
           className="px-7 py-3.5 bg-primary hover:bg-primary-dark text-slate-950 font-black text-sm rounded-xl shadow-lg transition-all flex items-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-98"
         >
-          {(c.boutonTexte as string) || 'Inscription'}
+          {(c.boutonTexte as string) || 'Inscription en ligne'}
         </a>
       </div>
     </div>
@@ -257,12 +256,12 @@ function GroupsTableBlock({ block, settings }: { block: BlockData; settings: any
 
   return (
     <section className="card p-6 md:p-8 space-y-6">
-      <h2 className="text-xl font-black uppercase tracking-wider text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-        <span>{(c.emoji as string) || '🏊'}</span> {block.titre}
+      <h2 className="text-lg font-black uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-3">
+        {block.titre}
       </h2>
 
       {c.introTexte && (
-        <div className="bg-primary/5 border border-primary/10 p-5 rounded-xl text-sm text-slate-800 leading-relaxed font-medium"
+        <div className="bg-slate-50 border border-slate-200/70 p-4 rounded-xl text-sm text-slate-800 leading-relaxed font-normal"
              dangerouslySetInnerHTML={{ __html: sanitize(c.introTexte as string) }} />
       )}
 
@@ -287,9 +286,9 @@ function GroupsTableBlock({ block, settings }: { block: BlockData; settings: any
         </div>
       )}
 
-      <div className="bg-rose-50 border border-rose-100 text-rose-800 p-5 rounded-xl text-center text-sm font-bold space-y-1.5">
-        <p className="text-base">📅 Début des cours : {settings?.debutCoursNormal || 'Date à confirmer'}</p>
-        <p className="text-xs font-semibold text-rose-800 uppercase">Section SSA (ex-BNSSA) uniquement à partir du {settings?.debutCoursBnssa || 'Jeudi 1er Octobre 2026'}</p>
+      <div className="bg-slate-100 border border-slate-200/80 text-slate-800 p-4 rounded-xl text-center text-sm font-semibold space-y-1">
+        <p className="text-sm font-bold text-slate-900">Début des cours : {settings?.debutCoursNormal || 'Date à confirmer'}</p>
+        <p className="text-xs font-medium text-slate-600 uppercase">Section SSA (ex-BNSSA) à partir du {settings?.debutCoursBnssa || 'Jeudi 1er Octobre 2026'}</p>
       </div>
     </section>
   )
@@ -314,8 +313,8 @@ function PricingBlock({ block, dbGroupes }: { block: BlockData; dbGroupes: Group
   return (
     <section className="card p-6 md:p-8 space-y-6">
       <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-        <h2 className="text-xl font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
-          <span>{(c.emoji as string) || '💰'}</span> {block.titre}
+        <h2 className="text-lg font-black uppercase tracking-wider text-slate-900">
+          {block.titre}
         </h2>
         <div className="flex flex-wrap gap-2">
           {badges.map((badge, i) => (
@@ -337,7 +336,7 @@ function PricingBlock({ block, dbGroupes }: { block: BlockData; dbGroupes: Group
             return (
               <div key={category.title} className="space-y-3">
                 <div className="flex flex-col">
-                  <h3 className="font-extrabold text-base text-slate-900 uppercase tracking-wider border-b border-slate-300 pb-1">
+                  <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-1">
                     {category.title}
                   </h3>
                   <p className="text-xs text-slate-600 font-normal mt-0.5">{category.description}</p>
@@ -352,26 +351,26 @@ function PricingBlock({ block, dbGroupes }: { block: BlockData; dbGroupes: Group
                             <span className={`font-extrabold text-sm text-slate-900 block ${groupe.annule ? 'line-through text-slate-400' : ''}`}>{groupe.nom}</span>
                             {groupe.annule ? (
                               <span className="text-[9px] sm:text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded-md font-bold inline-block uppercase tracking-wider mt-1 leading-relaxed max-w-xs">
-                                Créneau temporairement suspendu (en attente d&apos;un coach). Réouverture possible à tout moment !
+                                Créneau temporairement suspendu (en attente d&apos;un coach).
                               </span>
                             ) : (
                               typeof groupe.prixLicence === 'number' && (
-                                <span className="text-xs text-slate-500 block italic">Licence FFN incluse ({groupe.prixLicence.toFixed(0)}€)</span>
+                                <span className="text-xs text-slate-500 block">Licence FFN incluse ({groupe.prixLicence.toFixed(0)} €)</span>
                               )
                             )}
                           </div>
                           <div className={`text-right flex flex-col items-end ${groupe.annule ? 'opacity-35 line-through select-none pointer-events-none' : ''}`}>
                             {groupe.tarif1Cours ? (
-                              <div className="space-y-0.5 text-xs text-slate-650 font-medium">
-                                <div>{groupe.libelleOption1 || '1 cours/sem'} : <span className="font-black text-slate-950 font-mono text-sm">{(groupe.tarif1Cours + (groupe.prixLicence || 0)).toFixed(0)} €</span></div>
-                                <div>{groupe.libelleOption2 || '2 cours/sem'} : <span className="font-black text-slate-950 font-mono text-sm">{totalTarif.toFixed(0)} €</span></div>
+                              <div className="space-y-0.5 text-xs text-slate-600 font-medium">
+                                <div>{groupe.libelleOption1 || 'Option 1'} : <span className="font-black text-slate-950 font-mono text-sm">{(groupe.tarif1Cours + (groupe.prixLicence || 0)).toFixed(0)} €</span></div>
+                                <div>{groupe.libelleOption2 || 'Option 2'} : <span className="font-black text-slate-950 font-mono text-sm">{totalTarif.toFixed(0)} €</span></div>
                               </div>
                             ) : (
                               <span className="font-black text-slate-950 font-mono text-base">{totalTarif.toFixed(0)} €</span>
                             )}
                             {groupe.caution && (
-                              <span className="block text-xs text-amber-800 font-bold mt-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200" title={groupe.nbCompetitionsCaution ? `Caution remboursable dès ${groupe.nbCompetitionsCaution} compétition(s)` : 'Caution remboursable en fin de saison'}>
-                                +{groupe.caution.toFixed(0)}€ caution (en supplément au tarif global)* {groupe.nbCompetitionsCaution ? `(${groupe.nbCompetitionsCaution} compét. min.)` : ''}
+                              <span className="block text-xs text-amber-800 font-bold mt-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-200" title={groupe.nbCompetitionsCaution ? `Caution remboursable dès ${groupe.nbCompetitionsCaution} compétition(s)` : 'Caution remboursable en fin de saison'}>
+                                +{groupe.caution.toFixed(0)} € caution {groupe.nbCompetitionsCaution ? `(${groupe.nbCompetitionsCaution} compét. min.)` : ''}
                               </span>
                             )}
                           </div>
@@ -390,11 +389,11 @@ function PricingBlock({ block, dbGroupes }: { block: BlockData; dbGroupes: Group
       )}
 
       {precisions.length > 0 && (
-        <div className="space-y-3 text-sm font-normal text-slate-800 bg-slate-100/50 p-4 rounded-xl border border-slate-200 leading-relaxed">
+        <div className="space-y-2.5 text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200/80 leading-relaxed">
           <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Précisions de paiement :</h4>
           {precisions.map((p, i) => (
-            <p key={i} className={`flex items-start gap-2 ${p.type === 'warning' ? 'text-rose-800 font-semibold' : ''}`}>
-              <span className={p.type === 'warning' ? 'text-rose-600' : 'text-slate-500'}>{p.type === 'warning' ? '⚠️' : '•'}</span>
+            <p key={i} className="flex items-start gap-2">
+              <span className="text-slate-400 font-bold">•</span>
               <span dangerouslySetInnerHTML={{ __html: sanitize(p.texte) }} />
             </p>
           ))}
@@ -407,18 +406,18 @@ function PricingBlock({ block, dbGroupes }: { block: BlockData; dbGroupes: Group
 // ─── Financial Aid Block ────────────────────────────────
 function FinancialAidBlock({ block }: { block: BlockData }) {
   const c = block.contenu
-  const sections = (c.sections as Array<{ titre: string; emoji: string; paragraphes: string[] }>) || []
+  const sections = (c.sections as Array<{ titre: string; emoji?: string; paragraphes: string[] }>) || []
 
   return (
     <section className="card p-6 md:p-8 space-y-6">
-      <h2 className="text-xl font-black uppercase tracking-wider text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-        <span>{(c.emoji as string) || '💸'}</span> {block.titre}
+      <h2 className="text-lg font-black uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-3">
+        {block.titre}
       </h2>
-      <div className="space-y-6 text-sm text-slate-800 font-normal leading-relaxed">
+      <div className="space-y-5 text-sm text-slate-800 font-normal leading-relaxed">
         {sections.map((section, i) => (
-          <div key={i} className={`space-y-3 ${i > 0 ? 'border-t border-slate-200 pt-4' : ''}`}>
-            <h4 className="font-extrabold text-slate-900 uppercase tracking-wide text-xs flex items-center gap-1.5">
-              <span className="text-base">{section.emoji}</span> {section.titre}
+          <div key={i} className={`space-y-2 ${i > 0 ? 'border-t border-slate-200/60 pt-4' : ''}`}>
+            <h4 className="font-extrabold text-slate-900 uppercase tracking-wide text-xs">
+              {section.titre}
             </h4>
             {section.paragraphes.map((p, pi) => (
               <p key={pi} dangerouslySetInnerHTML={{ __html: sanitize(p) }} />
@@ -436,7 +435,7 @@ function RichtextBlock({ block }: { block: BlockData }) {
   return (
     <section className="card p-6 md:p-8 space-y-4">
       {block.titre && (
-        <h2 className="text-xl font-black uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-3">
+        <h2 className="text-lg font-black uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-3">
           {block.titre}
         </h2>
       )}
@@ -449,7 +448,7 @@ function RichtextBlock({ block }: { block: BlockData }) {
 }
 
 // ─── Rules Block ────────────────────────────────────────
-function RulesBlock({ block, settings, isSidebar }: { block: BlockData; settings: any; isSidebar?: boolean }) {
+function RulesBlock({ block, settings }: { block: BlockData; settings: any }) {
   const c = block.contenu
   const items = (c.items as Array<{ titre: string; texte: string; lienReglement?: string }>) || []
   const questionnaireSante = (c.questionnaireSante as Record<string, string>) || {}
@@ -457,20 +456,20 @@ function RulesBlock({ block, settings, isSidebar }: { block: BlockData; settings
   const formulaireLicenceFfnUrl = settings?.formulaireLicenceFfnUrl
 
   return (
-    <section className={`card p-6 space-y-6 ${isSidebar ? 'bg-slate-50/50 border-slate-200' : ''}`}>
-      <h3 className="font-extrabold text-slate-900 border-b border-slate-200 pb-3 uppercase tracking-wider text-xs">
-        {(c.emoji as string) || '📝'} {block.titre}
-      </h3>
+    <section className="card p-6 md:p-8 space-y-6">
+      <h2 className="text-lg font-black uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-3">
+        {block.titre}
+      </h2>
       <div className="space-y-4 text-sm font-normal text-slate-700 leading-relaxed">
         {formulaireLicenceFfnUrl && (
-          <div className="p-4 rounded-xl bg-cyan-50 border border-cyan-200 text-cyan-950 space-y-2">
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-black text-xs uppercase tracking-wide flex items-center gap-1.5">
-                <span>🏊</span> Formulaire Officiel FFN
+              <span className="font-bold text-xs uppercase tracking-wide">
+                Formulaire Officiel FFN
               </span>
-              <span className="text-[9px] font-black uppercase tracking-wider bg-cyan-200/70 text-cyan-900 px-2 py-0.5 rounded-full">Obligatoire</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-200 text-slate-800 px-2 py-0.5 rounded">Requis</span>
             </div>
-            <p className="text-xs text-cyan-800 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               Téléchargez et joignez le formulaire de licence officiel de la Fédération Française de Natation à votre dossier.
             </p>
             <div className="pt-1">
@@ -478,9 +477,9 @@ function RulesBlock({ block, settings, isSidebar }: { block: BlockData; settings
                 href={formulaireLicenceFfnUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors"
               >
-                <span>📥 Télécharger le Formulaire FFN (PDF)</span>
+                <span>Télécharger le formulaire FFN (PDF)</span>
               </a>
             </div>
           </div>
@@ -488,25 +487,25 @@ function RulesBlock({ block, settings, isSidebar }: { block: BlockData; settings
 
         {items.map((item, i) => (
           <div key={i} className="space-y-1">
-            <span className="font-bold text-slate-800">{item.titre}</span>
+            <span className="font-bold text-slate-800 text-xs uppercase tracking-wide block">{item.titre}</span>
             <p dangerouslySetInnerHTML={{ __html: sanitize(item.texte) }} />
           </div>
         ))}
 
         {questionnaireSante.titre && (
-          <div className="space-y-2 bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm">
+          <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
             <span className="font-bold text-slate-900 block text-xs uppercase tracking-wide">{questionnaireSante.titre}</span>
             {questionnaireSante.texte && (
-              <p className="mb-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitize(questionnaireSante.texte) }} />
+              <p className="mb-2 leading-relaxed text-xs text-slate-700" dangerouslySetInnerHTML={{ __html: sanitize(questionnaireSante.texte) }} />
             )}
             {questionnaireSante.detail && (
-              <p className="text-slate-700 leading-relaxed font-medium" dangerouslySetInnerHTML={{ __html: sanitize(questionnaireSante.detail) }} />
+              <p className="text-slate-700 leading-relaxed text-xs font-medium" dangerouslySetInnerHTML={{ __html: sanitize(questionnaireSante.detail) }} />
             )}
           </div>
         )}
 
         {honorabilite.titre && (
-          <div className="space-y-1 bg-slate-100 p-3.5 rounded-lg border border-slate-200 text-slate-600 leading-relaxed">
+          <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-200/80 text-slate-600 leading-relaxed text-xs">
             <span className="font-bold text-slate-800 block text-xs uppercase tracking-wide">{honorabilite.titre}</span>
             {honorabilite.texte && (
               <p dangerouslySetInnerHTML={{ __html: sanitize(honorabilite.texte) }} />
@@ -519,31 +518,31 @@ function RulesBlock({ block, settings, isSidebar }: { block: BlockData; settings
 }
 
 // ─── Tests Block ────────────────────────────────────────
-function TestsBlock({ block, settings, isSidebar }: { block: BlockData; settings: any; isSidebar?: boolean }) {
+function TestsBlock({ block, settings }: { block: BlockData; settings: any }) {
   const c = block.contenu
   const afficherBoutonTest = settings?.afficherBoutonTest !== false
 
   return (
-    <section className={`card p-6 space-y-6 ${isSidebar ? 'bg-slate-50/50 border-slate-200' : ''}`}>
-      <h3 className="font-extrabold text-slate-900 border-b border-slate-200 pb-3 uppercase tracking-wider text-xs">
-        {(c.emoji as string) || '⏱️'} {block.titre}
-      </h3>
+    <section className="card p-6 md:p-8 space-y-6">
+      <h2 className="text-lg font-black uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-3">
+        {block.titre}
+      </h2>
       <div className="space-y-3 text-sm font-normal text-slate-700 leading-relaxed">
         {c.intro && (
           <p dangerouslySetInnerHTML={{ __html: sanitize(c.intro as string) }} />
         )}
-        <div className="bg-white p-3.5 rounded-lg border border-slate-200 space-y-2.5 font-normal text-slate-800 shadow-sm">
-          <div className="flex items-center gap-1.5 text-primary text-xs font-extrabold uppercase">
-            <span>📅</span> Dates des tests :
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 font-normal text-slate-800">
+          <div className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+            Dates des tests d&apos;entrée :
           </div>
           {settings?.datesTests && settings.datesTests.length > 0 ? (
-            <ul className="list-disc list-inside space-y-1 font-bold text-slate-900 text-sm">
+            <ul className="list-disc list-inside space-y-1 font-semibold text-slate-900 text-sm">
               {settings.datesTests.map((date: string, idx: number) => (
                 <li key={idx}>{date}</li>
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-gray-500 italic">Aucune date de test configurée.</p>
+            <p className="text-xs text-slate-500 italic">Aucune date de test configurée.</p>
           )}
           {c.lieu && (
             <p className="text-xs text-slate-600 italic mt-1 font-light leading-snug">
@@ -555,9 +554,9 @@ function TestsBlock({ block, settings, isSidebar }: { block: BlockData; settings
           <div className="pt-2">
             <Link
               href="/tests-de-nage"
-              className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-3xs text-center"
+              className="inline-flex items-center justify-center gap-2 py-2.5 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-3xs text-center"
             >
-              <span>🏊 Réserver un test de niveau</span>
+              <span>Réserver un test de niveau</span>
             </Link>
           </div>
         )}
@@ -567,16 +566,16 @@ function TestsBlock({ block, settings, isSidebar }: { block: BlockData; settings
 }
 
 // ─── Access Block ───────────────────────────────────────
-function AccessBlock({ block, isSidebar }: { block: BlockData; isSidebar?: boolean }) {
+function AccessBlock({ block }: { block: BlockData }) {
   const c = block.contenu
 
   return (
-    <section className={`card p-6 space-y-4 ${isSidebar ? 'bg-slate-50/50 border-slate-200' : ''}`}>
-      <h3 className="font-extrabold text-slate-900 border-b border-slate-200 pb-3 uppercase tracking-wider text-xs flex items-center gap-1.5">
-        <span>{(c.emoji as string) || '🔑'}</span> {block.titre}
-      </h3>
+    <section className="card p-6 md:p-8 space-y-4">
+      <h2 className="text-lg font-black uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-3">
+        {block.titre}
+      </h2>
       {c.texte && (
-        <p className="text-sm text-slate-700 font-light leading-relaxed"
+        <p className="text-sm text-slate-700 font-normal leading-relaxed"
            dangerouslySetInnerHTML={{ __html: sanitize(c.texte as string) }} />
       )}
     </section>
@@ -588,124 +587,116 @@ function BnssaBlock({ block }: { block: BlockData }) {
   const c = block.contenu
   const formation = (c.formation as string[]) || []
   const examen = (c.examen as string[]) || []
-  const conditions = (c.conditions as string[]) || [
-    'Avoir 17 ans révolus (au moment de l\'examen)',
-    'Prérequis natatoire validé au préalable par un Maître-Nageur (test d\'entrée au club)',
-    'PSE1 + PSE2 compris dans la formation / requis',
-    'Ouverture de la session sous réserve de 6 candidats minimum'
-  ]
 
   const candidats = (c.candidats as { titulaireBnssa?: string; nouveauCandidat?: string }) || {}
-  const tarifs = (c.tarifs as Record<string, string>) || {}
 
   return (
-    <section className="p-6 md:p-8 space-y-8 bg-indigo-950 text-slate-100 shadow-md rounded-2xl relative overflow-hidden border border-indigo-900/60">
-      <div className="absolute right-0 top-0 text-8xl opacity-5 pointer-events-none select-none translate-x-4 -translate-y-4">
-        {(c.emoji as string) || '🛟'}
-      </div>
-
+    <section className="p-6 md:p-8 space-y-8 bg-slate-900 text-slate-100 shadow-md rounded-2xl relative overflow-hidden border border-slate-800">
       {/* Header */}
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-amber-300 font-extrabold text-[11px] uppercase tracking-widest bg-amber-950/80 px-3 py-1 rounded-full border border-amber-500/40">
-            {(c.label as string) || 'RÉFORME OFFICIELLE 2026 • ARRÊTÉ DU 29 JUILLET 2026 (JO DU 01/08/2026)'}
+          <span className="text-cyan-300 font-bold text-[11px] uppercase tracking-wider bg-cyan-950 px-3 py-1 rounded-md border border-cyan-700/60">
+            {(c.label as string) || 'Arrêté du 29 juillet 2026 (JO du 01/08/2026)'}
           </span>
-          <span className="text-indigo-200 font-bold text-[11px] bg-indigo-900/80 px-3 py-1 rounded-full border border-indigo-700/60">
+          <span className="text-slate-300 font-medium text-[11px] bg-slate-800 px-3 py-1 rounded-md border border-slate-700">
             Entrée en vigueur : 1ᵉʳ octobre 2026
           </span>
         </div>
-        <h2 className="text-2xl md:text-3xl font-black font-display tracking-tight text-white flex items-center gap-2.5">
-          <span>{(c.emoji as string) || '🛟'}</span> {block.titre || 'Formation SSA (Surveillant Sauveteur Aquatique) & Secourisme'}
+        <h2 className="text-2xl md:text-3xl font-black font-display tracking-tight text-white">
+          {block.titre || 'Formation SSA (Surveillant Sauveteur Aquatique) & Secourisme'}
         </h2>
-        <p className="text-sm text-indigo-200 font-medium">
+        <p className="text-sm text-slate-300 font-normal">
           Le <strong>BNSSA</strong> évolue et devient le <strong>SSA (Surveillant Sauveteur Aquatique)</strong> pour toutes les nouvelles sessions.
         </p>
       </div>
 
       {/* Description */}
       {c.description && (
-        <div className="text-sm text-slate-200 leading-relaxed font-light space-y-2 bg-indigo-900/20 p-4 rounded-xl border border-indigo-900/40"
+        <div className="text-sm text-slate-200 leading-relaxed font-normal bg-slate-800/60 p-4 rounded-xl border border-slate-700/60"
              dangerouslySetInnerHTML={{ __html: sanitize(c.description as string) }} />
       )}
 
-      {/* ─── BANDEAU SITUATION DES CANDIDATS (Arrêté 29 juillet 2026) ─── */}
+      {/* Situation des Candidats */}
       <div className="space-y-3">
-        <h3 className="font-extrabold text-xs text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
-          <span>⚖️</span> Ce qui change pour les candidats :
+        <h3 className="font-bold text-xs text-slate-300 uppercase tracking-wider">
+          Dispositions réglementaires selon la situation du candidat :
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs leading-relaxed">
-          <div className="bg-indigo-900/40 border border-indigo-800/80 rounded-xl p-4 space-y-1.5">
-            <span className="font-extrabold text-amber-200 text-xs block uppercase">🎓 BNSSA déjà obtenu</span>
-            <p className="text-slate-200 font-normal">
-              {candidats.titulaireBnssa || "Votre diplôme reste valable ! Équivalence SSA reconnue si votre PSE2 est à jour + réalisation d'une formation continue d'adaptation dans les 3 ans."}
+          <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 space-y-1.5">
+            <span className="font-bold text-amber-300 text-xs block uppercase tracking-wider">Titulaire d&apos;un BNSSA déjà obtenu</span>
+            <p className="text-slate-300 font-normal">
+              {candidats.titulaireBnssa || "Le diplôme reste valable. Équivalence SSA reconnue sous réserve d'un PSE2 à jour et de la réalisation d'une formation continue d'adaptation dans les 3 ans."}
             </p>
           </div>
-          <div className="bg-indigo-900/40 border border-indigo-800/80 rounded-xl p-4 space-y-1.5">
-            <span className="font-extrabold text-cyan-200 text-xs block uppercase">🆕 Nouveau candidat</span>
-            <p className="text-slate-200 font-normal">
-              {candidats.nouveauCandidat || "Vous passerez directement le diplôme SSA. Le PSE2 est requis en prérequis obligatoire pour l'obtention."}
+          <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 space-y-1.5">
+            <span className="font-bold text-cyan-300 text-xs block uppercase tracking-wider">Nouveau candidat</span>
+            <p className="text-slate-300 font-normal">
+              {candidats.nouveauCandidat || "Présentation directe au nouveau diplôme SSA. Le PSE2 est requis en prérequis obligatoire pour la délivrance du titre."}
             </p>
           </div>
         </div>
       </div>
 
-      {/* ─── GRILLE DES TARIFS DU CLUB ─── */}
+      {/* Grille des Tarifs */}
       <div className="space-y-3">
-        <h3 className="font-extrabold text-xs text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
-          <span>💰</span> Tarifs et Formules prévus par le club :
+        <h3 className="font-bold text-xs text-slate-300 uppercase tracking-wider">
+          Tarifs et Formules de formation :
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
           {/* Formule Surveillance */}
-          <div className="bg-emerald-950/40 border-2 border-emerald-500/50 rounded-2xl p-4 space-y-2 relative">
-            <span className="absolute top-3 right-3 text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-slate-950 px-2 py-0.5 rounded-full">
-              Avantage Partenaire
+          <div className="bg-slate-800/90 border border-emerald-500/60 rounded-xl p-4 space-y-2 relative">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">
+              Formule Surveillance Partenaire
             </span>
-            <div className="font-extrabold text-sm text-emerald-200">Session SSA avec Surveillance</div>
             <div className="text-2xl font-black text-white font-mono">500 €</div>
-            <p className="text-emerald-100 font-light leading-relaxed text-[11px]">
-              Tarif réduit pour le candidat effectuant <strong>4 journées de surveillance avec la Croix-Blanche</strong> pendant la saison (PSE1 requis pour y participer).
+            <p className="text-slate-300 font-normal leading-relaxed text-[11px]">
+              Tarif préférentiel si engagement à réaliser <strong>4 journées de surveillance avec la Croix-Blanche</strong> durant la saison (PSE1 requis).
             </p>
-            <div className="text-[10px] text-emerald-300 font-semibold bg-emerald-900/40 p-2 rounded-lg border border-emerald-800/60">
-              * Paiement obligatoire de 750 € à l&apos;inscription, la réduction de 250 € est <strong>remboursée a posteriori</strong> par le club.
+            <div className="text-[10px] text-slate-300 bg-slate-900/80 p-2.5 rounded-lg border border-slate-700 leading-normal">
+              Règlement initial de 750 € à l&apos;inscription. Remise de 250 € remboursée a posteriori après validation des 4 journées de surveillance.
             </div>
           </div>
 
           {/* Formule Plein Tarif */}
-          <div className="bg-indigo-900/30 border border-indigo-800/80 rounded-2xl p-4 space-y-2">
-            <div className="font-extrabold text-sm text-slate-200">Session SSA Tarif Plein</div>
+          <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 space-y-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Session SSA Plein Tarif
+            </span>
             <div className="text-2xl font-black text-white font-mono">750 €</div>
-            <p className="text-slate-300 font-light leading-relaxed text-[11px]">
-              Session complète de formation SSA (40h en présentiel prévues au club). Sans engagement de surveillance partenaire.
+            <p className="text-slate-300 font-normal leading-relaxed text-[11px]">
+              Formation complète SSA (40h d&apos;apprentissage en présentiel au club). Sans engagement de surveillance partenaire.
             </p>
-            <div className="text-[10px] text-slate-400 font-medium pt-2">
-              Paiement en 3 fois sans frais disponible lors de l&apos;adhésion en ligne.
+            <div className="text-[10px] text-slate-400 pt-1">
+              Paiement échelonné en 3 fois sans frais disponible en ligne.
             </div>
           </div>
 
           {/* Pack PSE1 + PSE2 */}
-          <div className="bg-indigo-900/30 border border-indigo-800/80 rounded-2xl p-4 space-y-2 md:col-span-2 lg:col-span-1">
-            <div className="font-extrabold text-sm text-cyan-200">Pack PSE1 + PSE2 seul</div>
+          <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-4 space-y-2 md:col-span-2 lg:col-span-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 block">
+              Pack PSE1 + PSE2
+            </span>
             <div className="text-2xl font-black text-white font-mono">590 €</div>
-            <p className="text-slate-300 font-light leading-relaxed text-[11px]">
-              Formation de secourisme complète organisée en partenariat avec la <strong>Croix-Blanche</strong>.
+            <p className="text-slate-300 font-normal leading-relaxed text-[11px]">
+              Formation de premiers secours en équipe (niveaux 1 et 2) dispensée en partenariat avec la Croix-Blanche.
             </p>
-            <div className="text-[10px] text-cyan-300/80 font-medium pt-2">
-              Indispensable pour valider le diplôme SSA.
+            <div className="text-[10px] text-slate-400 pt-1">
+              Modules requis pour la validation du diplôme SSA.
             </div>
           </div>
         </div>
       </div>
 
-      {/* ─── DÉROULEMENT DE LA FORMATION ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm font-light">
-        <div className="space-y-3 bg-indigo-900/30 p-5 rounded-xl border border-indigo-900/60">
-          <h4 className="font-extrabold text-indigo-200 text-xs uppercase tracking-wide flex items-center gap-1.5">
-            <span>📚</span> Organisation de la Formation (40h)
+      {/* Déroulement de la Formation */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm font-normal">
+        <div className="space-y-3 bg-slate-800/50 p-5 rounded-xl border border-slate-700/80">
+          <h4 className="font-bold text-slate-200 text-xs uppercase tracking-wider">
+            Organisation pédagogique (40h)
           </h4>
-          <p className="text-xs text-slate-300 leading-relaxed italic">
-            Formation SSA : 35 h minimum en présentiel réglementaire (40 h prévues au club). Le détail officiel complet de l&apos;apprentissage sera diffusé dès parution de la circulaire.
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Formation de 35 h minimum en présentiel (40 h programmées au club). Le détail des enseignements sera ajusté dès publication de la circulaire d&apos;application.
           </p>
-          <ul className="list-disc list-inside space-y-1.5 text-slate-100 text-xs pt-1">
+          <ul className="list-disc list-inside space-y-1.5 text-slate-200 text-xs pt-1">
             {formation.map((item, i) => (
               <li key={i} dangerouslySetInnerHTML={{ __html: sanitize(item) }} />
             ))}
@@ -713,11 +704,11 @@ function BnssaBlock({ block }: { block: BlockData }) {
         </div>
 
         {examen.length > 0 && (
-          <div className="space-y-3 bg-indigo-900/30 p-5 rounded-xl border border-indigo-900/60">
-            <h4 className="font-extrabold text-indigo-200 text-xs uppercase tracking-wide flex items-center gap-1.5">
-              <span>⏱️</span> Épreuves & Examen
+          <div className="space-y-3 bg-slate-800/50 p-5 rounded-xl border border-slate-700/80">
+            <h4 className="font-bold text-slate-200 text-xs uppercase tracking-wider">
+              Épreuves et certification
             </h4>
-            <ol className="list-decimal list-inside space-y-1.5 text-slate-100 text-xs">
+            <ol className="list-decimal list-inside space-y-1.5 text-slate-200 text-xs">
               {examen.map((item, i) => (
                 <li key={i} dangerouslySetInnerHTML={{ __html: sanitize(item) }} />
               ))}
@@ -726,42 +717,30 @@ function BnssaBlock({ block }: { block: BlockData }) {
         )}
       </div>
 
-      {/* ─── PRÉREQUIS & CONDITIONS OBLIGATOIRES ─── */}
-      <div className="bg-indigo-900/60 p-4 md:p-5 rounded-xl border border-indigo-800 space-y-3">
-        <h4 className="font-extrabold text-xs text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
-          <span>📋</span> Conditions d&apos;inscription et prérequis indispensables :
+      {/* Conditions et Prérequis */}
+      <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 space-y-3">
+        <h4 className="font-bold text-xs text-slate-300 uppercase tracking-wider">
+          Conditions d&apos;accès et prérequis :
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          <div className="bg-indigo-950/70 p-3 rounded-lg border border-indigo-800/80 flex items-start gap-2.5">
-            <span className="text-base">🔞</span>
-            <div>
-              <span className="font-bold text-white block">Âge requis</span>
-              <span className="text-slate-300 text-[11px]">Avoir 17 ans minimum (au moment de l&apos;examen)</span>
-            </div>
+          <div className="bg-slate-900/90 p-3 rounded-lg border border-slate-700/70">
+            <span className="font-bold text-slate-200 block text-xs">Âge requis</span>
+            <span className="text-slate-400 text-[11px] mt-0.5 block">17 ans révolus lors de l&apos;examen</span>
           </div>
 
-          <div className="bg-indigo-950/70 p-3 rounded-lg border border-indigo-800/80 flex items-start gap-2.5">
-            <span className="text-base">🏊</span>
-            <div>
-              <span className="font-bold text-white block">Test Natatoire</span>
-              <span className="text-slate-300 text-[11px]">Prérequis validé par un Maître-Nageur (MNS)</span>
-            </div>
+          <div className="bg-slate-900/90 p-3 rounded-lg border border-slate-700/70">
+            <span className="font-bold text-slate-200 block text-xs">Test natatoire</span>
+            <span className="text-slate-400 text-[11px] mt-0.5 block">Validé au préalable par un MNS</span>
           </div>
 
-          <div className="bg-indigo-950/70 p-3 rounded-lg border border-indigo-800/80 flex items-start gap-2.5">
-            <span className="text-base">🩹</span>
-            <div>
-              <span className="font-bold text-white block">Secourisme</span>
-              <span className="text-slate-300 text-[11px]">PSE1 + PSE2 compris dans la formation / requis</span>
-            </div>
+          <div className="bg-slate-900/90 p-3 rounded-lg border border-slate-700/70">
+            <span className="font-bold text-slate-200 block text-xs">Secourisme</span>
+            <span className="text-slate-400 text-[11px] mt-0.5 block">PSE1 + PSE2 requis</span>
           </div>
 
-          <div className="bg-indigo-950/70 p-3 rounded-lg border border-indigo-800/80 flex items-start gap-2.5">
-            <span className="text-base">👥</span>
-            <div>
-              <span className="font-bold text-white block">Effectif Session</span>
-              <span className="text-slate-300 text-[11px]">6 candidats minimum pour l&apos;ouverture</span>
-            </div>
+          <div className="bg-slate-900/90 p-3 rounded-lg border border-slate-700/70">
+            <span className="font-bold text-slate-200 block text-xs">Effectif</span>
+            <span className="text-slate-400 text-[11px] mt-0.5 block">Minimum 6 candidats par session</span>
           </div>
         </div>
       </div>
@@ -773,7 +752,7 @@ function BnssaBlock({ block }: { block: BlockData }) {
 function ContactBlock({ block }: { block: BlockData }) {
   const c = block.contenu
   return (
-    <div className="text-center text-sm text-slate-600 font-light border-t border-slate-200/60 pt-8">
+    <div className="text-center text-sm text-slate-600 font-normal border-t border-slate-200/80 pt-8">
       {c.texte ? (
         <span>
           {(c.texte as string).includes('contacter') ? (
@@ -788,7 +767,7 @@ function ContactBlock({ block }: { block: BlockData }) {
         </span>
       ) : (
         <span>
-          En cas de blocage, vous pouvez joindre notre secrétariat via l&apos;onglet{' '}
+          Pour toute question complémentaire, notre secrétariat est à votre disposition via l&apos;onglet{' '}
           <Link href="/contact" className="underline font-semibold hover:text-slate-800 transition-colors">Nous contacter</Link>.
         </span>
       )}

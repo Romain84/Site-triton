@@ -360,7 +360,7 @@ export default function GroupeFinder({ embedded = false, onClose }: GroupeFinder
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 group-hover:text-primary transition-colors">Disciplines Spécifiques</h4>
-                  <p className="text-xs text-slate-500 font-medium">Natation Artistique, AquaFitness, BNSSA</p>
+                  <p className="text-xs text-slate-500 font-medium">Natation Artistique, AquaFitness, SSA</p>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-primary transition-transform group-hover:translate-x-0.5" />

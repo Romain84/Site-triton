@@ -402,7 +402,6 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
                             onClick={() => setPlanningModalGroupe(groupe)}
                             className="flex-1 bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-200/90 font-extrabold text-xs uppercase tracking-wider py-3 px-3 rounded-xl transition-all shadow-2xs active:scale-[0.99] flex items-center justify-center gap-1.5 cursor-pointer"
                           >
-                            <span>📅</span>
                             <span>Planning {slotsCount > 0 ? `(${slotsCount})` : ''}</span>
                           </button>
                           <a
