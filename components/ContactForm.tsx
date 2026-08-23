@@ -198,7 +198,7 @@ export default function ContactForm() {
             <option value="test_nage">Tests de niveau & Rentrée</option>
             <option value="renseignement">Choix du groupe et niveau</option>
             <option value="planning">Horaires et planning des créneaux</option>
-            <option value="tarifs">Tarifs, Pass&apos;Sport et paiement</option>
+            <option value="tarifs">Tarifs et modalités de paiement</option>
             <option value="inscription">Inscription et adhésion en ligne</option>
             <option value="competition">Compétitions FFN</option>
             <option value="autre">Autre demande spécifique</option>
@@ -253,16 +253,19 @@ export default function ContactForm() {
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 animate-fade-in text-xs text-slate-700">
             <div className="flex items-center gap-1.5 text-slate-900 font-bold">
               <Info className="w-4 h-4 text-primary" />
-              <span>Modalités d&apos;inscription & Pièces à fournir</span>
+              <span>Modalités d&apos;inscription & Règlement</span>
             </div>
             <ul className="space-y-1.5 text-slate-600 font-medium">
               <li className="flex items-start gap-2">
                 <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                <span>Les inscriptions se font 100% en ligne sur notre plateforme.</span>
+                <span>Les inscriptions se font 100% en ligne sur notre plateforme MonClub.</span>
               </li>
               <li className="flex items-start gap-2">
                 <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                <span>Règlement par CB (1x ou 3x), chèques, virement, ANCV et Pass&apos;Sport.</span>
+                <span>Règlement par carte bancaire ou prélèvement (en 1x ou 3x sans frais).</span>
+              </li>
+              <li className="flex items-start gap-2 text-slate-500 italic">
+                <span>* Note : Le club n&apos;accepte pas les chèques, les virements, les chèques-vacances ANCV ni le Pass&apos;Sport pour le moment.</span>
               </li>
             </ul>
             <div className="pt-1">
@@ -332,21 +335,25 @@ export default function ContactForm() {
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3 animate-fade-in text-xs text-amber-900">
             <div className="flex items-center gap-1.5 text-amber-950 font-black">
               <Euro className="w-4 h-4 text-amber-700" />
-              <span>Tarifs et aides financières (Pass&apos;Sport & ANCV)</span>
+              <span>Tarifs de la saison (licence FFN comprise)</span>
             </div>
-            <ul className="space-y-1 text-amber-800 font-medium">
-              <li>• École de natation : 220 € / an (licence FFN incluse)</li>
-              <li>• Loisirs Ados & AquaFitness : 220 € à 240 € / an</li>
-              <li>• Compétition : 240 € à 330 € / an</li>
-              <li className="font-bold text-amber-900">• Pass&apos;Sport et chèques vacances ANCV acceptés.</li>
+            <ul className="space-y-1 text-amber-900 font-medium">
+              <li>• École de natation (ENF 1 & 2) : 200 € (1 cours/sem) ou 270 € (2 cours/sem)</li>
+              <li>• Avenirs (1, 2, 3) : 280 € / an</li>
+              <li>• Loisirs (Jeunes, Juniors, Adultes) : 250 € / an</li>
+              <li>• Compétition (Benjamins, Juniors, Adultes) : 280 € / an (+ caution)</li>
+              <li>• AquaFitness : 220 € (1 cours/sem) ou 370 € (2 cours/sem)</li>
+              <li className="font-bold text-amber-950 pt-1">
+                💳 Règlement par CB ou prélèvement (1x ou 3x sans frais). Le club ne prend pas les chèques, virements, ANCV ni Pass&apos;Sport pour le moment.
+              </li>
             </ul>
-            <div className="pt-1">
+            <div className="pt-1 flex flex-wrap items-center gap-2">
               <Link
-                href="/inscription#tarifs"
+                href="/groupes"
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs transition-colors shadow-xs"
               >
                 <Euro className="w-3.5 h-3.5" />
-                <span>Voir la grille complète des tarifs</span>
+                <span>Voir le détail des tarifs par groupe</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -357,18 +364,26 @@ export default function ContactForm() {
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 animate-fade-in text-xs text-slate-700">
             <div className="flex items-center gap-1.5 text-slate-900 font-bold">
               <Info className="w-4 h-4 text-primary" />
-              <span>Section Compétition & Calendrier FFN</span>
+              <span>Compétitions & Comité Départemental de Natation 84</span>
             </div>
             <p className="text-slate-600 font-medium leading-relaxed">
-              Retrouvez les créneaux d&apos;entraînements (eau + PPG) et le calendrier des compétitions départementales, régionales et nationales.
+              Pour retrouver toutes les informations sur les compétitions, les règlements et les résultats officiels de natation course en Vaucluse, rendez-vous sur le site officiel du Comité :
             </p>
-            <div className="pt-1">
-              <Link
-                href="/calendrier"
+            <div className="pt-1 flex flex-wrap items-center gap-2">
+              <a
+                href="https://www.cdnatation84.fr/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-xs transition-colors shadow-xs"
               >
-                <span>Voir le calendrier des compétitions</span>
+                <span>Accéder à cdnatation84.fr ↗</span>
                 <ArrowRight className="w-3.5 h-3.5" />
+              </a>
+              <Link
+                href="/calendrier"
+                className="inline-flex items-center gap-1 px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs transition-colors"
+              >
+                <span>Calendrier du club</span>
               </Link>
             </div>
           </div>

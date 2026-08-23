@@ -57,18 +57,26 @@
   },
   {
     "categorie": "Inscriptions",
-    "question": "Puis-je payer la cotisation en plusieurs fois ?",
-    "reponse": "Oui, le club accepte les paiements en **3 fois sans frais** (par carte bancaire sur MonClub ou par chèque). Nous acceptons également le Pass'Sport, les Chèques-Vacances ANCV et les Coupons Sport pour régler votre cotisation.",
-    "motsCles": "paiement, payer, plusieurs fois, 3 fois, cheques vacances, ancv, coupons sport, tarif, reglement, pass sport",
-    "priorite": 1,
+    "question": "Quels sont les moyens de paiement acceptés et peut-on payer en plusieurs fois ?",
+    "reponse": "Le règlement s'effectue en ligne sur la plateforme **MonClub** par **carte bancaire ou prélèvement** (en 1 fois ou 3 fois sans frais).\n\n*Note importante : Le club n'accepte pas les chèques, les virements bancaires, les chèques-vacances ANCV ni le Pass'Sport pour le moment.*",
+    "motsCles": "paiement, moyen de paiement, payer, plusieurs fois, 3 fois, cb, prelevement, cheques vacances, ancv, pass sport, virement, cheque",
+    "priorite": 2,
     "actif": true
   },
   {
     "categorie": "Groupes & Tarifs",
     "question": "Quels sont les tarifs pour la saison ?",
-    "reponse": "Voici les tarifs annuels par groupe (licence FFN incluse) :\n- **École de Natation (ENF 1 & 2)** : 270 €\n- **Avenirs (1, 2, 3)** : 320 €\n- **Benjamins (1 & 2)** : 380 €\n- **Juniors Compétition** : 420 €\n- **Adultes Compétition** : 450 €\n- **Jeunes / Juniors Loisirs** : 300 €\n- **Adultes Loisirs** : 350 €\n- **Natation Artistique** : 400 €\n- **AquaGym** : 250 €\n- **SSA (ex-BNSSA)** : 750 € (tarif plein) ou 500 € (avec 4 jours de surveillance Croix-Blanche)",
-    "motsCles": "tarif, prix, cout, prix, cotisation, annee, licence, tarif annuel",
+    "reponse": "Voici les tarifs annuels par groupe (licence FFN comprise) :\n- **École de Natation (ENF 1 & 2)** : 200 € (1 cours/sem) ou 270 € (2 cours/sem)\n- **Avenirs (1, 2, 3)** : 280 € / an\n- **Avenirs Loisirs** : 200 € / an\n- **Jeunes / Juniors Loisirs** : 250 € / an\n- **Adultes Loisirs** : 250 € / an\n- **Compétition (Benjamins, Juniors, Adultes)** : 280 € / an (+ caution)\n- **Natation Artistique** : 245 € / an\n- **AquaFitness** : 220 € (1 cours/sem) ou 370 € (2 cours/sem)\n- **SSA (Sauvetage Aquatique)** : Tarif communiqué dès publication du référentiel officiel.",
+    "motsCles": "tarif, prix, cout, cotisation, annee, licence, tarif annuel, prix par groupe",
     "priorite": 3,
+    "actif": true
+  },
+  {
+    "categorie": "Compétitions",
+    "question": "Où consulter les résultats et le calendrier des compétitions FFN ?",
+    "reponse": "Pour consulter le calendrier officiel, les programmes, les règlements et les résultats des compétitions de natation course en Vaucluse, rendez-vous sur le site officiel du **[Comité Départemental de Natation 84 (cdnatation84.fr)](https://www.cdnatation84.fr/)** ou sur notre page **[Calendrier du club](/calendrier)**.",
+    "motsCles": "competition, cdnatation84, liveffn, calendrier competition, resultats, comite departemental",
+    "priorite": 2,
     "actif": true
   },
   {

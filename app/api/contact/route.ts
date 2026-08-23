@@ -164,7 +164,7 @@ Date et heure d'envoi : ${formattedDate}
                   ${settings?.afficherBoutonTest !== false ? `<li><a href="${baseUrl}/tests-de-nage" style="color: #0284c7; font-weight: bold; text-decoration: underline;">🏊 Réserver un créneau de test de niveau</a> (tests de 5 min)</li>` : ''}
                   <li><a href="${baseUrl}/groupes" style="color: #0284c7; font-weight: bold; text-decoration: underline;">🧭 Trouver le groupe adapté selon l'âge et le niveau</a></li>
                   <li><a href="${baseUrl}/planning" style="color: #0284c7; font-weight: bold; text-decoration: underline;">📅 Planning et horaires des entraînements</a></li>
-                  <li><a href="${baseUrl}/inscription#tarifs" style="color: #0284c7; font-weight: bold; text-decoration: underline;">💳 Tarifs, Pass'Sport et chèques ANCV</a></li>
+                  <li><a href="${baseUrl}/groupes" style="color: #0284c7; font-weight: bold; text-decoration: underline;">💳 Tarifs annuels et modalités de paiement</a></li>
                   <li><a href="${baseUrl}/inscription" style="color: #0284c7; font-weight: bold; text-decoration: underline;">📝 Démarches d'inscription en ligne</a></li>
                 </ul>
               </div>

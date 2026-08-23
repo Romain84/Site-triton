@@ -246,7 +246,7 @@ export default function InscriptionClient({
   const getBlockSummary = (b: BlockData) => {
     if (b.type === 'groups-table') return 'Années de naissance & Début des cours'
     if (b.type === 'pricing') return 'Cotisations annuelles & Facilités de paiement'
-    if (b.type === 'financial-aid') return "Pass'Sport, ANCV, Coupons & Réduction famille"
+    if (b.type === 'financial-aid') return "Aides financières & Remboursements officiels"
     if (b.type === 'rules') return 'Licence FFN, Règlement & Questionnaire de santé'
     if (b.type === 'tests') return 'Dates des tests & Réservation en ligne'
     if (b.type === 'access') return 'Distribution des badges et cartes d\'entrée'

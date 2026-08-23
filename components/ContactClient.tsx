@@ -117,19 +117,19 @@ export default function ContactClient() {
                   <Euro className="w-5 h-5" />
                 </div>
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200">
-                  Pass&apos;Sport & Paiement 3x
+                  Paiement CB & 3x sans frais
                 </span>
               </div>
               <h2 className="text-lg font-black text-slate-900">
-                Tarifs & Facilités
+                Tarifs & Modalités
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Cotisations forfaitaires annuelles avec licence FFN incluse. Nous acceptons le Pass&apos;Sport et le paiement en 3 fois.
+                Cotisations forfaitaires annuelles avec licence FFN incluse. Paiement 100% en ligne par CB ou prélèvement (en 1x ou 3x).
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
               <Link
-                href="/inscription#tarifs"
+                href="/groupes"
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors shadow-xs"
               >
                 <Euro className="w-3.5 h-3.5" />
