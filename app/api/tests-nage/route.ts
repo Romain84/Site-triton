@@ -7,6 +7,55 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const sessionId = searchParams.get('sessionId')
+    const token = searchParams.get('token')
+    const queryCode = searchParams.get('code')
+    const headerCode = request.headers.get('x-tests-code')
+    const providedCode = (queryCode || headerCode || '').trim()
+
+    // 0. Récupérer les paramètres de configuration
+    const settings = await prisma.settings.findFirst({
+      select: {
+        afficherBoutonTest: true,
+        codeAccesTestsNage: true,
+      },
+    })
+
+    const isGlobalOpen = settings?.afficherBoutonTest !== false
+    const requiredCode = settings?.codeAccesTestsNage?.trim() || null
+    const hasCodeProtection = Boolean(requiredCode)
+
+    // Vérifier si le code fourni est valide
+    const isCodeValid = hasCodeProtection ? providedCode === requiredCode : true
+
+    // Si les inscriptions sont fermées globalement :
+    // - On autorise quand même si l'utilisateur possède un token de gestion de réservation existante
+    // - Ou si l'utilisateur a fourni le code d'accès secret (accès privilégié / VIP)
+    if (!isGlobalOpen && !token) {
+      if (!hasCodeProtection || !isCodeValid) {
+        return NextResponse.json({
+          success: true,
+          ouvert: false,
+          codeRequis: hasCodeProtection,
+          codeValide: false,
+          message: 'Les réservations de tests de niveau sont actuellement fermées.',
+          sessions: [],
+          candidats: [],
+        })
+      }
+    }
+
+    // Si un code est requis mais n'est pas valide (et aucun token de gestion)
+    if (hasCodeProtection && !isCodeValid && !token) {
+      return NextResponse.json({
+        success: true,
+        ouvert: isGlobalOpen,
+        codeRequis: true,
+        codeValide: false,
+        message: 'Un code d’accès est requis pour consulter les créneaux et réserver un test.',
+        sessions: [],
+        candidats: [],
+      })
+    }
 
     // 1. Récupérer les sessions actives
     const sessions = await prisma.sessionTestNage.findMany({
@@ -32,7 +81,6 @@ export async function GET(request: NextRequest) {
     })
 
     // 2. Récupérer la liste des candidats à planifier (pour l'autocomplétion / recherche hybride)
-    // On ne renvoie que les données essentielles et uniquement pour les candidats non encore planifiés
     const candidats = await prisma.candidatTestNage.findMany({
       where: {
         statut: 'a_planifier',
@@ -80,6 +128,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      ouvert: true,
+      codeRequis: hasCodeProtection,
+      codeValide: true,
       sessions: formattedSessions,
       candidats,
     })

@@ -169,6 +169,7 @@ export default function TestsNageManager() {
   const [relancing, setRelancing] = useState(false)
 
   const [afficherBoutonTest, setAfficherBoutonTest] = useState<boolean>(true)
+  const [codeAccesTestsNage, setCodeAccesTestsNage] = useState<string>('')
   const [togglingBoutonTest, setTogglingBoutonTest] = useState(false)
 
   const loadData = useCallback(async () => {
@@ -195,6 +196,7 @@ export default function TestsNageManager() {
       }
       if (resSettings.ok && dataSettings.settings) {
         setAfficherBoutonTest(dataSettings.settings.afficherBoutonTest ?? true)
+        setCodeAccesTestsNage(dataSettings.settings.codeAccesTestsNage || '')
       }
     } catch (err) {
       console.error('Erreur chargement admin tests-nage:', err)
@@ -219,7 +221,7 @@ export default function TestsNageManager() {
       })
       if (res.ok) {
         setAfficherBoutonTest(newValue)
-        toast.success(newValue ? 'Bouton de test activé sur la page Inscription' : 'Bouton de test masqué sur la page Inscription')
+        toast.success(newValue ? 'Inscriptions publiques activées (/tests-de-nage ouvert)' : 'Inscriptions publiques fermées (/tests-de-nage verrouillé)')
       } else {
         toast.error('Erreur lors de la mise à jour')
       }
@@ -236,9 +238,12 @@ export default function TestsNageManager() {
 
   // Copier le lien public
   const handleCopyPublicLink = () => {
-    const url = `${window.location.origin}/tests-de-nage`
+    let url = `${window.location.origin}/tests-de-nage`
+    if (codeAccesTestsNage.trim()) {
+      url += `?code=${encodeURIComponent(codeAccesTestsNage.trim())}`
+    }
     navigator.clipboard.writeText(url)
-    toast.success('Lien public copié dans le presse-papier !')
+    toast.success(codeAccesTestsNage.trim() ? 'Lien d\'accès direct avec mot de passe copié !' : 'Lien public copié !')
   }
 
   // Création d'une session avec génération automatique
@@ -575,21 +580,28 @@ export default function TestsNageManager() {
 
       {/* ─── BANDEAU DE VISIBILITÉ DU BOUTON TEST SUR LA PAGE INSCRIPTION ─── */}
       <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 print:hidden">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg ${afficherBoutonTest ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-            {afficherBoutonTest ? '👁️' : '🙈'}
+        <div className="flex items-start gap-3">
+          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg shrink-0 mt-0.5 ${afficherBoutonTest ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+            {afficherBoutonTest ? '🏊' : '🔒'}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-black text-slate-900">
-                Bouton de réservation sur la page Inscription (/inscription)
+                Statut des inscriptions aux tests de niveau (/tests-de-nage)
               </h3>
-              <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${afficherBoutonTest ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
-                {afficherBoutonTest ? 'Actif & Visible sur le site' : 'Masqué sur le site'}
+              <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${afficherBoutonTest ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                {afficherBoutonTest ? 'Inscriptions Ouvertes' : 'Inscriptions Closes & Verrouillées'}
               </span>
+              {codeAccesTestsNage.trim() && (
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                  🔑 Code actif : {codeAccesTestsNage.trim()}
+                </span>
+              )}
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Contrôle l&apos;affichage du bouton direct « Réserver un test de niveau » dans le guide de la page Inscription.
+            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+              {afficherBoutonTest
+                ? 'Les parents peuvent réserver en ligne. ' + (codeAccesTestsNage.trim() ? 'Un mot de passe est demandé pour déverrouiller.' : 'Accès libre sans mot de passe.')
+                : 'Les réservations directes sont bloquées. Seules les personnes possédant un lien direct ou le code peuvent réserver.'}
             </p>
           </div>
         </div>
@@ -604,7 +616,7 @@ export default function TestsNageManager() {
               : 'bg-emerald-600 hover:bg-emerald-700 text-white'
           }`}
         >
-          {togglingBoutonTest ? 'Mise à jour...' : afficherBoutonTest ? 'Masquer le bouton du site' : 'Afficher le bouton sur le site'}
+          {togglingBoutonTest ? 'Mise à jour...' : afficherBoutonTest ? 'Fermer / Verrouiller les inscriptions' : 'Ouvrir les inscriptions publiques'}
         </button>
       </div>
 

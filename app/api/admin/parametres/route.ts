@@ -26,6 +26,7 @@ const updateSettingsSchema = z.object({
   reglementClubUrl: z.string().or(z.literal('')).nullable().optional(),
   formulaireLicenceFfnUrl: z.string().or(z.literal('')).nullable().optional(),
   afficherBoutonTest: z.boolean().optional(),
+  codeAccesTestsNage: z.string().max(100).nullable().optional(),
   signaturePresidentUrl: z.string().url().or(z.literal('')).nullable().optional(),
   nomSignataireRecu: z.string().max(255).optional(),
   titreSignataireRecu: z.string().max(255).optional(),
@@ -68,6 +69,7 @@ const settingsSelect = {
   reglementClubUrl: true,
   formulaireLicenceFfnUrl: true,
   afficherBoutonTest: true,
+  codeAccesTestsNage: true,
   signaturePresidentUrl: true,
   nomSignataireRecu: true,
   titreSignataireRecu: true,
@@ -204,6 +206,7 @@ export async function PUT(request: NextRequest) {
     if (val.reglementClubUrl !== undefined) updateData.reglementClubUrl = val.reglementClubUrl || null
     if (val.formulaireLicenceFfnUrl !== undefined) updateData.formulaireLicenceFfnUrl = val.formulaireLicenceFfnUrl || null
     if (val.afficherBoutonTest !== undefined) updateData.afficherBoutonTest = val.afficherBoutonTest
+    if (val.codeAccesTestsNage !== undefined) updateData.codeAccesTestsNage = val.codeAccesTestsNage || null
     if (val.signaturePresidentUrl !== undefined) updateData.signaturePresidentUrl = val.signaturePresidentUrl || null
     if (val.nomSignataireRecu !== undefined) updateData.nomSignataireRecu = val.nomSignataireRecu
     if (val.titreSignataireRecu !== undefined) updateData.titreSignataireRecu = val.titreSignataireRecu

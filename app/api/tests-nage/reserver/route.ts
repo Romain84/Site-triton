@@ -17,6 +17,7 @@ const reserverSchema = z.object({
   telephoneParent: z.string().min(1, "Le numéro de téléphone est requis"),
   niveauEstime: z.string().optional().nullable(),
   remarques: z.string().max(1000).optional().nullable(),
+  code: z.string().optional().nullable(),
 })
 
 function formatCalendarDateTime(date: Date, timeStr: string): string {
@@ -34,6 +35,38 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const validated = reserverSchema.parse(body)
+
+    // Vérification des paramètres globaux de réservation
+    const settings = await prisma.settings.findFirst({
+      select: {
+        afficherBoutonTest: true,
+        codeAccesTestsNage: true,
+      },
+    })
+
+    const isGlobalOpen = settings?.afficherBoutonTest !== false
+    const requiredCode = settings?.codeAccesTestsNage?.trim() || null
+    const providedCode = (validated.code || request.headers.get('x-tests-code') || '').trim()
+
+    // 1. Si les réservations sont fermées globalement
+    if (!isGlobalOpen) {
+      if (!requiredCode || providedCode !== requiredCode) {
+        return NextResponse.json(
+          { error: 'Les réservations de tests de niveau sont actuellement fermées.' },
+          { status: 403 }
+        )
+      }
+    }
+
+    // 2. Si un mot de passe / code d'accès est requis
+    if (requiredCode) {
+      if (providedCode !== requiredCode) {
+        return NextResponse.json(
+          { error: 'Mot de passe ou code d’accès incorrect pour valider la réservation.' },
+          { status: 403 }
+        )
+      }
+    }
 
     // Token unique pour l'inscription et le téléchargement iCal
     const token = crypto.randomBytes(16).toString('hex')

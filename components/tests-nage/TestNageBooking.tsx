@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { 
   Calendar, 
   Clock, 
@@ -19,7 +20,11 @@ import {
   RefreshCw,
   XCircle,
   ShieldCheck,
-  Edit3
+  Edit3,
+  Lock,
+  KeyRound,
+  Eye,
+  EyeOff
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatLongDateFr } from '@/lib/date'
@@ -136,17 +141,52 @@ export default function TestNageBooking() {
     consignes: string | null
   } | null>(null)
 
+  // Gestion du verrouillage et mot de passe d'accès
+  const [isOpen, setIsOpen] = useState(true)
+  const [codeRequired, setCodeRequired] = useState(false)
+  const [isCodeValid, setIsCodeValid] = useState(true)
+  const [closedMessage, setClosedMessage] = useState('')
+  const [accessCode, setAccessCode] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('triton_tests_code') || searchParams.get('code') || ''
+    }
+    return ''
+  })
+  const [inputCode, setInputCode] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [verifyingCode, setVerifyingCode] = useState(false)
+  const [showCodePromptForClosed, setShowCodePromptForClosed] = useState(false)
+
   // 1. Récupération des données publiques
-  const fetchPublicData = async () => {
+  const fetchPublicData = async (codeToTry?: string) => {
     setLoading(true)
+    const code = codeToTry !== undefined ? codeToTry : accessCode
     try {
-      const res = await fetch('/api/tests-nage')
+      const url = new URL('/api/tests-nage', window.location.origin)
+      if (code) url.searchParams.set('code', code)
+      if (tokenParam) url.searchParams.set('token', tokenParam)
+
+      const res = await fetch(url.toString(), {
+        headers: code ? { 'x-tests-code': code } : {},
+      })
       const data = await res.json()
-      if (res.ok && data.sessions) {
-        setSessions(data.sessions)
-        setCandidats(data.candidats || [])
-        if (data.sessions.length > 0 && !selectedSessionId) {
-          setSelectedSessionId(data.sessions[0].id)
+
+      if (res.ok) {
+        setIsOpen(data.ouvert !== false)
+        setCodeRequired(Boolean(data.codeRequis))
+        setIsCodeValid(Boolean(data.codeValide))
+        if (data.message) setClosedMessage(data.message)
+
+        if (data.sessions && data.codeValide) {
+          setSessions(data.sessions)
+          setCandidats(data.candidats || [])
+          if (data.sessions.length > 0 && !selectedSessionId) {
+            setSelectedSessionId(data.sessions[0].id)
+          }
+          if (code) {
+            sessionStorage.setItem('triton_tests_code', code)
+            setAccessCode(code)
+          }
         }
       }
     } catch (err) {
@@ -154,6 +194,44 @@ export default function TestNageBooking() {
       toast.error('Impossible de charger les créneaux disponibles')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Validation manuelle du mot de passe
+  const handleValidateCode = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inputCode.trim()) {
+      return toast.error('Veuillez saisir le mot de passe d\'accès')
+    }
+    setVerifyingCode(true)
+    try {
+      const cleanCode = inputCode.trim()
+      const url = new URL('/api/tests-nage', window.location.origin)
+      url.searchParams.set('code', cleanCode)
+
+      const res = await fetch(url.toString(), {
+        headers: { 'x-tests-code': cleanCode },
+      })
+      const data = await res.json()
+
+      if (res.ok && data.codeValide && data.sessions) {
+        toast.success('Code d\'accès validé !')
+        setAccessCode(cleanCode)
+        sessionStorage.setItem('triton_tests_code', cleanCode)
+        setIsCodeValid(true)
+        setIsOpen(true)
+        setSessions(data.sessions)
+        setCandidats(data.candidats || [])
+        if (data.sessions.length > 0 && !selectedSessionId) {
+          setSelectedSessionId(data.sessions[0].id)
+        }
+      } else {
+        toast.error(data.message || 'Mot de passe ou code d\'accès incorrect')
+      }
+    } catch {
+      toast.error('Erreur de connexion lors de la vérification')
+    } finally {
+      setVerifyingCode(false)
     }
   }
 
@@ -251,7 +329,10 @@ export default function TestNageBooking() {
     try {
       const res = await fetch('/api/tests-nage/reserver', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessCode ? { 'x-tests-code': accessCode } : {}),
+        },
         body: JSON.stringify({
           creneauId: selectedCreneau.id,
           candidatId: selectedCandidat?.id || null,
@@ -261,6 +342,7 @@ export default function TestNageBooking() {
           emailParent: emailParent.trim().toLowerCase(),
           telephoneParent: telephoneParent.trim(),
           remarques: remarques.trim() || null,
+          code: accessCode || null,
         }),
       })
 
@@ -602,7 +684,153 @@ export default function TestNageBooking() {
     )
   }
 
-  // ─── VUE 2 : PARCOURS PUBLIC CLASSIQUE (RÉSERVATION) ───
+  // ─── VUE 2 : PARCOURS FERMÉ / VERROUILLÉ ───
+  if (!isOpen && !isCodeValid) {
+    return (
+      <div className="bg-white rounded-3xl p-8 md:p-12 border border-slate-200 text-center max-w-xl mx-auto space-y-6 shadow-sm animate-fade-in">
+        <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto border border-amber-200 shadow-2xs">
+          <Lock className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <span className="text-[11px] font-black uppercase tracking-widest text-amber-800 bg-amber-100/80 px-3 py-1 rounded-full border border-amber-200">
+            Inscriptions Closes
+          </span>
+          <h2 className="text-2xl font-black text-slate-900 pt-1">
+            Les réservations de tests sont actuellement fermées
+          </h2>
+          <p className="text-sm text-slate-600 font-normal leading-relaxed">
+            {closedMessage || "Les réservations de créneaux de tests de niveau pour cette période ne sont pas ouvertes ou sont temporairement suspendues."}
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <Link
+            href="/contact"
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-950 hover:bg-slate-900 text-white text-xs font-bold transition-all shadow-xs"
+          >
+            Nous contacter
+          </Link>
+          <Link
+            href="/inscription"
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+          >
+            Guide des inscriptions
+          </Link>
+        </div>
+
+        {/* Option de déverrouillage si code d'accès privé */}
+        <div className="pt-4 border-t border-slate-100">
+          {!showCodePromptForClosed ? (
+            <button
+              type="button"
+              onClick={() => setShowCodePromptForClosed(true)}
+              className="text-xs text-slate-400 hover:text-slate-700 font-semibold underline flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>Vous disposez d&apos;un code d&apos;accès privé ?</span>
+            </button>
+          ) : (
+            <form onSubmit={handleValidateCode} className="space-y-3 max-w-sm mx-auto animate-fade-in pt-2">
+              <label className="text-xs font-bold text-slate-700 block text-left">
+                Saisissez votre mot de passe d&apos;accès :
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={inputCode}
+                  onChange={(e) => setInputCode(e.target.value)}
+                  placeholder="Ex: TRITON2026"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono pr-10 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <button
+                type="submit"
+                disabled={verifyingCode}
+                className="w-full py-2.5 bg-primary hover:bg-primary-dark text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              >
+                {verifyingCode ? 'Vérification...' : 'Déverrouiller les créneaux'}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ─── VUE 3 : PARCOURS MOT DE PASSE REQUIS ───
+  if (codeRequired && !isCodeValid) {
+    return (
+      <div className="bg-white rounded-3xl p-8 md:p-12 border border-slate-200 text-center max-w-md mx-auto space-y-6 shadow-sm animate-fade-in">
+        <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto border border-blue-200 shadow-2xs">
+          <KeyRound className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <span className="text-[11px] font-black uppercase tracking-widest text-blue-800 bg-blue-100/80 px-3 py-1 rounded-full border border-blue-200">
+            Accès Privé
+          </span>
+          <h2 className="text-2xl font-black text-slate-900 pt-1">
+            Code d&apos;accès requis
+          </h2>
+          <p className="text-xs text-slate-600 font-normal leading-relaxed">
+            La réservation des créneaux de tests de niveau est actuellement restreinte. Veuillez saisir le mot de passe fourni par le club pour continuer :
+          </p>
+        </div>
+
+        <form onSubmit={handleValidateCode} className="space-y-4 text-left">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 block">
+              Mot de passe ou code secret :
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={inputCode}
+                onChange={(e) => setInputCode(e.target.value)}
+                placeholder="Ex: TRITON2026"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono pr-10 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={verifyingCode}
+            className="w-full py-3 bg-primary hover:bg-primary-dark text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <KeyRound className="w-4 h-4" />
+            <span>{verifyingCode ? 'Vérification...' : 'Déverrouiller les créneaux'}</span>
+          </button>
+        </form>
+
+        <div className="pt-2">
+          <Link
+            href="/contact"
+            className="text-xs text-slate-500 hover:text-slate-800 font-medium underline"
+          >
+            Vous n&apos;avez pas reçu le code ? Contactez le club
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── VUE 4 : AUCUNE SESSION DISPONIBLE ───
   if (sessions.length === 0) {
     return (
       <div className="bg-white rounded-3xl p-8 md:p-12 border border-slate-200 text-center max-w-2xl mx-auto space-y-4 shadow-xs">
@@ -612,7 +840,7 @@ export default function TestNageBooking() {
         <h2 className="text-xl font-bold text-slate-900">Aucune session de test ouverte pour le moment</h2>
         <p className="text-sm text-slate-600 font-normal leading-relaxed">
           Les créneaux de tests de nage pour la rentrée ne sont pas encore ouverts ou sont temporairement clôturés.
-          Pour toute question, vous pouvez contacter le club par email à <a href="mailto:tritoncavaillon@gmail.com" className="text-primary font-bold underline">tritoncavaillon@gmail.com</a>.
+          Pour toute question, vous pouvez contacter le club via notre <Link href="/contact" className="text-primary font-bold underline">formulaire de contact</Link>.
         </p>
       </div>
     )

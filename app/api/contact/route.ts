@@ -161,7 +161,7 @@ Date et heure d'envoi : ${formattedDate}
                 <p style="margin-top: 0; font-weight: bold; color: #0369a1; font-size: 14px;">💡 Votre question concerne l'un de ces sujets fréquents ?</p>
                 <p style="font-size: 13px; color: #0c4a6e; margin-bottom: 12px;">Vous trouverez la réponse ou la démarche immédiatement en ligne :</p>
                 <ul style="padding-left: 20px; font-size: 13px; color: #0c4a6e; margin: 0; line-height: 1.8;">
-                  <li><a href="${baseUrl}/tests-de-nage" style="color: #0284c7; font-weight: bold; text-decoration: underline;">🏊 Réserver un créneau de test de niveau</a> (tests de 5 min)</li>
+                  ${settings?.afficherBoutonTest !== false ? `<li><a href="${baseUrl}/tests-de-nage" style="color: #0284c7; font-weight: bold; text-decoration: underline;">🏊 Réserver un créneau de test de niveau</a> (tests de 5 min)</li>` : ''}
                   <li><a href="${baseUrl}/groupes" style="color: #0284c7; font-weight: bold; text-decoration: underline;">🧭 Trouver le groupe adapté selon l'âge et le niveau</a></li>
                   <li><a href="${baseUrl}/planning" style="color: #0284c7; font-weight: bold; text-decoration: underline;">📅 Planning et horaires des entraînements</a></li>
                   <li><a href="${baseUrl}/inscription#tarifs" style="color: #0284c7; font-weight: bold; text-decoration: underline;">💳 Tarifs, Pass'Sport et chèques ANCV</a></li>

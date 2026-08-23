@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useRef, useState } from 'react'
+import { useActionState, useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { FormStatus } from '@/components/ui/FormStatus'
 import TurnstileWidget from '@/components/TurnstileWidget'
@@ -99,6 +99,18 @@ export default function ContactForm() {
   const [turnstileToken, setTurnstileToken] = useState<string>('')
   const [selectedSujet, setSelectedSujet] = useState<string>('')
   const [showFinderModal, setShowFinderModal] = useState<boolean>(false)
+  const [testsOuverts, setTestsOuverts] = useState<boolean>(true)
+
+  useEffect(() => {
+    fetch('/api/settings/public')
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.afficherBoutonTest === 'boolean') {
+          setTestsOuverts(data.afficherBoutonTest)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const [state, formAction, isPending] = useActionState(async (prevState: ActionState | null, formData: FormData) => {
     if (turnstileToken) {
@@ -202,18 +214,24 @@ export default function ContactForm() {
               <span>Tests de niveau de rentrée (5 minutes)</span>
             </div>
             <p className="text-blue-800 font-medium leading-relaxed">
-              Pour les nouveaux enfants, le test de niveau est obligatoire avant l&apos;inscription pour déterminer le bon groupe. Choisissez votre créneau horaire en ligne en 1 clic :
+              Pour les nouveaux enfants, le test de niveau permet d&apos;évaluer l&apos;aisance dans l&apos;eau pour déterminer le groupe le plus adapté.
             </p>
-            <div className="pt-1 flex flex-wrap items-center gap-2">
-              <Link
-                href="/tests-de-nage"
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-colors shadow-xs"
-              >
-                <Waves className="w-3.5 h-3.5" />
-                <span>Réserver un créneau de test</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
+            {testsOuverts ? (
+              <div className="pt-1 flex flex-wrap items-center gap-2">
+                <Link
+                  href="/tests-de-nage"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-colors shadow-xs"
+                >
+                  <Waves className="w-3.5 h-3.5" />
+                  <span>Réserver un créneau de test</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            ) : (
+              <p className="text-blue-950 font-bold bg-white/70 p-2.5 rounded-xl border border-blue-200">
+                ℹ️ Les réservations directes de créneaux en ligne sont actuellement fermées. Vous pouvez nous adresser votre demande via le formulaire ci-dessous.
+              </p>
+            )}
           </div>
         )}
 

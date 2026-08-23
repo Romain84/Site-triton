@@ -43,6 +43,7 @@ interface Settings {
   datesTests: string[] | null
   interSaisonActif: boolean
   texteFiligrane: string
+  codeAccesTestsNage?: string | null
 }
 
 export default function ParametresManager() {
@@ -73,6 +74,7 @@ export default function ParametresManager() {
   const [reglementClubUrl, setReglementClubUrl] = useState('')
   const [formulaireLicenceFfnUrl, setFormulaireLicenceFfnUrl] = useState('')
   const [afficherBoutonTest, setAfficherBoutonTest] = useState(true)
+  const [codeAccesTestsNage, setCodeAccesTestsNage] = useState('')
   const [signaturePresidentUrl, setSignaturePresidentUrl] = useState('')
   const [nomSignataireRecu, setNomSignataireRecu] = useState('Le Président')
   const [titreSignataireRecu, setTitreSignataireRecu] = useState('Président')
@@ -130,6 +132,7 @@ export default function ParametresManager() {
         setReglementClubUrl(s.reglementClubUrl || '')
         setFormulaireLicenceFfnUrl(s.formulaireLicenceFfnUrl || '')
         setAfficherBoutonTest(s.afficherBoutonTest ?? true)
+        setCodeAccesTestsNage(s.codeAccesTestsNage || '')
         setSignaturePresidentUrl(s.signaturePresidentUrl || '')
         setNomSignataireRecu(s.nomSignataireRecu || 'Le Président')
         setTitreSignataireRecu(s.titreSignataireRecu || 'Président')
@@ -465,6 +468,7 @@ export default function ParametresManager() {
           reglementClubUrl: reglementClubUrl || null,
           formulaireLicenceFfnUrl: formulaireLicenceFfnUrl || null,
           afficherBoutonTest,
+          codeAccesTestsNage: codeAccesTestsNage.trim() || null,
           signaturePresidentUrl: signaturePresidentUrl || null,
           nomSignataireRecu: nomSignataireRecu || 'Le Président',
           titreSignataireRecu: titreSignataireRecu || 'Président',
@@ -1049,21 +1053,23 @@ export default function ParametresManager() {
                     </div>
                   )}
 
-                  <div className="pt-4 mt-4 border-t border-slate-100">
+                  <div className="pt-4 mt-4 border-t border-slate-100 space-y-3">
                     <div className="bg-cyan-50/70 border border-cyan-200/80 rounded-2xl p-4 flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
                         <span className="text-xl">🏊</span>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-slate-900">
-                              Bouton direct « Réserver un test de niveau » sur la page Inscription
+                            <span className="text-xs font-black text-slate-950">
+                              Réservations publiques des tests de niveau (/tests-de-nage)
                             </span>
-                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${afficherBoutonTest ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
-                              {afficherBoutonTest ? 'Actif' : 'Désactivé'}
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${afficherBoutonTest ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                              {afficherBoutonTest ? 'Inscriptions Ouvertes' : 'Inscriptions Fermées'}
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                            Si cette case est cochée, le bouton de redirection vers la prise de rendez-vous (/tests-de-nage) est affiché dans l&apos;Étape 1 du guide sur la page Inscription.
+                            {afficherBoutonTest
+                              ? 'Les créneaux sont ouverts aux réservations publiques (bouton affiché sur la page Inscription et accès libre).'
+                              : 'Les réservations sont totalement verrouillées : le bouton est masqué et la page /tests-de-nage affiche un message indiquant la fermeture.'}
                           </p>
                         </div>
                       </div>
@@ -1076,6 +1082,33 @@ export default function ParametresManager() {
                         />
                         <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                       </label>
+                    </div>
+
+                    {/* Protection par Mot de passe / Code d'accès */}
+                    <div className="bg-slate-50/90 border border-slate-200 rounded-2xl p-4 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">🔑</span>
+                          <label className="text-xs font-bold text-slate-900 block">
+                            Mot de passe ou Code secret d&apos;accès aux tests (optionnel)
+                          </label>
+                        </div>
+                        {codeAccesTestsNage.trim() && (
+                          <span className="text-[9px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full border border-blue-200">
+                            Code Actif
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={codeAccesTestsNage}
+                        onChange={(e) => setCodeAccesTestsNage(e.target.value)}
+                        placeholder="Ex: TRITON2026 (Laisser vide pour un accès libre sans mot de passe)"
+                        className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                      <p className="text-[10px] text-slate-500 leading-relaxed">
+                        Si vous renseignez un code, toute personne se rendant sur <code>/tests-de-nage</code> devra obligatoirement le saisir pour déverrouiller l&apos;accès aux créneaux et réserver.
+                      </p>
                     </div>
                   </div>
                 </div>

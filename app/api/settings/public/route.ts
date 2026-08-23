@@ -16,6 +16,7 @@ export async function GET() {
         statutsUrl: true,
         reglementPiscineUrl: true,
         reglementClubUrl: true,
+        afficherBoutonTest: true,
       },
     })
 
@@ -29,6 +30,7 @@ export async function GET() {
       statutsUrl: settings?.statutsUrl || null,
       reglementPiscineUrl: settings?.reglementPiscineUrl || null,
       reglementClubUrl: settings?.reglementClubUrl || null,
+      afficherBoutonTest: settings?.afficherBoutonTest ?? true,
     }, {
       headers: {
         'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',

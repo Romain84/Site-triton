@@ -353,6 +353,7 @@ model Settings {
   reglementClubUrl             String?
   formulaireLicenceFfnUrl      String?
   afficherBoutonTest           Boolean  @default(true)
+  codeAccesTestsNage           String?
   signaturePresidentUrl        String?
   nomSignataireRecu            String?  @default("Le Président")
   titreSignataireRecu          String?  @default("Président")
