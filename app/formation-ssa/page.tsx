@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { prisma } from '@/lib/prisma'
 import { LifeBuoy, Clock, MapPin, CheckCircle, HelpCircle, ArrowRight, ShieldCheck, Award } from 'lucide-react'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: "Formation SSA – Surveillant Sauveteur Aquatique (ex-BNSSA) à Cavaillon | Triton Club",
@@ -27,7 +30,7 @@ export const metadata: Metadata = {
 const FAQS = [
   {
     q: "Qu'est-ce que le diplôme SSA par rapport au BNSSA ?",
-    a: "Suite au décret officiel, le SSA (Surveillant Sauveteur Aquatique) succède au BNSSA. Il confère les prérogatives officielles pour surveiller les baignades ouvertes au public et d'accès payant (piscines, plages, plans d'eau).",
+    a: "Suite au décret officiel, le SSA (Surveillant Sauveteur Aquatique) succède au BNSSA. Il confère les prérogatives officielles pour assurer la surveillance des baignades ouvertes au public et d'accès payant (piscines, plages, plans d'eau).",
   },
   {
     q: "Quelles sont les conditions d'accès à la formation ?",
@@ -35,11 +38,21 @@ const FAQS = [
   },
   {
     q: "Où et quand se déroule la formation ?",
-    a: "Les entraînements aquatiques ont lieu à la piscine Alphonse Roudière de Cavaillon (vendredi soir et samedi matin), complétés par les sessions de secourisme PSE1/PSE2 avec notre partenaire la Croix-Blanche.",
+    a: "Les entraînements aquatiques ont lieu à la piscine Alphonse Roudière de Cavaillon (le jeudi de 19h30 à 21h30), complétés par les sessions de secourisme PSE1/PSE2 avec notre partenaire la Croix-Blanche.",
   },
 ]
 
-export default function FormationSSAPage() {
+export default async function FormationSSAPage() {
+  const groupe = await prisma.groupe.findFirst({
+    where: { OR: [{ niveau: 'bnssa' }, { nom: { contains: 'SSA', mode: 'insensitive' } }] },
+    include: {
+      plannings: {
+        where: { actif: true },
+        orderBy: [{ jourSemaine: 'asc' }, { heureDebut: 'asc' }],
+      },
+    },
+  })
+
   return (
     <main className="min-h-screen pt-32 md:pt-40 pb-20 bg-slate-50/50">
       <div className="container mx-auto px-4 max-w-5xl space-y-12">
@@ -63,8 +76,8 @@ export default function FormationSSAPage() {
               Formation SSA – Surveillant Sauveteur Aquatique à Cavaillon
             </h1>
             
-            <p className="text-base md:text-lg text-slate-600 leading-relaxed max-w-3xl">
-              Formez-vous au métier de sauveteur aquatique avec le <strong>Triton Club Cavaillon</strong> et notre partenaire secourisme <strong>Croix-Blanche</strong>. Une formation diplômante complète associant techniques de sauvetage aquatique et secourisme opérationnel PSE1/PSE2.
+            <p className="text-base md:text-lg text-slate-600 leading-relaxed max-w-3xl whitespace-pre-line">
+              {groupe?.description || "Formez-vous au métier de sauveteur aquatique avec le Triton Club Cavaillon et notre partenaire secourisme Croix-Blanche. Une formation diplômante complète associant techniques de sauvetage aquatique et secourisme opérationnel PSE1/PSE2."}
             </p>
           </div>
 
@@ -81,7 +94,7 @@ export default function FormationSSAPage() {
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Lieu</span>
               <p className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Piscine Roudière</span>
+                <span>Piscine Roudière (Grand Bassin)</span>
               </p>
             </div>
 
@@ -89,7 +102,7 @@ export default function FormationSSAPage() {
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Entraînements</span>
               <p className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
                 <Clock className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Ven. soir & Sam. matin</span>
+                <span>Jeudi 19h30 - 21h30</span>
               </p>
             </div>
 

@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { prisma } from '@/lib/prisma'
 import { Sparkles, Clock, MapPin, CheckCircle, HelpCircle, ArrowRight, CreditCard, Music } from 'lucide-react'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: "Natation Synchronisée & Artistique à Cavaillon | Triton Club",
@@ -31,7 +34,7 @@ const FAQS = [
   },
   {
     q: "Quels sont les jours et horaires d'entraînement ?",
-    a: "Les entraînements ont lieu le mercredi de 15h30 à 17h30 et le vendredi de 18h00 à 20h00 avec préparation physique générale (PPG) et répétition des chorégraphies.",
+    a: "Les entraînements ont lieu le mercredi (14h30 - 15h30 en grand bassin) et le vendredi (18h00 - 19h00 en salle PPG + 19h15 - 20h00 en bassin).",
   },
   {
     q: "Y a-t-il un spectacle ou gala de fin d'année ?",
@@ -43,7 +46,19 @@ const FAQS = [
   },
 ]
 
-export default function NatationSynchroniseePage() {
+export default async function NatationSynchroniseePage() {
+  const groupe = await prisma.groupe.findFirst({
+    where: { OR: [{ niveau: 'artistique' }, { nom: { contains: 'Artistique', mode: 'insensitive' } }] },
+    include: {
+      plannings: {
+        where: { actif: true },
+        orderBy: [{ jourSemaine: 'asc' }, { heureDebut: 'asc' }],
+      },
+    },
+  })
+
+  const tarifTotal = (groupe?.tarif || 213) + (groupe?.prixLicence || 32)
+
   return (
     <main className="min-h-screen pt-32 md:pt-40 pb-20 bg-slate-50/50">
       <div className="container mx-auto px-4 max-w-5xl space-y-12">
@@ -68,7 +83,7 @@ export default function NatationSynchroniseePage() {
             </h1>
             
             <p className="text-base md:text-lg text-slate-600 leading-relaxed max-w-3xl">
-              Découvrez la grâce et l&apos;énergie de l&apos;eau ! Une discipline complète combinant natation, chorégraphie musicale, souplesse et travail d&apos;équipe à la piscine couverte Alphonse Roudière.
+              {groupe?.description || "Découvrez la grâce et l'énergie de l'eau ! Une discipline complète combinant natation, chorégraphie musicale, souplesse et travail d'équipe à la piscine couverte Alphonse Roudière."}
             </p>
           </div>
 
@@ -85,7 +100,7 @@ export default function NatationSynchroniseePage() {
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Lieu</span>
               <p className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-purple-600 shrink-0" />
-                <span>Piscine Roudière</span>
+                <span>Piscine Roudière + PPG</span>
               </p>
             </div>
 
@@ -101,7 +116,7 @@ export default function NatationSynchroniseePage() {
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Tarif annuel</span>
               <p className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
                 <CreditCard className="w-4 h-4 text-purple-600 shrink-0" />
-                <span>245 € / an</span>
+                <span>{tarifTotal} € / an</span>
               </p>
             </div>
           </div>
@@ -112,7 +127,7 @@ export default function NatationSynchroniseePage() {
           <div className="grid sm:grid-cols-3 gap-4 pt-2">
             <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-100 space-y-2">
               <h3 className="font-extrabold text-sm text-purple-950">1. Souplesse & Apnée</h3>
-              <p className="text-xs text-purple-800 leading-relaxed">Travail au sol et dans l&apos;eau pour développer l&apos;aisance respiratoire et la flexibilité.</p>
+              <p className="text-xs text-purple-800 leading-relaxed">Travail au sol et dans l&apos;eau pour développer l&apos;aisance respiratoire, le gainage et la souplesse.</p>
             </div>
             <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-100 space-y-2">
               <h3 className="font-extrabold text-sm text-purple-950">2. Ballets en Musique</h3>
@@ -120,7 +135,7 @@ export default function NatationSynchroniseePage() {
             </div>
             <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-100 space-y-2">
               <h3 className="font-extrabold text-sm text-purple-950">3. Grand Gala Annuel</h3>
-              <p className="text-xs text-purple-800 leading-relaxed">Mise en scène costumée et spectacle de fin de saison devant le public.</p>
+              <p className="text-xs text-purple-800 leading-relaxed">Mise en scène costumée et spectacle de fin de saison devant les familles.</p>
             </div>
           </div>
         </section>
@@ -130,7 +145,7 @@ export default function NatationSynchroniseePage() {
             Rejoindre la section Natation Synchronisée
           </h2>
           <p className="text-sm text-purple-100 max-w-xl mx-auto leading-relaxed">
-            Inscriptions ouvertes pour la nouvelle saison. Paiement en ligne en 1x ou 3x sans frais.
+            Inscriptions ouvertes pour la nouvelle saison ({tarifTotal} € / an). Paiement en ligne sécurisé en 1x ou 3x sans frais.
           </p>
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
             <Link

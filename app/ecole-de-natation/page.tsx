@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { prisma } from '@/lib/prisma'
 import { Sparkles, Clock, MapPin, CheckCircle, HelpCircle, ArrowRight, CreditCard, ShieldCheck } from 'lucide-react'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: "École de Natation Enfants (dès 6 ans) à Cavaillon | Triton Club",
@@ -28,23 +31,46 @@ export const metadata: Metadata = {
 const FAQS = [
   {
     q: "À partir de quel âge mon enfant peut-il débuter l'école de natation ?",
-    a: "Le club accueille les enfants dès 6 ans révolus (nés en 2018, 2019 ou 2020 pour la saison en cours).",
+    a: "Le club accueille les enfants dès 6 ans révolus (pour acquérir les bases de l'apprentissage de la nage).",
   },
   {
-    q: "Un test de niveau est-il obligatoire pour les nouveaux adhérents ?",
-    a: "Oui, un rapide test de 5 minutes dans l'eau est organisé lors de la rentrée afin de déterminer le groupe pédagogique idéal (ENF 1 ou ENF 2). L'adhésion préalable sur MonClub est requise. En cas de test non concluant, le club rembourse intégralement l'inscription.",
+    q: "Comment se déroulent les tests de niveau pour les nouveaux adhérents ?",
+    a: "Pour participer au test de rentrée (5 min), l'enfant doit être inscrit au club et l'adhésion réglée sur MonClub. Si à l'issue du test le niveau n'est pas concluant, le remboursement intégral de l'inscription est effectué par le club.",
   },
   {
     q: "Quels sont les jours et horaires des cours pour enfants ?",
-    a: "Les cours se déroulent le mercredi après-midi (13h30 - 14h15 ou 14h15 - 15h00) et le samedi matin (09h15 - 10h00 ou 10h00 - 10h45).",
+    a: "Les cours de l'école de natation se déroulent le mercredi matin (09h15 - 10h00 pour ENF 1 et 10h00 - 10h45 pour ENF 2) et le vendredi en fin d'après-midi (17h15 - 18h00 pour ENF 1 et 18h15 - 19h00 pour ENF 2).",
   },
   {
     q: "Quels sont les tarifs de l'école de natation ?",
-    a: "Le tarif annuel est de 200 € pour 1 cours par semaine ou 270 € pour 2 cours par semaine (licence FFN comprise). Règlement par carte bancaire ou prélèvement en 1x ou 3x sans frais.",
+    a: "Le tarif annuel est de 200 € pour 1 cours par semaine (Mercredi) ou 270 € pour 2 cours par semaine (Mercredi + Vendredi), licence FFN incluse. Règlement en 1x ou 3x sans frais par carte bancaire.",
   },
 ]
 
-export default function EcoleDeNatationPage() {
+export default async function EcoleDeNatationPage() {
+  const enf1 = await prisma.groupe.findFirst({
+    where: { nom: { contains: 'ENF 1', mode: 'insensitive' } },
+    include: {
+      plannings: {
+        where: { actif: true },
+        orderBy: [{ jourSemaine: 'asc' }, { heureDebut: 'asc' }],
+      },
+    },
+  })
+
+  const enf2 = await prisma.groupe.findFirst({
+    where: { nom: { contains: 'ENF 2', mode: 'insensitive' } },
+    include: {
+      plannings: {
+        where: { actif: true },
+        orderBy: [{ jourSemaine: 'asc' }, { heureDebut: 'asc' }],
+      },
+    },
+  })
+
+  const tarif1Cours = (enf1?.tarif1Cours || 168) + (enf1?.prixLicence || 32)
+  const tarif2Cours = (enf1?.tarif || 238) + (enf1?.prixLicence || 32)
+
   return (
     <main className="min-h-screen pt-32 md:pt-40 pb-20 bg-slate-50/50">
       <div className="container mx-auto px-4 max-w-5xl space-y-12">
@@ -75,7 +101,7 @@ export default function EcoleDeNatationPage() {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-100">
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-150 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Âge</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Âge d&apos;accueil</span>
               <p className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-cyan-600 shrink-0" />
                 <span>Dès 6 ans</span>
@@ -94,15 +120,15 @@ export default function EcoleDeNatationPage() {
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Créneaux</span>
               <p className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
                 <Clock className="w-4 h-4 text-cyan-600 shrink-0" />
-                <span>Mercredi & Samedi</span>
+                <span>Mercredi & Vendredi</span>
               </p>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-150 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Tarif</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Tarif annuel</span>
               <p className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
                 <CreditCard className="w-4 h-4 text-cyan-600 shrink-0" />
-                <span>200 € / 270 €</span>
+                <span>{tarif1Cours} € (1 cours) / {tarif2Cours} € (2 cours)</span>
               </p>
             </div>
           </div>
@@ -111,16 +137,16 @@ export default function EcoleDeNatationPage() {
         <section className="grid md:grid-cols-2 gap-6">
           <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
-              ENF 1 · Découverte & Confiance
+              ENF 1 · Découverte (Mer. 09h15 / Ven. 17h15)
             </div>
             <h2 className="text-xl font-black text-slate-900">ENF 1 : Première découverte aquatique</h2>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Pour les enfants qui ne savent pas nager. En petit groupe dans le petit bassin, l&apos;enfant apprend à être à l&apos;aise, mettre la tête sous l&apos;eau, souffler, flotter et se déplacer en autonomie.
+              Pour les enfants qui ne savent pas nager. En petit groupe dans le petit bassin, l&apos;enfant apprend à être en confiance, mettre la tête sous l&apos;eau, souffler, flotter et se déplacer en autonomie.
             </p>
             <ul className="space-y-2 text-xs font-semibold text-slate-700">
               <li className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-cyan-600 shrink-0" />
-                <span>Immersion progressive et gestion de la respiration</span>
+                <span>Immersion progressive et gestion du souffle</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-cyan-600 shrink-0" />
@@ -135,7 +161,7 @@ export default function EcoleDeNatationPage() {
 
           <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-indigo-50 text-indigo-800 border border-indigo-200">
-              ENF 2 · Perfectionnement & Nages
+              ENF 2 · Apprentissage (Mer. 10h00 / Ven. 18h15)
             </div>
             <h2 className="text-xl font-black text-slate-900">ENF 2 : Bases du crawl, dos & plongeon</h2>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
@@ -152,7 +178,7 @@ export default function EcoleDeNatationPage() {
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-cyan-600 shrink-0" />
-                <span>Validation des étapes de l&apos;École de Natation Française</span>
+                <span>Obtention du Pass&apos;Sports de l&apos;Eau</span>
               </li>
             </ul>
           </div>
@@ -163,7 +189,7 @@ export default function EcoleDeNatationPage() {
             Inscrire votre enfant à l&apos;École de Natation
           </h2>
           <p className="text-sm text-cyan-100 max-w-xl mx-auto leading-relaxed">
-            Inscriptions en ligne ouvertes. Paiement sécurisé par carte bancaire en 1x ou 3x sans frais.
+            Inscriptions en ligne ouvertes. Formule 1 cours ({tarif1Cours} €) ou 2 cours ({tarif2Cours} €) par semaine.
           </p>
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
             <Link
