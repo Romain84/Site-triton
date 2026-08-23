@@ -99,7 +99,7 @@ export default function ContactForm() {
   const [turnstileToken, setTurnstileToken] = useState<string>('')
   const [selectedSujet, setSelectedSujet] = useState<string>('')
   const [showFinderModal, setShowFinderModal] = useState<boolean>(false)
-  const [testsOuverts, setTestsOuverts] = useState<boolean>(true)
+  const [testsOuverts, setTestsOuverts] = useState<boolean>(false)
 
   useEffect(() => {
     fetch('/api/settings/public')
