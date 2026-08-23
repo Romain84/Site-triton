@@ -58,7 +58,7 @@ export default function ContactClient() {
                 Quel groupe choisir ?
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                École de natation, Sauv&apos;nage, Compétition ou Loisirs : découvrez la section adaptée selon l&apos;âge et le niveau aquatique.
+                École de natation, Compétition, Loisirs ou AquaFitness : découvrez la section adaptée selon l&apos;âge et le niveau aquatique.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">

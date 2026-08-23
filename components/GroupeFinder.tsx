@@ -40,9 +40,9 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     age: 'Dès 6 ans (nés en 2018-2020)',
     bassin: 'Petit Bassin · Piscine Alphonse Roudière',
     creneaux: ['Mercredi 13h30 - 14h15', 'Samedi 09h15 - 10h00'],
-    tarif: '220 € / an (licence FFN comprise)',
+    tarif: '200 € (1 cours) ou 270 € (2 cours) / an',
     description: 'Première découverte aquatique en petit groupe. L\'enfant apprend à être en confiance, mettre la tête sous l\'eau, souffler, flotter et se déplacer.',
-    pointsForts: ['Encadrement dédié dans le petit bassin', 'Apprentissage progressif et ludique', 'Validation du Sauv\'Nage'],
+    pointsForts: ['Encadrement dédié dans le petit bassin', 'Apprentissage progressif et ludique', 'Aisance aquatique en sécurité'],
     planningUrl: '/planning',
     inscriptionUrl: '/inscription'
   },
@@ -54,9 +54,9 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     age: '6 à 8 ans (nés en 2018-2020)',
     bassin: 'Petit & Grand Bassin',
     creneaux: ['Mercredi 14h15 - 15h00', 'Samedi 10h00 - 10h45'],
-    tarif: '220 € / an (licence FFN comprise)',
+    tarif: '200 € (1 cours) ou 270 € (2 cours) / an',
     description: 'Pour les enfants déjà à l\'aise dans l\'eau qui apprennent les bases du crawl, du dos et le plongeon avec une transition vers le grand bassin.',
-    pointsForts: ['Passage progressif en grand bassin', 'Apprentissage des techniques de nage', 'Pass\'Sport de l\'eau'],
+    pointsForts: ['Passage progressif en grand bassin', 'Apprentissage des techniques de nage', 'Perfectionnement aquatique'],
     planningUrl: '/planning',
     inscriptionUrl: '/inscription'
   },
@@ -68,7 +68,7 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     age: '7 à 10 ans (nés en 2016-2019)',
     bassin: 'Grand Bassin',
     creneaux: ['Mardi 17h30 - 18h30', 'Jeudi 17h30 - 18h30'],
-    tarif: '240 € / an (licence FFN comprise)',
+    tarif: '200 € / an (licence FFN comprise)',
     description: 'Nager pour le plaisir et perfectionner ses nages sur 1 ou 2 créneaux par semaine, sans obligation de compétition.',
     pointsForts: ['1 ou 2 séances par semaine au choix', 'Pratique sportive conviviale', 'Perfectionnement 4 nages'],
     planningUrl: '/planning',
@@ -82,7 +82,7 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     age: '7 à 10 ans (nés en 2016-2019)',
     bassin: 'Grand Bassin',
     creneaux: ['Lundi, Mardi, Jeudi 17h30 - 18h45', 'Mercredi 15h00 - 16h30'],
-    tarif: '240 € à 285 € / an selon le niveau',
+    tarif: '280 € / an (licence FFN comprise)',
     description: 'Pour les jeunes nageurs souhaitant s\'entraîner régulièrement et participer aux rencontres interclubs et compétitions FFN du département.',
     pointsForts: ['Entraîneurs spécialisés compétition', 'Stages de perfectionnement', 'Rencontres et championnats FFN'],
     planningUrl: '/planning',
@@ -96,7 +96,7 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     age: '11 à 14 ans (Collégiens)',
     bassin: 'Grand Bassin',
     creneaux: ['Mercredi 16h30 - 17h30', 'Vendredi 18h00 - 19h00'],
-    tarif: '240 € / an (licence FFN comprise)',
+    tarif: '250 € / an (licence FFN comprise)',
     description: 'Activité sportive pour collégiens : travail de l\'endurance, amélioration technique et bonne ambiance entre nageurs du même âge.',
     pointsForts: ['Horaires adaptés aux collégiens', 'Séances complètes avec matériel', 'Esprit d\'équipe et bien-être'],
     planningUrl: '/planning',
@@ -110,7 +110,7 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     age: '15 à 18 ans (Lycéens)',
     bassin: 'Grand Bassin',
     creneaux: ['Lundi 19h15 - 20h30', 'Jeudi 19h15 - 20h30'],
-    tarif: '240 € / an (licence FFN comprise)',
+    tarif: '250 € / an (licence FFN comprise)',
     description: 'Séances en soirée pour les lycéens désirant maintenir une activité physique régulière et nager dans un cadre structuré.',
     pointsForts: ['Créneaux adaptés aux lycéens', 'Entretien de la condition physique', 'Ambiance conviviale'],
     planningUrl: '/planning',
@@ -124,7 +124,7 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     age: '11 à 13 ans (nés en 2013-2015)',
     bassin: 'Grand Bassin + PPG',
     creneaux: ['Lundi, Mardi, Jeudi, Vendredi 18h30 - 20h00', 'PPG Mercredi 17h30'],
-    tarif: '285 € / an (licence FFN comprise)',
+    tarif: '280 € / an (licence comprise + caution 50 €)',
     description: 'Filière compétition départementale et régionale. Volume de nage structuré, préparation physique générale (PPG) et suivi chronométrique.',
     pointsForts: ['Séances quotidiennes + préparation physique', 'Participation aux compétitions régionales PACA', 'Stages de perfectionnement'],
     planningUrl: '/planning',
@@ -138,8 +138,8 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     age: '14 ans et plus (Cadets, Juniors, Seniors)',
     bassin: 'Grand Bassin + Musculation',
     creneaux: ['Tous les soirs 18h45 - 20h30', 'PPG / Renforcement 2x/semaine'],
-    tarif: '330 € / an (licence FFN comprise)',
-    description: 'Groupe compétition avancé : objectifs de qualifications régionales et nationales, programme d\'entraînement quotidien et stages intensifs.',
+    tarif: '280 € / an (licence comprise + caution 50 €/100 €)',
+    description: 'Groupe compétition avancé : objectifs de qualifications départementales, régionales et nationales, programme structuré et PPG.',
     pointsForts: ['Encadrement par entraîneur diplômé d\'État', 'Planification annuelle de la performance', 'Stages sportifs dédiés'],
     planningUrl: '/planning',
     inscriptionUrl: '/inscription'
@@ -152,7 +152,7 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     age: '18 ans et plus',
     bassin: 'Grand Bassin (lignes par niveau)',
     creneaux: ['Lundi & Jeudi 20h00 - 21h15', 'Mardi & Vendredi 12h15 - 13h30'],
-    tarif: '240 € / an (licence FFN comprise)',
+    tarif: '250 € / an (licence FFN comprise)',
     description: 'Créneaux encadrés entre midi et deux ou le soir pour pratiquer la natation à son rythme avec des lignes d\'eau réparties par niveau.',
     pointsForts: ['Lignes de niveau adaptées', 'Choix des créneaux (midi ou soir)', 'Conseils techniques individualisés'],
     planningUrl: '/planning',
@@ -166,7 +166,7 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     age: '25 ans et plus (catégories C1 à C14)',
     bassin: 'Grand Bassin',
     creneaux: ['Lundi, Mardi, Jeudi 19h30 - 21h00', 'Samedi matin'],
-    tarif: '285 € / an (licence FFN comprise)',
+    tarif: '280 € / an (licence comprise + caution 100 €)',
     description: 'Pour les nageurs expérimentés souhaitant s\'entraîner avec intensité et participer aux championnats régionaux et nationaux des Maîtres.',
     pointsForts: ['Entraînements structurés et exigeants', 'Relais et dynamique d\'équipe', 'Compétitions officielles FFN'],
     planningUrl: '/planning',
@@ -180,7 +180,7 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     age: 'Dès 7 ans (Enfants, Ados & Adultes)',
     bassin: 'Grand Bassin + Salle PPG',
     creneaux: ['Mercredi 15h30 - 17h30', 'Vendredi 18h00 - 20h00 (+ PPG)'],
-    tarif: '240 € / an (licence FFN comprise)',
+    tarif: '245 € / an (licence FFN comprise)',
     description: 'Discipline mêlant natation, chorégraphie, souplesse et musique. Ballets d\'équipe, travail technique et grand gala annuel.',
     pointsForts: ['Entraîneurs spécialisées', 'Préparation physique et chorégraphique', 'Gala de fin de saison'],
     planningUrl: '/planning',
@@ -194,7 +194,7 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     age: 'Adultes & Seniors',
     bassin: 'Grand Bassin',
     creneaux: ['Mardi 19h15 - 20h00', 'Jeudi 19h15 - 20h00'],
-    tarif: '220 € / an (licence FFN comprise)',
+    tarif: '220 € (1 cours) ou 370 € (2 cours) / an',
     description: 'Gymnastique aquatique en musique. Renforcement musculaire complet et travail cardio sans impact sur les articulations.',
     pointsForts: ['Sans choc articulaire', 'Ambiance dynamique en musique', 'Idéal pour la remise en forme'],
     planningUrl: '/planning',
@@ -208,9 +208,9 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     age: 'Dès 17 ans (test de nage MNS requis)',
     bassin: 'Grand Bassin',
     creneaux: ['Vendredi soir & Samedi matin'],
-    tarif: '500 € (avec 4 j surveillance) / 750 € (tarif plein)',
-    description: 'Formation officielle de Surveillant Sauveteur Aquatique (SSA - Arrêté du 29/07/2026) avec pack secourisme PSE1+PSE2 (40h prévues).',
-    pointsForts: ['Diplôme d\'État officiel SSA', 'Pack secourisme PSE1+PSE2 inclus', 'Avantage surveillance Croix-Blanche (500 €)'],
+    tarif: 'Tarif communiqué prochainement (en attente du référentiel officiel)',
+    description: 'Formation officielle de Surveillant Sauveteur Aquatique (SSA) avec pack secourisme opérationnel PSE1+PSE2.',
+    pointsForts: ['Diplôme d\'État officiel SSA', 'Pack secourisme PSE1+PSE2 inclus', 'Formation diplômante complète'],
     planningUrl: '/horaires',
     inscriptionUrl: '/inscription'
   }
@@ -312,7 +312,7 @@ export default function GroupeFinder({ embedded = false, onClose }: GroupeFinder
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 group-hover:text-primary transition-colors">Enfant (6 à 10 ans)</h4>
-                  <p className="text-xs text-slate-500 font-medium">École de natation, Sauv&apos;Nage, Avenirs</p>
+                  <p className="text-xs text-slate-500 font-medium">École de natation, Avenirs, Perfectionnement</p>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-primary transition-transform group-hover:translate-x-0.5" />

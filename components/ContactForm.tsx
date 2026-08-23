@@ -287,7 +287,7 @@ export default function ContactForm() {
               <span>Identifier le groupe adapté en 3 questions</span>
             </div>
             <p className="text-cyan-800 font-medium leading-relaxed">
-              Le club accueille les nageurs dès 6 ans jusqu&apos;aux adultes (École de natation, Sauv&apos;nage, Compétition, Loisirs, AquaFitness).
+              Le club accueille les nageurs dès 6 ans jusqu&apos;aux adultes (École de natation, Compétition, Loisirs, AquaFitness).
             </p>
             <div className="pt-1 flex flex-wrap items-center gap-2">
               <button
