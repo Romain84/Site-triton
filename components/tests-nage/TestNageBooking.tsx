@@ -860,6 +860,21 @@ export default function TestNageBooking() {
         <p className="text-xs md:text-sm text-slate-600 max-w-2xl mx-auto font-medium">
           Ce test individuel de <strong>{currentSession?.dureeMinutes || 5} minutes</strong> dans l&apos;eau permet à nos éducateurs diplômés d&apos;évaluer l&apos;aisance aquatique de votre enfant pour lui proposer le groupe le plus adapté.
         </p>
+
+        {/* ─── BANDEAU INFORMATION ADHÉSION & GARANTIE REMBOURSEMENT ─── */}
+        <div className="bg-blue-50/90 border border-blue-200 rounded-2xl p-4 max-w-2xl mx-auto text-left text-xs text-blue-950 shadow-3xs space-y-1.5">
+          <div className="flex items-center gap-2 font-bold text-blue-950">
+            <span className="text-sm">📌</span>
+            <span>Rappel adhésion préalable & Garantie Sérénité :</span>
+          </div>
+          <p className="text-blue-900 font-normal leading-relaxed">
+            Pour participer au test de niveau, les nouveaux adhérents doivent être préalablement inscrits sur <strong>MonClub</strong> avec adhésion réglée.
+          </p>
+          <div className="bg-white/80 p-2.5 rounded-xl border border-blue-200/80 font-semibold text-blue-950 flex items-start gap-2">
+            <span>🛡️</span>
+            <span>Si le test n&apos;est pas concluant ou si aucun créneau ne convient, le <strong>remboursement intégral</strong> de l&apos;adhésion vous sera immédiatement effectué.</span>
+          </div>
+        </div>
       </div>
 
       {/* ─── FIL D'ARIANE / PROGRESSION ─── */}

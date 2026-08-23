@@ -25,6 +25,14 @@
   },
   {
     "categorie": "Inscriptions",
+    "question": "Comment se déroule le test de niveau de rentrée pour les nouveaux adhérents ?",
+    "reponse": "Pour les nouveaux adhérents, vous devez d'abord vous **inscrire en ligne sur [MonClub](/inscription)** et régler votre adhésion. Vous pourrez ensuite réserver votre créneau de **test de niveau de 5 minutes** avec nos éducateurs diplômés.\n\n🛡️ **Garantie Sérénité du club** : Si à l'issue du test de niveau l'évaluation n'est pas concluante ou si aucun groupe n'est adapté à votre enfant, l'adhésion vous sera **intégralement remboursée sans délai**.",
+    "motsCles": "test de niveau, test de nage, test natatoire, nouveaux adherents, remboursement, evaluer niveau, rentree",
+    "priorite": 3,
+    "actif": true
+  },
+  {
+    "categorie": "Inscriptions",
     "question": "Comment annuler une inscription ou changer de groupe ?",
     "reponse": "Pour toute demande d'annulation d'inscription, de désinscription ou de modification de groupe, **la seule possibilité est de contacter directement le secrétariat du club** via notre **[formulaire de contact](/contact)** ou par e-mail à **tritoncavaillon@gmail.com** en précisant le nom, prénom de l'adhérent et le motif. Notre équipe bénévole traitera votre demande.",
     "motsCles": "annuler, annulation, inscription, changer groupe, desinscription, resiliation, remboursement, refaire inscription",

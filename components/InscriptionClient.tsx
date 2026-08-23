@@ -881,8 +881,16 @@ function TestsBlock({ block, settings, hideCardBorder }: { block: BlockData; set
             </p>
           )}
         </div>
+        <div className="bg-blue-50/70 p-3.5 rounded-xl border border-blue-200 text-xs text-blue-950 space-y-1.5">
+          <p className="font-semibold">
+            📌 <strong>Important :</strong> Pour passer le test de niveau, l&apos;adhérent doit avoir finalisé son inscription et réglé son adhésion sur MonClub.
+          </p>
+          <p className="text-blue-900">
+            🛡️ <strong>Garantie Sérénité :</strong> Si à l&apos;issue du test, le niveau n&apos;est pas concluant ou si aucun groupe n&apos;est adapté, l&apos;adhésion vous sera <strong>intégralement remboursée</strong>.
+          </p>
+        </div>
         {afficherBoutonTest && (
-          <div className="pt-2">
+          <div className="pt-2 flex flex-wrap items-center gap-2">
             <Link
               href="/tests-de-nage"
               className="inline-flex items-center justify-center gap-2 py-2.5 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-3xs text-center"

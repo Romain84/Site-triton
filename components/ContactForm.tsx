@@ -213,9 +213,17 @@ export default function ContactForm() {
               <Waves className="w-4 h-4 text-blue-700" />
               <span>Tests de niveau de rentrée (5 minutes)</span>
             </div>
-            <p className="text-blue-800 font-medium leading-relaxed">
-              Pour les nouveaux enfants, le test de niveau permet d&apos;évaluer l&apos;aisance dans l&apos;eau pour déterminer le groupe le plus adapté.
-            </p>
+            <div className="space-y-2 text-blue-850 font-medium leading-relaxed">
+              <p>
+                Pour les <strong>nouveaux adhérents</strong>, l&apos;inscription sur notre plateforme <strong>MonClub</strong> et le règlement de l&apos;adhésion doivent être préalablement effectués pour pouvoir participer au test de niveau.
+              </p>
+              <div className="bg-white/90 p-3 rounded-xl border border-blue-200 text-blue-950 font-semibold flex items-start gap-2.5 shadow-3xs">
+                <span className="text-base shrink-0">🛡️</span>
+                <span>
+                  <strong>Garantie Sérénité du club :</strong> Si à l&apos;issue du test de niveau, l&apos;évaluation n&apos;est pas concluante ou si aucun groupe n&apos;est adapté, le <strong>remboursement de l&apos;intégralité de l&apos;adhésion</strong> vous sera immédiatement accordé.
+                </span>
+              </div>
+            </div>
             {testsOuverts ? (
               <div className="pt-1 flex flex-wrap items-center gap-2">
                 <Link
@@ -225,6 +233,12 @@ export default function ContactForm() {
                   <Waves className="w-3.5 h-3.5" />
                   <span>Réserver un créneau de test</span>
                   <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                <Link
+                  href="/inscription"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs transition-colors shadow-xs"
+                >
+                  <span>S&apos;inscrire d&apos;abord sur MonClub</span>
                 </Link>
               </div>
             ) : (
