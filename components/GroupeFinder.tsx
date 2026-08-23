@@ -37,7 +37,7 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     categorie: 'École de Natation',
     badgeBg: 'bg-emerald-50 border-emerald-200',
     badgeText: 'text-emerald-800',
-    age: '4 à 6 ans (nés en 2020-2022)',
+    age: 'Dès 6 ans (nés en 2018-2020)',
     bassin: 'Petit Bassin · Piscine Alphonse Roudière',
     creneaux: ['Mercredi 13h30 - 14h15', 'Samedi 09h15 - 10h00'],
     tarif: '220 € / an (licence FFN comprise)',
@@ -311,7 +311,7 @@ export default function GroupeFinder({ embedded = false, onClose }: GroupeFinder
                   <User className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-primary transition-colors">Enfant (4 à 10 ans)</h4>
+                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-primary transition-colors">Enfant (6 à 10 ans)</h4>
                   <p className="text-xs text-slate-500 font-medium">École de natation, Sauv&apos;Nage, Avenirs</p>
                 </div>
               </div>
@@ -396,7 +396,7 @@ export default function GroupeFinder({ embedded = false, onClose }: GroupeFinder
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-sm font-bold text-slate-900 group-hover:text-primary">
-                        Débutant complet (4 à 6 ans) · Découverte et aisance dans l&apos;eau
+                        Débutant complet (dès 6 ans) · Découverte et aisance dans l&apos;eau
                       </h4>
                       <p className="text-xs text-slate-500 font-medium mt-1">
                         Ne sait pas nager ou appréhende l&apos;eau. Séances en petit bassin sécurisé.
