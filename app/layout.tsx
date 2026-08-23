@@ -48,13 +48,25 @@ const jsonLd = [
     },
     telephone: '+33 4 90 71 00 00',
     priceRange: '€€',
+    areaServed: [
+      { '@type': 'City', name: 'Cavaillon' },
+      { '@type': 'City', name: 'Cheval-Blanc' },
+      { '@type': 'City', name: 'Les Taillades' },
+      { '@type': 'City', name: 'Robion' },
+      { '@type': 'City', name: 'Orgon' },
+      { '@type': 'City', name: 'Plan-d\'Orgon' },
+      { '@type': 'City', name: 'L\'Isle-sur-la-Sorgue' },
+      { '@type': 'City', name: 'Sénas' },
+      { '@type': 'AdministrativeArea', name: 'Vaucluse' },
+      { '@type': 'AdministrativeArea', name: 'Luberon' },
+    ],
     sameAs: [
       'https://www.ffnatation.fr',
       'https://tritonapp.fr',
     ],
     offerCatalog: {
       '@type': 'OfferCatalog',
-      name: 'Activités, Cours de Natation et AquaGym',
+      name: 'Activités, Cours de Natation, Natation Synchronisée et AquaGym',
       itemListElement: [
         {
           '@type': 'Offer',
@@ -68,8 +80,24 @@ const jsonLd = [
           '@type': 'Offer',
           itemOffered: {
             '@type': 'Service',
-            name: 'École de Natation & Avenirs (dès 6 ans)',
-            description: 'Apprentissage de la natation et perfectionnement pour enfants.',
+            name: 'École de Natation & Cours Enfants (dès 6 ans)',
+            description: 'Apprentissage des techniques de nage fondamentales et perfectionnement pour enfants.',
+          },
+        },
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'Natation Synchronisée & Artistique',
+            description: 'Discipline mêlant natation, danse aquatique, souplesse et chorégraphie en musique dès 7 ans.',
+          },
+        },
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'Cours de Natation Adultes & Maîtres (Loisir et Perfectionnement)',
+            description: 'Perfectionnement technique des 4 nages, endurance, reprise sportive et nage encadrée le midi et en soirée.',
           },
         },
         {
@@ -77,15 +105,7 @@ const jsonLd = [
           itemOffered: {
             '@type': 'Service',
             name: 'Natation Compétition FFN (Benjamins, Juniors, Adultes)',
-            description: 'Filière compétition fédérale FFN et préparation sportive.',
-          },
-        },
-        {
-          '@type': 'Offer',
-          itemOffered: {
-            '@type': 'Service',
-            name: 'Natation Adultes Loisirs & Maîtres',
-            description: 'Perfectionnement technique, endurance et nage libre encadrée.',
+            description: 'Filière compétition fédérale FFN, stages et préparation sportive.',
           },
         },
         {
@@ -125,6 +145,22 @@ const jsonLd = [
         acceptedAnswer: {
           '@type': 'Answer',
           text: 'L\'adhésion annuelle est de 220 € pour 1 cours par semaine ou 370 € pour 2 cours par semaine (licence FFN incluse). Le club propose le paiement en ligne en 1 fois ou 3 fois sans frais.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Où prendre des cours de natation synchronisée (artistique) à Cavaillon et dans le Vaucluse ?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Le Triton Club Cavaillon propose une section de Natation Artistique / Synchronisée pour les enfants et adolescents dès 7 ans, avec entraînements techniques, chorégraphies et un gala de fin d\'année à la piscine Alphonse Roudière.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Le club propose-t-il des cours de natation pour adultes à Cavaillon ?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Oui, la section Adultes Loisirs & Perfectionnement accueille les adultes de tous niveaux pour perfectionner leur technique de nage (crawl, dos, brasse, papillon) et entretenir leur condition physique le midi (12h15-13h30) et le soir (20h00-21h15).',
         },
       },
       {

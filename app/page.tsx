@@ -418,7 +418,7 @@ export default async function HomePage() {
               </div>
             </div>
 
-            {/* CARTE 4 : ARTISTIQUE & SAUVETAGE SSA */}
+            {/* CARTE 4 : NATATION SYNCHRONISÉE & ARTISTIQUE */}
             <div className="p-6 rounded-2xl border border-purple-200/80 bg-gradient-to-b from-purple-50/40 to-white shadow-xs hover:shadow-md hover:border-purple-300 transition-all flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-black">
@@ -426,14 +426,14 @@ export default async function HomePage() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-100/60 px-2 py-0.5 rounded-md">
-                    Artistique & Diplôme d&apos;État
+                    Dès 7 ans · Danse & Sauvetage SSA
                   </span>
                   <h3 className="text-lg font-black text-slate-900">
-                    Artistique & SSA
+                    Natation Synchronisée & SSA
                   </h3>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Natation synchronisée en musique et préparation diplômante au métier de Surveillant Sauveteur Aquatique (SSA + PSE1/PSE2).
+                  Chorégraphies aquatiques en musique (natation synchronisée / artistique) et formation officielle de Surveillant Sauveteur Aquatique.
                 </p>
               </div>
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
