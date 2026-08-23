@@ -18,7 +18,22 @@ export default function Footer() {
 
   return (
     <footer className="bg-slate-950 text-slate-300 border-t border-slate-900/60 py-5">
-      <div className="container mx-auto px-6 max-w-6xl flex flex-col md:flex-row items-center justify-between gap-4 text-[11px] font-bold uppercase tracking-wider">
+      <div className="container mx-auto px-6 max-w-6xl space-y-3">
+        {/* Subtle Discipline Links for SEO */}
+        <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3.5 gap-y-1 text-[10px] font-medium text-slate-400 border-b border-slate-900/80 pb-2.5">
+          <span className="text-slate-300 font-bold uppercase tracking-wider text-[9px]">Activités :</span>
+          <Link href="/aquagym" className="hover:text-emerald-400 transition-colors">AquaGym & AquaBike</Link>
+          <span className="text-slate-800">•</span>
+          <Link href="/ecole-de-natation" className="hover:text-cyan-400 transition-colors">École de Natation</Link>
+          <span className="text-slate-800">•</span>
+          <Link href="/natation-synchronisee" className="hover:text-purple-400 transition-colors">Natation Synchronisée</Link>
+          <span className="text-slate-800">•</span>
+          <Link href="/cours-natation-adulte" className="hover:text-blue-400 transition-colors">Cours Adultes</Link>
+          <span className="text-slate-800">•</span>
+          <Link href="/formation-ssa" className="hover:text-amber-400 transition-colors">Formation SSA</Link>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[11px] font-bold uppercase tracking-wider">
         
         {/* Left: Brand, Copyright & Legal Links */}
         <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1.5">
@@ -72,6 +87,7 @@ export default function Footer() {
           >
             Instagram
           </a>
+        </div>
         </div>
 
       </div>
