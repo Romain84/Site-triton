@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
   redirects: async () => [
     // Redirections 301 des anciennes URLs WordPress indexées par Google
     {
-      source: '/index.php/inscriptions-:slug*',
+      source: '/index.php/inscriptions-:slug',
       destination: '/inscription',
       permanent: true,
     },
@@ -85,22 +85,17 @@ const nextConfig: NextConfig = {
       permanent: true,
     },
     {
-      source: '/index.php/tutoriel-pour-sinscrire-:slug*',
+      source: '/index.php/tutoriel-pour-sinscrire-:slug',
       destination: '/inscription',
       permanent: true,
     },
     {
-      source: '/index.php/planning-:slug*',
+      source: '/index.php/planning-:slug',
       destination: '/planning',
       permanent: true,
     },
     {
       source: '/index.php/category/:slug*',
-      destination: '/actualites',
-      permanent: true,
-    },
-    {
-      source: '/index.php/:year(\\d{4})/:month(\\d{2})/:day(\\d{2})/:slug*',
       destination: '/actualites',
       permanent: true,
     },
