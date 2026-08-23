@@ -107,7 +107,7 @@ export const defaultMetadata: Metadata = {
     'ICBM': '43.8344, 5.0381',
   },
   verification: {
-    google: 'your-google-verification-code', // À remplacer par le vrai code
+    google: 'google0dfafe01b37422aa',
   },
 }
 
