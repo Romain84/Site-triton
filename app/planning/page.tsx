@@ -6,9 +6,16 @@ import { generatePageMetadata } from '@/lib/metadata'
 import { getCurrentSeasonLabel, isInterSaisonActive } from '@/lib/season-utils'
 
 export const metadata = generatePageMetadata({
-  title: 'Planning des Entraînements',
-  description: 'Planning hebdomadaire interactif des entraînements de natation du Triton Club Cavaillon. Consultez les horaires par groupe et jour.',
+  title: 'Planning & Horaires des Séances de Natation et AquaGym',
+  description: 'Consultez les horaires des entraînements et des cours d\'AquaFitness / AquaGym du Triton Club Cavaillon à la piscine Alphonse Roudière. Planning hebdomadaire par groupe.',
   path: '/planning',
+  keywords: [
+    'horaires aquagym Cavaillon',
+    'cours aquafitness planning Cavaillon',
+    'horaires natation Cavaillon',
+    'piscine Alphonse Roudière horaires club',
+    'aquagym mardi jeudi soir Cavaillon',
+  ],
 })
 
 export const dynamic = 'force-dynamic'

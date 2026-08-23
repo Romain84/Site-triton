@@ -1,6 +1,33 @@
 import { prisma } from '@/lib/prisma'
+import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  title: 'Groupes & Cours de Natation, AquaGym, AquaFitness à Cavaillon',
+  description: 'Découvrez nos groupes au Triton Club Cavaillon : cours d\'AquaGym / AquaFitness en musique, école de natation dès 6 ans, natation compétition FFN, loisirs adultes et sauvetage SSA à la piscine Alphonse Roudière (84).',
+  keywords: [
+    'aquagym Cavaillon',
+    'aquafitness Cavaillon',
+    'cours aquagym Cavaillon',
+    'gymnastique aquatique Cavaillon',
+    'aquagym Vaucluse',
+    'aquagym Luberon',
+    'aquabym Cavaillon',
+    'aquafitness 84',
+    'cours natation Cavaillon',
+    'école de natation Cavaillon',
+    'natation adulte Cavaillon',
+  ],
+  alternates: {
+    canonical: 'https://tritoncavaillon.fr/groupes',
+  },
+  openGraph: {
+    title: 'Groupes de Natation & Cours d\'AquaGym / AquaFitness - Triton Club Cavaillon',
+    description: 'Cours d\'AquaGym et AquaFitness, école de natation, compétition et loisirs à Cavaillon. Consultez les fiches de groupes et tarifs.',
+    url: 'https://tritoncavaillon.fr/groupes',
+  },
+}
 
 async function getGroupes() {
   try {

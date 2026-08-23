@@ -5,15 +5,28 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tritoncavaillon.fr'
 export const defaultMetadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Triton Club Cavaillon - Club de natation',
+    default: 'Triton Club Cavaillon - Natation, École de Natation & AquaGym / AquaFitness',
     template: '%s | Triton Club Cavaillon',
   },
   description:
-    'Club de natation à Cavaillon (84). Natation compétition FFN, loisir, artistique et aquagym pour tous les âges. Inscriptions ouvertes.',
+    'Club de natation à Cavaillon (84). Cours d\'AquaGym, AquaFitness, école de natation dès 6 ans, natation compétition FFN, loisirs adultes et sauvetage SSA à la piscine Alphonse Roudière.',
   alternates: {
     canonical: siteUrl,
   },
   keywords: [
+    'aquagym Cavaillon',
+    'aquafitness Cavaillon',
+    'cours aquagym Cavaillon',
+    'aquagym Vaucluse',
+    'aquagym Luberon',
+    'gymnastique aquatique Cavaillon',
+    'aquabym',
+    'aquafitness Luberon',
+    'aquagym piscine Alphonse Roudière',
+    'remise en forme aquatique Cavaillon',
+    'cours aquafitness 84',
+    'aquagym adulte Cavaillon',
+    'aquagym senior Cavaillon',
     'Triton Club Cavaillon',
     'natation Cavaillon',
     'club de natation Cavaillon',
@@ -22,13 +35,13 @@ export const defaultMetadata: Metadata = {
     'école de natation Cavaillon',
     'compétition natation FFN',
     'natation artistique Cavaillon',
-    'aquagym Cavaillon',
+    'SSA Cavaillon',
     'BNSSA Cavaillon',
     'FFN Vaucluse',
     'club natation 84300',
     'natation enfants Cavaillon',
     'natation adultes Cavaillon',
-    'piscine Alphonse Maureau',
+    'piscine Alphonse Roudière',
     'Luberon natation',
   ],
   authors: [{ name: 'Triton Club Cavaillon' }],
@@ -103,11 +116,13 @@ export function generatePageMetadata({
   description,
   path = '',
   image,
+  keywords,
 }: {
   title: string
   description: string
   path?: string
   image?: string
+  keywords?: string[]
 }): Metadata {
   const url = `https://tritoncavaillon.fr${path}`
   const imageUrl = image || '/images/hero-background.JPG'
@@ -115,6 +130,7 @@ export function generatePageMetadata({
   return {
     title,
     description,
+    keywords,
     openGraph: {
       title,
       description,

@@ -310,6 +310,145 @@ export default async function HomePage() {
           </div>
         </section>
 
+        {/* ─── SECTION DÉDIÉE : NOS DISCIPLINES & ACTIVITÉS PHARE (BOOST SEO AQUAGYM / NATATION) ─── */}
+        <section className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-slate-200 pb-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold uppercase tracking-wider border border-emerald-200 mb-2">
+                <span>Nos Activités à Cavaillon</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-black text-slate-950 tracking-tight">
+                Pour tous les âges, du loisir à la haute performance
+              </h2>
+            </div>
+            <Link
+              href="/groupes"
+              className="text-xs font-bold text-primary hover:text-primary-dark transition-colors inline-flex items-center gap-1 shrink-0"
+            >
+              <span>Découvrir tous les groupes</span>
+              <span>→</span>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* CARTE 1 : AQUAFITNESS & AQUAGYM */}
+            <div className="p-6 rounded-2xl border border-emerald-200/80 bg-gradient-to-b from-emerald-50/40 to-white shadow-xs hover:shadow-md hover:border-emerald-300 transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black">
+                  🌊
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded-md">
+                    Remise en forme · Adultes & Seniors
+                  </span>
+                  <h3 className="text-lg font-black text-slate-900">
+                    AquaGym & AquaFitness
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Cours de gymnastique aquatique en musique à la piscine Alphonse Roudière. Renforcement musculaire complet et cardio sans choc articulaire.
+                </p>
+              </div>
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500">Mardi & Jeudi 19h15</span>
+                <Link
+                  href="/groupes"
+                  className="text-xs font-black text-emerald-700 hover:text-emerald-800 transition-colors"
+                >
+                  Détails & Tarifs →
+                </Link>
+              </div>
+            </div>
+
+            {/* CARTE 2 : ECOLE DE NATATION */}
+            <div className="p-6 rounded-2xl border border-cyan-200/80 bg-gradient-to-b from-cyan-50/40 to-white shadow-xs hover:shadow-md hover:border-cyan-300 transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center font-black">
+                  🏊‍♂️
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-cyan-700 bg-cyan-100/60 px-2 py-0.5 rounded-md">
+                    Dès 6 ans · Apprentissage
+                  </span>
+                  <h3 className="text-lg font-black text-slate-900">
+                    École de Natation
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Progression ludique et sécurisée en petit bassin pour acquérir l&apos;aisance aquatique et apprendre les techniques de nage fondamentales.
+                </p>
+              </div>
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500">Mercredi & Samedi</span>
+                <Link
+                  href="/groupes"
+                  className="text-xs font-black text-cyan-700 hover:text-cyan-800 transition-colors"
+                >
+                  Détails & Tarifs →
+                </Link>
+              </div>
+            </div>
+
+            {/* CARTE 3 : COMPETITION FFN */}
+            <div className="p-6 rounded-2xl border border-indigo-200/80 bg-gradient-to-b from-indigo-50/40 to-white shadow-xs hover:shadow-md hover:border-indigo-300 transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-black">
+                  🏆
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-100/60 px-2 py-0.5 rounded-md">
+                    Filière Fédérale FFN
+                  </span>
+                  <h3 className="text-lg font-black text-slate-900">
+                    Natation Compétition
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Entraînements intensifs, préparation physique (PPG) et participation aux championnats départementaux, régionaux et nationaux.
+                </p>
+              </div>
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500">Tous les soirs</span>
+                <Link
+                  href="/groupes"
+                  className="text-xs font-black text-indigo-700 hover:text-indigo-800 transition-colors"
+                >
+                  Détails & Tarifs →
+                </Link>
+              </div>
+            </div>
+
+            {/* CARTE 4 : ARTISTIQUE & SAUVETAGE SSA */}
+            <div className="p-6 rounded-2xl border border-purple-200/80 bg-gradient-to-b from-purple-50/40 to-white shadow-xs hover:shadow-md hover:border-purple-300 transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-black">
+                  🛟
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-100/60 px-2 py-0.5 rounded-md">
+                    Artistique & Diplôme d&apos;État
+                  </span>
+                  <h3 className="text-lg font-black text-slate-900">
+                    Artistique & SSA
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Natation synchronisée en musique et préparation diplômante au métier de Surveillant Sauveteur Aquatique (SSA + PSE1/PSE2).
+                </p>
+              </div>
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500">Vendredi & Samedi</span>
+                <Link
+                  href="/groupes"
+                  className="text-xs font-black text-purple-700 hover:text-purple-800 transition-colors"
+                >
+                  Détails & Tarifs →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* LATEST ARTICLES & COMING EVENTS */}
         <section className="grid lg:grid-cols-2 gap-12">
           
