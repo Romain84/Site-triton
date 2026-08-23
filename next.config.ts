@@ -27,6 +27,89 @@ const nextConfig: NextConfig = {
       '@tanstack/react-query',
     ],
   },
+  redirects: async () => [
+    // Redirections 301 des anciennes URLs WordPress indexées par Google
+    {
+      source: '/index.php/inscriptions-:slug*',
+      destination: '/inscription',
+      permanent: true,
+    },
+    {
+      source: '/index.php/ses-entraineurs',
+      destination: '/le-club',
+      permanent: true,
+    },
+    {
+      source: '/index.php/ses-entraineurs/',
+      destination: '/le-club',
+      permanent: true,
+    },
+    {
+      source: '/index.php/sa-boutique',
+      destination: '/boutique',
+      permanent: true,
+    },
+    {
+      source: '/index.php/sa-boutique/',
+      destination: '/boutique',
+      permanent: true,
+    },
+    {
+      source: '/index.php/le-club',
+      destination: '/le-club',
+      permanent: true,
+    },
+    {
+      source: '/index.php/le-club/',
+      destination: '/le-club',
+      permanent: true,
+    },
+    {
+      source: '/index.php/accueil',
+      destination: '/',
+      permanent: true,
+    },
+    {
+      source: '/index.php/accueil/',
+      destination: '/',
+      permanent: true,
+    },
+    {
+      source: '/index.php/partenaires',
+      destination: '/le-club',
+      permanent: true,
+    },
+    {
+      source: '/index.php/partenaires/',
+      destination: '/le-club',
+      permanent: true,
+    },
+    {
+      source: '/index.php/tutoriel-pour-sinscrire-:slug*',
+      destination: '/inscription',
+      permanent: true,
+    },
+    {
+      source: '/index.php/planning-:slug*',
+      destination: '/planning',
+      permanent: true,
+    },
+    {
+      source: '/index.php/category/:slug*',
+      destination: '/actualites',
+      permanent: true,
+    },
+    {
+      source: '/index.php/:year(\\d{4})/:month(\\d{2})/:day(\\d{2})/:slug*',
+      destination: '/actualites',
+      permanent: true,
+    },
+    {
+      source: '/index.php/:path*',
+      destination: '/',
+      permanent: true,
+    },
+  ],
   headers: async () => [
     {
       source: '/:path*',
