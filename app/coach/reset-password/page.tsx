@@ -135,7 +135,7 @@ function ResetPasswordForm() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form method="POST" action="#" onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="password" className="block font-semibold mb-2">
                 Nouveau mot de passe

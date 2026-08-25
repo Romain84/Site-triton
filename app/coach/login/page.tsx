@@ -58,7 +58,7 @@ export default function CoachLoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form method="POST" action="#" onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block font-semibold mb-2">
                 Email

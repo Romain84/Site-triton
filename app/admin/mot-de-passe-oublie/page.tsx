@@ -85,7 +85,7 @@ export default function AdminForgotPasswordPage() {
           </div>
         )}
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form method="POST" action="#" className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="sr-only">
               Adresse email
