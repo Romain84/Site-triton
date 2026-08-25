@@ -183,12 +183,48 @@ export async function PATCH(
       messageTexte: `La facture ${facture.numero} est passée au statut ${statut}.`,
     })
 
+    const moisNoms = [
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+    ]
+    const moisNom = moisNoms[facture.mois - 1] || `${facture.mois}`
+
     if (facture.coach.email) {
-      await notifyCoach(facture.coach.email, {
-        sujet: `Mise à jour de votre facture ${facture.numero}`,
-        messageHtml: `<p>Bonjour ${facture.coach.prenom}, votre facture <strong>${facture.numero}</strong> est maintenant au statut <strong>${statut}</strong>.</p>`,
-        messageTexte: `Bonjour ${facture.coach.prenom}, votre facture ${facture.numero} est maintenant au statut ${statut}.`,
-      })
+      if (statut === 'payee') {
+        await notifyCoach(facture.coach.email, {
+          sujet: `✅ Règlement effectué - Facture ${facture.numero} (${moisNom} ${facture.annee})`,
+          messageHtml: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; rounded: 12px;">
+              <h2 style="color: #0f172a; margin-top: 0;">Bonjour ${facture.coach.prenom},</h2>
+              <p style="color: #334155; font-size: 15px; line-height: 1.5;">
+                Le règlement de votre facture <strong>N° ${facture.numero}</strong> a été validé et effectué par le club.
+              </p>
+              <div style="background-color: #f8fafc; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 6px;">
+                <p style="margin: 0; color: #0f172a; font-weight: bold;">Détails du paiement :</p>
+                <p style="margin: 5px 0 0 0; color: #475569; font-size: 14px;">
+                  • Période : <strong>${moisNom} ${facture.annee}</strong><br/>
+                  • Montant réglé : <strong style="color: #047857; font-size: 16px;">${facture.montantTotal.toFixed(2)} €</strong><br/>
+                  • Statut : <strong style="color: #047857;">Payée</strong>
+                </p>
+              </div>
+              <p style="color: #64748b; font-size: 13px;">
+                Vous pouvez consulter l'historique et télécharger votre facture à tout moment sur votre <a href="${process.env.NEXT_PUBLIC_URL || 'https://www.tritoncavaillon.fr'}/coach/facturation" style="color: #0284c7; text-decoration: underline;">Espace Coach</a>.
+              </p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+              <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                Triton Club Cavaillon — Secrétariat & Comptabilité
+              </p>
+            </div>
+          `,
+          messageTexte: `Bonjour ${facture.coach.prenom},\n\nLe règlement de votre facture N° ${facture.numero} d'un montant de ${facture.montantTotal.toFixed(2)} € (${moisNom} ${facture.annee}) a été validé et effectué par le club.\n\nRetrouvez le détail sur votre Espace Coach : ${process.env.NEXT_PUBLIC_URL || 'https://www.tritoncavaillon.fr'}/coach/facturation\n\nTriton Club Cavaillon`,
+        })
+      } else {
+        await notifyCoach(facture.coach.email, {
+          sujet: `Mise à jour de votre facture ${facture.numero}`,
+          messageHtml: `<p>Bonjour ${facture.coach.prenom}, votre facture <strong>${facture.numero}</strong> (${moisNom} ${facture.annee}) est maintenant au statut <strong>${statut}</strong>.</p>`,
+          messageTexte: `Bonjour ${facture.coach.prenom}, votre facture ${facture.numero} (${moisNom} ${facture.annee}) est maintenant au statut ${statut}.`,
+        })
+      }
     }
 
     logAdminAudit({
