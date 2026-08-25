@@ -196,6 +196,7 @@ export default function GroupesManager() {
           niveau: niveau || null,
           actif,
           annule,
+          complet,
           couleur: couleur || null,
           dateDebut: dateDebut || null,
           dateFin: dateFin || null,
