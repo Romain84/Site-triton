@@ -20,6 +20,7 @@ export interface GroupeData {
   ageMin: number | null
   ageMax: number | null
   annule: boolean | null
+  complet?: boolean | null
   ordre: number | null
 }
 
@@ -303,12 +304,20 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
                   const slotsCount = plannings.filter((p) => p.groupeId === groupe.id).length
 
                   return (
+                    
                     <article
                       key={groupe.id}
-                      className={`border p-6 md:p-8 flex flex-col justify-between space-y-6 rounded-3xl bg-white hover:shadow-md transition-all duration-200 border-l-4 ${config.borderAccent} ${
-                        groupe.annule ? 'border-red-200 bg-red-50/10' : 'border-slate-200/80'
+                      className={`relative border p-6 md:p-8 flex flex-col justify-between space-y-6 rounded-3xl bg-white hover:shadow-md transition-all duration-200 border-l-4 ${config.borderAccent} ${
+                        groupe.annule ? 'border-red-200 bg-red-50/10' : groupe.complet ? 'border-red-300' : 'border-slate-200/80'
                       }`}
                     >
+                      {groupe.complet && (
+                        <div className="absolute top-4 right-4 z-20 pointer-events-none transform rotate-[-8deg] shadow-lg rounded-xl overflow-hidden">
+                          <div className="bg-red-600/95 text-white font-black text-xs md:text-sm px-3.5 py-1.5 uppercase tracking-widest border-2 border-white/90 shadow-md">
+                            COMPLET
+                          </div>
+                        </div>
+                      )}
                       <div className="space-y-4">
                         {/* En-tête Carte : Titre + Badge Âge */}
                         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -411,6 +420,7 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
                           </div>
                         )}
 
+                        
                         <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
                           <button
                             type="button"
@@ -419,12 +429,18 @@ export default function GroupesClient({ groupes, plannings = [], interSaison, te
                           >
                             <span>Planning {slotsCount > 0 ? `(${slotsCount})` : ''}</span>
                           </button>
-                          <a
-                            href={((groupe.nom || '').toUpperCase().includes('SSA') || (groupe.nom || '').toUpperCase().includes('BNSSA')) ? '/inscription#ssa' : `/inscription?groupe=${encodeURIComponent(groupe.nom)}`}
-                            className="flex-1 text-center bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs uppercase tracking-wider py-3 px-3 rounded-xl transition-all shadow-xs active:scale-[0.99] flex items-center justify-center gap-1.5"
-                          >
-                            <span>S&apos;inscrire à ce groupe</span>
-                          </a>
+                          {groupe.complet ? (
+                            <div className="flex-1 text-center bg-red-50 text-red-800 border border-red-200 font-extrabold text-xs uppercase tracking-wider py-3 px-3 rounded-xl flex items-center justify-center select-none">
+                              <span>Complet</span>
+                            </div>
+                          ) : (
+                            <a
+                              href={((groupe.nom || '').toUpperCase().includes('SSA') || (groupe.nom || '').toUpperCase().includes('BNSSA')) ? '/inscription#ssa' : `/inscription?groupe=${encodeURIComponent(groupe.nom)}`}
+                              className="flex-1 text-center bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs uppercase tracking-wider py-3 px-3 rounded-xl transition-all shadow-xs active:scale-[0.99] flex items-center justify-center gap-1.5"
+                            >
+                              <span>S&apos;inscrire à ce groupe</span>
+                            </a>
+                          )}
                         </div>
                       </div>
                     </article>

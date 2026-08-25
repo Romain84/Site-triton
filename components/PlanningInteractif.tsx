@@ -998,6 +998,12 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
                                       🏊 {spanLanes} Lignes
                                     </span>
                                   )}
+                                  
+                                  {(planning.groupe as any)?.complet && (
+                                    <span className="shrink-0 text-[7.5px] md:text-[8.5px] bg-red-600 text-white font-black px-1.5 py-0.5 rounded-sm leading-tight border border-white/80 shadow-xs uppercase tracking-wider transform rotate-[-2deg]">
+                                      COMPLET
+                                    </span>
+                                  )}
                                   {(planning.groupe as any)?.annule && (
                                     <span className="shrink-0 text-[7px] md:text-[8px] bg-red-650 text-white font-extrabold px-1 rounded-sm leading-tight print:hidden">
                                       PAS DE COURS

@@ -52,6 +52,7 @@ async function getGroupes() {
         ageMin: true,
         ageMax: true,
         annule: true,
+        complet: true,
         ordre: true,
       },
     })

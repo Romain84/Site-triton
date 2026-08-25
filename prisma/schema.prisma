@@ -173,6 +173,7 @@ model Groupe {
   prixFormationPSE       Float?
   actif                  Boolean                @default(true)
   annule                 Boolean                @default(false)
+  complet                Boolean                @default(false)
   ordre                  Int                    @default(0)
   dateDebut              DateTime?
   dateFin                DateTime?

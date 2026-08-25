@@ -51,6 +51,7 @@ async function getData() {
               total: true,
               inscrits: true,
               ordre: true,
+              complet: true,
             },
           },
         },
@@ -73,6 +74,7 @@ async function getData() {
           total: true,
           inscrits: true,
           ordre: true,
+              complet: true,
         },
       }),
       prisma.settings.findFirst({

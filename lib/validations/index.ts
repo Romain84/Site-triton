@@ -165,6 +165,7 @@ export const groupeSchema = z.object({
   ordre: z.coerce.number().int().default(0),
   actif: z.boolean().default(true),
   annule: z.boolean().default(false),
+  complet: z.boolean().default(false),
 })
 
 /**

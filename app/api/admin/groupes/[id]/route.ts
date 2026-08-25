@@ -48,6 +48,7 @@ export async function PUT(
         ordre: validatedData.ordre,
         actif: validatedData.actif,
         annule: validatedData.annule,
+        complet: validatedData.complet,
       },
     })
 

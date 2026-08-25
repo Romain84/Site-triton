@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
         ordre: validatedData.ordre,
         actif: validatedData.actif,
         annule: validatedData.annule,
+        complet: validatedData.complet,
       },
     })
 

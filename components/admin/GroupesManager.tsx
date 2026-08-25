@@ -25,6 +25,7 @@ interface Groupe {
   niveau: string | null
   actif: boolean
   annule: boolean
+  complet: boolean
   dateDebut: string | null
   dateFin: string | null
   tempsFacture: number | null
@@ -62,6 +63,7 @@ export default function GroupesManager() {
   const [niveau, setNiveau] = useState('')
   const [actif, setActif] = useState(true)
   const [annule, setAnnule] = useState(false)
+  const [complet, setComplet] = useState(false)
   const [dateDebut, setDateDebut] = useState('')
   const [dateFin, setDateFin] = useState('')
   const [tempsFacture, setTempsFacture] = useState('')
@@ -108,6 +110,7 @@ export default function GroupesManager() {
     setNiveau('')
     setActif(true)
     setAnnule(false)
+    setComplet(false)
     setDateDebut('')
     setDateFin('')
     setTempsFacture('')
@@ -140,6 +143,7 @@ export default function GroupesManager() {
     setNiveau(groupe.niveau || '')
     setActif(groupe.actif)
     setAnnule(groupe.annule || false)
+    setComplet(groupe.complet || false)
     setDateDebut(groupe.dateDebut ? groupe.dateDebut.split('T')[0] : '')
     setDateFin(groupe.dateFin ? groupe.dateFin.split('T')[0] : '')
     setTempsFacture(groupe.tempsFacture?.toString() || '')
@@ -748,6 +752,20 @@ export default function GroupesManager() {
               ⚠️ Créneau temporairement suspendu (en attente d&apos;un coach). Réouverture possible à tout moment !
             </label>
           </div>
+        
+          <div className="flex items-center p-3 bg-red-50/70 border border-red-200 rounded-xl">
+            <input
+              type="checkbox"
+              id="complet"
+              checked={complet}
+              onChange={(e) => setComplet(e.target.checked)}
+              className="w-4 h-4 text-red-600 border-red-300 rounded focus:ring-red-500"
+            />
+            <label htmlFor="complet" className="ml-2 text-sm text-red-900 font-bold flex items-center gap-2 flex-wrap">
+              <span>Groupe COMPLET</span>
+              <span className="text-xs font-normal text-red-700">(Affiche un tampon &quot;COMPLET&quot; bien visible sur la page Groupes et sur le Planning)</span>
+            </label>
+          </div>
         </div>
 
         <div className="flex gap-4 pt-4">
@@ -944,6 +962,11 @@ export default function GroupesManager() {
                         >
                           {groupe.actif ? 'Actif' : 'Inactif'}
                         </span>
+                        {groupe.complet && (
+                          <span className="px-2 py-0.5 text-xs font-black bg-red-600 text-white rounded-md uppercase tracking-wider">
+                            COMPLET
+                          </span>
+                        )}
                         {groupe.annule && (
                           <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800">
                             Pas de cours
