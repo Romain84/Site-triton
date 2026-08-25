@@ -60,7 +60,7 @@ export default function CoachForgotPasswordPage() {
                 href="/coach/login"
                 className="text-primary hover:underline font-medium"
               >
-                ← Retour à la connexion
+                Retour à la connexion
               </Link>
             </div>
           </div>
@@ -113,7 +113,7 @@ export default function CoachForgotPasswordPage() {
 
           <div className="mt-6 text-center">
             <Link href="/coach/login" className="text-primary hover:underline">
-              ← Retour à la connexion
+              Retour à la connexion
             </Link>
           </div>
         </div>

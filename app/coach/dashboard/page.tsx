@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import CoachAgendaBassin, { AgendaSession } from '@/components/coach/CoachAgendaBassin'
 import {
+  Calendar,
   CalendarDays,
   Repeat,
   Receipt,
@@ -212,12 +213,9 @@ export default async function CoachDashboard() {
         <header className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-7 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-50 text-cyan-800 text-[11px] font-extrabold uppercase tracking-wider mb-1.5">
-                <Sparkles className="w-3 h-3 text-cyan-600" />
-                <span>Coach Triton Club</span>
-              </div>
+              
               <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">
-                Bonjour, {coach.prenom} 👋
+                Bonjour {coach.prenom}
               </h1>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
                 Bienvenue sur votre espace d&apos;entraînement et de gestion.
@@ -271,7 +269,7 @@ export default async function CoachDashboard() {
             }`}
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xl">⚡</span>
+              <Calendar className="w-5 h-5 text-slate-700" />
               {availableShiftsCount > 0 ? (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white animate-pulse">
                   {availableShiftsCount} libre{availableShiftsCount > 1 ? 's' : ''}
@@ -291,7 +289,7 @@ export default async function CoachDashboard() {
             className="p-4 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 transition-all flex flex-col justify-between"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xl">🔄</span>
+              <Repeat className="w-5 h-5 text-slate-700" />
               <ChevronRight className="w-4 h-4 text-slate-400" />
             </div>
             <div>
@@ -305,7 +303,7 @@ export default async function CoachDashboard() {
             className="col-span-2 sm:col-span-1 p-4 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 transition-all flex flex-col justify-between"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xl">💶</span>
+              <Receipt className="w-5 h-5 text-slate-700" />
               <ChevronRight className="w-4 h-4 text-slate-400" />
             </div>
             <div>

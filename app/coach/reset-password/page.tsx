@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { getErrorMessage } from '@/lib/utils'
+import { Eye, EyeOff } from 'lucide-react'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -182,7 +183,7 @@ function ResetPasswordForm() {
 
           <div className="mt-6 text-center">
             <Link href="/coach/login" className="text-primary hover:underline">
-              ← Retour à la connexion
+              Retour à la connexion
             </Link>
           </div>
         </div>
