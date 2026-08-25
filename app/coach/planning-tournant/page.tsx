@@ -1,11 +1,25 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import CoachNav from '@/components/coach/CoachNav'
 import { getErrorMessage } from '@/lib/utils'
-import { formatWeekdayLongDateFr } from '@/lib/date'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
+import toast from 'react-hot-toast'
+import {
+  Repeat,
+  Clock,
+  MapPin,
+  Calendar,
+  User,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
+  ArrowRight,
+  Plus,
+  Loader2
+} from 'lucide-react'
 
 interface Coach {
   id: string
@@ -34,21 +48,19 @@ export default function PlanningTournantPage() {
   const [currentCoach, setCurrentCoach] = useState<Coach | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [error, setError] = useState('')
+  const [filterMode, setFilterMode] = useState<'available' | 'mine' | 'all'>('available')
 
   const fetchEvenements = useCallback(async () => {
     try {
       const response = await fetch('/api/coach/planning-tournant')
-
       if (response.status === 401) {
         router.push('/coach/login')
         return
       }
-
       const data = await response.json()
       setEvenements(data.evenements || [])
-    } catch (err) {
-      setError('Erreur lors du chargement des créneaux')
+    } catch {
+      toast.error('Erreur lors du chargement des créneaux')
     } finally {
       setLoading(false)
     }
@@ -63,7 +75,7 @@ export default function PlanningTournantPage() {
           setCurrentCoach(data.coach)
         }
       } catch (err) {
-        console.error('Erreur lors de la récupération du profil', err)
+        console.error('Erreur profil', err)
       } finally {
         await fetchEvenements()
       }
@@ -73,22 +85,18 @@ export default function PlanningTournantPage() {
 
   const handleTake = async (id: string) => {
     setActionLoading(id)
-    setError('')
-
     try {
       const response = await fetch(`/api/coach/planning-tournant/${id}/take`, {
         method: 'POST',
       })
-
       const data = await response.json()
-
       if (!response.ok) {
         throw new Error(data.error || 'Erreur lors de la prise du créneau')
       }
-
+      toast.success('Créneau réservé avec succès !')
       await fetchEvenements()
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.error(getErrorMessage(err))
     } finally {
       setActionLoading(null)
     }
@@ -96,257 +104,247 @@ export default function PlanningTournantPage() {
 
   const handleRelease = async (id: string) => {
     const confirmed = await confirm({
-      title: 'Libérer le créneau',
-      message: 'Voulez-vous vraiment libérer ce créneau ?',
-      confirmText: 'Libérer',
-      cancelText: 'Annuler',
+      title: 'Libérer ce créneau ?',
+      message: 'Ce créneau sera immédiatement remis à disposition des autres entraîneurs du club.',
+      confirmText: 'Oui, libérer',
       variant: 'danger',
     })
+
     if (!confirmed) return
 
     setActionLoading(id)
-    setError('')
-
     try {
       const response = await fetch(`/api/coach/planning-tournant/${id}/release`, {
         method: 'POST',
       })
-
       const data = await response.json()
-
       if (!response.ok) {
         throw new Error(data.error || 'Erreur lors de la libération du créneau')
       }
-
+      toast.success('Créneau libéré avec succès')
       await fetchEvenements()
     } catch (err) {
-      setError(getErrorMessage(err))
+      toast.error(getErrorMessage(err))
     } finally {
       setActionLoading(null)
     }
   }
 
-  const calculateDuration = (debut: string, fin: string) => {
-    const [hD, mD] = debut.split(':').map(Number)
-    const [hF, mF] = fin.split(':').map(Number)
-    const duration = (hF * 60 + mF - (hD * 60 + mD)) / 60
-    return duration.toFixed(2)
-  }
+  const availableCount = useMemo(() => {
+    return evenements.filter((e) => !e.coachId).length
+  }, [evenements])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen py-8 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <CoachNav />
-          <div className="text-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-gray-600 font-medium">Chargement des créneaux...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const mineCount = useMemo(() => {
+    return currentCoach ? evenements.filter((e) => e.coachId === currentCoach.id).length : 0
+  }, [evenements, currentCoach])
 
-  const evenementsPris = evenements.filter(e => e.coachId === currentCoach?.id)
-  const evenementsDisponibles = evenements.filter(e => !e.coachId)
+  const filteredEvenements = useMemo(() => {
+    if (filterMode === 'available') {
+      return evenements.filter((e) => !e.coachId)
+    }
+    if (filterMode === 'mine' && currentCoach) {
+      return evenements.filter((e) => e.coachId === currentCoach.id)
+    }
+    return evenements
+  }, [evenements, filterMode, currentCoach])
+
+  const formatDateFr = (dateStr: string) => {
+    const d = new Date(dateStr)
+    const jours = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
+    const mois = ['Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.']
+    return `${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]} ${d.getFullYear()}`
+  }
 
   return (
-    <div className="min-h-screen py-8 bg-gray-50 animate-fade-in-up">
-      <div className="container mx-auto px-4">
+    <div className="min-h-screen pt-2 pb-24 sm:pb-12 bg-slate-50/50 text-slate-900">
+      <div className="container mx-auto px-4 max-w-5xl space-y-6">
         <CoachNav />
 
-        <div className="mb-8">
-          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">Planning tournant</h1>
-          <p className="text-slate-500 text-sm mt-1">Déclarez vos présences sur les créneaux tournants partagés.</p>
-        </div>
+        {/* HEADER & QUICK LINK TO REMPLACEMENTS */}
+        <header className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-7 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-800 text-[11px] font-extrabold uppercase tracking-wider mb-1.5">
+                <Repeat className="w-3 h-3 text-purple-600" />
+                <span>Gestion des créneaux tournants</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">
+                Planning Tournant
+              </h1>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Consultez et prenez en charge les créneaux tournants de la saison en 1 clic.
+              </p>
+            </div>
 
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-2xl shadow-xs">
-            <p className="text-red-700 font-medium">{error}</p>
+            <Link
+              href="/coach/remplacements"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors"
+            >
+              <span>Besoin d&apos;un remplaçant ?</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
-        )}
 
-        {/* Créneaux disponibles */}
-        <div className="mb-12">
-          <div className="flex items-center gap-2 mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <h2 className="text-lg font-black uppercase tracking-wider text-slate-900">Créneaux disponibles</h2>
+          {/* FILTER TABS PILLS */}
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
+            <button
+              onClick={() => setFilterMode('available')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                filterMode === 'available'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <span>À pourvoir</span>
+              <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${
+                filterMode === 'available' ? 'bg-emerald-800 text-white' : 'bg-emerald-100 text-emerald-800'
+              }`}>
+                {availableCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setFilterMode('mine')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                filterMode === 'mine'
+                  ? 'bg-slate-950 text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <span>Mes créneaux pris</span>
+              <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${
+                filterMode === 'mine' ? 'bg-slate-800 text-cyan-400' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {mineCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setFilterMode('all')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                filterMode === 'all'
+                  ? 'bg-slate-950 text-white shadow-xs'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <span>Tous ({evenements.length})</span>
+            </button>
           </div>
+        </header>
 
-          {evenementsDisponibles.length === 0 ? (
-            <div className="card p-8 text-center text-slate-500 font-semibold bg-white/80">
-              Aucun créneau disponible pour le moment
+        {/* LIST OF SHIFTS */}
+        <section className="space-y-3">
+          {loading ? (
+            <div className="bg-white border border-slate-200/80 rounded-3xl p-12 text-center space-y-2">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-cyan-600" />
+              <p className="text-xs text-slate-500 font-bold">Chargement des créneaux...</p>
+            </div>
+          ) : filteredEvenements.length === 0 ? (
+            <div className="bg-white border border-slate-200/80 rounded-3xl p-12 text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-slate-50 text-slate-400 mx-auto flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-bold text-slate-700">Aucun créneau dans cette sélection</p>
+              <p className="text-xs text-slate-400">
+                {filterMode === 'available'
+                  ? 'Tous les créneaux tournants sont actuellement attribués à un entraîneur.'
+                  : 'Vous n\'avez aucun créneau tournant réservé.'}
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {evenementsDisponibles.map((event) => (
-                <div key={event.id} className="card p-6 bg-white hover:border-slate-350 hover:shadow-md hover:shadow-slate-100/50 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-start justify-between mb-4 gap-4">
-                      <h3 className="text-xl font-bold text-slate-950 leading-tight">{event.titre}</h3>
-                      <span className="bg-emerald-50 text-emerald-800 border border-emerald-200/40 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md shrink-0">
-                        Disponible
-                      </span>
-                               <div className="space-y-2.5 mb-4">
-                      <p className="flex items-center gap-2 text-sm text-slate-655 font-semibold">
-                        <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span>{formatWeekdayLongDateFr(event.date)}</span>
-                      </p>
-                      <p className="flex items-center gap-2 text-sm text-slate-655 font-semibold">
-                        <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>
-                          {event.heureDebut} - {event.heureFin} ({calculateDuration(event.heureDebut, event.heureFin)}h)
+            filteredEvenements.map((evt) => {
+              const isMine = currentCoach && evt.coachId === currentCoach.id
+              const isAvailable = !evt.coachId
+              const isActionLoading = actionLoading === evt.id
+
+              const groupNames = (evt.groupes && evt.groupes.length > 0)
+                ? evt.groupes.map(g => g.nom).join(', ')
+                : (evt.groupe?.nom || evt.titre)
+
+              return (
+                <div
+                  key={evt.id}
+                  className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+                    isAvailable
+                      ? 'bg-emerald-50/40 border-emerald-200 hover:border-emerald-300'
+                      : isMine
+                      ? 'bg-white border-cyan-300 shadow-xs'
+                      : 'bg-white border-slate-200/80'
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    {/* LEFT DETAILS */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-slate-900 text-white tracking-wide">
+                          {evt.heureDebut} - {evt.heureFin}
                         </span>
+
+                        <span className="text-xs font-extrabold text-slate-900">
+                          {formatDateFr(evt.date)}
+                        </span>
+
+                        {isAvailable ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white animate-pulse">
+                            Libre
+                          </span>
+                        ) : isMine ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-100 text-cyan-800">
+                            Assigné à vous
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                            Coach : {evt.coach?.prenom} {evt.coach?.nom || ''}
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs sm:text-sm font-bold text-slate-800">
+                        {groupNames}
                       </p>
-                      {event.lieu && (
-                        <p className="flex items-center gap-2 text-sm text-slate-655 font-semibold">
-                          <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          <span>{event.lieu}</span>
-                        </p>
-                      )}
-                      {(event.groupes && event.groupes.length > 0) ? (
-                        <p className="flex items-center gap-2 text-sm text-slate-655 font-semibold">
-                          <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                          </svg>
-                          <span>Groupes : <strong>{event.groupes.map(g => g.nom).join(', ')}</strong></span>
-                        </p>
-                      ) : (event.groupe && (
-                        <p className="flex items-center gap-2 text-sm text-slate-655 font-semibold">
-                          <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                          </svg>
-                          <span>Groupe : <strong>{event.groupe.nom}</strong></span>
-                        </p>
-                      ))}
-                    </div>           </div>
 
-                    {event.description && (
-                      <p className="text-slate-500 text-xs font-medium bg-slate-50/50 border border-slate-100 rounded-xl p-3.5 mb-5 select-none leading-relaxed">
-                        {event.description}
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => handleTake(event.id)}
-                    disabled={actionLoading !== null}
-                    className="w-full bg-primary text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-xl hover:bg-primary-dark transition-all duration-200 disabled:opacity-50 active:scale-[0.98] shadow-sm flex items-center justify-center gap-2"
-                  >
-                    {actionLoading === event.id ? (
-                      <span className="flex items-center gap-1.5">
-                        <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        Prise en cours...
-                      </span>
-                    ) : 'Prendre ce créneau'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Mes créneaux */}
-        <div>
-          <div className="flex items-center gap-2 mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-            <h2 className="text-lg font-black uppercase tracking-wider text-slate-900">Mes créneaux</h2>
-          </div>
-
-          {evenementsPris.length === 0 ? (
-            <div className="card p-8 text-center text-slate-500 font-semibold bg-white/80">
-              Vous n&apos;avez pas encore pris de créneaux
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {evenementsPris.map((event) => (
-                <div key={event.id} className="card p-6 bg-white hover:border-slate-350 hover:shadow-md hover:shadow-slate-100/50 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden flex flex-col justify-between border-l-4 border-l-primary">
-                  <div>
-                    <div className="flex items-start justify-between mb-4 gap-4">
-                      <h3 className="text-xl font-bold text-slate-950 leading-tight">{event.titre}</h3>
-                      <span className="bg-blue-50 text-blue-800 border border-blue-200/40 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md shrink-0">
-                        Confirmé
-                      </span>
+                      <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{evt.lieu || 'Piscine Alphonse Roudière'}</span>
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="space-y-2.5 mb-4">
-                      <p className="flex items-center gap-2 text-sm text-slate-655 font-semibold">
-                        <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span>{formatWeekdayLongDateFr(event.date)}</span>
-                      </p>
-                      <p className="flex items-center gap-2 text-sm text-slate-655 font-semibold">
-                        <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>
-                          {event.heureDebut} - {event.heureFin} ({calculateDuration(event.heureDebut, event.heureFin)}h)
-                        </span>
-                      </p>
-                      {event.lieu && (
-                        <p className="flex items-center gap-2 text-sm text-slate-655 font-semibold">
-                          <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          <span>{event.lieu}</span>
-                        </p>
-                      )}
-                      {(event.groupes && event.groupes.length > 0) ? (
-                        <p className="flex items-center gap-2 text-sm text-slate-655 font-semibold">
-                          <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                          </svg>
-                          <span>Groupes : <strong>{event.groupes.map(g => g.nom).join(', ')}</strong></span>
-                        </p>
-                      ) : (event.groupe && (
-                        <p className="flex items-center gap-2 text-sm text-slate-655 font-semibold">
-                          <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                          </svg>
-                          <span>Groupe : <strong>{event.groupe.nom}</strong></span>
-                        </p>
-                      ))}
+                    {/* RIGHT ACTION BUTTON */}
+                    <div className="shrink-0 pt-1 sm:pt-0">
+                      {isAvailable ? (
+                        <button
+                          onClick={() => handleTake(evt.id)}
+                          disabled={isActionLoading}
+                          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all shadow-xs disabled:opacity-50"
+                        >
+                          {isActionLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-4 h-4" />
+                          )}
+                          <span>Prendre ce créneau</span>
+                        </button>
+                      ) : isMine ? (
+                        <button
+                          onClick={() => handleRelease(evt.id)}
+                          disabled={isActionLoading}
+                          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-bold transition-all disabled:opacity-50"
+                        >
+                          {isActionLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : null}
+                          <span>Libérer</span>
+                        </button>
+                      ) : null}
                     </div>
-
-                    {event.description && (
-                      <p className="text-slate-500 text-xs font-medium bg-slate-50/50 border border-slate-100 rounded-xl p-3.5 mb-5 select-none leading-relaxed">
-                        {event.description}
-                      </p>
-                    )}
                   </div>
-
-                  <button
-                    onClick={() => handleRelease(event.id)}
-                    disabled={actionLoading !== null}
-                    className="w-full bg-red-50 hover:bg-red-100 border border-red-100 text-red-600 font-bold text-xs uppercase tracking-wider py-3.5 rounded-xl transition-all duration-200 disabled:opacity-50 active:scale-[0.98] flex items-center justify-center gap-2"
-                  >
-                    {actionLoading === event.id ? (
-                      <span className="flex items-center gap-1.5">
-                        <svg className="animate-spin h-3.5 w-3.5 text-red-650" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        Libération en cours...
-                      </span>
-                    ) : 'Libérer ce créneau'}
-                  </button>
                 </div>
-              ))}
-            </div>
+              )
+            })
           )}
-        </div>
+        </section>
       </div>
     </div>
   )
