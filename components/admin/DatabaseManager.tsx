@@ -3,12 +3,26 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
+import { Download, RefreshCw, HardDrive, ShieldCheck, Database, AlertTriangle, FileArchive, CheckCircle2 } from 'lucide-react'
+
+interface BackupItem {
+  filename: string
+  size: number
+  sizeFormatted: string
+  createdAt: string
+  timestamp: number
+}
 
 export default function DatabaseManager() {
   const [importing, setImporting] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { confirm } = useConfirmDialog()
+
+  // Backups .sql.gz
+  const [backups, setBackups] = useState<BackupItem[]>([])
+  const [loadingBackups, setLoadingBackups] = useState(true)
+  const [creatingBackup, setCreatingBackup] = useState(false)
 
   // États pour les backups automatisés OVH
   const [ovhLoading, setOvhLoading] = useState(true)
@@ -26,6 +40,21 @@ export default function DatabaseManager() {
   const [savingOvh, setSavingOvh] = useState(false)
   const [restoringOvh, setRestoringOvh] = useState<string | null>(null)
 
+  const fetchBackups = useCallback(async () => {
+    setLoadingBackups(true)
+    try {
+      const res = await fetch('/api/admin/database/backups')
+      if (res.ok) {
+        const data = await res.json()
+        setBackups(data.backups || [])
+      }
+    } catch {
+      console.error('Erreur chargement backups')
+    } finally {
+      setLoadingBackups(false)
+    }
+  }, [])
+
   const fetchOvhData = useCallback(async () => {
     setOvhLoading(true)
     setOvhError(null)
@@ -37,7 +66,6 @@ export default function DatabaseManager() {
         setOvhStatus(data.status)
         setRestorePoints(data.restorePoints || [])
         
-        // Remplir les champs de configuration
         setAppKey(data.settings?.ovhApplicationKey || '')
         setAppSecret(data.settings?.ovhApplicationSecret || '')
         setConsumerKey(data.settings?.ovhConsumerKey || '')
@@ -57,12 +85,36 @@ export default function DatabaseManager() {
   }, [])
 
   useEffect(() => {
+    fetchBackups()
     fetchOvhData()
-  }, [fetchOvhData])
+  }, [fetchBackups, fetchOvhData])
+
+  const handleCreateInstantBackup = async () => {
+    setCreatingBackup(true)
+    const toastId = toast.loading('Création du snapshot .sql.gz en cours...')
+    try {
+      const res = await fetch('/api/admin/database/backups', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(data.message || 'Sauvegarde créée avec succès !', { id: toastId })
+        fetchBackups()
+      } else {
+        toast.error(data.error || 'Erreur lors de la création', { id: toastId })
+      }
+    } catch {
+      toast.error('Erreur réseau', { id: toastId })
+    } finally {
+      setCreatingBackup(false)
+    }
+  }
+
+  const handleDownloadBackup = (filename: string) => {
+    window.open(`/api/admin/database/backups/${filename}`, '_blank')
+  }
 
   const handleExport = async () => {
     try {
-      toast.loading('Génération de la sauvegarde...', { id: 'backup' })
+      toast.loading('Génération de la sauvegarde JSON...', { id: 'backup' })
       const response = await fetch('/api/admin/database', {
         method: 'GET',
         credentials: 'include',
@@ -104,45 +156,35 @@ export default function DatabaseManager() {
     if (!selectedFile) return
 
     const confirmed = await confirm({
-      title: '⚠️ RESTAURATION CRITIQUE ⚠️',
-      message: 'Attention ! Cette action va EFFACER TOUTES les données actuelles de la base de données (produits, commandes, utilisateurs, planning, actualités...) et les remplacer par le contenu du fichier sélectionné. Cette action est définitive et irréversible.',
-      confirmText: 'Écraser et Restaurer',
+      title: '🚨 ATTENTION : RESTAURATION DE LA BASE DE DONNÉES 🚨',
+      message: 'Cette action va ÉCRASER l\'ensemble de la base de données actuelle pour y injecter les données du fichier sélectionné. Toutes les modifications effectuées depuis cette sauvegarde seront définitivement perdues. Êtes-vous ABSOLUMENT sûr de vouloir continuer ?',
+      confirmText: 'Oui, écraser et restaurer',
       variant: 'danger',
     })
+
     if (!confirmed) return
 
     setImporting(true)
-    const toastId = toast.loading('Restauration en cours... Ne fermez pas la page.', { duration: 0 })
+    const toastId = toast.loading('Restauration en cours... Veuillez patienter.', { duration: 0 })
 
     try {
-      const reader = new FileReader()
-      const fileData = await new Promise<string>((resolve, reject) => {
-        reader.onload = (e) => resolve(e.target?.result as string)
-        reader.onerror = () => reject(new Error('Erreur de lecture du fichier'))
-        reader.readAsText(selectedFile)
-      })
-
-      const backupJson = JSON.parse(fileData)
+      const fileContent = await selectedFile.text()
+      const parsedData = JSON.parse(fileContent)
 
       const response = await fetch('/api/admin/database', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(backupJson),
-        credentials: 'include',
+        body: JSON.stringify(parsedData),
       })
 
       const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Erreur lors de la restauration')
 
-      if (response.ok) {
-        toast.success('Base de données restaurée avec succès !', { id: toastId })
-        setSelectedFile(null)
-        if (fileInputRef.current) fileInputRef.current.value = ''
-      } else {
-        toast.error(result.error || 'Erreur lors de la restauration.', { id: toastId })
-      }
-    } catch (error) {
-      console.error('Erreur restauration:', error)
-      toast.error('Format de fichier invalide ou erreur réseau.', { id: toastId })
+      toast.success(result.message || 'Base de données restaurée avec succès !', { id: toastId })
+      setSelectedFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    } catch (err: any) {
+      toast.error(err.message || 'Échec de la restauration.', { id: toastId })
     } finally {
       setImporting(false)
     }
@@ -222,22 +264,123 @@ export default function DatabaseManager() {
   return (
     <div className="space-y-8 max-w-6xl">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Sauvegarde & Restauration</h2>
-        <p className="text-sm text-gray-550">Gérez la persistance locale de vos données ainsi que les sauvegardes automatiques de votre serveur VPS.</p>
+        <h2 className="text-2xl font-black text-slate-900">Sauvegarde & Restauration</h2>
+        <p className="text-sm text-slate-500 font-medium">
+          Gérez l&apos;historique sur 10 jours de vos sauvegardes PostgreSQL (.sql.gz), vos exports JSON et la protection VPS.
+        </p>
+      </div>
+
+      {/* SECTION 1: HISTORIQUE DES SAUVEGARDES .SQL.GZ SUR 10 JOURS */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-cyan-50 rounded-2xl text-cyan-700">
+              <FileArchive className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-black text-slate-900">Sauvegardes Automatiques Quotidiennes</h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-100 text-cyan-800">
+                  Rétention 10 jours
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Fichiers compressés .sql.gz stockés sur le serveur et téléchargeables en 1 clic.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchBackups}
+              disabled={loadingBackups}
+              className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+              title="Rafraîchir la liste"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingBackups ? 'animate-spin' : ''}`} />
+            </button>
+
+            <button
+              onClick={handleCreateInstantBackup}
+              disabled={creatingBackup}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-black shadow-xs transition-all disabled:opacity-50"
+            >
+              <Database className="w-4 h-4 text-cyan-400" />
+              <span>{creatingBackup ? 'Création...' : 'Créer une sauvegarde .sql.gz'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* LISTE DES SAUVEGARDES */}
+        {loadingBackups ? (
+          <div className="py-8 text-center text-slate-400 space-y-2">
+            <RefreshCw className="w-5 h-5 animate-spin mx-auto text-cyan-600" />
+            <p className="text-xs font-bold">Chargement des sauvegardes...</p>
+          </div>
+        ) : backups.length === 0 ? (
+          <div className="py-8 text-center text-slate-500 bg-slate-50 rounded-2xl border border-slate-200/60 space-y-2">
+            <p className="text-xs font-bold">Aucun fichier de sauvegarde dans l&apos;historique.</p>
+            <p className="text-[11px] text-slate-400">Cliquez sur &quot;Créer une sauvegarde .sql.gz&quot; pour générer le premier snapshot.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+            <table className="min-w-full divide-y divide-slate-100 text-xs">
+              <thead className="bg-slate-50 font-black text-slate-400 uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="px-4 py-3 text-left">Date & Heure</th>
+                  <th className="px-4 py-3 text-left">Nom du fichier</th>
+                  <th className="px-4 py-3 text-left">Taille</th>
+                  <th className="px-4 py-3 text-right">Téléchargement</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {backups.map((b) => (
+                  <tr key={b.filename} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="px-4 py-3 text-slate-900 font-extrabold whitespace-nowrap">
+                      📅 {new Date(b.createdAt).toLocaleString('fr-FR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 font-mono text-[11px]">
+                      {b.filename}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700 font-bold whitespace-nowrap">
+                      <span className="px-2 py-0.5 bg-slate-100 rounded-md text-[10px]">
+                        {b.sizeFormatted}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <button
+                        onClick={() => handleDownloadBackup(b.filename)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-bold text-[11px] transition-all shadow-2xs"
+                      >
+                        <Download className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Télécharger</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Colonne gauche : Export/Import Local */}
+        {/* Colonne gauche : Export/Import Local JSON */}
         <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Export Card */}
-            <div className="card p-6 flex flex-col justify-between space-y-6">
+            <div className="card p-6 flex flex-col justify-between space-y-6 bg-white border border-slate-200 rounded-3xl">
               <div className="space-y-2">
                 <div className="text-3xl">📥</div>
-                <h3 className="text-lg font-extrabold text-slate-800">Exporter la base de données</h3>
+                <h3 className="text-lg font-extrabold text-slate-800">Exporter la base en JSON</h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Téléchargez un instantané complet de toutes les données du club (membres, plannings, commandes, catalogue boutique, configurations) dans un fichier unique sécurisé au format JSON.
+                  Téléchargez un instantané complet de toutes les données du club (membres, plannings, commandes, configurations) au format JSON direct.
                 </p>
               </div>
               <button
@@ -249,12 +392,12 @@ export default function DatabaseManager() {
             </div>
 
             {/* Import Card */}
-            <div className="card p-6 flex flex-col justify-between space-y-6 border-amber-100 bg-amber-50/10">
+            <div className="card p-6 flex flex-col justify-between space-y-6 border-amber-100 bg-amber-50/10 rounded-3xl">
               <div className="space-y-2">
                 <div className="text-3xl">📤</div>
                 <h3 className="text-lg font-extrabold text-slate-800">Restaurer la base de données</h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Sélectionnez un fichier de sauvegarde précédemment exporté pour écraser la base de données actuelle et réimporter l'historique complet.
+                  Sélectionnez un fichier JSON précédemment exporté pour écraser la base de données actuelle et réimporter l&apos;historique complet.
                 </p>
               </div>
 
@@ -304,7 +447,7 @@ export default function DatabaseManager() {
               <div>
                 <h4 className="font-extrabold text-red-900 text-sm">AVERTISSEMENT DE SÉCURITÉ</h4>
                 <p className="text-xs text-red-700 mt-1 leading-relaxed">
-                  La restauration de base de données est une opération destructrice qui écrase les informations d'inscriptions, de plannings et de commandes en cours. Veillez à ce qu'aucun utilisateur ne passe commande ou ne modifie le planning pendant que vous effectuez cette opération. Il est fortement conseillé de faire une sauvegarde de la base actuelle avant d'importer un ancien fichier.
+                  La restauration est une opération destructrice qui écrase les données actuelles. Effectuez toujours une sauvegarde préalable avant de restaurer un ancien snapshot.
                 </p>
               </div>
             </div>
@@ -313,7 +456,7 @@ export default function DatabaseManager() {
 
         {/* Colonne droite : OVH VPS Automated Backups */}
         <div className="space-y-6">
-          <div className="card p-6 space-y-5 border border-slate-200">
+          <div className="card p-6 space-y-5 border border-slate-200 rounded-3xl bg-white">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
                 <span className="text-2xl">🛡️</span>
@@ -405,12 +548,11 @@ export default function DatabaseManager() {
                       onClick={() => setShowOvhConfig(true)}
                       className="btn-primary py-2 px-4 rounded-xl text-[11px] font-bold cursor-pointer"
                     >
-                      Configurer l'option backup
+                      Configurer l&apos;option backup
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Status badges */}
                     <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-start gap-3">
                       <span className="text-emerald-500 text-lg">✓</span>
                       <div className="text-xs">
@@ -419,7 +561,6 @@ export default function DatabaseManager() {
                       </div>
                     </div>
 
-                    {/* Restore Points List */}
                     <div className="space-y-2">
                       <h4 className="font-bold text-slate-500 uppercase tracking-widest text-[9px]">Points de Restauration Disponibles :</h4>
                       {restorePoints.length > 0 ? (
@@ -460,10 +601,6 @@ export default function DatabaseManager() {
                       ) : (
                         <p className="text-xs text-slate-400 italic">Aucun point de restauration disponible.</p>
                       )}
-                    </div>
-
-                    <div className="text-[10px] text-slate-400 leading-normal">
-                      ℹ️ Les sauvegardes automatiques sont conservées temporairement par OVH et permettent de restaurer le serveur complet en cas d'incident majeur.
                     </div>
                   </div>
                 )}

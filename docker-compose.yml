@@ -31,6 +31,7 @@ services:
       - .:/app
       - /app/node_modules
       - /app/.next
+      - ./backups:/app/backups
     environment:
       - DATABASE_URL=postgresql://postgres:TritonNewSite84@db:5432/postgres?schema=public
       - SESSION_SECRET=local-development-secret-key-123456789

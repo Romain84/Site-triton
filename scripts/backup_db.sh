@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==========================================================
-# TRITON CLUB CAVAILLON - SCRIPT DE SAUVEGARDE QUOTIDIENNE
+# TRITON CLUB CAVAILLON - SCRIPT DE SAUVEGARDE QUOTIDIENNE (10 JOURS)
 # ==========================================================
 
 # 1. Dossier de destination des sauvegardes
@@ -16,7 +16,6 @@ DEST="$BACKUP_DIR/$FILENAME"
 CONTAINER_NAME=$(docker ps --filter "ancestor=postgres:16-alpine" --format "{{.Names}}" | head -n 1)
 
 if [ -z "$CONTAINER_NAME" ]; then
-  # Recherche par nom de conteneur
   if docker ps --format "{{.Names}}" | grep -q "triton-postgres-prod"; then
     CONTAINER_NAME="triton-postgres-prod"
   elif docker ps --format "{{.Names}}" | grep -q "triton-postgres-dev"; then
@@ -44,5 +43,5 @@ else
   exit 1
 fi
 
-# 5. Nettoyage automatique (conserve les 30 derniers jours)
-find "$BACKUP_DIR" -name "triton_db_*.sql.gz" -mtime +30 -delete
+# 5. Nettoyage automatique - Rétention stricte de 10 jours
+find "$BACKUP_DIR" -name "triton_db_*.sql.gz" -mtime +10 -delete
