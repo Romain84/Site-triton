@@ -95,6 +95,7 @@ export async function GET(request: NextRequest) {
         nomParent: true,
         emailParent: true,
         telephoneParent: true,
+        groupeRecommande: true,
       },
       orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
     })

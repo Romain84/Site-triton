@@ -63,6 +63,7 @@ interface CandidatItem {
   nomParent: string | null
   emailParent: string | null
   telephoneParent: string | null
+  groupeRecommande?: string | null
 }
 
 interface ManageReservationData {
@@ -847,57 +848,71 @@ export default function TestNageBooking() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* ─── EN-TÊTE PRINCIPAL ─── */}
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold uppercase tracking-wider border border-emerald-200">
+    <div className="max-w-4xl mx-auto space-y-10 sm:space-y-12">
+      {/* ─── EN-TÊTE PRINCIPAL AVEC ESPACEMENT AÉRÉ ─── */}
+      <div className="text-center space-y-5 sm:space-y-6 pt-2">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold uppercase tracking-wider border border-emerald-200 shadow-3xs">
           <Waves className="w-3.5 h-3.5 text-primary" />
           <span>Tests de Nage & Niveau · Rentrée</span>
         </div>
-        <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
           Réservation de votre Test de Niveau
         </h1>
-        <p className="text-xs md:text-sm text-slate-600 max-w-2xl mx-auto font-medium">
-          Ce test individuel de <strong>{currentSession?.dureeMinutes || 5} minutes</strong> dans l&apos;eau permet à nos éducateurs diplômés d&apos;évaluer l&apos;aisance aquatique de votre enfant pour lui proposer le groupe le plus adapté.
+
+        <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto font-medium leading-relaxed">
+          Test individuel de <strong>{currentSession?.dureeMinutes || 5} minutes</strong> dans l&apos;eau pour évaluer l&apos;aisance aquatique de votre enfant et lui proposer le groupe le plus adapté.
         </p>
 
-        {/* ─── BANDEAU INFORMATION ADHÉSION & GARANTIE REMBOURSEMENT ─── */}
-        <div className="bg-blue-50/90 border border-blue-200 rounded-2xl p-4 max-w-2xl mx-auto text-left text-xs text-blue-950 shadow-3xs space-y-1.5">
-          <div className="flex items-center gap-2 font-bold text-blue-950">
-            <span className="text-sm">📌</span>
-            <span>Rappel adhésion préalable & Garantie Sérénité :</span>
-          </div>
-          <p className="text-blue-900 font-normal leading-relaxed">
-            Pour participer au test de niveau, les nouveaux adhérents doivent être préalablement inscrits sur <strong>MonClub</strong> avec adhésion réglée.
-          </p>
-          <div className="bg-white/80 p-2.5 rounded-xl border border-blue-200/80 font-semibold text-blue-950 flex items-start gap-2">
-            <span>🛡️</span>
-            <span>Si le test n&apos;est pas concluant ou si aucun créneau ne convient, le <strong>remboursement intégral</strong> de l&apos;adhésion vous sera immédiatement effectué.</span>
+        {/* ─── BANDEAU INFORMATION ADHÉSION & GARANTIE SÉRÉNITÉ (SIMPLIFIÉ & PRO) ─── */}
+        <div className="pt-3">
+          <div className="bg-sky-50/80 border border-sky-200/90 rounded-3xl p-5 md:p-6 max-w-2xl mx-auto text-left shadow-xs space-y-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-black uppercase tracking-wider text-sky-950">
+                Adhésion préalable & Garantie Sérénité
+              </span>
+            </div>
+
+            <p className="text-xs sm:text-sm text-sky-950 font-medium leading-relaxed">
+              Pour participer au test de niveau, les nouveaux adhérents doivent être préalablement inscrits sur <strong>MonClub</strong> avec adhésion réglée.
+            </p>
+
+            <div className="bg-white/90 border border-sky-100 rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-slate-700 shadow-3xs">
+              <span className="font-bold text-emerald-700 shrink-0">Garantie Sérénité :</span>
+              <span className="leading-relaxed">
+                Si le niveau n&apos;est pas validé ou si aucun horaire ne vous convient, votre adhésion est <strong>intégralement remboursée sans délai</strong>.
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ─── FIL D'ARIANE / PROGRESSION ─── */}
+      {/* ─── FIL D'ARIANE / PROGRESSION AVEC ESPACE ÉLÉGANT ─── */}
       {step < 3 && (
-        <div className="flex items-center justify-center gap-2 max-w-md mx-auto">
-          <div className="flex items-center gap-2">
-            <span className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
-              step >= 1 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'
+        <div className="flex items-center justify-center gap-3 max-w-md mx-auto py-2">
+          <div className="flex items-center gap-2.5">
+            <span className={`w-7 h-7 rounded-full text-xs font-black flex items-center justify-center transition-all ${
+              step >= 1 ? 'bg-primary text-white shadow-xs' : 'bg-slate-100 text-slate-400'
             }`}>
               1
             </span>
-            <span className={`text-xs font-bold ${step >= 1 ? 'text-slate-900' : 'text-slate-400'}`}>
+            <span className={`text-xs font-black tracking-wide ${step >= 1 ? 'text-slate-900' : 'text-slate-400'}`}>
               Créneau horaire
             </span>
           </div>
-          <div className={`w-12 h-0.5 ${step >= 2 ? 'bg-primary' : 'bg-slate-200'}`} />
-          <div className="flex items-center gap-2">
-            <span className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
-              step >= 2 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'
+
+          <div className={`w-12 sm:w-16 h-0.5 transition-all ${step >= 2 ? 'bg-primary' : 'bg-slate-200'}`} />
+
+          <div className="flex items-center gap-2.5">
+            <span className={`w-7 h-7 rounded-full text-xs font-black flex items-center justify-center transition-all ${
+              step >= 2 ? 'bg-primary text-white shadow-xs' : 'bg-slate-100 text-slate-400'
             }`}>
               2
             </span>
-            <span className={`text-xs font-bold ${step >= 2 ? 'text-slate-900' : 'text-slate-400'}`}>
+            <span className={`text-xs font-black tracking-wide ${step >= 2 ? 'text-slate-900' : 'text-slate-400'}`}>
               Informations
             </span>
           </div>
@@ -1072,23 +1087,28 @@ export default function TestNageBooking() {
 
                     {/* Liste des résultats d'autocomplétion */}
                     {filteredCandidats.length > 0 && (
-                      <div className="absolute z-10 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden divide-y divide-slate-100">
+                      <div className="absolute z-10 left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden divide-y divide-slate-100 max-h-64 overflow-y-auto">
                         {filteredCandidats.map((c) => (
                           <button
                             key={c.id}
                             type="button"
                             onClick={() => handleSelectCandidat(c)}
-                            className="w-full px-4 py-3 text-left hover:bg-emerald-50/50 flex items-center justify-between transition-colors cursor-pointer"
+                            className="w-full px-4 py-3 text-left hover:bg-slate-50 flex items-center justify-between transition-colors cursor-pointer group"
                           >
-                            <div>
-                              <p className="text-sm font-bold text-slate-900">
-                                {c.nom} {c.prenom}
+                            <div className="space-y-0.5">
+                              <p className="text-sm font-black text-slate-900 group-hover:text-primary transition-colors">
+                                {c.nom} {c.prenom} {c.age ? <span className="text-xs font-bold text-slate-400">({c.age} ans)</span> : ''}
                               </p>
-                              <p className="text-xs text-slate-500">
-                                {c.emailParent ? `${c.emailParent}` : ''} {c.telephoneParent ? `· ${c.telephoneParent}` : ''}
+                              <p className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
+                                {c.groupeRecommande ? (
+                                  <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 text-[11px]">
+                                    {c.groupeRecommande}
+                                  </span>
+                                ) : null}
+                                <span>{c.telephoneParent || c.emailParent || 'Coordonnées à compléter'}</span>
                               </p>
                             </div>
-                            <span className="text-xs font-bold text-primary bg-emerald-50 px-2.5 py-1 rounded-lg">
+                            <span className="text-xs font-black text-primary bg-emerald-50/80 group-hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition-colors">
                               Sélectionner
                             </span>
                           </button>
@@ -1097,26 +1117,29 @@ export default function TestNageBooking() {
                     )}
                   </div>
                 ) : (
-                  <div className="bg-white border border-emerald-200 rounded-xl p-3.5 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-emerald-100 text-emerald-800 rounded-lg">
+                  <div className="bg-white border border-emerald-200/90 rounded-2xl p-4 flex items-center justify-between shadow-3xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-emerald-100 text-emerald-800 rounded-xl flex items-center justify-center font-bold">
                         <Check className="w-4 h-4" />
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">
-                          {selectedCandidat.nom} {selectedCandidat.prenom}
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-black text-slate-900">
+                          {selectedCandidat.nom} {selectedCandidat.prenom} {selectedCandidat.age ? <span className="text-xs font-bold text-slate-400">({selectedCandidat.age} ans)</span> : ''}
                         </p>
-                        <p className="text-xs text-slate-500">
-                          {!selectedCandidat.emailParent || !selectedCandidat.telephoneParent
-                            ? 'Complétez votre email et téléphone ci-dessous'
-                            : 'Informations retrouvées et pré-remplies'}
+                        <p className="text-xs text-slate-500 flex items-center gap-2">
+                          {selectedCandidat.groupeRecommande ? (
+                            <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.2 rounded-md">
+                              Souhait : {selectedCandidat.groupeRecommande}
+                            </span>
+                          ) : null}
+                          <span>Informations pré-remplies</span>
                         </p>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={handleClearSelectedCandidat}
-                      className="text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                      className="text-xs text-slate-500 hover:text-slate-800 font-bold px-3 py-1.5 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                     >
                       Changer
                     </button>
