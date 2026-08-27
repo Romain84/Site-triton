@@ -45,6 +45,11 @@ interface InscriptionItem {
   groupeRecommande: string | null
   commentaireCoach: string | null
   createdAt: string
+  candidatId?: string | null
+  candidat?: {
+    id: string
+    statut: string
+  } | null
 }
 
 interface CreneauItem {
@@ -132,7 +137,7 @@ export default function TestsNageManager() {
   const [manualAddCreneauId, setManualAddCreneauId] = useState<string>('')
 
   // Filtres candidats
-  const [candidatFilter, setCandidatFilter] = useState<'tous' | 'a_planifier' | 'planifie' | 'present' | 'absent'>('tous')
+  const [candidatFilter, setCandidatFilter] = useState<'tous' | 'a_planifier' | 'planifie' | 'present' | 'absent' | 'hors_listing'>('tous')
   const [candidatSearch, setCandidatSearch] = useState('')
 
   // Formulaire création session
@@ -530,6 +535,7 @@ export default function TestsNageManager() {
         if (candidatFilter === 'planifie' && c.statut !== 'planifie') return false
         if (candidatFilter === 'present' && c.statut !== 'present') return false
         if (candidatFilter === 'absent' && c.statut !== 'absent') return false
+        if (candidatFilter === 'hors_listing' && c.statut !== 'hors_listing') return false
       }
       // Search text
       if (candidatSearch.trim()) {
@@ -544,6 +550,11 @@ export default function TestsNageManager() {
       return true
     })
   }, [candidats, candidatFilter, candidatSearch])
+
+  // Nombre de candidats hors listing
+  const horsListingCount = useMemo(() => {
+    return candidats.filter((c) => c.statut === 'hors_listing').length
+  }, [candidats])
 
   // Candidats à planifier ayant une adresse email valide (pour relance)
   const unplanifiedWithEmail = useMemo(() => {
@@ -842,23 +853,41 @@ export default function TestsNageManager() {
                       </div>
                     ) : (
                       <div className="divide-y divide-slate-100 mt-2">
-                        {cr.inscriptions.map((insc) => (
+                        {cr.inscriptions.map((insc) => {
+                          const isHorsListing = !insc.candidatId || insc.candidat?.statut === 'hors_listing' || (insc.statut as string) === 'hors_listing'
+                          return (
                           <div
                             key={insc.id}
-                            className="py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs"
+                            className={`py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs transition-colors ${
+                              isHorsListing
+                                ? 'bg-rose-50/90 -mx-3 px-3.5 rounded-2xl border-2 border-rose-300 shadow-3xs my-1.5'
+                                : ''
+                            }`}
                           >
                             {/* Colonne 1 : Identité & Contact */}
                             <div className="space-y-1 min-w-[240px]">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-slate-900 text-sm">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`text-sm ${isHorsListing ? 'font-black text-rose-950' : 'font-bold text-slate-900'}`}>
                                   {insc.nomEnfant} {insc.prenomEnfant}
                                 </span>
+                                {isHorsListing && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-3xs">
+                                    ⚠️ HORS LISTING
+                                  </span>
+                                )}
                                 {insc.age && (
-                                  <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                                    isHorsListing ? 'text-rose-800 bg-rose-100' : 'text-slate-500 bg-slate-100'
+                                  }`}>
                                     {insc.age} ans
                                   </span>
                                 )}
                               </div>
+                              {isHorsListing && (
+                                <p className="text-[10px] font-black text-rose-700">
+                                  ⚠️ Cet enfant n&apos;était pas dans le listing initial importé
+                                </p>
+                              )}
                               <p className="text-slate-500 text-[11px]">
                                 {insc.nomParent && <span>Parent : {insc.nomParent} · </span>}
                                 <a href={`tel:${insc.telephoneParent}`} className="text-slate-700 font-bold hover:underline">
@@ -944,7 +973,7 @@ export default function TestsNageManager() {
                               </button>
                             </div>
                           </div>
-                        ))}
+                        )})}
                       </div>
                     )}
                   </div>
@@ -1020,6 +1049,14 @@ export default function TestsNageManager() {
               >
                 🔵 Testés
               </button>
+              <button
+                onClick={() => setCandidatFilter('hors_listing')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                  candidatFilter === 'hors_listing' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-800 border border-rose-200'
+                }`}
+              >
+                🔴 Hors listing ({horsListingCount})
+              </button>
 
               {candidats.length > 0 && (
                 <button
@@ -1058,10 +1095,32 @@ export default function TestsNageManager() {
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {filteredCandidats.map((c) => {
                     const activeInsc = c.inscriptions && c.inscriptions.length > 0 ? c.inscriptions[0] : null
+                    const isHorsListing = c.statut === 'hors_listing'
                     return (
-                      <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3 px-3 font-bold text-slate-900">
-                          {c.nom} {c.prenom}
+                      <tr
+                        key={c.id}
+                        className={`transition-colors ${
+                          isHorsListing
+                            ? 'bg-rose-50/80 border-l-4 border-l-rose-500 hover:bg-rose-100/70'
+                            : 'hover:bg-slate-50/60'
+                        }`}
+                      >
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={isHorsListing ? 'font-black text-rose-950' : 'font-bold text-slate-900'}>
+                              {c.nom} {c.prenom}
+                            </span>
+                            {isHorsListing && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-3xs">
+                                ⚠️ HORS LISTING
+                              </span>
+                            )}
+                          </div>
+                          {isHorsListing && (
+                            <span className="text-[10px] font-bold text-rose-700 block mt-0.5">
+                              Non présent dans le listing initial
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-3 text-slate-500">
                           {c.age ? `${c.age} ans` : '-'}
@@ -1080,7 +1139,9 @@ export default function TestsNageManager() {
                         </td>
                         <td className="py-3 px-3">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            c.statut === 'planifie'
+                            c.statut === 'hors_listing'
+                              ? 'bg-rose-100 text-rose-800 border border-rose-300 font-black'
+                              : c.statut === 'planifie'
                               ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                               : c.statut === 'present'
                               ? 'bg-blue-50 text-blue-800 border border-blue-200'
@@ -1088,7 +1149,9 @@ export default function TestsNageManager() {
                               ? 'bg-red-50 text-red-800 border border-red-200'
                               : 'bg-amber-50 text-amber-800 border border-amber-200'
                           }`}>
-                            {c.statut === 'planifie'
+                            {c.statut === 'hors_listing'
+                              ? '🔴 Hors listing'
+                              : c.statut === 'planifie'
                               ? '🟢 Planifié'
                               : c.statut === 'present'
                               ? '🔵 Présent'

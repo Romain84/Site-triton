@@ -59,6 +59,13 @@ export async function GET() {
                 groupeRecommande: true,
                 commentaireCoach: true,
                 createdAt: true,
+                candidatId: true,
+                candidat: {
+                  select: {
+                    id: true,
+                    statut: true,
+                  },
+                },
               },
             },
           },

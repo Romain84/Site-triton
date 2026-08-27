@@ -124,11 +124,74 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // 3. Créer l'inscription
+      // 3. Réconciliation ou détection d'un candidat "hors listing"
+      let finalCandidatId = validated.candidatId || null
+      let isHorsListing = false
+
+      if (finalCandidatId) {
+        const existingCandidat = await tx.candidatTestNage.findUnique({
+          where: { id: finalCandidatId },
+        })
+        if (existingCandidat) {
+          isHorsListing = existingCandidat.statut === 'hors_listing'
+          await tx.candidatTestNage.update({
+            where: { id: finalCandidatId },
+            data: {
+              statut: isHorsListing ? 'hors_listing' : 'planifie',
+              emailParent: validated.emailParent.trim().toLowerCase(),
+              telephoneParent: validated.telephoneParent.trim(),
+              nomParent: validated.nomParent ? validated.nomParent.trim() : undefined,
+            },
+          })
+        }
+      } else {
+        // Le parent n'a pas sélectionné un candidat dans la liste déroulante
+        // Vérifier si le nom et prénom correspondent quand même à un candidat pré-enregistré
+        const matchedCandidat = await tx.candidatTestNage.findFirst({
+          where: {
+            nom: { equals: nomClean, mode: 'insensitive' },
+            prenom: { equals: prenomClean, mode: 'insensitive' },
+          },
+        })
+
+        if (matchedCandidat) {
+          finalCandidatId = matchedCandidat.id
+          isHorsListing = matchedCandidat.statut === 'hors_listing'
+          await tx.candidatTestNage.update({
+            where: { id: matchedCandidat.id },
+            data: {
+              statut: isHorsListing ? 'hors_listing' : 'planifie',
+              emailParent: validated.emailParent.trim().toLowerCase(),
+              telephoneParent: validated.telephoneParent.trim(),
+              nomParent: validated.nomParent ? validated.nomParent.trim() : undefined,
+            },
+          })
+        } else {
+          // L'enfant n'est pas dans le listing : on crée une fiche candidat avec le statut "hors_listing"
+          isHorsListing = true
+          const createdHorsListing = await tx.candidatTestNage.create({
+            data: {
+              sessionId: creneau.sessionId,
+              nom: nomClean.toUpperCase(),
+              prenom: prenomClean,
+              dateNaissance: validated.dateNaissance ? new Date(validated.dateNaissance) : null,
+              age: validated.age || null,
+              nomParent: validated.nomParent ? validated.nomParent.trim() : null,
+              emailParent: validated.emailParent.trim().toLowerCase(),
+              telephoneParent: validated.telephoneParent.trim(),
+              statut: 'hors_listing',
+              commentaireCoach: '⚠️ HORS LISTING (Non présent dans l\'import initial)',
+            },
+          })
+          finalCandidatId = createdHorsListing.id
+        }
+      }
+
+      // 4. Créer l'inscription liée
       const inscription = await tx.inscriptionTestNage.create({
         data: {
           creneauId: validated.creneauId,
-          candidatId: validated.candidatId || null,
+          candidatId: finalCandidatId,
           nomEnfant: validated.nomEnfant.trim().toUpperCase(),
           prenomEnfant: validated.prenomEnfant.trim(),
           dateNaissance: validated.dateNaissance ? new Date(validated.dateNaissance) : null,
@@ -138,27 +201,10 @@ export async function POST(request: NextRequest) {
           telephoneParent: validated.telephoneParent.trim(),
           niveauEstime: validated.niveauEstime || null,
           remarques: validated.remarques || null,
-          statut: 'inscrit',
+          statut: isHorsListing ? 'hors_listing' : 'inscrit',
           token,
         },
       })
-
-      // 4. Si rattaché à un candidat pré-enregistré, mettre à jour son statut
-      if (validated.candidatId) {
-        try {
-          await tx.candidatTestNage.updateMany({
-            where: { id: validated.candidatId },
-            data: {
-              statut: 'planifie',
-              emailParent: validated.emailParent.trim().toLowerCase(),
-              telephoneParent: validated.telephoneParent.trim(),
-              nomParent: validated.nomParent ? validated.nomParent.trim() : undefined,
-            },
-          })
-        } catch (candidatErr) {
-          console.warn('Erreur mise à jour statut candidat:', candidatErr)
-        }
-      }
 
       return {
         inscription,

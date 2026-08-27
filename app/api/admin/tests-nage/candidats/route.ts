@@ -25,6 +25,44 @@ export async function GET(request: NextRequest) {
     const sessionId = searchParams.get('sessionId')
     const statut = searchParams.get('statut')
 
+    // Réconciliation automatique : si des inscriptions existent sans fiche candidat liée, on leur crée leur fiche "hors_listing"
+    const unlinkedInscriptions = await prisma.inscriptionTestNage.findMany({
+      where: {
+        candidatId: null,
+        statut: { not: 'annule' },
+      },
+      include: {
+        creneau: true,
+      },
+    })
+
+    if (unlinkedInscriptions.length > 0) {
+      for (const insc of unlinkedInscriptions) {
+        try {
+          const created = await prisma.candidatTestNage.create({
+            data: {
+              sessionId: insc.creneau.sessionId,
+              nom: insc.nomEnfant,
+              prenom: insc.prenomEnfant,
+              age: insc.age,
+              dateNaissance: insc.dateNaissance,
+              nomParent: insc.nomParent,
+              emailParent: insc.emailParent,
+              telephoneParent: insc.telephoneParent,
+              statut: 'hors_listing',
+              commentaireCoach: '⚠️ HORS LISTING (Inscrit sans être dans le listing initial)',
+            },
+          })
+          await prisma.inscriptionTestNage.update({
+            where: { id: insc.id },
+            data: { candidatId: created.id },
+          })
+        } catch (linkErr) {
+          console.warn('Erreur réconciliation inscription hors listing:', linkErr)
+        }
+      }
+    }
+
     const candidats = await prisma.candidatTestNage.findMany({
       where: {
         ...(sessionId ? { sessionId } : {}),
