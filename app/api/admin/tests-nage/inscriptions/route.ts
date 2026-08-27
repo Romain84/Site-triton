@@ -41,6 +41,32 @@ export async function POST(request: NextRequest) {
         throw new Error('Créneau introuvable.')
       }
 
+      // Contrôle anti-doublon strict
+      const nomClean = validated.nomEnfant.trim()
+      const prenomClean = validated.prenomEnfant.trim()
+
+      const existingInscription = await tx.inscriptionTestNage.findFirst({
+        where: {
+          statut: { not: 'annule' },
+          OR: [
+            ...(validated.candidatId ? [{ candidatId: validated.candidatId }] : []),
+            {
+              nomEnfant: { equals: nomClean, mode: 'insensitive' },
+              prenomEnfant: { equals: prenomClean, mode: 'insensitive' },
+            },
+          ],
+        },
+        include: {
+          creneau: true,
+        },
+      })
+
+      if (existingInscription) {
+        throw new Error(
+          `Cet enfant (${existingInscription.prenomEnfant} ${existingInscription.nomEnfant}) est déjà inscrit à un créneau (${existingInscription.creneau.heureDebut}). Veuillez modifier son créneau existant ou annuler sa réservation précédente.`
+        )
+      }
+
       const inscription = await tx.inscriptionTestNage.create({
         data: {
           creneauId: validated.creneauId,

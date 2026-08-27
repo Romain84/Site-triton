@@ -128,6 +128,7 @@ export default function TestNageBooking() {
   const [remarques, setRemarques] = useState('')
   const [showOptionalFields, setShowOptionalFields] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [bookingError, setBookingError] = useState<string | null>(null)
 
   // Données de confirmation
   const [confirmationData, setConfirmationData] = useState<{
@@ -357,6 +358,7 @@ export default function TestNageBooking() {
     )
 
     setSubmitting(true)
+    setBookingError(null)
     try {
       const res = await fetch('/api/tests-nage/reserver', {
         method: 'POST',
@@ -379,12 +381,15 @@ export default function TestNageBooking() {
 
       const data = await res.json()
       if (res.ok && data.success) {
+        setBookingError(null)
         setConfirmationData(data.data)
         setStep(3)
         window.scrollTo({ top: 0, behavior: 'smooth' })
         toast.success('Votre créneau est confirmé !')
       } else {
-        toast.error(data.error || "Une erreur est survenue lors de l'enregistrement")
+        const errMsg = data.error || "Une erreur est survenue lors de l'enregistrement"
+        setBookingError(errMsg)
+        toast.error(errMsg, { duration: 6000 })
         fetchPublicData()
       }
     } catch {
@@ -1355,6 +1360,19 @@ export default function TestNageBooking() {
                       placeholder="Ex: appréhende un peu le grand bain, a déjà pris des cours..."
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
                     />
+                  </div>
+                </div>
+              )}
+
+              {/* ─── ALERTE ERREUR / DOUBLE RÉSERVATION ─── */}
+              {bookingError && (
+                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-3 animate-fade-in shadow-3xs">
+                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-black text-sm text-rose-950">{bookingError}</p>
+                    <p className="text-[11px] text-rose-700 font-medium">
+                      💡 Pour modifier ou changer l&apos;horaire de votre créneau existant, utilisez le lien de modification présent dans l&apos;email de confirmation reçu lors de votre première inscription.
+                    </p>
                   </div>
                 </div>
               )}

@@ -93,6 +93,37 @@ export async function POST(request: NextRequest) {
         throw new Error(`Ce créneau de ${creneau.session.dureeMinutes} minutes est désormais complet. Veuillez sélectionner un autre horaire.`)
       }
 
+      // 2bis. CONTRÔLE ANTI-DOUBLON STRICT : Un enfant ne peut pas avoir plus d'un créneau actif
+      const nomClean = validated.nomEnfant.trim()
+      const prenomClean = validated.prenomEnfant.trim()
+
+      const existingInscription = await tx.inscriptionTestNage.findFirst({
+        where: {
+          statut: { not: 'annule' },
+          OR: [
+            ...(validated.candidatId ? [{ candidatId: validated.candidatId }] : []),
+            {
+              nomEnfant: { equals: nomClean, mode: 'insensitive' },
+              prenomEnfant: { equals: prenomClean, mode: 'insensitive' },
+            },
+          ],
+        },
+        include: {
+          creneau: {
+            include: {
+              session: true,
+            },
+          },
+        },
+      })
+
+      if (existingInscription) {
+        const dateFr = formatLongDateFr(existingInscription.creneau.session.date)
+        throw new Error(
+          `L'enfant ${existingInscription.prenomEnfant} ${existingInscription.nomEnfant} a déjà une réservation confirmée pour le ${dateFr} à ${existingInscription.creneau.heureDebut}. Un enfant ne peut pas réserver un deuxième créneau.`
+        )
+      }
+
       // 3. Créer l'inscription
       const inscription = await tx.inscriptionTestNage.create({
         data: {
