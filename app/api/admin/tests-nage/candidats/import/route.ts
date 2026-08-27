@@ -10,6 +10,27 @@ const importSchema = z.object({
   texteBrut: z.string().min(2, 'Le contenu à importer est vide'),
 })
 
+// Helper pour nettoyer et réparer un numéro de téléphone (notamment export géant Excel)
+function cleanPhone(raw?: string): string | undefined {
+  if (!raw) return undefined
+  const digits = raw.replace(/\D/g, '')
+  if (!digits) return undefined
+
+  if (digits.startsWith('33') && digits.length === 11) {
+    return '0' + digits.slice(2)
+  }
+  if (digits.length === 10 && digits.startsWith('0')) {
+    return digits
+  }
+  if (digits.length === 9 && (digits.startsWith('6') || digits.startsWith('7'))) {
+    return '0' + digits
+  }
+  if (digits.length > 10 && (digits.startsWith('6') || digits.startsWith('7'))) {
+    return '0' + digits.slice(0, 9)
+  }
+  return digits
+}
+
 // Helper pour parser une ligne de texte (séparateurs: tab, point-virgule, virgule)
 function parseLine(line: string): {
   nom: string
@@ -19,6 +40,8 @@ function parseLine(line: string): {
   nomParent?: string
   emailParent?: string
   telephoneParent?: string
+  groupeRecommande?: string
+  commentaireCoach?: string
 } | null {
   const trimmed = line.trim()
   if (!trimmed || trimmed.startsWith('#')) return null
@@ -30,7 +53,13 @@ function parseLine(line: string): {
   } else if (trimmed.includes(';')) {
     parts = trimmed.split(';').map((p) => p.trim())
   } else if (trimmed.includes(',')) {
-    parts = trimmed.split(',').map((p) => p.trim())
+    // Ne pas couper sur les virgules si c'est deux emails : afsouk@hotmail.com,jlcarliez@gmail.com
+    // On vérifie si la virgule est un séparateur CSV ou une liste d'emails
+    if (!trimmed.includes('@') || trimmed.split(',').length > 3) {
+      parts = trimmed.split(',').map((p) => p.trim())
+    } else {
+      parts = trimmed.split(/\s+/).map((p) => p.trim())
+    }
   } else {
     // Espace simple : "DUPONT Jean 7 0600000000 email"
     parts = trimmed.split(/\s+/).map((p) => p.trim())
@@ -58,20 +87,27 @@ function parseLine(line: string): {
   let emailParent: string | undefined = undefined
   let telephoneParent: string | undefined = undefined
   let nomParent: string | undefined = undefined
+  let groupeRecommande: string | undefined = undefined
+  const extraInfos: string[] = []
 
   // Parcourir les colonnes restantes pour détecter automatiquement l'âge, l'email, le téléphone
   for (let i = 2; i < parts.length; i++) {
     const val = parts[i]
 
-    // Détection email
-    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
-      emailParent = val.toLowerCase()
+    // Détection email (simple ou multiple avec virgule)
+    if (val.includes('@') && val.includes('.')) {
+      emailParent = val
       continue
     }
 
-    // Détection téléphone (au moins 6 chiffres avec espaces/points éventuels)
-    if (/^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/.test(val) || /^0[1-9]\d{8}$/.test(val.replace(/\s+/g, ''))) {
-      telephoneParent = val
+    // Détection téléphone (y compris notation géante Excel)
+    const digitsOnly = val.replace(/\s+/g, '')
+    if (
+      /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/.test(val) ||
+      /^0[1-9]\d{8}$/.test(digitsOnly) ||
+      (/^\d{9,25}$/.test(digitsOnly) && (digitsOnly.startsWith('6') || digitsOnly.startsWith('7')))
+    ) {
+      telephoneParent = cleanPhone(val)
       continue
     }
 
@@ -81,7 +117,13 @@ function parseLine(line: string): {
       const parsed = new Date(y, m - 1, d)
       if (!isNaN(parsed.getTime())) {
         dateNaissance = parsed
-        age = new Date().getFullYear() - y
+        const today = new Date()
+        let calculatedAge = today.getFullYear() - y
+        const monthDiff = today.getMonth() - (m - 1)
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d)) {
+          calculatedAge--
+        }
+        age = calculatedAge
         continue
       }
     } else if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
@@ -93,7 +135,7 @@ function parseLine(line: string): {
       }
     }
 
-    // Détection âge direct (un nombre entre 3 et 25)
+    // Détection âge direct (un nombre entre 3 et 30)
     if (/^\d{1,2}$/.test(val)) {
       const num = parseInt(val, 10)
       if (num >= 3 && num <= 30 && age === undefined) {
@@ -102,9 +144,27 @@ function parseLine(line: string): {
       }
     }
 
-    // Sinon, nom du parent si non encore assigné
-    if (!nomParent && val.length >= 2) {
+    // Détection formule de groupe (ex: "ENF 2", "Avenir 3", "Juniors Loisirs")
+    if (
+      /enf|avenir|jeune|junior|adulte|benjamin/i.test(val) &&
+      !groupeRecommande
+    ) {
+      groupeRecommande = val.replace(/\(En cours\)|\(Pré-validé\)/gi, '').trim()
+      extraInfos.push(`Formule : ${val}`)
+      continue
+    }
+
+    // Détection genre
+    if (/^(féminin|masculin|fille|garçon|feminin|f|m)$/i.test(val)) {
+      extraInfos.push(`Genre : ${val}`)
+      continue
+    }
+
+    // Sinon, autre note ou nom du parent
+    if (!nomParent && val.length >= 2 && !val.toUpperCase().startsWith('TEST')) {
       nomParent = val
+    } else {
+      extraInfos.push(val)
     }
   }
 
@@ -116,6 +176,8 @@ function parseLine(line: string): {
     nomParent,
     emailParent,
     telephoneParent,
+    groupeRecommande,
+    commentaireCoach: extraInfos.length > 0 ? extraInfos.join(' | ') : undefined,
   }
 }
 
@@ -137,6 +199,8 @@ export async function POST(request: NextRequest) {
       nomParent: string | null
       emailParent: string | null
       telephoneParent: string | null
+      groupeRecommande?: string | null
+      commentaireCoach?: string | null
       statut: string
     }> = []
 
@@ -152,6 +216,8 @@ export async function POST(request: NextRequest) {
           nomParent: parsed.nomParent || null,
           emailParent: parsed.emailParent || null,
           telephoneParent: parsed.telephoneParent || null,
+          groupeRecommande: parsed.groupeRecommande || null,
+          commentaireCoach: parsed.commentaireCoach || null,
           statut: 'a_planifier',
         })
       }
