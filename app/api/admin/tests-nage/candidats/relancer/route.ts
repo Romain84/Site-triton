@@ -80,13 +80,13 @@ export async function POST(request: NextRequest) {
             `}
 
             <div style="text-align: center; margin: 26px 0;">
-              <a href="${bookingUrl}" style="display: inline-block; background-color: #15803d; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-size: 15px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <a href="${baseUrl}/tests-de-nage?c=${c.id}" style="display: inline-block; background-color: #15803d; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-size: 15px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 👉 Réserver mon créneau de test
               </a>
             </div>
 
             <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 14px; border-radius: 8px; font-size: 13px; color: #166534;">
-              ℹ️ <em>Le formulaire retrouvera automatiquement le dossier de votre enfant en tapant son nom.</em>
+              ✨ <em>En cliquant sur le lien ci-dessus, les informations de votre enfant (${c.prenom} ${c.nom}) sont déjà reconnues : il ne vous reste plus qu'à cliquer sur l'horaire de votre choix !</em>
             </div>
 
             <p style="font-size: 13px; color: #64748b; margin-top: 24px;">

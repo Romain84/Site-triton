@@ -128,6 +128,7 @@ export default function TestNageBooking() {
   const [emailParent, setEmailParent] = useState('')
   const [telephoneParent, setTelephoneParent] = useState('')
   const [remarques, setRemarques] = useState('')
+  const [showOptionalFields, setShowOptionalFields] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   // Données de confirmation
@@ -262,6 +263,24 @@ export default function TestNageBooking() {
     }
   }, [tokenParam])
 
+  // Reconnaissance immédiate si lien magique candidat (?c=... ou ?candidatId=...)
+  useEffect(() => {
+    const cid = searchParams.get('c') || searchParams.get('candidatId')
+    if (cid && candidats.length > 0 && !selectedCandidat) {
+      const match = candidats.find((c) => c.id === cid)
+      if (match) {
+        handleSelectCandidat(match)
+      }
+    }
+  }, [searchParams, candidats, selectedCandidat])
+
+  // Ouvrir automatiquement les champs optionnels si déjà renseignés
+  useEffect(() => {
+    if (nomParent || remarques) {
+      setShowOptionalFields(true)
+    }
+  }, [nomParent, remarques])
+
   const currentSession = useMemo(() => {
     return sessions.find((s) => s.id === selectedSessionId) || sessions[0] || null
   }, [sessions, selectedSessionId])
@@ -318,8 +337,12 @@ export default function TestNageBooking() {
   const handleSelectCreneau = (cr: CreneauItem) => {
     if (cr.estComplet) return
     setSelectedCreneau(cr)
-    setStep(2)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setTimeout(() => {
+      const formEl = document.getElementById('booking-form')
+      if (formEl) {
+        formEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+    }, 60)
   }
 
   const handleSubmitReservation = async (e: React.FormEvent) => {
@@ -911,45 +934,47 @@ export default function TestNageBooking() {
         </div>
       </div>
 
-      {/* ─── FIL D'ARIANE / PROGRESSION AVEC ESPACE ÉLÉGANT ─── */}
-      {step < 3 && (
-        <div className="flex items-center justify-center gap-3 max-w-md mx-auto py-2">
-          <div className="flex items-center gap-2.5">
-            <span className={`w-7 h-7 rounded-full text-xs font-black flex items-center justify-center transition-all ${
-              step >= 1 ? 'bg-primary text-white shadow-xs' : 'bg-slate-100 text-slate-400'
-            }`}>
-              1
-            </span>
-            <span className={`text-xs font-black tracking-wide ${step >= 1 ? 'text-slate-900' : 'text-slate-400'}`}>
-              Créneau horaire
-            </span>
-          </div>
+      {/* ─── PROCESSUS DE RÉSERVATION DIRECT & FLUIDE EN 1 SEUL ÉCRAN ─── */}
+      {!confirmationData && currentSession && (
+        <div className="space-y-8 animate-fade-in">
+          
+          {/* BANDEAU ACCUEIL PERSONNALISÉ SI LIEN MAGIQUE OU ENFANT RECONNU */}
+          {selectedCandidat && (
+            <div className="bg-emerald-50/90 border-2 border-emerald-300 rounded-3xl p-4 sm:p-5 flex items-center justify-between shadow-xs animate-fade-in">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-2xs">
+                  <Check className="w-5 h-5 stroke-[3]" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-sm sm:text-base font-black text-emerald-950">
+                    Bonjour ! Dossier reconnu : {selectedCandidat.nom} {selectedCandidat.prenom} {selectedCandidat.age ? `(${selectedCandidat.age} ans)` : ''}
+                  </p>
+                  <p className="text-xs text-emerald-800 font-medium">
+                    {selectedCandidat.groupeRecommande ? <span className="font-bold">Souhait : {selectedCandidat.groupeRecommande} · </span> : null}
+                    Vos coordonnées sont déjà pré-remplies. Cliquez simplement sur votre horaire de test ci-dessous pour valider !
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearSelectedCandidat}
+                className="text-xs font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 hover:bg-emerald-100 rounded-xl transition-colors cursor-pointer shrink-0"
+              >
+                Changer d&apos;enfant
+              </button>
+            </div>
+          )}
 
-          <div className={`w-12 sm:w-16 h-0.5 transition-all ${step >= 2 ? 'bg-primary' : 'bg-slate-200'}`} />
-
-          <div className="flex items-center gap-2.5">
-            <span className={`w-7 h-7 rounded-full text-xs font-black flex items-center justify-center transition-all ${
-              step >= 2 ? 'bg-primary text-white shadow-xs' : 'bg-slate-100 text-slate-400'
-            }`}>
-              2
-            </span>
-            <span className={`text-xs font-black tracking-wide ${step >= 2 ? 'text-slate-900' : 'text-slate-400'}`}>
-              Informations
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* ─── ÉTAPE 1 : CHOIX DU CRÉNEAU HORAIRE ─── */}
-      {step === 1 && currentSession && (
-        <div className="space-y-6 animate-fade-in">
           {/* Sélecteur de session si plusieurs dates */}
           {sessions.length > 1 && (
             <div className="flex flex-wrap items-center justify-center gap-2 bg-slate-100 p-1.5 rounded-2xl max-w-lg mx-auto">
               {sessions.map((s) => (
                 <button
                   key={s.id}
-                  onClick={() => setSelectedSessionId(s.id)}
+                  onClick={() => {
+                    setSelectedSessionId(s.id)
+                    setSelectedCreneau(null)
+                  }}
                   className={`flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     selectedSessionId === s.id
                       ? 'bg-white text-slate-900 shadow-xs'
@@ -1022,329 +1047,356 @@ export default function TestNageBooking() {
             </div>
           </div>
 
-          {/* Grille des créneaux */}
+          {/* Grille des créneaux horaires */}
           <div className="space-y-3">
-            <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" />
-              <span>Choisissez votre heure de passage (créneaux de {currentSession.dureeMinutes} min) :</span>
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" />
+                <span>1. Cliquez sur votre heure de passage :</span>
+              </h4>
+              {selectedCreneau && (
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 animate-fade-in">
+                  ✓ {selectedCreneau.heureDebut} sélectionné
+                </span>
+              )}
+            </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
-              {currentSession.creneaux.map((cr) => (
+              {currentSession.creneaux.map((cr) => {
+                const isSelected = selectedCreneau?.id === cr.id
+                return (
+                  <button
+                    key={cr.id}
+                    type="button"
+                    disabled={cr.estComplet}
+                    onClick={() => handleSelectCreneau(cr)}
+                    className={`p-3 sm:p-3.5 rounded-2xl border transition-all text-center flex flex-col items-center justify-center space-y-1 relative cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-600 text-white border-emerald-600 ring-4 ring-emerald-100 shadow-md scale-105 z-10'
+                        : cr.estComplet
+                        ? 'bg-slate-50 border-slate-200 text-slate-400 opacity-60 cursor-not-allowed'
+                        : 'bg-white border-slate-200 hover:border-primary hover:shadow-xs group'
+                    }`}
+                  >
+                    <span className={`text-sm sm:text-base font-black font-mono ${
+                      isSelected ? 'text-white' : cr.estComplet ? 'text-slate-400' : 'text-slate-900 group-hover:text-primary'
+                    }`}>
+                      {cr.heureDebut}
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      isSelected
+                        ? 'bg-white/20 text-white border-white/40'
+                        : cr.estComplet
+                        ? 'bg-slate-100 text-slate-400 border-slate-200'
+                        : cr.placesRestantes === 1
+                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    }`}>
+                      {isSelected ? '✓ Choisi' : cr.estComplet ? 'Complet' : `${cr.placesRestantes} ${cr.placesRestantes > 1 ? 'places' : 'place'}`}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Formulaire d'inscription rapide directement sous les créneaux */}
+          <div id="booking-form" className="scroll-mt-24">
+            <form onSubmit={handleSubmitReservation} className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+              {/* Encart dynamique créneau sélectionné */}
+              {selectedCreneau ? (
+                <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-3xs animate-fade-in">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black shrink-0">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-emerald-950">
+                        Créneau sélectionné : {selectedCreneau.heureDebut} à {selectedCreneau.heureFin} ({formatLongDateFr(currentSession.date)})
+                      </p>
+                      <p className="text-xs text-emerald-800 font-medium">
+                        {currentSession.lieu} · Test de {currentSession.dureeMinutes} min
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-medium italic shrink-0">
+                    (Cliquez sur une autre heure au-dessus pour changer)
+                  </span>
+                </div>
+              ) : (
+                <div className="bg-sky-50/80 border border-sky-200 rounded-2xl p-3.5 flex items-center gap-2.5 text-xs text-sky-900 font-bold">
+                  <Clock className="w-4 h-4 text-sky-700 shrink-0" />
+                  <span>👆 Cliquez sur une case horaire ci-dessus pour la réserver.</span>
+                </div>
+              )}
+
+              {/* ─── CHAMPS IDENTITÉ ENFANT AVEC AUTOCOMPLÉTION DIRECTE ─── */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                  <User className="w-4 h-4 text-primary" />
+                  <span>2. Coordonnées de l&apos;enfant</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Champ Nom avec autocomplétion directe */}
+                  <div className="relative">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                      Nom de l&apos;enfant *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={nomEnfant}
+                      onFocus={() => setShowNomSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowNomSuggestions(false), 200)}
+                      onChange={(e) => {
+                        setNomEnfant(e.target.value)
+                        setShowNomSuggestions(true)
+                        if (selectedCandidat && e.target.value.trim().toUpperCase() !== selectedCandidat.nom.toUpperCase()) {
+                          setSelectedCandidat(null)
+                        }
+                      }}
+                      placeholder="Tapez le nom..."
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium uppercase"
+                    />
+
+                    {/* Dropdown suggestions directes par Nom */}
+                    {showNomSuggestions && nomSuggestions.length > 0 && (
+                      <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden divide-y divide-slate-100 max-h-60 overflow-y-auto animate-fade-in">
+                        <div className="px-3 py-1.5 bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                          Enfants pré-inscrits correspondants :
+                        </div>
+                        {nomSuggestions.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault()
+                              handleSelectCandidat(c)
+                            }}
+                            className="w-full px-3.5 py-2.5 text-left hover:bg-emerald-50/70 flex items-center justify-between transition-colors cursor-pointer group"
+                          >
+                            <div className="space-y-0.5">
+                              <p className="text-sm font-black text-slate-900 group-hover:text-primary transition-colors">
+                                {c.nom} {c.prenom} {c.age ? <span className="text-xs font-bold text-slate-400">({c.age} ans)</span> : ''}
+                              </p>
+                              <p className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
+                                {c.groupeRecommande && (
+                                  <span className="font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60 text-[10px]">
+                                    {c.groupeRecommande}
+                                  </span>
+                                )}
+                                <span>{c.telephoneParent || c.emailParent || ''}</span>
+                              </p>
+                            </div>
+                            <span className="text-[11px] font-black text-primary bg-emerald-50 group-hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors shrink-0">
+                              Auto-remplir
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Champ Prénom avec autocomplétion directe */}
+                  <div className="relative">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                      Prénom de l&apos;enfant *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={prenomEnfant}
+                      onFocus={() => setShowPrenomSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowPrenomSuggestions(false), 200)}
+                      onChange={(e) => {
+                        setPrenomEnfant(e.target.value)
+                        setShowPrenomSuggestions(true)
+                        if (selectedCandidat && e.target.value.trim().toLowerCase() !== selectedCandidat.prenom.toLowerCase()) {
+                          setSelectedCandidat(null)
+                        }
+                      }}
+                      placeholder="Lucas"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
+                    />
+
+                    {/* Dropdown suggestions directes par Prénom */}
+                    {showPrenomSuggestions && prenomSuggestions.length > 0 && (
+                      <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden divide-y divide-slate-100 max-h-60 overflow-y-auto animate-fade-in">
+                        <div className="px-3 py-1.5 bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                          Enfants pré-inscrits correspondants :
+                        </div>
+                        {prenomSuggestions.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault()
+                              handleSelectCandidat(c)
+                            }}
+                            className="w-full px-3.5 py-2.5 text-left hover:bg-emerald-50/70 flex items-center justify-between transition-colors cursor-pointer group"
+                          >
+                            <div className="space-y-0.5">
+                              <p className="text-sm font-black text-slate-900 group-hover:text-primary transition-colors">
+                                {c.nom} {c.prenom} {c.age ? <span className="text-xs font-bold text-slate-400">({c.age} ans)</span> : ''}
+                              </p>
+                              <p className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
+                                {c.groupeRecommande && (
+                                  <span className="font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60 text-[10px]">
+                                    {c.groupeRecommande}
+                                  </span>
+                                )}
+                                <span>{c.telephoneParent || c.emailParent || ''}</span>
+                              </p>
+                            </div>
+                            <span className="text-[11px] font-black text-primary bg-emerald-50 group-hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors shrink-0">
+                              Auto-remplir
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Badge Enfant Reconnu / Pré-rempli */}
+                  {selectedCandidat && (
+                    <div className="sm:col-span-2 bg-emerald-50/90 border border-emerald-200 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between shadow-3xs animate-fade-in">
+                      <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-xs sm:text-sm font-black text-emerald-950">
+                            Enfant reconnu : {selectedCandidat.nom} {selectedCandidat.prenom} {selectedCandidat.age ? `(${selectedCandidat.age} ans)` : ''}
+                          </p>
+                          <p className="text-[11px] text-emerald-800 font-medium">
+                            {selectedCandidat.groupeRecommande ? <span className="font-bold">Souhait : {selectedCandidat.groupeRecommande} · </span> : null}
+                            Coordonnées pré-remplies automatiquement
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleClearSelectedCandidat}
+                        className="text-xs font-bold text-slate-500 hover:text-slate-900 px-2.5 py-1 hover:bg-emerald-100/80 rounded-xl transition-colors cursor-pointer shrink-0"
+                      >
+                        Effacer
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ─── CHAMPS COORDONNÉES PARENT ─── */}
+              <div className="space-y-4 pt-2">
+                <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-primary" />
+                  <span>3. Coordonnées de contact</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                      Email de contact *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={emailParent}
+                      onChange={(e) => setEmailParent(e.target.value)}
+                      placeholder="parent@exemple.fr"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                      Téléphone portable *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={telephoneParent}
+                      onChange={(e) => setTelephoneParent(e.target.value)}
+                      placeholder="06 00 00 00 00"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Options repliables pour minimiser l'effort et la charge visuelle */}
+              {!showOptionalFields ? (
                 <button
-                  key={cr.id}
-                  disabled={cr.estComplet}
-                  onClick={() => handleSelectCreneau(cr)}
-                  className={`p-3 rounded-2xl border transition-all text-center flex flex-col items-center justify-center space-y-1 ${
-                    cr.estComplet
-                      ? 'bg-slate-50 border-slate-200 text-slate-400 opacity-60 cursor-not-allowed'
-                      : 'bg-white border-slate-200 hover:border-primary hover:shadow-xs cursor-pointer group'
+                  type="button"
+                  onClick={() => setShowOptionalFields(true)}
+                  className="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5 cursor-pointer pt-1"
+                >
+                  <span>+ Ajouter le nom du parent ou une remarque (optionnel)</span>
+                </button>
+              ) : (
+                <div className="space-y-4 pt-2 border-t border-slate-100 animate-fade-in">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                      Nom & Prénom du parent (optionnel)
+                    </label>
+                    <input
+                      type="text"
+                      value={nomParent}
+                      onChange={(e) => setNomParent(e.target.value)}
+                      placeholder="Ex: Sophie Martin"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                      Remarques ou particularités pour le coach (optionnel)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={remarques}
+                      onChange={(e) => setRemarques(e.target.value)}
+                      placeholder="Ex: appréhende un peu le grand bain, a déjà pris des cours..."
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* ─── BOUTON DE VALIDATION DIRECT ─── */}
+              <div className="pt-4 border-t border-slate-100">
+                <button
+                  type="submit"
+                  disabled={submitting || !selectedCreneau}
+                  className={`w-full py-4 px-6 rounded-2xl font-black text-sm sm:text-base transition-all flex items-center justify-center gap-2.5 shadow-md ${
+                    !selectedCreneau
+                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      : submitting
+                      ? 'bg-primary text-white opacity-60 cursor-wait'
+                      : 'bg-primary hover:bg-primary-dark text-white cursor-pointer hover:shadow-lg active:scale-[0.99]'
                   }`}
                 >
-                  <span className={`text-sm font-black font-mono ${
-                    cr.estComplet ? 'text-slate-400' : 'text-slate-900 group-hover:text-primary'
-                  }`}>
-                    {cr.heureDebut}
-                  </span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                    cr.estComplet
-                      ? 'bg-slate-100 text-slate-400 border-slate-200'
-                      : cr.placesRestantes === 1
-                      ? 'bg-amber-50 text-amber-800 border-amber-200'
-                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                  }`}>
-                    {cr.estComplet ? 'Complet' : `${cr.placesRestantes} ${cr.placesRestantes > 1 ? 'places' : 'place'}`}
-                  </span>
+                  {submitting ? (
+                    <span>Confirmation en cours...</span>
+                  ) : !selectedCreneau ? (
+                    <>
+                      <Clock className="w-5 h-5" />
+                      <span>👆 Choisissez votre horaire ci-dessus pour confirmer</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span>
+                        Confirmer mon créneau à {selectedCreneau.heureDebut}
+                        {prenomEnfant.trim() ? ` · ${prenomEnfant.trim()}` : ''}
+                      </span>
+                    </>
+                  )}
                 </button>
-              ))}
-            </div>
+              </div>
+            </form>
           </div>
-        </div>
-      )}
-
-      {/* ─── ÉTAPE 2 : FORMULAIRE D'INSCRIPTION RAPIDE (HYBRIDE) ─── */}
-      {step === 2 && selectedCreneau && currentSession && (
-        <div className="space-y-6 animate-fade-in">
-          {/* Récapitulatif du créneau choisi */}
-          <div className="bg-emerald-50/70 border border-emerald-200/90 rounded-3xl p-5 md:p-6 space-y-3">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-primary text-white uppercase tracking-wider">
-                    Créneau sélectionné
-                  </span>
-                  <span className="text-xs font-bold text-slate-700">
-                    {formatLongDateFr(currentSession.date)}
-                  </span>
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900">
-                  De {selectedCreneau.heureDebut} à {selectedCreneau.heureFin}
-                </h3>
-                <p className="text-xs text-slate-600">
-                  Test individuel de {currentSession.dureeMinutes} minutes dans l&apos;eau
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="inline-flex items-center gap-1.5 text-xs text-slate-700 hover:text-slate-900 font-bold bg-white border border-slate-200 px-3.5 py-2 rounded-xl transition-colors cursor-pointer shrink-0 shadow-2xs"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                Modifier l&apos;horaire
-              </button>
-            </div>
-
-            {/* RAPPEL LIEU DU TEST */}
-            <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 flex items-center gap-2.5 text-xs text-amber-950">
-              <MapPin className="w-4 h-4 text-amber-800 shrink-0" />
-              <span>
-                Lieu du test : <strong className="font-black text-slate-950 underline decoration-amber-400 decoration-2 underline-offset-2">{currentSession.lieu}</strong>
-              </span>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmitReservation} className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-xs space-y-6">
-            
-            {/* ─── CHAMPS IDENTITÉ ENFANT AVEC AUTOCOMPLÉTION DIRECTE ─── */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
-                <User className="w-4 h-4 text-primary" />
-                <span>1. Identité de l&apos;enfant</span>
-              </h4>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Champ Nom avec autocomplétion directe */}
-                <div className="relative">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    Nom de l&apos;enfant *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={nomEnfant}
-                    onFocus={() => setShowNomSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowNomSuggestions(false), 200)}
-                    onChange={(e) => {
-                      setNomEnfant(e.target.value)
-                      setShowNomSuggestions(true)
-                      if (selectedCandidat && e.target.value.trim().toUpperCase() !== selectedCandidat.nom.toUpperCase()) {
-                        setSelectedCandidat(null)
-                      }
-                    }}
-                    placeholder="Tapez le nom..."
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium uppercase"
-                  />
-
-                  {/* Dropdown suggestions directes par Nom */}
-                  {showNomSuggestions && nomSuggestions.length > 0 && (
-                    <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden divide-y divide-slate-100 max-h-60 overflow-y-auto animate-fade-in">
-                      <div className="px-3 py-1.5 bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                        Enfants pré-inscrits correspondants :
-                      </div>
-                      {nomSuggestions.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault()
-                            handleSelectCandidat(c)
-                          }}
-                          className="w-full px-3.5 py-2.5 text-left hover:bg-emerald-50/70 flex items-center justify-between transition-colors cursor-pointer group"
-                        >
-                          <div className="space-y-0.5">
-                            <p className="text-sm font-black text-slate-900 group-hover:text-primary transition-colors">
-                              {c.nom} {c.prenom} {c.age ? <span className="text-xs font-bold text-slate-400">({c.age} ans)</span> : ''}
-                            </p>
-                            <p className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
-                              {c.groupeRecommande && (
-                                <span className="font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60 text-[10px]">
-                                  {c.groupeRecommande}
-                                </span>
-                              )}
-                              <span>{c.telephoneParent || c.emailParent || ''}</span>
-                            </p>
-                          </div>
-                          <span className="text-[11px] font-black text-primary bg-emerald-50 group-hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors shrink-0">
-                            Auto-remplir
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Champ Prénom avec autocomplétion directe */}
-                <div className="relative">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    Prénom de l&apos;enfant *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={prenomEnfant}
-                    onFocus={() => setShowPrenomSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowPrenomSuggestions(false), 200)}
-                    onChange={(e) => {
-                      setPrenomEnfant(e.target.value)
-                      setShowPrenomSuggestions(true)
-                      if (selectedCandidat && e.target.value.trim().toLowerCase() !== selectedCandidat.prenom.toLowerCase()) {
-                        setSelectedCandidat(null)
-                      }
-                    }}
-                    placeholder="Lucas"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
-                  />
-
-                  {/* Dropdown suggestions directes par Prénom */}
-                  {showPrenomSuggestions && prenomSuggestions.length > 0 && (
-                    <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden divide-y divide-slate-100 max-h-60 overflow-y-auto animate-fade-in">
-                      <div className="px-3 py-1.5 bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                        Enfants pré-inscrits correspondants :
-                      </div>
-                      {prenomSuggestions.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault()
-                            handleSelectCandidat(c)
-                          }}
-                          className="w-full px-3.5 py-2.5 text-left hover:bg-emerald-50/70 flex items-center justify-between transition-colors cursor-pointer group"
-                        >
-                          <div className="space-y-0.5">
-                            <p className="text-sm font-black text-slate-900 group-hover:text-primary transition-colors">
-                              {c.nom} {c.prenom} {c.age ? <span className="text-xs font-bold text-slate-400">({c.age} ans)</span> : ''}
-                            </p>
-                            <p className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
-                              {c.groupeRecommande && (
-                                <span className="font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60 text-[10px]">
-                                  {c.groupeRecommande}
-                                </span>
-                              )}
-                              <span>{c.telephoneParent || c.emailParent || ''}</span>
-                            </p>
-                          </div>
-                          <span className="text-[11px] font-black text-primary bg-emerald-50 group-hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors shrink-0">
-                            Auto-remplir
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Badge Enfant Reconnu / Pré-rempli */}
-                {selectedCandidat && (
-                  <div className="sm:col-span-2 bg-emerald-50/90 border border-emerald-200 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between shadow-3xs animate-fade-in">
-                    <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
-                        <Check className="w-4 h-4 stroke-[3]" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <p className="text-xs sm:text-sm font-black text-emerald-950">
-                          Enfant reconnu : {selectedCandidat.nom} {selectedCandidat.prenom} {selectedCandidat.age ? `(${selectedCandidat.age} ans)` : ''}
-                        </p>
-                        <p className="text-[11px] text-emerald-800 font-medium">
-                          {selectedCandidat.groupeRecommande ? <span className="font-bold">Souhait : {selectedCandidat.groupeRecommande} · </span> : null}
-                          Coordonnées pré-remplies automatiquement
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleClearSelectedCandidat}
-                      className="text-xs font-bold text-slate-500 hover:text-slate-900 px-2.5 py-1 hover:bg-emerald-100/80 rounded-xl transition-colors cursor-pointer shrink-0"
-                    >
-                      Effacer
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* ─── CHAMPS COORDONNÉES PARENT ─── */}
-            <div className="space-y-4 pt-2">
-              <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
-                <Phone className="w-4 h-4 text-primary" />
-                <span>2. Coordonnées du responsable</span>
-              </h4>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    Email de contact *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={emailParent}
-                    onChange={(e) => setEmailParent(e.target.value)}
-                    placeholder="parent@exemple.fr"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    Téléphone *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={telephoneParent}
-                    onChange={(e) => setTelephoneParent(e.target.value)}
-                    placeholder="06 00 00 00 00"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Nom & Prénom du parent
-                </label>
-                <input
-                  type="text"
-                  value={nomParent}
-                  onChange={(e) => setNomParent(e.target.value)}
-                  placeholder="Jean Dupont"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Remarques ou particularités à signaler au coach
-                </label>
-                <textarea
-                  rows={2}
-                  value={remarques}
-                  onChange={(e) => setRemarques(e.target.value)}
-                  placeholder="Ex: appréhende un peu le grand bassin, a déjà fait des cours l'an dernier..."
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
-                />
-              </div>
-            </div>
-
-            {/* ─── BOUTON DE VALIDATION ─── */}
-            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex-1 py-3.5 px-6 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-sm transition-colors shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                {submitting ? (
-                  <span>Confirmation en cours...</span>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Confirmer la réservation du test</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
         </div>
       )}
 
