@@ -1103,7 +1103,7 @@ export default function ParametresManager() {
                         type="text"
                         value={codeAccesTestsNage}
                         onChange={(e) => setCodeAccesTestsNage(e.target.value)}
-                        placeholder="Ex: TRITON2026 (Laisser vide pour un accès libre sans mot de passe)"
+                        placeholder="Laisser vide pour un accès libre sans mot de passe"
                         className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       />
                       <p className="text-[10px] text-slate-500 leading-relaxed">

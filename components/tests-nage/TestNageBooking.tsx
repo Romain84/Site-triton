@@ -784,7 +784,7 @@ export default function TestNageBooking() {
                   type={showPassword ? 'text' : 'password'}
                   value={inputCode}
                   onChange={(e) => setInputCode(e.target.value)}
-                  placeholder="Ex: TRITON2026"
+                  placeholder="••••••••"
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono pr-10 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   autoFocus
                 />
@@ -839,7 +839,7 @@ export default function TestNageBooking() {
                 type={showPassword ? 'text' : 'password'}
                 value={inputCode}
                 onChange={(e) => setInputCode(e.target.value)}
-                placeholder="Ex: TRITON2026"
+                placeholder="••••••••"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono pr-10 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 autoFocus
               />
