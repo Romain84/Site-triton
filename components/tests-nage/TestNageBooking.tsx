@@ -525,7 +525,7 @@ export default function TestNageBooking() {
             <div className="sm:col-span-2 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 space-y-1">
               <div className="flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-amber-900">
                 <MapPin className="w-4 h-4 text-amber-700 shrink-0" />
-                <span>Lieu de rendez-vous (Attention selon la période) :</span>
+                <span>Lieu de rendez-vous :</span>
               </div>
               <p className="text-base font-black text-slate-950">
                 {manageData.session.lieu}
@@ -1440,7 +1440,7 @@ export default function TestNageBooking() {
               </div>
               <div className="space-y-0.5">
                 <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block">
-                  Lieu de rendez-vous (Attention selon la période) :
+                  Lieu de rendez-vous :
                 </span>
                 <span className="text-sm font-black text-slate-950 block">
                   {confirmationData.lieu}

@@ -190,9 +190,9 @@ export async function POST(request: NextRequest) {
             
             <div style="background-color: #f8fafc; border-left: 4px solid #15803d; padding: 16px; margin: 20px 0; border-radius: 6px;">
               <p style="margin: 0 0 8px;">📅 <strong>Date :</strong> ${dateFormatted}</p>
-              <p style="margin: 0 0 8px;">⏰ <strong>Créneau précis :</strong> ${result.creneau.heureDebut} à ${result.creneau.heureFin} (durée : ${result.session.dureeMinutes} minutes)</p>
+              <p style="margin: 0 0 8px;">⏰ <strong>Créneau :</strong> ${result.creneau.heureDebut} à ${result.creneau.heureFin}</p>
               <div style="background-color: #fffbeb; border: 1px solid #fde68a; padding: 10px 14px; border-radius: 6px; margin: 8px 0;">
-                <p style="margin: 0 0 2px; font-size: 11px; font-weight: bold; color: #92400e; text-transform: uppercase;">📍 Lieu exact (Attention selon la période) :</p>
+                <p style="margin: 0 0 2px; font-size: 11px; font-weight: bold; color: #92400e; text-transform: uppercase;">📍 Lieu :</p>
                 <p style="margin: 0; font-size: 14px; font-weight: bold; color: #78350f;">${result.session.lieu}</p>
               </div>
               <p style="margin: 8px 0 0;">ℹ️ <strong>Session :</strong> ${result.session.titre}</p>
