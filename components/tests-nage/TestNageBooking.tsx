@@ -60,9 +60,7 @@ interface CandidatItem {
   prenom: string
   age: number | null
   dateNaissance: string | null
-  nomParent: string | null
-  emailParent: string | null
-  telephoneParent: string | null
+  emailParentMasque?: string | null
   groupeRecommande?: string | null
 }
 
@@ -307,22 +305,14 @@ export default function TestNageBooking() {
     }).slice(0, 6)
   }, [prenomEnfant, candidats, selectedCandidat])
 
-  // Sélection d'un candidat pré-enregistré : remplissage automatique instantané
+  // Sélection d'un candidat pré-enregistré : remplissage du nom/prénom et liaison du dossier
   const handleSelectCandidat = (c: CandidatItem) => {
     setSelectedCandidat(c)
     setNomEnfant(c.nom)
     setPrenomEnfant(c.prenom)
-    if (c.nomParent) setNomParent(c.nomParent)
-    if (c.emailParent) setEmailParent(c.emailParent)
-    if (c.telephoneParent) setTelephoneParent(c.telephoneParent)
     setShowNomSuggestions(false)
     setShowPrenomSuggestions(false)
-
-    if (!c.emailParent || !c.telephoneParent) {
-      toast.success(`${c.prenom} ${c.nom} sélectionné ! Veuillez compléter l'email ou le téléphone ci-dessous.`, { icon: '✨' })
-    } else {
-      toast.success(`Informations de ${c.prenom} ${c.nom} pré-remplies automatiquement !`, { icon: '✨' })
-    }
+    toast.success(`Dossier de ${c.prenom} ${c.nom} reconnu !`, { icon: '✨' })
   }
 
   const handleClearSelectedCandidat = () => {
@@ -951,7 +941,8 @@ export default function TestNageBooking() {
                   </p>
                   <p className="text-xs text-emerald-800 font-medium">
                     {selectedCandidat.groupeRecommande ? <span className="font-bold">Souhait : {selectedCandidat.groupeRecommande} · </span> : null}
-                    Vos coordonnées sont déjà pré-remplies. Cliquez simplement sur votre horaire de test ci-dessous pour valider !
+                    {selectedCandidat.emailParentMasque ? <span>Dossier lié à l&apos;email : <strong className="font-mono text-emerald-950">{selectedCandidat.emailParentMasque}</strong>. </span> : null}
+                    Choisissez simplement votre créneau ci-dessous pour valider votre test !
                   </p>
                 </div>
               </div>
@@ -1186,11 +1177,13 @@ export default function TestNageBooking() {
                                     {c.groupeRecommande}
                                   </span>
                                 )}
-                                <span>{c.telephoneParent || c.emailParent || ''}</span>
+                                {c.emailParentMasque && (
+                                  <span className="font-mono text-slate-400 text-[11px]">✉️ {c.emailParentMasque}</span>
+                                )}
                               </p>
                             </div>
                             <span className="text-[11px] font-black text-primary bg-emerald-50 group-hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors shrink-0">
-                              Auto-remplir
+                              Sélectionner
                             </span>
                           </button>
                         ))}
@@ -1246,11 +1239,13 @@ export default function TestNageBooking() {
                                     {c.groupeRecommande}
                                   </span>
                                 )}
-                                <span>{c.telephoneParent || c.emailParent || ''}</span>
+                                {c.emailParentMasque && (
+                                  <span className="font-mono text-slate-400 text-[11px]">✉️ {c.emailParentMasque}</span>
+                                )}
                               </p>
                             </div>
                             <span className="text-[11px] font-black text-primary bg-emerald-50 group-hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors shrink-0">
-                              Auto-remplir
+                              Sélectionner
                             </span>
                           </button>
                         ))}
@@ -1271,7 +1266,7 @@ export default function TestNageBooking() {
                           </p>
                           <p className="text-[11px] text-emerald-800 font-medium">
                             {selectedCandidat.groupeRecommande ? <span className="font-bold">Souhait : {selectedCandidat.groupeRecommande} · </span> : null}
-                            Coordonnées pré-remplies automatiquement
+                            {selectedCandidat.emailParentMasque ? <span>Dossier associé : <strong className="font-mono text-emerald-950">{selectedCandidat.emailParentMasque}</strong></span> : 'Dossier pré-inscrit reconnu'}
                           </p>
                         </div>
                       </div>
@@ -1304,7 +1299,7 @@ export default function TestNageBooking() {
                       required
                       value={emailParent}
                       onChange={(e) => setEmailParent(e.target.value)}
-                      placeholder="parent@exemple.fr"
+                      placeholder={selectedCandidat?.emailParentMasque ? `Votre email (ex: ${selectedCandidat.emailParentMasque})` : "parent@exemple.fr"}
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white transition-colors outline-none text-sm font-medium"
                     />
                   </div>

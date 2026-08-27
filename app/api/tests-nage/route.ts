@@ -80,8 +80,36 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // 2. Récupérer la liste des candidats à planifier (pour l'autocomplétion / recherche hybride)
-    const candidats = await prisma.candidatTestNage.findMany({
+function maskEmail(email: string | null | undefined): string | null {
+  if (!email || !email.includes('@')) return null
+  const parts = email.trim().split('@')
+  if (parts.length !== 2) return null
+  const [name, domain] = parts
+
+  let maskedName = ''
+  if (name.length <= 2) {
+    maskedName = name[0] + '***'
+  } else {
+    maskedName = name.slice(0, 2) + '***' + name.slice(-1)
+  }
+
+  const domainParts = domain.split('.')
+  const domainExt = domainParts.length > 1 ? '.' + domainParts.slice(1).join('.') : ''
+  const domainName = domainParts[0] || ''
+
+  let maskedDomain = ''
+  if (domainName.length <= 2) {
+    maskedDomain = domainName[0] + '***'
+  } else {
+    maskedDomain = domainName.slice(0, 2) + '***'
+  }
+
+  return `${maskedName}@${maskedDomain}${domainExt}`
+}
+
+    // 2. Récupérer la liste des candidats à planifier (pour l'autocomplétion)
+    // Sécurité RGPD : Ne jamais exposer le téléphone en clair, masquer l'adresse email
+    const rawCandidats = await prisma.candidatTestNage.findMany({
       where: {
         statut: 'a_planifier',
         ...(sessionId ? { OR: [{ sessionId }, { sessionId: null }] } : {}),
@@ -92,13 +120,21 @@ export async function GET(request: NextRequest) {
         prenom: true,
         age: true,
         dateNaissance: true,
-        nomParent: true,
         emailParent: true,
-        telephoneParent: true,
         groupeRecommande: true,
       },
       orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
     })
+
+    const candidats = rawCandidats.map((c) => ({
+      id: c.id,
+      nom: c.nom,
+      prenom: c.prenom,
+      age: c.age,
+      dateNaissance: c.dateNaissance,
+      groupeRecommande: c.groupeRecommande,
+      emailParentMasque: maskEmail(c.emailParent),
+    }))
 
     // 3. Formater les créneaux avec les places restantes
     const formattedSessions = sessions.map((session) => ({
