@@ -312,6 +312,35 @@ export default function TestsNageManager() {
     }
   }
 
+  // Suppression globale de l'ensemble du listing des candidats
+  const handleDeleteAllCandidats = async () => {
+    if (candidats.length === 0) {
+      return toast.error('Aucun candidat dans le listing')
+    }
+    if (
+      !confirm(
+        `⚠️ ATTENTION : Vous êtes sur le point de supprimer définitivement TOUT le listing des ${candidats.length} candidats.\n\nCette action est irréversible. Confirmez-vous la suppression ?`
+      )
+    ) {
+      return
+    }
+
+    try {
+      const res = await fetch('/api/admin/tests-nage/candidats', {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success(data.message || 'Tous les candidats ont été supprimés avec succès')
+        loadData()
+      } else {
+        toast.error(data.error || 'Erreur lors de la suppression du listing')
+      }
+    } catch {
+      toast.error('Erreur réseau lors de la suppression')
+    }
+  }
+
   // Inscription manuelle d'un enfant par l'admin
   const handleManualAddInscription = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -991,6 +1020,18 @@ export default function TestsNageManager() {
               >
                 🔵 Testés
               </button>
+
+              {candidats.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleDeleteAllCandidats}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs transition-colors cursor-pointer ml-auto"
+                  title="Supprimer définitivement l'ensemble des candidats du listing"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Supprimer tout le listing ({candidats.length})</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1326,18 +1367,37 @@ export default function TestsNageManager() {
             </div>
 
             <form onSubmit={handleImportCandidats} className="space-y-4 text-xs font-medium text-slate-700">
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-slate-600 text-[11px] space-y-1">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-slate-600 text-[11px] space-y-1.5">
                 <p className="font-bold text-slate-900">Format accepté :</p>
                 <p>Copiez-collez simplement les lignes depuis votre tableur (Excel, Google Sheets) ou un fichier texte. Colonnes reconnues automatiquement :</p>
                 <p className="font-mono bg-white p-2 rounded-lg border border-slate-200 text-slate-800">
                   Nom &nbsp; Prénom &nbsp; Âge &nbsp; Nom_Parent &nbsp; Email &nbsp; Téléphone
                 </p>
+                <p className="text-emerald-800 font-bold bg-emerald-50 border border-emerald-200/60 p-2 rounded-lg flex items-center gap-1.5">
+                  <span>✨</span>
+                  <span><strong>Anti-doublon actif :</strong> Si un candidat existe déjà dans votre base (même nom & prénom), il sera automatiquement ignoré pour ne pas créer de doublon.</span>
+                </p>
               </div>
 
               <div>
-                <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Collez vos lignes ci-dessous *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold uppercase tracking-wider text-slate-700">
+                    Collez vos lignes ci-dessous *
+                  </label>
+                  {candidats.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowImportModal(false)
+                        handleDeleteAllCandidats()
+                      }}
+                      className="text-[11px] font-bold text-rose-600 hover:text-rose-800 hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Vider le listing actuel ({candidats.length})</span>
+                    </button>
+                  )}
+                </div>
                 <textarea
                   rows={8}
                   required

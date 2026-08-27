@@ -87,3 +87,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Erreur lors de l'ajout du candidat" }, { status: 500 })
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
+    const { searchParams } = new URL(request.url)
+    const sessionId = searchParams.get('sessionId')
+    const statut = searchParams.get('statut')
+
+    // Suppression en masse de tous les candidats (ou filtrés par session / statut)
+    const result = await prisma.candidatTestNage.deleteMany({
+      where: {
+        ...(sessionId ? { sessionId } : {}),
+        ...(statut ? { statut } : {}),
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      count: result.count,
+      message: `${result.count} candidat(s) supprimé(s) avec succès.`,
+    })
+  } catch (error) {
+    console.error('Erreur DELETE all candidats:', error)
+    return NextResponse.json({ error: 'Erreur lors de la suppression de la liste des candidats' }, { status: 500 })
+  }
+}

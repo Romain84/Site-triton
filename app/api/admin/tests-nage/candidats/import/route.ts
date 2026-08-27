@@ -189,6 +189,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validated = importSchema.parse(body)
 
+    // 1. Récupérer les candidats déjà existants dans la base pour éviter les doublons
+    const existingCandidats = await prisma.candidatTestNage.findMany({
+      select: {
+        nom: true,
+        prenom: true,
+      },
+    })
+
+    const normalizeKey = (nom: string, prenom: string) => {
+      return `${nom.trim().toUpperCase()}|${prenom.trim().toLowerCase()}`
+    }
+
+    const existingKeys = new Set(
+      existingCandidats.map((c) => normalizeKey(c.nom, c.prenom))
+    )
+
+    // Suivi des doublons dans le fichier d'import lui-même
+    const seenInImport = new Set<string>()
+    let ignoredCount = 0
+
     const lines = validated.texteBrut.split(/\r?\n/)
     const parsedList: Array<{
       sessionId: string | null
@@ -207,6 +227,14 @@ export async function POST(request: NextRequest) {
     for (const line of lines) {
       const parsed = parseLine(line)
       if (parsed) {
+        const key = normalizeKey(parsed.nom, parsed.prenom)
+        // Si le candidat existe déjà en base ou a déjà été traité dans ce fichier, on l'ignore
+        if (existingKeys.has(key) || seenInImport.has(key)) {
+          ignoredCount++
+          continue
+        }
+        seenInImport.add(key)
+
         parsedList.push({
           sessionId: validated.sessionId || null,
           nom: parsed.nom,
@@ -224,21 +252,34 @@ export async function POST(request: NextRequest) {
     }
 
     if (parsedList.length === 0) {
+      if (ignoredCount > 0) {
+        return NextResponse.json({
+          success: true,
+          count: 0,
+          ignored: ignoredCount,
+          message: `Aucun nouveau candidat à importer : les ${ignoredCount} candidat(s) du fichier existent déjà dans votre base.`,
+        })
+      }
       return NextResponse.json(
         { error: 'Aucun candidat valide détecté dans le texte. Vérifiez le format (au moins Nom et Prénom).' },
         { status: 400 }
       )
     }
 
-    // Insertion en masse
+    // Insertion en masse des nouveaux candidats uniquement
     const createdCount = await prisma.candidatTestNage.createMany({
       data: parsedList,
     })
 
+    const successMessage = ignoredCount > 0
+      ? `${createdCount.count} nouveau(x) candidat(s) importé(s) avec succès ! (${ignoredCount} déjà existant(s) ignoré(s))`
+      : `${createdCount.count} candidat(s) importé(s) avec succès !`
+
     return NextResponse.json({
       success: true,
       count: createdCount.count,
-      message: `${createdCount.count} candidat(s) importé(s) avec succès !`,
+      ignored: ignoredCount,
+      message: successMessage,
     })
   } catch (error) {
     console.error('Erreur import candidats:', error)
