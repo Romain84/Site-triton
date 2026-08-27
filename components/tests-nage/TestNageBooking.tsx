@@ -492,12 +492,16 @@ export default function TestNageBooking() {
               </p>
             </div>
 
-            <div className="space-y-1 sm:col-span-2 border-t border-slate-200/60 pt-3">
-              <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-primary" /> Lieu de rendez-vous :
-              </span>
-              <p className="font-medium text-slate-800">
-                {manageData.session.lieu} · <strong>Hall d&apos;entrée de la piscine</strong> (5 minutes avant l&apos;heure)
+            <div className="sm:col-span-2 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 space-y-1">
+              <div className="flex items-center gap-1.5 font-black text-xs uppercase tracking-wider text-amber-900">
+                <MapPin className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>Lieu de rendez-vous (Attention selon la période) :</span>
+              </div>
+              <p className="text-base font-black text-slate-950">
+                {manageData.session.lieu}
+              </p>
+              <p className="text-xs text-amber-900/80 font-medium">
+                Rendez-vous dans le hall d&apos;entrée 5 minutes avant l&apos;heure avec maillot, bonnet et lunettes.
               </p>
             </div>
           </div>
@@ -942,20 +946,42 @@ export default function TestNageBooking() {
           )}
 
           {/* Fiche d'information de la session */}
-          <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200 shadow-xs space-y-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xs space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
                 <h3 className="text-lg md:text-xl font-black text-slate-900">
                   {currentSession.titre}
                 </h3>
-                <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-1">
-                  <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span>{currentSession.lieu}</span>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Séance officielle d&apos;évaluation de niveau
                 </p>
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 shrink-0">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 shrink-0 shadow-3xs">
                 <Calendar className="w-4 h-4 text-primary" />
                 <span>{formatLongDateFr(currentSession.date)}</span>
+              </div>
+            </div>
+
+            {/* ─── MISE EN AVANT VISUELLE DU LIEU DU TEST ─── */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-50 to-amber-100/60 border-2 border-amber-300 flex items-start gap-3.5 shadow-xs">
+              <div className="w-10 h-10 rounded-xl bg-amber-200/90 text-amber-900 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                <MapPin className="w-5 h-5 text-amber-900 stroke-[2.5]" />
+              </div>
+              <div className="space-y-1 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-amber-200 text-amber-950 px-2 py-0.5 rounded-md">
+                    📍 Lieu du test
+                  </span>
+                  <span className="text-[11px] font-bold text-amber-800">
+                    ⚠️ Attention : le lieu varie selon la période (bassin d&apos;été / hiver)
+                  </span>
+                </div>
+                <p className="text-base sm:text-lg font-black text-slate-950 leading-tight">
+                  {currentSession.lieu}
+                </p>
+                <p className="text-xs text-slate-600 font-medium pt-0.5">
+                  Présentez-vous dans le hall d&apos;entrée 5 minutes avant l&apos;heure avec maillot, bonnet et lunettes.
+                </p>
               </div>
             </div>
 
@@ -1023,32 +1049,42 @@ export default function TestNageBooking() {
       {step === 2 && selectedCreneau && currentSession && (
         <div className="space-y-6 animate-fade-in">
           {/* Récapitulatif du créneau choisi */}
-          <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-4 md:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white uppercase tracking-wider">
-                  Créneau sélectionné
-                </span>
-                <span className="text-xs font-bold text-slate-700">
-                  {formatLongDateFr(currentSession.date)}
-                </span>
+          <div className="bg-emerald-50/70 border border-emerald-200/90 rounded-3xl p-5 md:p-6 space-y-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-primary text-white uppercase tracking-wider">
+                    Créneau sélectionné
+                  </span>
+                  <span className="text-xs font-bold text-slate-700">
+                    {formatLongDateFr(currentSession.date)}
+                  </span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900">
+                  De {selectedCreneau.heureDebut} à {selectedCreneau.heureFin}
+                </h3>
+                <p className="text-xs text-slate-600">
+                  Test individuel de {currentSession.dureeMinutes} minutes dans l&apos;eau
+                </p>
               </div>
-              <h3 className="text-xl font-black text-slate-900">
-                De {selectedCreneau.heureDebut} à {selectedCreneau.heureFin}
-              </h3>
-              <p className="text-xs text-slate-600">
-                {currentSession.lieu} · Test individuel de {currentSession.dureeMinutes} minutes
-              </p>
+
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="inline-flex items-center gap-1.5 text-xs text-slate-700 hover:text-slate-900 font-bold bg-white border border-slate-200 px-3.5 py-2 rounded-xl transition-colors cursor-pointer shrink-0 shadow-2xs"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Modifier l&apos;horaire
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="inline-flex items-center gap-1.5 text-xs text-slate-700 hover:text-slate-900 font-bold bg-white border border-slate-200 px-3.5 py-2 rounded-xl transition-colors cursor-pointer shrink-0"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Modifier l&apos;horaire
-            </button>
+            {/* RAPPEL LIEU DU TEST */}
+            <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 flex items-center gap-2.5 text-xs text-amber-950">
+              <MapPin className="w-4 h-4 text-amber-800 shrink-0" />
+              <span>
+                Lieu du test : <strong className="font-black text-slate-950 underline decoration-amber-400 decoration-2 underline-offset-2">{currentSession.lieu}</strong>
+              </span>
+            </div>
           </div>
 
           <form onSubmit={handleSubmitReservation} className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-xs space-y-6">
@@ -1322,11 +1358,22 @@ export default function TestNageBooking() {
               </span>
             </div>
 
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-500 uppercase text-xs">Lieu :</span>
-              <span className="font-bold text-slate-900 text-right">
-                {confirmationData.lieu}
-              </span>
+            {/* MISE EN AVANT DU LIEU DU TEST */}
+            <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-200 text-amber-900 flex items-center justify-center shrink-0 mt-0.5">
+                <MapPin className="w-4 h-4 text-amber-900" />
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block">
+                  Lieu de rendez-vous (Attention selon la période) :
+                </span>
+                <span className="text-sm font-black text-slate-950 block">
+                  {confirmationData.lieu}
+                </span>
+                <span className="text-xs text-amber-900/80 block pt-0.5">
+                  Vérifiez bien le bassin (extérieur ou couvert) avant de vous déplacer.
+                </span>
+              </div>
             </div>
           </div>
 
