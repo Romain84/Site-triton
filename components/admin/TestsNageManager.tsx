@@ -177,6 +177,13 @@ export default function TestsNageManager() {
   const [codeAccesTestsNage, setCodeAccesTestsNage] = useState<string>('')
   const [togglingBoutonTest, setTogglingBoutonTest] = useState(false)
 
+  // Modale d'association d'une inscription hors listing avec un candidat du listing
+  const [showAssocierModal, setShowAssocierModal] = useState(false)
+  const [associerInscription, setAssocierInscription] = useState<InscriptionItem | null>(null)
+  const [associerSearch, setAssocierSearch] = useState('')
+  const [selectedTargetCandidatId, setSelectedTargetCandidatId] = useState<string | null>(null)
+  const [associating, setAssociating] = useState(false)
+
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
@@ -561,6 +568,58 @@ export default function TestsNageManager() {
     return candidats.filter((c) => c.statut === 'a_planifier' && c.emailParent && c.emailParent.includes('@'))
   }, [candidats])
 
+  // Liste des candidats éligibles pour l'association (exclut les hors_listing)
+  const candidatesForAssociation = useMemo(() => {
+    if (!showAssocierModal) return []
+    const baseList = candidats.filter((c) => c.statut !== 'hors_listing')
+    if (!associerSearch.trim()) return baseList.slice(0, 30)
+    const q = associerSearch.toLowerCase().trim()
+    return baseList
+      .filter(
+        (c) =>
+          c.nom.toLowerCase().includes(q) ||
+          c.prenom.toLowerCase().includes(q) ||
+          (c.nomParent && c.nomParent.toLowerCase().includes(q)) ||
+          (c.emailParent && c.emailParent.toLowerCase().includes(q))
+      )
+      .slice(0, 30)
+  }, [candidats, showAssocierModal, associerSearch])
+
+  // Valider l'association d'une inscription hors listing avec un candidat du listing
+  const handleAssocierCandidat = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!associerInscription || !selectedTargetCandidatId) {
+      return toast.error('Veuillez sélectionner un enfant du listing')
+    }
+
+    setAssociating(true)
+    try {
+      const res = await fetch('/api/admin/tests-nage/candidats/associer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          inscriptionId: associerInscription.id,
+          targetCandidatId: selectedTargetCandidatId,
+        }),
+      })
+
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success(data.message || 'Association validée avec succès !')
+        setShowAssocierModal(false)
+        setAssocierInscription(null)
+        setSelectedTargetCandidatId(null)
+        await loadData()
+      } else {
+        toast.error(data.error || "Erreur lors de l'association")
+      }
+    } catch {
+      toast.error('Erreur réseau lors de la communication avec le serveur')
+    } finally {
+      setAssociating(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -574,126 +633,98 @@ export default function TestsNageManager() {
 
   return (
     <div className="space-y-6">
-      {/* ─── EN-TÊTE & ACTIONS PRINCIPALES ─── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white rounded-3xl p-6 border border-slate-200 shadow-xs print:hidden">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 bg-emerald-50 text-primary rounded-xl">
-              <Waves className="w-5 h-5" />
-            </span>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">
-              Tests de Nage & Niveau (Rentrée)
-            </h2>
-          </div>
-          <p className="text-xs text-slate-500 font-medium mt-1">
-            Génération des créneaux de 5 min, inscriptions parents en ligne, pointage bord de bassin et attribution des groupes.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={handleCopyPublicLink}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors cursor-pointer"
-            title="Lien public secret à envoyer aux parents"
-          >
-            <Copy className="w-3.5 h-3.5 text-primary" />
-            <span>Copier le lien public</span>
-          </button>
-
-          <button
-            onClick={() => setShowImportModal(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors cursor-pointer"
-          >
-            <Upload className="w-3.5 h-3.5 text-slate-600" />
-            <span>Importer listing</span>
-          </button>
-
-          <button
-            onClick={() => setShowCreateSessionModal(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs transition-colors shadow-xs cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Créer une session</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ─── BANDEAU DE VISIBILITÉ DU BOUTON TEST SUR LA PAGE INSCRIPTION ─── */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 print:hidden">
-        <div className="flex items-start gap-3">
-          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg shrink-0 mt-0.5 ${afficherBoutonTest ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-            {afficherBoutonTest ? '🏊' : '🔒'}
-          </div>
+      {/* ─── EN-TÊTE ÉPURÉ & BARRE D'ACTIONS COMPACTE ─── */}
+      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-3.5 print:hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-black text-slate-900">
-                Statut des inscriptions aux tests de niveau (/tests-de-nage)
-              </h3>
-              <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${afficherBoutonTest ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                {afficherBoutonTest ? 'Inscriptions Ouvertes' : 'Inscriptions Closes & Verrouillées'}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="p-2 bg-emerald-50 text-primary rounded-xl shrink-0">
+                <Waves className="w-5 h-5" />
               </span>
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                Tests de Nage & Niveau
+              </h2>
+              {/* Badge interactif discret d'ouverture/fermeture */}
+              <button
+                type="button"
+                onClick={handleToggleBoutonTest}
+                disabled={togglingBoutonTest}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all ${
+                  afficherBoutonTest
+                    ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300'
+                    : 'bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-300'
+                }`}
+                title="Cliquer pour ouvrir ou fermer les inscriptions publiques"
+              >
+                <span>{afficherBoutonTest ? '🟢 Inscriptions Ouvertes' : '🔒 Inscriptions Closes'}</span>
+              </button>
               {codeAccesTestsNage.trim() && (
-                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-                  🔑 Code actif : {codeAccesTestsNage.trim()}
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
+                  Code : {codeAccesTestsNage.trim()}
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-              {afficherBoutonTest
-                ? 'Les parents peuvent réserver en ligne. ' + (codeAccesTestsNage.trim() ? 'Un mot de passe est demandé pour déverrouiller.' : 'Accès libre sans mot de passe.')
-                : 'Les réservations directes sont bloquées. Seules les personnes possédant un lien direct ou le code peuvent réserver.'}
+            <p className="text-xs text-slate-500 font-medium mt-1">
+              Planning des passages, pointage en bord de bassin et validation des groupes.
             </p>
           </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleCopyPublicLink}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors cursor-pointer"
+              title="Lien public pour les parents"
+            >
+              <Copy className="w-3.5 h-3.5 text-primary" />
+              <span>Lien public</span>
+            </button>
+
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors cursor-pointer"
+            >
+              <Upload className="w-3.5 h-3.5 text-slate-600" />
+              <span>Importer listing</span>
+            </button>
+
+            <button
+              onClick={() => setShowCreateSessionModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs transition-colors shadow-xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Créer session</span>
+            </button>
+          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleToggleBoutonTest}
-          disabled={togglingBoutonTest}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-3xs shrink-0 ${
-            afficherBoutonTest
-              ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
-              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-          }`}
-        >
-          {togglingBoutonTest ? 'Mise à jour...' : afficherBoutonTest ? 'Fermer / Verrouiller les inscriptions' : 'Ouvrir les inscriptions publiques'}
-        </button>
+        {/* Ligne de statistiques condensée et claire */}
+        {currentSession && (
+          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 text-xs">
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 rounded-xl border border-slate-200/80 font-bold text-slate-700">
+              <Users className="w-3.5 h-3.5 text-slate-500" />
+              <span>Inscrits :</span>
+              <span className="text-slate-900 font-black">{currentSession.stats.totalInscrits} / {currentSession.stats.totalPlaces}</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 rounded-xl border border-emerald-200 font-bold text-emerald-800">
+              <span>✅ Présents :</span>
+              <span className="font-black">{currentSession.stats.totalPresents}</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 rounded-xl border border-amber-200 font-bold text-amber-800">
+              <span>📋 Listing initial :</span>
+              <span className="font-black">{candidats.length}</span>
+            </div>
+
+            {horsListingCount > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-rose-50 rounded-xl border border-rose-200 font-bold text-rose-800">
+                <span>🔴 Hors listing :</span>
+                <span className="font-black">{horsListingCount}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-
-      {/* ─── BANDEAU DE STATISTIQUES GLOBAL ─── */}
-      {currentSession && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 print:hidden">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Créneaux ({currentSession.dureeMinutes} min)</span>
-            <span className="text-xl font-black text-slate-900">{currentSession.stats.nbCreneaux}</span>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Capacité totale</span>
-            <span className="text-xl font-black text-slate-900">{currentSession.stats.totalPlaces} places</span>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-600">Inscrits confirmés</span>
-            <span className="text-xl font-black text-emerald-700">{currentSession.stats.totalInscrits}</span>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Places restantes</span>
-            <span className="text-xl font-black text-slate-900">{currentSession.stats.placesRestantes}</span>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-600">Présents / Testés</span>
-            <span className="text-xl font-black text-emerald-600">{currentSession.stats.totalPresents}</span>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-amber-600">Candidats Listing</span>
-            <span className="text-xl font-black text-amber-700">{candidats.length}</span>
-          </div>
-        </div>
-      )}
 
       {/* ─── ONGLETS DE NAVIGATION SOUS-MODULE ─── */}
       <div className="flex items-center justify-between border-b border-slate-200 pb-2 print:hidden">
@@ -736,17 +767,18 @@ export default function TestsNageManager() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black shadow-xs transition-colors cursor-pointer"
+              title="Imprimer ou exporter en PDF la feuille de passage de la journée"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Imprimer</span>
+              <span>📄 Imprimer le programme (PDF)</span>
             </button>
             <button
               onClick={handleExportCsv}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Export CSV</span>
+              <span>CSV</span>
             </button>
           </div>
         )}
@@ -773,13 +805,87 @@ export default function TestsNageManager() {
             </div>
           )}
 
-          {/* En-tête pour impression uniquement */}
-          <div className="hidden print:block mb-6 text-center border-b pb-4">
-            <h1 className="text-xl font-bold">Triton Club Cavaillon · Feuille de Passage Tests de Nage</h1>
-            <p className="text-sm font-medium">
-              {currentSession?.titre} · {currentSession && formatLongDateFr(currentSession.date)} ({currentSession?.heureDebut} à {currentSession?.heureFin})
-            </p>
-          </div>
+          {/* ─── VUE IMPRESSION DÉDIÉE (A4 / PDF PROPRE ET SIMPLE) ─── */}
+          {currentSession && (
+            <div className="hidden print:block font-sans text-slate-900">
+              <div className="border-b-2 border-slate-900 pb-3 mb-4 flex items-start justify-between">
+                <div>
+                  <h1 className="text-xl font-black uppercase tracking-tight">Triton Club Cavaillon · Programme des Tests</h1>
+                  <p className="text-sm font-bold text-slate-800 mt-0.5">
+                    {currentSession.titre} — {formatLongDateFr(currentSession.date)}
+                  </p>
+                  <p className="text-xs text-slate-600">
+                    📍 {currentSession.lieu} · ⏰ {currentSession.heureDebut} à {currentSession.heureFin} ({currentSession.dureeMinutes} min / créneau)
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="inline-block px-3 py-1 bg-slate-100 border border-slate-300 font-bold text-xs rounded-md">
+                    {currentSession.stats.totalInscrits} nageurs inscrits
+                  </span>
+                  <p className="text-[10px] text-slate-400 mt-1">Imprimé le {new Date().toLocaleDateString('fr-FR')}</p>
+                </div>
+              </div>
+
+              <table className="w-full border-collapse text-xs border border-slate-300">
+                <thead>
+                  <tr className="bg-slate-100 border-b border-slate-300 font-black text-slate-800 text-[11px]">
+                    <th className="py-2 px-2 text-left w-24 border-r border-slate-300">Horaire</th>
+                    <th className="py-2 px-2 text-left border-r border-slate-300">Nageur (Nom Prénom)</th>
+                    <th className="py-2 px-2 text-center w-12 border-r border-slate-300">Âge</th>
+                    <th className="py-2 px-2 text-left w-28 border-r border-slate-300">Téléphone</th>
+                    <th className="py-2 px-2 text-left border-r border-slate-300">Niveau / Remarques</th>
+                    <th className="py-2 px-2 text-center w-20 border-r border-slate-300">Pointage</th>
+                    <th className="py-2 px-2 text-left w-44">Groupe attribué & Visa</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {currentSession.creneaux.map((cr) => {
+                    if (cr.inscriptions.length === 0) {
+                      return (
+                        <tr key={cr.id} className="text-slate-400 bg-slate-50/40 break-inside-avoid">
+                          <td className="py-1.5 px-2 font-mono font-bold border-r border-slate-300">{cr.heureDebut} - {cr.heureFin}</td>
+                          <td colSpan={6} className="py-1.5 px-2 italic text-[11px] text-slate-400">Créneau libre</td>
+                        </tr>
+                      )
+                    }
+                    return cr.inscriptions.map((insc, idx) => {
+                      const isHorsListing = !insc.candidatId || insc.candidat?.statut === 'hors_listing' || (insc.statut as string) === 'hors_listing'
+                      return (
+                        <tr key={insc.id} className={`break-inside-avoid ${isHorsListing ? 'bg-rose-50/60 font-semibold' : ''}`}>
+                          {idx === 0 ? (
+                            <td rowSpan={cr.inscriptions.length} className="py-1.5 px-2 font-mono font-bold align-top border-r border-slate-300 bg-slate-50">
+                              {cr.heureDebut} - {cr.heureFin}
+                            </td>
+                          ) : null}
+                          <td className="py-1.5 px-2 border-r border-slate-300">
+                            <span className="font-bold">{insc.nomEnfant} {insc.prenomEnfant}</span>
+                            {isHorsListing && <span className="ml-1 text-[9px] text-red-700 font-bold">[Hors listing]</span>}
+                            {insc.nomParent && <span className="block text-[10px] text-slate-500">Par: {insc.nomParent}</span>}
+                          </td>
+                          <td className="py-1.5 px-2 text-center border-r border-slate-300">{insc.age ? `${insc.age} ans` : '-'}</td>
+                          <td className="py-1.5 px-2 font-mono text-[11px] border-r border-slate-300">{insc.telephoneParent || '-'}</td>
+                          <td className="py-1.5 px-2 text-[11px] border-r border-slate-300">
+                            {insc.niveauEstime && <span>{insc.niveauEstime}</span>}
+                            {insc.remarques && <span className="block text-[10px] text-slate-500 italic">{insc.remarques}</span>}
+                          </td>
+                          <td className="py-1.5 px-2 text-center border-r border-slate-300 font-mono">
+                            {insc.statut === 'present' ? '✓ Présent' : insc.statut === 'absent' ? '✗ Absent' : '[   ]'}
+                          </td>
+                          <td className="py-1.5 px-2 text-[11px]">
+                            {insc.groupeRecommande ? (
+                              <span className="font-bold text-slate-900">{insc.groupeRecommande}</span>
+                            ) : (
+                              <span className="text-slate-300">....................................</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {!currentSession || currentSession.creneaux.length === 0 ? (
             <div className="bg-white rounded-3xl p-12 text-center border border-slate-200">
@@ -788,7 +894,7 @@ export default function TestsNageManager() {
               <p className="text-xs text-slate-500 mt-1">Créez une session de tests pour générer automatiquement la feuille de passage.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 print:hidden">
               {currentSession.creneaux.map((cr) => {
                 const isComplet = cr.inscriptions.length >= cr.capacite
                 return (
@@ -871,9 +977,24 @@ export default function TestsNageManager() {
                                   {insc.nomEnfant} {insc.prenomEnfant}
                                 </span>
                                 {isHorsListing && (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-3xs">
-                                    ⚠️ HORS LISTING
-                                  </span>
+                                  <>
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-3xs">
+                                      ⚠️ HORS LISTING
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setAssocierInscription(insc)
+                                        setAssocierSearch(insc.nomEnfant)
+                                        setSelectedTargetCandidatId(null)
+                                        setShowAssocierModal(true)
+                                      }}
+                                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-black text-[10px] transition-colors cursor-pointer shadow-3xs"
+                                      title="Associer cette réservation à un enfant du listing (ex: le parent a mis son propre nom)"
+                                    >
+                                      <span>🔗 Associer au listing</span>
+                                    </button>
+                                  </>
                                 )}
                                 {insc.age && (
                                   <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
@@ -1174,6 +1295,43 @@ export default function TestsNageManager() {
                         </td>
                         <td className="py-3 px-3 text-right">
                           <div className="flex items-center justify-end gap-1">
+                            {c.statut === 'hors_listing' && activeInsc && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const fullInsc = currentSession?.creneaux
+                                    .flatMap((cr) => cr.inscriptions)
+                                    .find((i) => i.id === activeInsc.id)
+                                  if (fullInsc) {
+                                    setAssocierInscription(fullInsc)
+                                  } else {
+                                    setAssocierInscription({
+                                      id: activeInsc.id,
+                                      nomEnfant: c.nom,
+                                      prenomEnfant: c.prenom,
+                                      age: c.age,
+                                      dateNaissance: c.dateNaissance,
+                                      nomParent: c.nomParent,
+                                      emailParent: c.emailParent || '',
+                                      telephoneParent: c.telephoneParent || '',
+                                      niveauEstime: null,
+                                      remarques: null,
+                                      statut: 'inscrit',
+                                      groupeRecommande: c.groupeRecommande,
+                                      commentaireCoach: c.commentaireCoach,
+                                      createdAt: new Date().toISOString(),
+                                    })
+                                  }
+                                  setAssocierSearch(c.nom)
+                                  setSelectedTargetCandidatId(null)
+                                  setShowAssocierModal(true)
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-rose-700 bg-rose-100 hover:bg-rose-200 rounded-lg font-black text-[11px] transition-colors cursor-pointer shadow-3xs"
+                                title="Associer au véritable enfant du listing initial"
+                              >
+                                <span>🔗 Associer</span>
+                              </button>
+                            )}
                             {c.statut === 'a_planifier' && c.emailParent && c.emailParent.includes('@') && (
                               <button
                                 type="button"
@@ -1739,6 +1897,126 @@ export default function TestsNageManager() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODALE : ASSOCIER UNE INSCRIPTION HORS LISTING AU LISTING INITIAL ─── */}
+      {showAssocierModal && associerInscription && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in print:hidden">
+          <div className="bg-white rounded-3xl p-6 max-w-xl w-full border border-slate-200 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 bg-rose-50 text-rose-600 rounded-lg font-black text-sm">🔗</span>
+                <h3 className="text-base font-black text-slate-900">
+                  Associer l&apos;inscription à un enfant du listing
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAssocierModal(false)}
+                className="text-slate-400 hover:text-slate-700 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Fiche actuelle de l'inscription */}
+            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-3.5 text-xs space-y-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-800 block">
+                Réservation actuelle (Nom saisi par le parent) :
+              </span>
+              <p className="text-sm font-black text-rose-950">
+                {associerInscription.nomEnfant} {associerInscription.prenomEnfant}
+                {associerInscription.age ? ` (${associerInscription.age} ans)` : ''}
+              </p>
+              <p className="text-slate-600 text-[11px]">
+                Parent / Contact : {associerInscription.telephoneParent} · {associerInscription.emailParent}
+                {associerInscription.nomParent && ` (Parent: ${associerInscription.nomParent})`}
+              </p>
+            </div>
+
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+              💡 <strong>Rattachement :</strong> Choisissez ci-dessous le véritable enfant pré-inscrit dans votre fichier MonClub. Son statut passera en <strong>🟢 Planifié</strong> et le nom sur le créneau sera automatiquement corrigé :
+            </p>
+
+            {/* Recherche de l'enfant dans le listing */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={associerSearch}
+                onChange={(e) => setAssocierSearch(e.target.value)}
+                placeholder="Rechercher par nom ou prénom de l'enfant..."
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-primary focus:bg-white"
+              />
+            </div>
+
+            {/* Liste de sélection des candidats */}
+            <div className="max-h-60 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-2xl">
+              {candidatesForAssociation.length === 0 ? (
+                <div className="p-4 text-center text-xs text-slate-400">
+                  Aucun candidat trouvé pour cette recherche.
+                </div>
+              ) : (
+                candidatesForAssociation.map((c) => {
+                  const isSelected = selectedTargetCandidatId === c.id
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setSelectedTargetCandidatId(c.id)}
+                      className={`w-full p-3 text-left flex items-center justify-between transition-colors cursor-pointer ${
+                        isSelected ? 'bg-emerald-50 border-l-4 border-l-primary' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-black text-slate-900">
+                          {c.nom} {c.prenom} {c.age ? `(${c.age} ans)` : ''}
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          {c.groupeRecommande ? <span className="font-bold text-emerald-700">{c.groupeRecommande} · </span> : null}
+                          {c.nomParent ? `Parent : ${c.nomParent}` : c.emailParent || 'Sans contact'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          c.statut === 'planifie'
+                            ? 'bg-slate-100 text-slate-600'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {c.statut === 'planifie' ? 'Déjà planifié' : 'Non planifié'}
+                        </span>
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                          isSelected ? 'border-primary bg-primary text-white' : 'border-slate-300'
+                        }`}>
+                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+
+            {/* Boutons d'action */}
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowAssocierModal(false)}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleAssocierCandidat}
+                disabled={!selectedTargetCandidatId || associating}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                {associating ? 'Association en cours...' : 'Valider l&apos;association'}
+              </button>
+            </div>
           </div>
         </div>
       )}
