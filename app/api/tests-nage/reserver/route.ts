@@ -36,29 +36,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validated = reserverSchema.parse(body)
 
-    // Vérification des paramètres globaux de réservation
+    // Vérification de l'éventuelle protection par mot de passe
     const settings = await prisma.settings.findFirst({
       select: {
-        afficherBoutonTest: true,
         codeAccesTestsNage: true,
       },
     })
 
-    const isGlobalOpen = settings?.afficherBoutonTest !== false
     const requiredCode = settings?.codeAccesTestsNage?.trim() || null
     const providedCode = (validated.code || request.headers.get('x-tests-code') || '').trim()
 
-    // 1. Si les réservations sont fermées globalement
-    if (!isGlobalOpen) {
-      if (!requiredCode || providedCode !== requiredCode) {
-        return NextResponse.json(
-          { error: 'Les réservations de tests de niveau sont actuellement fermées.' },
-          { status: 403 }
-        )
-      }
-    }
-
-    // 2. Si un mot de passe / code d'accès est requis
+    // Si un mot de passe / code d'accès est requis
     if (requiredCode) {
       if (providedCode !== requiredCode) {
         return NextResponse.json(

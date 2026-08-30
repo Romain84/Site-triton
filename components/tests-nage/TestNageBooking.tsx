@@ -174,7 +174,8 @@ export default function TestNageBooking() {
 
       if (res.ok) {
         setIsOpen(data.ouvert !== false)
-        setCodeRequired(Boolean(data.codeRequis))
+        const isProtected = Boolean(data.codeRequis)
+        setCodeRequired(isProtected)
         setIsCodeValid(Boolean(data.codeValide))
         if (data.message) setClosedMessage(data.message)
 
@@ -184,10 +185,16 @@ export default function TestNageBooking() {
           if (data.sessions.length > 0 && !selectedSessionId) {
             setSelectedSessionId(data.sessions[0].id)
           }
-          if (code) {
+          if (isProtected && code) {
             sessionStorage.setItem('triton_tests_code', code)
             setAccessCode(code)
+          } else if (!isProtected) {
+            sessionStorage.removeItem('triton_tests_code')
+            setAccessCode('')
           }
+        } else if (!isProtected) {
+          sessionStorage.removeItem('triton_tests_code')
+          setAccessCode('')
         }
       }
     } catch (err) {
@@ -770,49 +777,51 @@ export default function TestNageBooking() {
           </Link>
         </div>
 
-        {/* Option de déverrouillage si code d'accès privé */}
-        <div className="pt-4 border-t border-slate-100">
-          {!showCodePromptForClosed ? (
-            <button
-              type="button"
-              onClick={() => setShowCodePromptForClosed(true)}
-              className="text-xs text-slate-400 hover:text-slate-700 font-semibold underline flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Vous disposez d&apos;un code d&apos;accès privé ?</span>
-            </button>
-          ) : (
-            <form onSubmit={handleValidateCode} className="space-y-3 max-w-sm mx-auto animate-fade-in pt-2">
-              <label className="text-xs font-bold text-slate-700 block text-left">
-                Saisissez votre mot de passe d&apos;accès :
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={inputCode}
-                  onChange={(e) => setInputCode(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono pr-10 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+        {/* Option de déverrouillage si code d'accès privé (uniquement si un code est réellement configuré) */}
+        {codeRequired && (
+          <div className="pt-4 border-t border-slate-100">
+            {!showCodePromptForClosed ? (
               <button
-                type="submit"
-                disabled={verifyingCode}
-                className="w-full py-2.5 bg-primary hover:bg-primary-dark text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                type="button"
+                onClick={() => setShowCodePromptForClosed(true)}
+                className="text-xs text-slate-400 hover:text-slate-700 font-semibold underline flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
               >
-                {verifyingCode ? 'Vérification...' : 'Déverrouiller les créneaux'}
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Vous disposez d&apos;un code d&apos;accès privé ?</span>
               </button>
-            </form>
-          )}
-        </div>
+            ) : (
+              <form onSubmit={handleValidateCode} className="space-y-3 max-w-sm mx-auto animate-fade-in pt-2">
+                <label className="text-xs font-bold text-slate-700 block text-left">
+                  Saisissez votre mot de passe d&apos;accès :
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={inputCode}
+                    onChange={(e) => setInputCode(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono pr-10 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <button
+                  type="submit"
+                  disabled={verifyingCode}
+                  className="w-full py-2.5 bg-primary hover:bg-primary-dark text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {verifyingCode ? 'Vérification...' : 'Déverrouiller les créneaux'}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
       </div>
     )
   }

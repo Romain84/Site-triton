@@ -15,43 +15,25 @@ export async function GET(request: NextRequest) {
     // 0. Récupérer les paramètres de configuration
     const settings = await prisma.settings.findFirst({
       select: {
-        afficherBoutonTest: true,
         codeAccesTestsNage: true,
       },
     })
 
-    const isGlobalOpen = settings?.afficherBoutonTest !== false
     const requiredCode = settings?.codeAccesTestsNage?.trim() || null
     const hasCodeProtection = Boolean(requiredCode)
 
     // Vérifier si le code fourni est valide
-    const isCodeValid = hasCodeProtection ? providedCode === requiredCode : true
+    // Si aucune protection par mot de passe n'est configurée, l'accès est totalement libre
+    const isCodeValid = hasCodeProtection ? (providedCode !== '' && providedCode === requiredCode) : true
 
-    // Si les inscriptions sont fermées globalement :
-    // - On autorise quand même si l'utilisateur possède un token de gestion de réservation existante
-    // - Ou si l'utilisateur a fourni le code d'accès secret (accès privilégié / VIP)
-    if (!isGlobalOpen && !token) {
-      if (!hasCodeProtection || !isCodeValid) {
-        return NextResponse.json({
-          success: true,
-          ouvert: false,
-          codeRequis: hasCodeProtection,
-          codeValide: false,
-          message: 'Les réservations de tests de niveau sont actuellement fermées.',
-          sessions: [],
-          candidats: [],
-        })
-      }
-    }
-
-    // Si un code est requis mais n'est pas valide (et aucun token de gestion)
+    // Si un mot de passe est configuré et que le code n'est pas fourni ou incorrect (hors token de réservation direct)
     if (hasCodeProtection && !isCodeValid && !token) {
       return NextResponse.json({
         success: true,
-        ouvert: isGlobalOpen,
+        ouvert: true,
         codeRequis: true,
         codeValide: false,
-        message: 'Un code d’accès est requis pour consulter les créneaux et réserver un test.',
+        message: 'Un mot de passe d’accès est requis pour consulter les créneaux et réserver un test.',
         sessions: [],
         candidats: [],
       })
