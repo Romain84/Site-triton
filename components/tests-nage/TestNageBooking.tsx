@@ -27,7 +27,7 @@ import {
   EyeOff
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { formatLongDateFr } from '@/lib/date'
+import { formatLongDateFr, formatWeekdayLongDateFr } from '@/lib/date'
 
 interface CreneauItem {
   id: string
@@ -612,30 +612,42 @@ export default function TestNageBooking() {
                       key={cr.id}
                       disabled={cr.estComplet && !isSelected || actionLoading}
                       onClick={() => !isSelected && handleChangeSlot(cr.id)}
-                      className={`p-3 rounded-2xl border transition-all text-center flex flex-col items-center justify-center space-y-1 ${
+                      className={`p-3 rounded-2xl border-2 transition-all text-center flex flex-col items-center justify-center space-y-1 relative overflow-hidden select-none ${
                         isSelected
                           ? 'bg-primary text-white border-primary cursor-default shadow-xs'
                           : cr.estComplet
-                          ? 'bg-slate-50 border-slate-200 text-slate-400 opacity-60 cursor-not-allowed'
+                          ? 'bg-slate-100/90 border-slate-200 text-slate-400 cursor-not-allowed'
                           : 'bg-white border-slate-200 hover:border-primary hover:shadow-xs cursor-pointer group'
                       }`}
                     >
                       <span className={`text-sm font-black font-mono ${
-                        isSelected ? 'text-white' : cr.estComplet ? 'text-slate-400' : 'text-slate-900 group-hover:text-primary'
+                        isSelected ? 'text-white' : cr.estComplet ? 'text-slate-400/80' : 'text-slate-900 group-hover:text-primary'
                       }`}>
                         {cr.heureDebut}
                       </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                        isSelected
-                          ? 'bg-white/20 text-white border-white/30'
-                          : cr.estComplet
-                          ? 'bg-slate-100 text-slate-400 border-slate-200'
-                          : cr.placesRestantes === 1
-                          ? 'bg-amber-50 text-amber-800 border-amber-200'
-                          : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      }`}>
-                        {isSelected ? 'Actuel' : cr.estComplet ? 'Complet' : `${cr.placesRestantes} place(s)`}
-                      </span>
+                      {cr.estComplet && !isSelected ? (
+                        <>
+                          <span className="text-[9px] font-semibold text-slate-400">
+                            0 place
+                          </span>
+                          {/* Tampon COMPLET officiel */}
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="transform -rotate-12 px-2.5 py-0.5 border-2 border-red-600 bg-red-50/95 text-red-600 font-black text-[11px] tracking-widest uppercase rounded shadow-xs">
+                              COMPLET
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          isSelected
+                            ? 'bg-white/20 text-white border-white/30'
+                            : cr.placesRestantes === 1
+                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        }`}>
+                          {isSelected ? 'Actuel' : `${cr.placesRestantes} place(s)`}
+                        </span>
+                      )}
                     </button>
                   )
                 })}
@@ -961,25 +973,97 @@ export default function TestNageBooking() {
             </div>
           )}
 
-          {/* Sélecteur de session si plusieurs dates */}
+          {/* Sélecteur de session / date mis en valeur */}
           {sessions.length > 1 && (
-            <div className="flex flex-wrap items-center justify-center gap-2 bg-slate-100 p-1.5 rounded-2xl max-w-lg mx-auto">
-              {sessions.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => {
-                    setSelectedSessionId(s.id)
-                    setSelectedCreneau(null)
-                  }}
-                  className={`flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    selectedSessionId === s.id
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {formatLongDateFr(s.date)}
-                </button>
-              ))}
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 px-1">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  <span>1. Choisissez la date de votre test :</span>
+                </h3>
+                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full w-fit">
+                  {sessions.length} dates proposées
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {sessions.map((s) => {
+                  const isSelected = selectedSessionId === s.id
+                  const totalPlaces = s.creneaux.reduce((acc, cr) => acc + cr.capacite, 0)
+                  const totalRestantes = s.creneaux.reduce((acc, cr) => acc + cr.placesRestantes, 0)
+                  const isSessionFull = totalRestantes <= 0
+                  const weekday = formatWeekdayLongDateFr(s.date)
+                  const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1)
+
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedSessionId(s.id)
+                        setSelectedCreneau(null)
+                      }}
+                      className={`relative p-4 sm:p-5 rounded-2xl text-left transition-all cursor-pointer border-2 flex flex-col justify-between gap-3 group ${
+                        isSelected
+                          ? 'bg-emerald-50/90 border-emerald-600 ring-4 ring-emerald-100 shadow-md scale-[1.01]'
+                          : 'bg-white border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/30 hover:shadow-xs'
+                      }`}
+                    >
+                      <div className="space-y-1.5 w-full">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                            isSelected
+                              ? 'bg-emerald-600 text-white shadow-3xs'
+                              : 'bg-slate-100 text-slate-700 group-hover:bg-emerald-100 group-hover:text-emerald-800'
+                          }`}>
+                            {capitalizedWeekday}
+                          </span>
+
+                          {isSelected ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-700">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              Date choisie
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-bold text-slate-400 group-hover:text-emerald-600 transition-colors">
+                              Choisir cette date →
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-base sm:text-lg font-black text-slate-900">
+                          {formatLongDateFr(s.date)}
+                        </p>
+
+                        <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <span>De {s.heureDebut} à {s.heureFin} ({s.dureeMinutes} min / test)</span>
+                        </p>
+                      </div>
+
+                      <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs w-full">
+                        <span className="text-slate-500 truncate max-w-[160px]" title={s.lieu}>
+                          📍 {s.lieu}
+                        </span>
+
+                        {isSessionFull ? (
+                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded border border-red-200 bg-red-50 text-red-700">
+                            Complet
+                          </span>
+                        ) : (
+                          <span className={`text-[11px] font-black px-2 py-0.5 rounded-md ${
+                            totalRestantes <= 5
+                              ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                              : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                          }`}>
+                            {totalRestantes} {totalRestantes > 1 ? 'places dispo' : 'place dispo'}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           )}
 
@@ -1033,11 +1117,11 @@ export default function TestNageBooking() {
                 <span>Capacité : <strong>Max {currentSession.capaciteParCreneau} enfants</strong> par créneau</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1.5 text-slate-700">
+                <span className="flex items-center gap-1.5 text-slate-700 font-medium">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Disponible
                 </span>
-                <span className="flex items-center gap-1.5 text-slate-400">
-                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300" /> Complet
+                <span className="flex items-center gap-1.5 text-red-700 font-bold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Tampon COMPLET
                 </span>
               </div>
             </div>
@@ -1048,7 +1132,7 @@ export default function TestNageBooking() {
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-primary" />
-                <span>1. Cliquez sur votre heure de passage :</span>
+                <span>{sessions.length > 1 ? '2. Cliquez sur votre heure de passage :' : '1. Cliquez sur votre heure de passage :'}</span>
               </h4>
               {selectedCreneau && (
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 animate-fade-in">
@@ -1066,30 +1150,43 @@ export default function TestNageBooking() {
                     type="button"
                     disabled={cr.estComplet}
                     onClick={() => handleSelectCreneau(cr)}
-                    className={`p-3 sm:p-3.5 rounded-2xl border transition-all text-center flex flex-col items-center justify-center space-y-1 relative cursor-pointer ${
+                    className={`p-3 sm:p-3.5 rounded-2xl border-2 transition-all text-center flex flex-col items-center justify-center space-y-1 relative overflow-hidden select-none ${
                       isSelected
-                        ? 'bg-emerald-600 text-white border-emerald-600 ring-4 ring-emerald-100 shadow-md scale-105 z-10'
+                        ? 'bg-emerald-600 text-white border-emerald-600 ring-4 ring-emerald-100 shadow-md scale-105 z-10 cursor-pointer'
                         : cr.estComplet
-                        ? 'bg-slate-50 border-slate-200 text-slate-400 opacity-60 cursor-not-allowed'
-                        : 'bg-white border-slate-200 hover:border-primary hover:shadow-xs group'
+                        ? 'bg-slate-100/90 border-slate-200 text-slate-400 cursor-not-allowed'
+                        : 'bg-white border-slate-200 hover:border-primary hover:shadow-xs group cursor-pointer'
                     }`}
                   >
                     <span className={`text-sm sm:text-base font-black font-mono ${
-                      isSelected ? 'text-white' : cr.estComplet ? 'text-slate-400' : 'text-slate-900 group-hover:text-primary'
+                      isSelected ? 'text-white' : cr.estComplet ? 'text-slate-400/80' : 'text-slate-900 group-hover:text-primary'
                     }`}>
                       {cr.heureDebut}
                     </span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      isSelected
-                        ? 'bg-white/20 text-white border-white/40'
-                        : cr.estComplet
-                        ? 'bg-slate-100 text-slate-400 border-slate-200'
-                        : cr.placesRestantes === 1
-                        ? 'bg-amber-50 text-amber-800 border-amber-200'
-                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    }`}>
-                      {isSelected ? '✓ Choisi' : cr.estComplet ? 'Complet' : `${cr.placesRestantes} ${cr.placesRestantes > 1 ? 'places' : 'place'}`}
-                    </span>
+
+                    {cr.estComplet ? (
+                      <>
+                        <span className="text-[9px] font-semibold text-slate-400">
+                          0 place
+                        </span>
+                        {/* Tampon COMPLET officiel */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="transform -rotate-12 px-2.5 py-0.5 border-2 border-red-600 bg-red-50/95 text-red-600 font-black text-[11px] sm:text-xs tracking-widest uppercase rounded shadow-xs">
+                            COMPLET
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        isSelected
+                          ? 'bg-white/20 text-white border-white/40'
+                          : cr.placesRestantes === 1
+                          ? 'bg-amber-50 text-amber-800 border-amber-200'
+                          : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      }`}>
+                        {isSelected ? '✓ Choisi' : `${cr.placesRestantes} ${cr.placesRestantes > 1 ? 'places' : 'place'}`}
+                      </span>
+                    )}
                   </button>
                 )
               })}
