@@ -25,10 +25,16 @@ import {
   ChevronRight,
   RefreshCw,
   Mail,
-  Send
+  Send,
+  FileText
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatLongDateFr, formatCompactDateFr } from '@/lib/date'
+import {
+  generateFicheEvaluationPDF,
+  generateFicheViergePDF,
+  generateFichesJourneePDF,
+} from '@/lib/pdf'
 
 interface InscriptionItem {
   id: string
@@ -558,6 +564,77 @@ export default function TestsNageManager() {
     document.body.removeChild(link)
   }
 
+  // Télécharger la fiche d'évaluation individuelle d'un enfant
+  const handleDownloadFicheIndividuelle = (insc: InscriptionItem, creneau?: CreneauItem) => {
+    try {
+      const doc = generateFicheEvaluationPDF({
+        nomEnfant: insc.nomEnfant,
+        prenomEnfant: insc.prenomEnfant,
+        dateNaissance: insc.dateNaissance,
+        age: insc.age,
+        nomParent: insc.nomParent,
+        emailParent: insc.emailParent,
+        telephoneParent: insc.telephoneParent,
+        niveauEstime: insc.niveauEstime,
+        remarques: insc.remarques,
+        statut: insc.statut,
+        dateTest: currentSession?.date,
+        heureDebut: creneau?.heureDebut,
+        heureFin: creneau?.heureFin,
+        lieuTest: currentSession?.lieu,
+        titreSession: currentSession?.titre,
+        groupeRecommande: insc.groupeRecommande,
+        commentaireCoach: insc.commentaireCoach,
+        isVierge: false,
+      })
+      const safeNom = (insc.nomEnfant || 'enfant').toLowerCase().replace(/[^a-z0-9]/g, '_')
+      const safePrenom = (insc.prenomEnfant || '').toLowerCase().replace(/[^a-z0-9]/g, '_')
+      doc.save(`fiche_evaluation_${safeNom}_${safePrenom}.pdf`)
+      toast.success(`Fiche d'évaluation de ${insc.prenomEnfant} ${insc.nomEnfant} téléchargée !`)
+    } catch (err) {
+      console.error('Erreur génération fiche individuelle:', err)
+      toast.error('Erreur lors de la génération de la fiche d\'évaluation')
+    }
+  }
+
+  // Télécharger toutes les fiches d'évaluation de la journée (session sélectionnée)
+  const handleDownloadToutesFichesJournee = () => {
+    if (!currentSession) {
+      toast.error('Veuillez sélectionner une session')
+      return
+    }
+    const totalInscrits = currentSession.stats.totalInscrits
+    if (totalInscrits === 0) {
+      toast.error('Aucun enfant inscrit sur cette journée')
+      return
+    }
+    try {
+      const doc = generateFichesJourneePDF(currentSession)
+      const dateFormatted = formatCompactDateFr(currentSession.date).replace(/\//g, '-')
+      doc.save(`fiches_evaluation_journee_${dateFormatted}.pdf`)
+      toast.success(`${totalInscrits} fiche(s) d'évaluation de la journée téléchargée(s) !`)
+    } catch (err) {
+      console.error('Erreur génération fiches journée:', err)
+      toast.error('Erreur lors de la génération des fiches de la journée')
+    }
+  }
+
+  // Télécharger une fiche d'évaluation vierge
+  const handleDownloadFicheVierge = () => {
+    try {
+      const doc = generateFicheViergePDF({
+        titre: currentSession?.titre,
+        date: currentSession?.date,
+        lieu: currentSession?.lieu,
+      })
+      doc.save('fiche_evaluation_vierge.pdf')
+      toast.success('Fiche d\'évaluation vierge téléchargée !')
+    } catch (err) {
+      console.error('Erreur génération fiche vierge:', err)
+      toast.error('Erreur lors de la génération de la fiche vierge')
+    }
+  }
+
   // Filtrage des candidats
   const filteredCandidats = useMemo(() => {
     return candidats.filter((c) => {
@@ -711,6 +788,15 @@ export default function TestsNageManager() {
             </button>
 
             <button
+              onClick={handleDownloadFicheVierge}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors cursor-pointer"
+              title="Télécharger une fiche d'évaluation vierge à imprimer"
+            >
+              <FileText className="w-3.5 h-3.5 text-slate-600" />
+              <span>Fiche vierge</span>
+            </button>
+
+            <button
               onClick={() => setShowImportModal(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors cursor-pointer"
             >
@@ -795,18 +881,34 @@ export default function TestsNageManager() {
         </div>
 
         {activeSubTab === 'passages' && currentSession && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleDownloadToutesFichesJournee}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-xs transition-colors cursor-pointer"
+              title="Télécharger un PDF unique contenant les fiches d'évaluation de tous les enfants de la journée (1 page par enfant)"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>📑 Toutes les fiches ({currentSession.stats.totalInscrits})</span>
+            </button>
+            <button
+              onClick={handleDownloadFicheVierge}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              title="Télécharger une fiche d'évaluation vierge à imprimer"
+            >
+              <FileText className="w-3.5 h-3.5 text-slate-500" />
+              <span>Fiche vierge</span>
+            </button>
             <button
               onClick={() => window.print()}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black shadow-xs transition-colors cursor-pointer"
               title="Imprimer ou exporter en PDF la feuille de passage de la journée"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>📄 Imprimer le programme (PDF)</span>
+              <span>📄 Programme (PDF)</span>
             </button>
             <button
               onClick={handleExportCsv}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>CSV</span>
@@ -1125,6 +1227,14 @@ export default function TestsNageManager() {
                               />
 
                               <button
+                                onClick={() => handleDownloadFicheIndividuelle(insc, cr)}
+                                className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer print:hidden shrink-0"
+                                title="Télécharger la fiche d'évaluation de cet enfant (PDF)"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
                                 onClick={() => handleDeleteInscription(insc.id)}
                                 className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer print:hidden shrink-0"
                                 title="Supprimer"
@@ -1411,6 +1521,45 @@ export default function TestsNageManager() {
                                 <Mail className="w-3.5 h-3.5" />
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                try {
+                                  const doc = generateFicheEvaluationPDF({
+                                    nomEnfant: c.nom,
+                                    prenomEnfant: c.prenom,
+                                    dateNaissance: c.dateNaissance,
+                                    age: c.age,
+                                    nomParent: c.nomParent,
+                                    emailParent: c.emailParent,
+                                    telephoneParent: c.telephoneParent,
+                                    niveauEstime: null,
+                                    remarques: null,
+                                    statut: c.statut,
+                                    dateTest: activeInsc ? c.session?.date || currentSession?.date : currentSession?.date,
+                                    heureDebut: activeInsc?.creneau?.heureDebut,
+                                    heureFin: activeInsc?.creneau?.heureFin,
+                                    lieuTest: currentSession?.lieu,
+                                    titreSession: currentSession?.titre,
+                                    groupeRecommande: c.groupeRecommande,
+                                    commentaireCoach: c.commentaireCoach,
+                                    isVierge: false,
+                                  })
+                                  const safeNom = (c.nom || 'enfant').toLowerCase().replace(/[^a-z0-9]/g, '_')
+                                  const safePrenom = (c.prenom || '').toLowerCase().replace(/[^a-z0-9]/g, '_')
+                                  doc.save(`fiche_evaluation_${safeNom}_${safePrenom}.pdf`)
+                                  toast.success(`Fiche d'évaluation de ${c.prenom} ${c.nom} téléchargée !`)
+                                } catch (err) {
+                                  console.error('Erreur génération fiche candidat:', err)
+                                  toast.error('Erreur lors de la génération de la fiche')
+                                }
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors cursor-pointer"
+                              title="Télécharger la fiche d'évaluation (PDF)"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                            </button>
+
                             <button
                               onClick={async () => {
                                 if (!confirm(`Supprimer définitivement ${c.nom} ${c.prenom} ?`)) return
