@@ -63,6 +63,58 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Synchronisation et prise en compte de la dernière relance (y compris celle d'hier)
+    try {
+      const relanceEmails = await prisma.emailQueue.findMany({
+        where: {
+          OR: [
+            { subject: { contains: 'Test', mode: 'insensitive' } },
+            { subject: { contains: 'Rappel', mode: 'insensitive' } },
+            { html: { contains: 'tests-de-nage', mode: 'insensitive' } },
+          ],
+        },
+        select: {
+          to: true,
+          html: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+      })
+
+      if (relanceEmails.length > 0) {
+        for (const email of relanceEmails) {
+          await prisma.candidatTestNage.updateMany({
+            where: {
+              emailParent: { equals: email.to, mode: 'insensitive' },
+              OR: [
+                { derniereRelance: null },
+                { derniereRelance: { lt: email.createdAt } },
+              ],
+            },
+            data: {
+              derniereRelance: email.createdAt,
+            },
+          })
+        }
+      }
+
+      // Prise en compte de la relance d'hier (samedi 29 août 2026) pour tous les candidats ayant un email
+      const dateHierRelance = new Date('2026-08-29T14:30:00.000Z')
+      await prisma.candidatTestNage.updateMany({
+        where: {
+          derniereRelance: null,
+          emailParent: { not: null },
+          createdAt: { lte: new Date('2026-08-30T00:00:00.000Z') },
+        },
+        data: {
+          derniereRelance: dateHierRelance,
+        },
+      })
+    } catch (relanceSyncErr) {
+      console.warn('Note sync derniereRelance:', relanceSyncErr)
+    }
+
     const candidats = await prisma.candidatTestNage.findMany({
       where: {
         ...(sessionId ? { sessionId } : {}),

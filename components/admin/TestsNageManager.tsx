@@ -98,6 +98,7 @@ interface CandidatItem {
   statut: string
   groupeRecommande: string | null
   commentaireCoach: string | null
+  derniereRelance?: string | null
   session?: { id: string; titre: string; date: string } | null
   inscriptions: Array<{
     id: string
@@ -123,6 +124,30 @@ const GROUPES_CONSEILLES = [
   'Autre / À recontacter',
 ]
 
+function formatRelanceLabel(dateStr?: string | null): { label: string; isRecent: boolean } | null {
+  if (!dateStr) return null
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return null
+
+  const now = new Date()
+  const timeStr = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const dateFormatted = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+
+  // Aujourd'hui
+  if (d.toDateString() === now.toDateString()) {
+    return { label: `Aujourd'hui à ${timeStr}`, isRecent: true }
+  }
+
+  // Hier
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  if (d.toDateString() === yesterday.toDateString()) {
+    return { label: `Hier à ${timeStr}`, isRecent: true }
+  }
+
+  return { label: `${dateFormatted} à ${timeStr}`, isRecent: false }
+}
+
 export default function TestsNageManager() {
   const [sessions, setSessions] = useState<SessionItem[]>([])
   const [candidats, setCandidats] = useState<CandidatItem[]>([])
@@ -137,7 +162,7 @@ export default function TestsNageManager() {
   const [manualAddCreneauId, setManualAddCreneauId] = useState<string>('')
 
   // Filtres candidats
-  const [candidatFilter, setCandidatFilter] = useState<'tous' | 'a_planifier' | 'planifie' | 'present' | 'absent' | 'hors_listing'>('tous')
+  const [candidatFilter, setCandidatFilter] = useState<'tous' | 'a_planifier' | 'planifie' | 'present' | 'absent' | 'hors_listing' | 'relances'>('tous')
   const [candidatSearch, setCandidatSearch] = useState('')
 
   // Formulaire création session
@@ -543,6 +568,7 @@ export default function TestsNageManager() {
         if (candidatFilter === 'present' && c.statut !== 'present') return false
         if (candidatFilter === 'absent' && c.statut !== 'absent') return false
         if (candidatFilter === 'hors_listing' && c.statut !== 'hors_listing') return false
+        if (candidatFilter === 'relances' && !c.derniereRelance) return false
       }
       // Search text
       if (candidatSearch.trim()) {
@@ -561,6 +587,11 @@ export default function TestsNageManager() {
   // Nombre de candidats hors listing
   const horsListingCount = useMemo(() => {
     return candidats.filter((c) => c.statut === 'hors_listing').length
+  }, [candidats])
+
+  // Nombre de candidats relancés par email
+  const relancedCount = useMemo(() => {
+    return candidats.filter((c) => !!c.derniereRelance).length
   }, [candidats])
 
   // Candidats à planifier ayant une adresse email valide (pour relance)
@@ -961,6 +992,8 @@ export default function TestsNageManager() {
                       <div className="divide-y divide-slate-100 mt-2">
                         {cr.inscriptions.map((insc) => {
                           const isHorsListing = !insc.candidatId || insc.candidat?.statut === 'hors_listing' || (insc.statut as string) === 'hors_listing'
+                          const linkedCandidat = insc.candidatId ? candidats.find((c) => c.id === insc.candidatId) : null
+                          const relanceInfo = linkedCandidat?.derniereRelance ? formatRelanceLabel(linkedCandidat.derniereRelance) : null
                           return (
                           <div
                             key={insc.id}
@@ -1015,6 +1048,12 @@ export default function TestsNageManager() {
                                   {insc.telephoneParent}
                                 </a>
                               </p>
+                              {relanceInfo && (
+                                <p className="text-amber-800 text-[10px] font-semibold flex items-center gap-1">
+                                  <Mail className="w-3 h-3 text-amber-600 shrink-0" />
+                                  <span>Relancé : {relanceInfo.label}</span>
+                                </p>
+                              )}
                               {insc.niveauEstime && (
                                 <p className="text-[11px] text-slate-600 italic">
                                   Niveau estimé : {insc.niveauEstime}
@@ -1178,6 +1217,14 @@ export default function TestsNageManager() {
               >
                 🔴 Hors listing ({horsListingCount})
               </button>
+              <button
+                onClick={() => setCandidatFilter('relances')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                  candidatFilter === 'relances' ? 'bg-purple-700 text-white' : 'bg-purple-50 text-purple-900 border border-purple-200'
+                }`}
+              >
+                📧 Relancés ({relancedCount})
+              </button>
 
               {candidats.length > 0 && (
                 <button
@@ -1209,6 +1256,7 @@ export default function TestsNageManager() {
                     <th className="py-2.5 px-3">Téléphone</th>
                     <th className="py-2.5 px-3">Statut</th>
                     <th className="py-2.5 px-3">Créneau réservé</th>
+                    <th className="py-2.5 px-3">Dernière relance</th>
                     <th className="py-2.5 px-3">Groupe retenu</th>
                     <th className="py-2.5 px-3 text-right">Action</th>
                   </tr>
@@ -1288,6 +1336,21 @@ export default function TestsNageManager() {
                             </span>
                           ) : (
                             <span className="text-slate-400 italic">Non réservé</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3">
+                          {c.derniereRelance ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 w-fit shadow-3xs">
+                                <Mail className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                                <span>{formatRelanceLabel(c.derniereRelance)?.label}</span>
+                              </span>
+                              <span className="text-[9px] text-slate-400 font-medium pl-1">
+                                {formatCompactDateFr(c.derniereRelance)}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px]">Aucune</span>
                           )}
                         </td>
                         <td className="py-3 px-3 font-bold text-emerald-700">

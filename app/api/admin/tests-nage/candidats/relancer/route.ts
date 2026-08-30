@@ -107,6 +107,18 @@ export async function POST(request: NextRequest) {
       recipients.push(`${c.prenom} ${c.nom} (${c.emailParent})`)
     }
 
+    // Mettre à jour la date de dernière relance
+    if (sentCount > 0) {
+      const sentIds = candidats
+        .filter((c) => c.emailParent && c.emailParent.includes('@'))
+        .map((c) => c.id)
+
+      await prisma.candidatTestNage.updateMany({
+        where: { id: { in: sentIds } },
+        data: { derniereRelance: new Date() },
+      })
+    }
+
     return NextResponse.json({
       success: true,
       message: `${sentCount} email(s) de relance envoyé(s) avec succès.`,
