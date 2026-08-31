@@ -105,11 +105,16 @@ interface CandidatItem {
   groupeRecommande: string | null
   commentaireCoach: string | null
   derniereRelance?: string | null
-  session?: { id: string; titre: string; date: string } | null
+  session?: { id: string; titre: string; date: string; lieu?: string | null } | null
   inscriptions: Array<{
     id: string
     statut: string
-    creneau: { heureDebut: string; heureFin: string; sessionId: string }
+    creneau: {
+      heureDebut: string
+      heureFin: string
+      sessionId: string
+      session?: { id: string; titre: string; date: string; lieu?: string | null } | null
+    }
   }>
 }
 
@@ -1757,11 +1762,11 @@ export default function TestsNageManager() {
                                     niveauEstime: null,
                                     remarques: null,
                                     statut: c.statut,
-                                    dateTest: activeInsc ? c.session?.date || currentSession?.date : currentSession?.date,
+                                    dateTest: (activeInsc?.creneau as any)?.session?.date || c.session?.date || currentSession?.date,
                                     heureDebut: activeInsc?.creneau?.heureDebut,
                                     heureFin: activeInsc?.creneau?.heureFin,
-                                    lieuTest: currentSession?.lieu,
-                                    titreSession: currentSession?.titre,
+                                    lieuTest: (activeInsc?.creneau as any)?.session?.lieu || c.session?.lieu || currentSession?.lieu,
+                                    titreSession: (activeInsc?.creneau as any)?.session?.titre || c.session?.titre || currentSession?.titre,
                                     groupeRecommande: c.groupeRecommande,
                                     commentaireCoach: c.commentaireCoach,
                                     isVierge: false,
@@ -2022,14 +2027,14 @@ export default function TestsNageManager() {
 
             <form onSubmit={handleImportCandidats} className="space-y-4 text-xs font-medium text-slate-700">
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-slate-600 text-[11px] space-y-1.5">
-                <p className="font-bold text-slate-900">Format accepté :</p>
-                <p>Copiez-collez simplement les lignes depuis votre tableur (Excel, Google Sheets) ou un fichier texte. Colonnes reconnues automatiquement :</p>
-                <p className="font-mono bg-white p-2 rounded-lg border border-slate-200 text-slate-800">
-                  Nom &nbsp; Prénom &nbsp; Âge &nbsp; Nom_Parent &nbsp; Email &nbsp; Téléphone
+                <p className="font-bold text-slate-900">Format accepté (Excel / CSV / Fichier texte) :</p>
+                <p>Copiez-collez simplement votre tableau ou export. Détection automatique intelligente des colonnes :</p>
+                <p className="font-mono bg-white p-2 rounded-lg border border-slate-200 text-slate-800 text-[10.5px]">
+                  Nom ; Prénom ; Date de naissance ; Email ; N° téléphone ; Genre ; Formule ; Notes
                 </p>
                 <p className="text-emerald-800 font-bold bg-emerald-50 border border-emerald-200/60 p-2 rounded-lg flex items-center gap-1.5">
                   <span>✨</span>
-                  <span><strong>Anti-doublon actif :</strong> Si un candidat existe déjà dans votre base (même nom & prénom), il sera automatiquement ignoré pour ne pas créer de doublon.</span>
+                  <span><strong>Anti-doublon & réparation :</strong> Calcul automatique de l&apos;âge exact, réparation des numéros Excel corrompus et fusion des métadonnées (Genre, Formule, Notes).</span>
                 </p>
               </div>
 

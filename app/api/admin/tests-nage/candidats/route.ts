@@ -125,13 +125,20 @@ export async function GET(request: NextRequest) {
       },
       include: {
         session: {
-          select: { id: true, titre: true, date: true },
+          select: { id: true, titre: true, date: true, lieu: true },
         },
         inscriptions: {
           where: { statut: { not: 'annule' } },
           include: {
             creneau: {
-              select: { heureDebut: true, heureFin: true, sessionId: true },
+              select: {
+                heureDebut: true,
+                heureFin: true,
+                sessionId: true,
+                session: {
+                  select: { id: true, titre: true, date: true, lieu: true },
+                },
+              },
             },
           },
         },

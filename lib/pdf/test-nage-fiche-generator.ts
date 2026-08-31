@@ -202,7 +202,8 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(113, 63, 18) // Amber 900
   const horaire = data.heureDebut ? `${data.heureDebut} à ${data.heureFin || ''}` : '..... : .....'
-  doc.text(`HORAIRE CONVOQUÉ : ${horaire}`, card2X + 5, cardY + 10.8)
+  const dateSessionStr = data.dateTest ? ` · ${formatCompactDateFr(data.dateTest)}` : ''
+  doc.text(`HORAIRE CONVOQUÉ : ${horaire}${dateSessionStr}`, card2X + 5, cardY + 10.8)
 
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'normal')
@@ -358,9 +359,9 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
     },
   })
 
-  // 8. ORIENTATION & CHOIX DU GROUPE PAR L'ÉDUCATEUR
-  const orientY = (doc as any).lastAutoTable.finalY + 3.5
-  const orientH = 25
+  // 8. ORIENTATION & CHOIX DU GROUPE PAR L'ENTRAÎNEUR
+  const orientY = (doc as any).lastAutoTable.finalY + 3
+  const orientH = 34
   doc.setFillColor(255, 255, 255)
   doc.setDrawColor(203, 213, 225)
   doc.roundedRect(marginX, orientY, contentWidth, orientH, 1.5, 1.5, 'FD')
@@ -373,112 +374,124 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(30, 41, 59)
-  doc.text('ORIENTATION & CHOIX DU GROUPE PAR L\'ÉDUCATEUR', marginX + 3.5, orientY + 4)
+  doc.text('ORIENTATION & CHOIX DU GROUPE PAR L\'ENTRAÎNEUR', marginX + 3.5, orientY + 4)
 
-  const normalizedRec = (data.groupeRecommande || '').trim().toUpperCase()
-
-  // Ligne 1 : GROUPE RETENU
-  const line1Y = orientY + 11.5
-  doc.setFontSize(8)
+  // Ligne 1 : INSCRIT DANS LE GROUPE
+  const line1Y = orientY + 10.5
+  doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(15, 23, 42)
-  doc.text('GROUPE RETENU :', marginX + 3.5, line1Y)
+  doc.text('INSCRIT DANS LE GROUPE :', marginX + 3.5, line1Y)
 
-  const groupesCibles = ['ENF 1', 'ENF 2', 'AVENIR LOISIR', 'AVENIR 1']
-  let grpX = marginX + 38
-  groupesCibles.forEach((grp) => {
-    const isChecked = !isVierge && Boolean(normalizedRec) && (
-      normalizedRec === grp ||
-      normalizedRec.startsWith(grp) ||
-      (grp === 'AVENIR LOISIR' && normalizedRec.includes('LOISIR')) ||
-      (grp === 'AVENIR 1' && (normalizedRec === 'AVENIR 1' || normalizedRec === 'AVENIRS 1'))
-    )
-
-    doc.setFont('helvetica', 'bold')
+  if (!isVierge && data.groupeRecommande) {
     doc.setFontSize(8.5)
-    if (isChecked) {
-      doc.setTextColor(5, 150, 105)
-      doc.text('[X]', grpX, line1Y)
-    } else {
-      doc.setTextColor(148, 163, 184)
-      doc.text('[   ]', grpX, line1Y)
-    }
+    doc.setTextColor(5, 150, 105)
+    doc.text(data.groupeRecommande, marginX + 46, line1Y)
+  } else {
+    doc.setFontSize(7.5)
+    doc.setTextColor(148, 163, 184)
+    doc.text('.......................................................................................................................................', marginX + 46, line1Y)
+  }
 
+  // Ligne 2 & 3 : CHOIX DU COACH (Tous les groupes du club)
+  const line2Y = orientY + 16.5
+  doc.setFontSize(7.5)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(15, 23, 42)
+  doc.text('CHOIX DU COACH :', marginX + 3.5, line2Y)
+
+  // Ligne 1 de groupes : ENF 1, ENF 2, AVENIR 1, AVENIR 2, AVENIR 3
+  const row1Groups = ['ENF 1', 'ENF 2', 'AVENIR 1', 'AVENIR 2', 'AVENIR 3']
+  let gX1 = marginX + 35
+  row1Groups.forEach((g) => {
+    doc.setFont('helvetica', 'bold')
     doc.setFontSize(8)
+    doc.setTextColor(148, 163, 184)
+    doc.text('[   ]', gX1, line2Y)
+    doc.setFontSize(7.5)
     doc.setTextColor(15, 23, 42)
-    doc.text(grp, grpX + 7, line1Y)
+    doc.text(g, gX1 + 6, line2Y)
+    gX1 += 30
+  })
 
-    grpX += 36
+  // Ligne 2 de groupes : AVENIR LOISIR, JEUNE LOISIR, JUNIORS LOISIRS, COMPÉTITION, AUTRE
+  const line3Y = orientY + 22
+  const row2Groups = ['AVENIR LOISIR', 'JEUNE LOISIR', 'JUNIORS LOISIRS', 'COMPÉTITION', 'AUTRE']
+  let gX2 = marginX + 35
+  row2Groups.forEach((g) => {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8)
+    doc.setTextColor(148, 163, 184)
+    doc.text('[   ]', gX2, line3Y)
+    doc.setFontSize(7.5)
+    doc.setTextColor(15, 23, 42)
+    doc.text(g, gX2 + 6, line3Y)
+    gX2 += 30
   })
 
   // Séparateur fin de ligne groupe
   doc.setDrawColor(241, 245, 249)
-  doc.line(marginX + 3.5, orientY + 15.5, marginX + contentWidth - 3.5, orientY + 15.5)
+  doc.line(marginX + 3.5, orientY + 25.5, marginX + contentWidth - 3.5, orientY + 25.5)
 
-  // Ligne 2 : FRÉQUENCE
-  const line2Y = orientY + 20.8
-  doc.setFontSize(8)
+  // Ligne 4 : FRÉQUENCE
+  const line4Y = orientY + 30
+  doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(15, 23, 42)
-  doc.text('FRÉQUENCE :', marginX + 3.5, line2Y)
+  doc.text('FRÉQUENCE :', marginX + 3.5, line4Y)
 
-  doc.setFontSize(8.5)
-  doc.setTextColor(148, 163, 184)
-  doc.text('[   ]', marginX + 38, line2Y)
   doc.setFontSize(8)
-  doc.setTextColor(15, 23, 42)
-  doc.text('Mercredi', marginX + 45, line2Y)
-
-  doc.setFontSize(8.5)
   doc.setTextColor(148, 163, 184)
-  doc.text('[   ]', marginX + 80, line2Y)
-  doc.setFontSize(8)
+  doc.text('[   ]', marginX + 35, line4Y)
+  doc.setFontSize(7.5)
   doc.setTextColor(15, 23, 42)
-  doc.text('Vendredi', marginX + 87, line2Y)
+  doc.text('Mercredi', marginX + 41, line4Y)
 
-  // 9. VISA ÉDUCATEUR (Unique cartouche final)
-  const visaY = orientY + orientH + 3.5
-  const visaH = 30
+  doc.setFontSize(8)
+  doc.setTextColor(148, 163, 184)
+  doc.text('[   ]', marginX + 75, line4Y)
+  doc.setFontSize(7.5)
+  doc.setTextColor(15, 23, 42)
+  doc.text('Vendredi', marginX + 81, line4Y)
+
+  // 9. ENTRAÎNEUR (Case Isabelle et case Chloé, Date du test, sans titre de visa ni signature)
+  const trainerY = orientY + orientH + 3
+  const trainerH = 11
   doc.setFillColor(255, 255, 255)
   doc.setDrawColor(203, 213, 225)
-  doc.roundedRect(marginX, visaY, contentWidth, visaH, 1.5, 1.5, 'FD')
+  doc.roundedRect(marginX, trainerY, contentWidth, trainerH, 1.5, 1.5, 'FD')
 
-  doc.setFillColor(241, 245, 249)
-  doc.roundedRect(marginX + 0.1, visaY + 0.1, contentWidth - 0.2, 5.5, 1.5, 1.5, 'F')
-  doc.rect(marginX + 0.1, visaY + 2.5, contentWidth - 0.2, 3.1, 'F')
-
+  const trainerContentY = trainerY + 7.2
   doc.setFontSize(7.5)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(30, 41, 59)
-  doc.text('VISA DE L\'ÉDUCATEUR', marginX + 3.5, visaY + 4)
-
-  // 3 Colonnes à l'intérieur du Visa
-  const col1X = marginX + 5
-  doc.setFontSize(7.5)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(71, 85, 105)
-  doc.text('Nom & Prénom de l\'éducateur :', col1X, visaY + 11.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(15, 23, 42)
-  doc.text('.....................................................................', col1X, visaY + 19)
+  doc.text('ENTRAÎNEUR :', marginX + 5, trainerContentY)
 
-  const col2X = marginX + 75
+  // Case Isabelle
+  doc.setFontSize(8.5)
+  doc.setTextColor(148, 163, 184)
+  doc.text('[   ]', marginX + 32, trainerContentY)
+  doc.setFontSize(8)
+  doc.setTextColor(15, 23, 42)
+  doc.text('Isabelle', marginX + 39, trainerContentY)
+
+  // Case Chloé
+  doc.setFontSize(8.5)
+  doc.setTextColor(148, 163, 184)
+  doc.text('[   ]', marginX + 68, trainerContentY)
+  doc.setFontSize(8)
+  doc.setTextColor(15, 23, 42)
+  doc.text('Chloé', marginX + 75, trainerContentY)
+
+  // Date du test
+  doc.setFontSize(7.5)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(71, 85, 105)
-  doc.text('Date de validation :', col2X, visaY + 11.5)
+  doc.text('Date du test :', marginX + 115, trainerContentY)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(15, 23, 42)
   const dateVal = data.dateTest ? formatCompactDateFr(data.dateTest) : '..... / ..... / 2026'
-  doc.text(dateVal, col2X, visaY + 19)
-
-  const col3X = marginX + 125
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(71, 85, 105)
-  doc.text('Signature de l\'éducateur :', col3X, visaY + 11.5)
-
-  doc.setDrawColor(203, 213, 225)
-  doc.setFillColor(248, 250, 252)
-  doc.roundedRect(col3X, visaY + 13.5, 55, 13, 1, 1, 'FD')
+  doc.text(dateVal, marginX + 138, trainerContentY)
 }
 
 /**
