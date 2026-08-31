@@ -113,21 +113,11 @@ interface CandidatItem {
   }>
 }
 
-const GROUPES_CONSEILLES = [
-  'ENF 1 (Éveil aquatique)',
-  'ENF 2 (Apprentissage)',
-  'Avenirs 1',
-  'Avenirs 2',
-  'Avenirs 3',
-  'Avenirs Loisirs',
-  'Jeune Loisir',
-  'Juniors Loisirs',
-  'Adultes Loisirs',
-  'Compétition Benjamins',
-  'Compétition Juniors',
-  'Compétition Adultes',
-  'AquaFitness',
-  'Autre / À recontacter',
+export const GROUPES_CONSEILLES = [
+  'ENF 1',
+  'ENF 2',
+  'AVENIR LOISIR',
+  'AVENIR 1',
 ]
 
 function formatRelanceLabel(dateStr?: string | null): { label: string; isRecent: boolean } | null {
@@ -214,6 +204,34 @@ export default function TestsNageManager() {
   const [associerSearch, setAssocierSearch] = useState('')
   const [selectedTargetCandidatId, setSelectedTargetCandidatId] = useState<string | null>(null)
   const [associating, setAssociating] = useState(false)
+
+  // Modale d'édition / complétion des informations d'un candidat
+  const [showEditCandidatModal, setShowEditCandidatModal] = useState(false)
+  const [editingCandidatId, setEditingCandidatId] = useState<string | null>(null)
+  const [editNom, setEditNom] = useState('')
+  const [editPrenom, setEditPrenom] = useState('')
+  const [editDateNaissance, setEditDateNaissance] = useState('')
+  const [editAge, setEditAge] = useState('')
+  const [editNomParent, setEditNomParent] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editTel, setEditTel] = useState('')
+  const [editStatut, setEditStatut] = useState('a_planifier')
+  const [editGroupeRecommande, setEditGroupeRecommande] = useState('')
+  const [editCommentaireCoach, setEditCommentaireCoach] = useState('')
+  const [savingCandidat, setSavingCandidat] = useState(false)
+
+  // Modale d'ajout direct d'un candidat (sans créneau obligatoire)
+  const [showCreateCandidatModal, setShowCreateCandidatModal] = useState(false)
+  const [createNom, setCreateNom] = useState('')
+  const [createPrenom, setCreatePrenom] = useState('')
+  const [createDateNaissance, setCreateDateNaissance] = useState('')
+  const [createAge, setCreateAge] = useState('')
+  const [createNomParent, setCreateNomParent] = useState('')
+  const [createEmail, setCreateEmail] = useState('')
+  const [createTel, setCreateTel] = useState('')
+  const [createGroupeRecommande, setCreateGroupeRecommande] = useState('')
+  const [createCommentaireCoach, setCreateCommentaireCoach] = useState('')
+  const [creatingCandidat, setCreatingCandidat] = useState(false)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -450,6 +468,168 @@ export default function TestsNageManager() {
       }
     } catch {
       toast.error('Erreur de connexion')
+    }
+  }
+
+  // Ouvrir la modale d'édition / complétion pour un candidat
+  const handleOpenEditCandidat = (c: CandidatItem) => {
+    setEditingCandidatId(c.id)
+    setEditNom(c.nom || '')
+    setEditPrenom(c.prenom || '')
+    setEditDateNaissance(c.dateNaissance ? c.dateNaissance.split('T')[0] : '')
+    setEditAge(c.age !== null && c.age !== undefined ? String(c.age) : '')
+    setEditNomParent(c.nomParent || '')
+    setEditEmail(c.emailParent || '')
+    setEditTel(c.telephoneParent || '')
+    setEditStatut(c.statut || 'a_planifier')
+    setEditGroupeRecommande(c.groupeRecommande || '')
+    setEditCommentaireCoach(c.commentaireCoach || '')
+    setShowEditCandidatModal(true)
+  }
+
+  // Ouvrir l'édition depuis une inscription (bord de bassin)
+  const handleOpenEditFromInscription = (insc: InscriptionItem) => {
+    if (insc.candidatId) {
+      const c = candidats.find((cand) => cand.id === insc.candidatId)
+      if (c) {
+        handleOpenEditCandidat(c)
+        return
+      }
+    }
+    // Si pas de candidat direct, on pré-remplit avec les données de l'inscription
+    setEditingCandidatId(insc.candidatId || null)
+    setEditNom(insc.nomEnfant || '')
+    setEditPrenom(insc.prenomEnfant || '')
+    setEditDateNaissance(insc.dateNaissance ? insc.dateNaissance.split('T')[0] : '')
+    setEditAge(insc.age !== null && insc.age !== undefined ? String(insc.age) : '')
+    setEditNomParent(insc.nomParent || '')
+    setEditEmail(insc.emailParent || '')
+    setEditTel(insc.telephoneParent || '')
+    setEditStatut(insc.statut === 'annule' ? 'a_planifier' : (insc.statut as string) || 'planifie')
+    setEditGroupeRecommande(insc.groupeRecommande || '')
+    setEditCommentaireCoach(insc.commentaireCoach || '')
+    setShowEditCandidatModal(true)
+  }
+
+  // Enregistrer les modifications sur un candidat
+  const handleSaveCandidat = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editNom.trim() || !editPrenom.trim()) {
+      return toast.error('Nom et prénom obligatoires')
+    }
+
+    setSavingCandidat(true)
+    try {
+      if (editingCandidatId) {
+        const res = await fetch(`/api/admin/tests-nage/candidats/${editingCandidatId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nom: editNom.trim(),
+            prenom: editPrenom.trim(),
+            dateNaissance: editDateNaissance ? editDateNaissance : null,
+            age: editAge ? parseInt(editAge, 10) : null,
+            nomParent: editNomParent.trim() || null,
+            emailParent: editEmail.trim() || null,
+            telephoneParent: editTel.trim() || null,
+            statut: editStatut,
+            groupeRecommande: editGroupeRecommande || null,
+            commentaireCoach: editCommentaireCoach.trim() || null,
+          }),
+        })
+
+        if (res.ok) {
+          toast.success('Informations du candidat mises à jour !')
+          setShowEditCandidatModal(false)
+          await loadData()
+        } else {
+          const err = await res.json()
+          toast.error(err.error || 'Erreur lors de la sauvegarde')
+        }
+      } else {
+        // Si créé sans ID existant
+        const res = await fetch('/api/admin/tests-nage/candidats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: selectedSessionId || null,
+            nom: editNom.trim(),
+            prenom: editPrenom.trim(),
+            dateNaissance: editDateNaissance ? editDateNaissance : null,
+            age: editAge ? parseInt(editAge, 10) : null,
+            nomParent: editNomParent.trim() || null,
+            emailParent: editEmail.trim() || null,
+            telephoneParent: editTel.trim() || null,
+            statut: editStatut,
+            groupeRecommande: editGroupeRecommande || null,
+            commentaireCoach: editCommentaireCoach.trim() || null,
+          }),
+        })
+
+        if (res.ok) {
+          toast.success('Candidat enregistré avec succès !')
+          setShowEditCandidatModal(false)
+          await loadData()
+        } else {
+          const err = await res.json()
+          toast.error(err.error || "Erreur lors de l'enregistrement")
+        }
+      }
+    } catch {
+      toast.error('Erreur de connexion')
+    } finally {
+      setSavingCandidat(false)
+    }
+  }
+
+  // Création directe d'un nouveau candidat (dans le suivi)
+  const handleCreateCandidat = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!createNom.trim() || !createPrenom.trim()) {
+      return toast.error('Nom et prénom obligatoires')
+    }
+
+    setCreatingCandidat(true)
+    try {
+      const res = await fetch('/api/admin/tests-nage/candidats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: selectedSessionId || null,
+          nom: createNom.trim(),
+          prenom: createPrenom.trim(),
+          dateNaissance: createDateNaissance ? createDateNaissance : null,
+          age: createAge ? parseInt(createAge, 10) : null,
+          nomParent: createNomParent.trim() || null,
+          emailParent: createEmail.trim() || null,
+          telephoneParent: createTel.trim() || null,
+          statut: 'a_planifier',
+          groupeRecommande: createGroupeRecommande || null,
+          commentaireCoach: createCommentaireCoach.trim() || null,
+        }),
+      })
+
+      if (res.ok) {
+        toast.success('Nouveau candidat ajouté au listing !')
+        setShowCreateCandidatModal(false)
+        setCreateNom('')
+        setCreatePrenom('')
+        setCreateDateNaissance('')
+        setCreateAge('')
+        setCreateNomParent('')
+        setCreateEmail('')
+        setCreateTel('')
+        setCreateGroupeRecommande('')
+        setCreateCommentaireCoach('')
+        await loadData()
+      } else {
+        const err = await res.json()
+        toast.error(err.error || "Erreur lors de l'ajout du candidat")
+      }
+    } catch {
+      toast.error('Erreur de connexion')
+    } finally {
+      setCreatingCandidat(false)
     }
   }
 
@@ -1205,6 +1385,9 @@ export default function TestsNageManager() {
                                 className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-primary cursor-pointer"
                               >
                                 <option value="">🎯 Groupe conseillé...</option>
+                                {insc.groupeRecommande && !GROUPES_CONSEILLES.includes(insc.groupeRecommande) && (
+                                  <option value={insc.groupeRecommande}>{insc.groupeRecommande}</option>
+                                )}
                                 {GROUPES_CONSEILLES.map((grp) => (
                                   <option key={grp} value={grp}>
                                     {grp}
@@ -1225,6 +1408,15 @@ export default function TestsNageManager() {
                                 placeholder="Note technique du coach..."
                                 className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-800 outline-none focus:border-primary focus:bg-white transition-colors"
                               />
+
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditFromInscription(insc)}
+                                className="p-1.5 text-slate-500 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors cursor-pointer print:hidden shrink-0"
+                                title="Modifier / Compléter les informations du candidat"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
 
                               <button
                                 onClick={() => handleDownloadFicheIndividuelle(insc, cr)}
@@ -1334,6 +1526,26 @@ export default function TestsNageManager() {
                 }`}
               >
                 📧 Relancés ({relancedCount})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateNom('')
+                  setCreatePrenom('')
+                  setCreateDateNaissance('')
+                  setCreateAge('')
+                  setCreateNomParent('')
+                  setCreateEmail('')
+                  setCreateTel('')
+                  setCreateGroupeRecommande('')
+                  setCreateCommentaireCoach('')
+                  setShowCreateCandidatModal(true)
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Nouveau Candidat</span>
               </button>
 
               {candidats.length > 0 && (
@@ -1521,6 +1733,15 @@ export default function TestsNageManager() {
                                 <Mail className="w-3.5 h-3.5" />
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditCandidat(c)}
+                              className="p-1.5 text-slate-500 hover:text-primary hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                              title="Modifier / Compléter les informations du candidat"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => {
@@ -2229,6 +2450,431 @@ export default function TestsNageManager() {
                 {associating ? 'Association en cours...' : 'Valider l&apos;association'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODALE : MODIFIER / COMPLÉTER LES INFORMATIONS D'UN CANDIDAT ─── */}
+      {showEditCandidatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in print:hidden">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full border border-slate-200 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 bg-emerald-50 text-emerald-700 rounded-xl font-black text-sm">✏️</span>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Compléter / Modifier la Fiche Candidat
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Mise à jour en direct des coordonnées, critères et groupe
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditCandidatModal(false)}
+                className="text-slate-400 hover:text-slate-700 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCandidat} className="space-y-3.5 text-xs font-medium text-slate-700">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Nom de l&apos;enfant *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editNom}
+                    onChange={(e) => setEditNom(e.target.value)}
+                    placeholder="DUPONT"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Prénom *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editPrenom}
+                    onChange={(e) => setEditPrenom(e.target.value)}
+                    placeholder="Lucas"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Date de naissance
+                  </label>
+                  <input
+                    type="date"
+                    value={editDateNaissance}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setEditDateNaissance(val)
+                      if (val) {
+                        const birth = new Date(val)
+                        const now = new Date()
+                        let calculatedAge = now.getFullYear() - birth.getFullYear()
+                        const m = now.getMonth() - birth.getMonth()
+                        if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
+                          calculatedAge--
+                        }
+                        if (!isNaN(calculatedAge) && calculatedAge >= 0) {
+                          setEditAge(String(calculatedAge))
+                        }
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Âge (ans)
+                  </label>
+                  <input
+                    type="number"
+                    min="3"
+                    max="99"
+                    value={editAge}
+                    onChange={(e) => setEditAge(e.target.value)}
+                    placeholder="Ex: 8"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-3 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                  Responsable légal & Contact
+                </span>
+
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Nom du Responsable (Parent / Tuteur)
+                  </label>
+                  <input
+                    type="text"
+                    value={editNomParent}
+                    onChange={(e) => setEditNomParent(e.target.value)}
+                    placeholder="Ex: Dupont Marc"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      Téléphone portable
+                    </label>
+                    <input
+                      type="tel"
+                      value={editTel}
+                      onChange={(e) => setEditTel(e.target.value)}
+                      placeholder="06 12 34 56 78"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="parent@exemple.fr"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-3 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                  Évaluation sportive & Statut
+                </span>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      Statut
+                    </label>
+                    <select
+                      value={editStatut}
+                      onChange={(e) => setEditStatut(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none font-bold"
+                    >
+                      <option value="a_planifier">🟡 À planifier</option>
+                      <option value="planifie">🟢 Planifié (créneau)</option>
+                      <option value="present">🔵 Présent / Testé</option>
+                      <option value="absent">🔴 Absent</option>
+                      <option value="hors_listing">⚠️ Hors listing</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      Groupe recommandé
+                    </label>
+                    <select
+                      value={editGroupeRecommande}
+                      onChange={(e) => setEditGroupeRecommande(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none font-bold"
+                    >
+                      <option value="">🎯 Aucun / En attente</option>
+                      {editGroupeRecommande && !GROUPES_CONSEILLES.includes(editGroupeRecommande) && (
+                        <option value={editGroupeRecommande}>{editGroupeRecommande}</option>
+                      )}
+                      {GROUPES_CONSEILLES.map((grp) => (
+                        <option key={grp} value={grp}>
+                          {grp}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Commentaire / Notes du Coach
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editCommentaireCoach}
+                    onChange={(e) => setEditCommentaireCoach(e.target.value)}
+                    placeholder="Observations techniques : aisance, respiration, niveau de nage..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditCandidatModal(false)}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCandidat}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
+                >
+                  {savingCandidat ? 'Enregistrement...' : 'Enregistrer la fiche'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODALE : AJOUTER UN NOUVEAU CANDIDAT DIRECT ─── */}
+      {showCreateCandidatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in print:hidden">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full border border-slate-200 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 bg-primary/10 text-primary rounded-xl font-black text-sm">➕</span>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Ajouter un Nouveau Candidat
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Enregistrement direct dans le listing de suivi des tests
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateCandidatModal(false)}
+                className="text-slate-400 hover:text-slate-700 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCandidat} className="space-y-3.5 text-xs font-medium text-slate-700">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Nom de l&apos;enfant *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={createNom}
+                    onChange={(e) => setCreateNom(e.target.value)}
+                    placeholder="DUPONT"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Prénom *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={createPrenom}
+                    onChange={(e) => setCreatePrenom(e.target.value)}
+                    placeholder="Lucas"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Date de naissance
+                  </label>
+                  <input
+                    type="date"
+                    value={createDateNaissance}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setCreateDateNaissance(val)
+                      if (val) {
+                        const birth = new Date(val)
+                        const now = new Date()
+                        let calculatedAge = now.getFullYear() - birth.getFullYear()
+                        const m = now.getMonth() - birth.getMonth()
+                        if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
+                          calculatedAge--
+                        }
+                        if (!isNaN(calculatedAge) && calculatedAge >= 0) {
+                          setCreateAge(String(calculatedAge))
+                        }
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Âge (ans)
+                  </label>
+                  <input
+                    type="number"
+                    min="3"
+                    max="99"
+                    value={createAge}
+                    onChange={(e) => setCreateAge(e.target.value)}
+                    placeholder="Ex: 7"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-3 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                  Responsable légal & Contact
+                </span>
+
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Nom du Parent / Responsable
+                  </label>
+                  <input
+                    type="text"
+                    value={createNomParent}
+                    onChange={(e) => setCreateNomParent(e.target.value)}
+                    placeholder="Ex: Jean Dupont"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      Téléphone portable
+                    </label>
+                    <input
+                      type="tel"
+                      value={createTel}
+                      onChange={(e) => setCreateTel(e.target.value)}
+                      placeholder="06 00 00 00 00"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      Email du responsable
+                    </label>
+                    <input
+                      type="email"
+                      value={createEmail}
+                      onChange={(e) => setCreateEmail(e.target.value)}
+                      placeholder="parent@exemple.fr"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-3 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                  Orientation & Notes éventuelles
+                </span>
+
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Groupe pressenti / conseillé (optionnel)
+                  </label>
+                  <select
+                    value={createGroupeRecommande}
+                    onChange={(e) => setCreateGroupeRecommande(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none font-bold"
+                  >
+                    <option value="">🎯 Aucun / À évaluer lors du test</option>
+                    {GROUPES_CONSEILLES.map((grp) => (
+                      <option key={grp} value={grp}>
+                        {grp}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Commentaire / Notes particulières
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={createCommentaireCoach}
+                    onChange={(e) => setCreateCommentaireCoach(e.target.value)}
+                    placeholder="Remarques éventuelles, antécédents de natation..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateCandidatModal(false)}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingCandidat}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
+                >
+                  {creatingCandidat ? 'Ajout en cours...' : 'Ajouter le candidat'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -14,6 +14,9 @@ const candidatSchema = z.object({
   nomParent: z.string().optional().nullable(),
   emailParent: z.string().optional().nullable(),
   telephoneParent: z.string().optional().nullable(),
+  statut: z.string().optional().nullable(),
+  groupeRecommande: z.string().optional().nullable(),
+  commentaireCoach: z.string().optional().nullable(),
 })
 
 export async function GET(request: NextRequest) {
@@ -163,8 +166,9 @@ export async function POST(request: NextRequest) {
         age: validated.age || null,
         nomParent: validated.nomParent ? validated.nomParent.trim() : null,
         emailParent: validated.emailParent ? validated.emailParent.trim().toLowerCase() : null,
-        telephoneParent: validated.telephoneParent ? validated.telephoneParent.trim() : null,
-        statut: 'a_planifier',
+        statut: validated.statut || 'a_planifier',
+        groupeRecommande: validated.groupeRecommande || null,
+        commentaireCoach: validated.commentaireCoach ? validated.commentaireCoach.trim() : null,
       },
     })
 

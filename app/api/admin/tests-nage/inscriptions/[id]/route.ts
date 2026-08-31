@@ -10,6 +10,7 @@ const updateInscriptionSchema = z.object({
   commentaireCoach: z.string().nullable().optional(),
   nomEnfant: z.string().optional(),
   prenomEnfant: z.string().optional(),
+  dateNaissance: z.string().nullable().optional(),
   age: z.number().int().nullable().optional(),
   nomParent: z.string().nullable().optional(),
   emailParent: z.string().optional(),
@@ -29,6 +30,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const body = await request.json()
     const validated = updateInscriptionSchema.parse(body)
 
+    let parsedDateNaissance: Date | null | undefined = undefined
+    if (validated.dateNaissance !== undefined) {
+      parsedDateNaissance = validated.dateNaissance ? new Date(validated.dateNaissance) : null
+    }
+
     const updated = await prisma.inscriptionTestNage.update({
       where: { id },
       data: {
@@ -36,12 +42,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         ...(validated.statut ? { statut: validated.statut } : {}),
         groupeRecommande: validated.groupeRecommande,
         commentaireCoach: validated.commentaireCoach,
-        ...(validated.nomEnfant ? { nomEnfant: validated.nomEnfant.toUpperCase() } : {}),
-        ...(validated.prenomEnfant ? { prenomEnfant: validated.prenomEnfant } : {}),
-        age: validated.age,
-        nomParent: validated.nomParent,
-        ...(validated.emailParent ? { emailParent: validated.emailParent.toLowerCase() } : {}),
-        ...(validated.telephoneParent ? { telephoneParent: validated.telephoneParent } : {}),
+        ...(validated.nomEnfant ? { nomEnfant: validated.nomEnfant.trim().toUpperCase() } : {}),
+        ...(validated.prenomEnfant ? { prenomEnfant: validated.prenomEnfant.trim() } : {}),
+        ...(parsedDateNaissance !== undefined ? { dateNaissance: parsedDateNaissance } : {}),
+        ...(validated.age !== undefined ? { age: validated.age } : {}),
+        ...(validated.nomParent !== undefined ? { nomParent: validated.nomParent ? validated.nomParent.trim() : null } : {}),
+        ...(validated.emailParent ? { emailParent: validated.emailParent.trim().toLowerCase() } : {}),
+        ...(validated.telephoneParent ? { telephoneParent: validated.telephoneParent.trim() } : {}),
       },
     })
 
@@ -53,6 +60,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
           statut: updated.statut === 'annule' ? 'a_planifier' : updated.statut,
           groupeRecommande: updated.groupeRecommande,
           commentaireCoach: updated.commentaireCoach,
+          ...(validated.nomEnfant ? { nom: validated.nomEnfant.trim().toUpperCase() } : {}),
+          ...(validated.prenomEnfant ? { prenom: validated.prenomEnfant.trim() } : {}),
+          ...(parsedDateNaissance !== undefined ? { dateNaissance: parsedDateNaissance } : {}),
+          ...(validated.age !== undefined ? { age: validated.age } : {}),
+          ...(validated.nomParent !== undefined ? { nomParent: validated.nomParent ? validated.nomParent.trim() : null } : {}),
+          ...(validated.emailParent ? { emailParent: validated.emailParent.trim().toLowerCase() } : {}),
+          ...(validated.telephoneParent ? { telephoneParent: validated.telephoneParent.trim() } : {}),
         },
       })
     }

@@ -29,16 +29,10 @@ export interface EvaluationFicheData {
 }
 
 export const GROUPES_CLUB = [
-  'ENF 1 (Éveil aquatique)',
-  'ENF 2 (Apprentissage)',
-  'Avenirs 1',
-  'Avenirs 2',
-  'Avenirs 3',
-  'Avenirs Loisirs',
-  'Jeune Loisir',
-  'Juniors Loisirs',
-  'Compétition Benjamins',
-  'Compétition Juniors',
+  'ENF 1',
+  'ENF 2',
+  'AVENIR LOISIR',
+  'AVENIR 1',
 ]
 
 /**
@@ -75,80 +69,79 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
 
   // 2. Logo Club
   try {
-    doc.addImage(TRITON_LOGO_BASE64, 'JPEG', marginX, 6, 22, 19)
+    doc.addImage(TRITON_LOGO_BASE64, 'JPEG', marginX, 5.5, 20, 17)
   } catch {
     // Si échec image, texte de secours
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(10)
     doc.setTextColor(112, 193, 92)
-    doc.text('TRITON CLUB', marginX, 15)
+    doc.text('TRITON CLUB', marginX, 14)
   }
 
   // 3. Titre Principal Moderne
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(8.5)
+  doc.setFontSize(8)
   doc.setTextColor(100, 116, 139) // Slate 500
-  doc.text('TRITON CLUB CAVAILLON · NATATION', marginX + 25, 11)
+  doc.text('TRITON CLUB CAVAILLON · NATATION SPORTIVE', marginX + 23, 10)
 
-  doc.setFontSize(14)
+  doc.setFontSize(13)
   doc.setTextColor(15, 23, 42) // Slate 900
-  doc.text('FICHE D\'ÉVALUATION · TEST DE NIVEAU', marginX + 25, 17)
+  doc.text('FICHE D\'ÉVALUATION & TEST DE NIVEAU', marginX + 23, 15.5)
 
-  doc.setFontSize(8.5)
+  doc.setFontSize(8)
   doc.setTextColor(112, 193, 92) // Vert Triton
   const saisonLabel = data.saison || getSaisonSportive(data.dateTest)
-  doc.text(saisonLabel, marginX + 25, 22)
+  doc.text(saisonLabel, marginX + 23, 20.5)
 
   // 4. Cartouche Métadonnées / Statut (Haut Droite)
-  const metaX = 138
-  const metaW = 60
-  const metaH = 19
+  const metaX = 136
+  const metaW = 62
+  const metaH = 17.5
   doc.setFillColor(248, 250, 252) // Slate 50
-  doc.setDrawColor(226, 232, 240) // Slate 200
+  doc.setDrawColor(203, 213, 225) // Slate 300
   doc.setLineWidth(0.2)
-  doc.roundedRect(metaX, 6, metaW, metaH, 1.5, 1.5, 'FD')
+  doc.roundedRect(metaX, 5.5, metaW, metaH, 1.5, 1.5, 'FD')
 
-  doc.setFontSize(7.5)
+  doc.setFontSize(7)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(71, 85, 105)
-  doc.text('INSCRIPTION :', metaX + 3, 11)
+  doc.text('SESSION :', metaX + 3, 10)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(15, 23, 42)
-  const groupeAct = isVierge ? 'École de Natation' : (data.niveauEstime || data.titreSession || 'École de Natation')
-  doc.text(doc.splitTextToSize(groupeAct, metaW - 24), metaX + 24, 11)
+  const sessionText = isVierge ? 'Tests de Nage' : (data.titreSession || data.niveauEstime || 'Tests de Nage')
+  doc.text(doc.splitTextToSize(sessionText, metaW - 20), metaX + 18, 10)
 
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(71, 85, 105)
-  doc.text('STATUT :', metaX + 3, 16)
+  doc.text('DATE TEST :', metaX + 3, 15)
   doc.setFont('helvetica', 'bold')
-  if (isVierge) {
-    doc.setTextColor(100, 116, 139)
-    doc.text('Fiche Vierge', metaX + 24, 16)
-  } else if (data.statut === 'hors_listing') {
-    doc.setTextColor(225, 29, 72) // Rose 600
-    doc.text('[Hors listing]', metaX + 24, 16)
-  } else if (data.statut === 'present') {
-    doc.setTextColor(5, 150, 105) // Emerald 600
-    doc.text('Présent', metaX + 24, 16)
-  } else if (data.statut === 'absent') {
-    doc.setTextColor(220, 38, 38) // Red 600
-    doc.text('Absent', metaX + 24, 16)
-  } else {
-    doc.setTextColor(15, 23, 42)
-    doc.text('Inscrit', metaX + 24, 16)
-  }
-
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(71, 85, 105)
-  doc.text('DATE DU TEST :', metaX + 3, 21)
-  doc.setFont('helvetica', 'normal')
   doc.setTextColor(15, 23, 42)
   const dateStr = data.dateTest ? formatCompactDateFr(data.dateTest) : '..... / ..... / 2026'
-  doc.text(dateStr, metaX + 27, 21)
+  doc.text(dateStr, metaX + 19, 15)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(71, 85, 105)
+  doc.text('STATUT :', metaX + 3, 20)
+  if (isVierge) {
+    doc.setTextColor(100, 116, 139)
+    doc.text('Fiche Vierge', metaX + 16, 20)
+  } else if (data.statut === 'hors_listing') {
+    doc.setTextColor(225, 29, 72) // Rose 600
+    doc.text('⚠️ Hors listing', metaX + 16, 20)
+  } else if (data.statut === 'present') {
+    doc.setTextColor(5, 150, 105) // Emerald 600
+    doc.text('✓ Présent', metaX + 16, 20)
+  } else if (data.statut === 'absent') {
+    doc.setTextColor(220, 38, 38) // Red 600
+    doc.text('✗ Absent', metaX + 16, 20)
+  } else {
+    doc.setTextColor(15, 23, 42)
+    doc.text('Inscrit', metaX + 16, 20)
+  }
 
   // 5. Blocs Coordonnées : Deux cartes aérées côte à côte
-  const cardY = 27
-  const cardH = 32
+  const cardY = 25
+  const cardH = 22
   const colW = 91
 
   // CARTE GAUCHE : NAGEUR
@@ -157,22 +150,22 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
   doc.roundedRect(marginX, cardY, colW, cardH, 2, 2, 'FD')
 
   doc.setFillColor(241, 245, 249) // Slate 100
-  doc.roundedRect(marginX + 0.1, cardY + 0.1, colW - 0.2, 5.5, 2, 2, 'F')
-  doc.rect(marginX + 0.1, cardY + 3, colW - 0.2, 2.6, 'F')
+  doc.roundedRect(marginX + 0.1, cardY + 0.1, colW - 0.2, 5, 2, 2, 'F')
+  doc.rect(marginX + 0.1, cardY + 2.5, colW - 0.2, 2.6, 'F')
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(30, 41, 59)
-  doc.text('IDENTITÉ DU NAGEUR', marginX + 3.5, cardY + 4)
+  doc.text('IDENTITÉ DU NAGEUR', marginX + 3.5, cardY + 3.8)
 
   // Contenu Carte Nageur
-  doc.setFontSize(9)
+  doc.setFontSize(9.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(15, 23, 42)
   if (isVierge) {
-    doc.text('Nom & Prénom : ................................................................', marginX + 3.5, cardY + 10.5)
+    doc.text('Nom & Prénom : .............................................................', marginX + 3.5, cardY + 11)
   } else {
     const nomComplet = `${(data.nomEnfant || '').toUpperCase()} ${data.prenomEnfant || ''}`.trim() || 'Non renseigné'
-    doc.text(`Nom : ${nomComplet}`, marginX + 3.5, cardY + 10.5)
+    doc.text(nomComplet, marginX + 3.5, cardY + 11)
   }
 
   doc.setFontSize(8)
@@ -180,20 +173,11 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
   doc.setTextColor(51, 65, 85)
 
   if (isVierge) {
-    doc.text('Date de naissance : ..... / ..... / .........    Âge : ....... ans', marginX + 3.5, cardY + 16)
-    doc.text('Niveau estimé : ................................................................', marginX + 3.5, cardY + 21.5)
-    doc.text('Remarques : ....................................................................', marginX + 3.5, cardY + 27)
+    doc.text('Date de naissance : ..... / ..... / .........      Âge : ....... ans', marginX + 3.5, cardY + 17.5)
   } else {
     const dateNais = data.dateNaissance ? formatCompactDateFr(data.dateNaissance) : 'Non renseignée'
     const ageStr = data.age ? `${data.age} ans` : '-'
-    doc.text(`Né(e) le : ${dateNais}   ·   Âge : ${ageStr}`, marginX + 3.5, cardY + 16)
-
-    const niveau = data.niveauEstime || 'Non renseigné'
-    doc.text(`Niveau estimé parent : ${niveau}`, marginX + 3.5, cardY + 21.5)
-
-    const rem = data.remarques ? `Note : ${data.remarques}` : 'Remarques : Aucune'
-    const remWrapped = doc.splitTextToSize(rem, colW - 7)
-    doc.text(remWrapped, marginX + 3.5, cardY + 27)
+    doc.text(`Né(e) le : ${dateNais}    ·    Âge : ${ageStr}`, marginX + 3.5, cardY + 17.5)
   }
 
   // CARTE DROITE : SÉANCE & RESPONSABLE
@@ -201,296 +185,300 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
   doc.roundedRect(card2X, cardY, colW, cardH, 2, 2, 'FD')
 
   doc.setFillColor(241, 245, 249)
-  doc.roundedRect(card2X + 0.1, cardY + 0.1, colW - 0.2, 5.5, 2, 2, 'F')
-  doc.rect(card2X + 0.1, cardY + 3, colW - 0.2, 2.6, 'F')
+  doc.roundedRect(card2X + 0.1, cardY + 0.1, colW - 0.2, 5, 2, 2, 'F')
+  doc.rect(card2X + 0.1, cardY + 2.5, colW - 0.2, 2.6, 'F')
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(30, 41, 59)
-  doc.text('SÉANCE & CONTACT RESPONSABLE', card2X + 3.5, cardY + 4)
+  doc.text('SÉANCE & CONTACT RESPONSABLE', card2X + 3.5, cardY + 3.8)
 
   // Badge horaire mis en valeur
   doc.setFillColor(254, 240, 138) // Jaune surligneur #fef08a
   doc.setDrawColor(250, 204, 21)
   doc.setLineWidth(0.2)
-  doc.roundedRect(card2X + 3.5, cardY + 7.5, colW - 7, 6.5, 1.2, 1.2, 'FD')
-
-  doc.setFontSize(8.5)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(113, 63, 18) // Amber 900
-  const horaire = data.heureDebut ? `${data.heureDebut} – ${data.heureFin || ''}` : '..... : .....'
-  doc.text(`HORAIRE CONVOQUÉ : ${horaire}`, card2X + 5.5, cardY + 12)
+  doc.roundedRect(card2X + 3.5, cardY + 7, colW - 7, 5.5, 1, 1, 'FD')
 
   doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(113, 63, 18) // Amber 900
+  const horaire = data.heureDebut ? `${data.heureDebut} à ${data.heureFin || ''}` : '..... : .....'
+  doc.text(`HORAIRE CONVOQUÉ : ${horaire}`, card2X + 5, cardY + 10.8)
+
+  doc.setFontSize(7.5)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(51, 65, 85)
 
   if (isVierge) {
-    doc.text('Responsable légal : ...........................................................', card2X + 3.5, cardY + 19)
-    doc.text('Téléphone : .....................................................................', card2X + 3.5, cardY + 24)
-    doc.text('Email : ............................................................................', card2X + 3.5, cardY + 29)
+    doc.text('Parent / Tuteur : .............................................................', card2X + 3.5, cardY + 17)
+    doc.text('Téléphone : .....................................................................', card2X + 3.5, cardY + 22)
+    doc.text('Email : ............................................................................', card2X + 3.5, cardY + 27)
   } else {
-    doc.text(`Parent : ${data.nomParent || 'Non précisé'}`, card2X + 3.5, cardY + 19)
+    doc.text(`Parent : ${data.nomParent || 'Non précisé'}`, card2X + 3.5, cardY + 17)
     doc.setFont('helvetica', 'bold')
-    doc.text(`Téléphone : ${data.telephoneParent || 'Non renseigné'}`, card2X + 3.5, cardY + 24)
+    doc.setTextColor(15, 23, 42)
+    doc.text(`Tél : ${data.telephoneParent || 'Non renseigné'}`, card2X + 3.5, cardY + 22)
     doc.setFont('helvetica', 'normal')
-    doc.text(`Email : ${data.emailParent || 'Non renseigné'}`, card2X + 3.5, cardY + 29)
+    doc.setTextColor(71, 85, 105)
+    doc.text(`Email : ${data.emailParent || 'Non renseigné'}`, card2X + 3.5, cardY + 27)
   }
 
   // 6. Bandeau de Consignes Sanitaires & Règle d'Autonomie
-  const bannerY = cardY + cardH + 2.5 // 61.5 mm
-  const bannerH = 8.5
+  const bannerY = cardY + cardH + 2 // 57 mm
+  const bannerH = 7.5
   doc.setFillColor(254, 242, 242) // Rose 50
   doc.setDrawColor(254, 205, 211) // Rose 200
-  doc.roundedRect(marginX, bannerY, contentWidth, bannerH, 1.5, 1.5, 'FD')
-
-  doc.setFontSize(7.5)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(159, 18, 57) // Rose 800
-  doc.text('RÈGLE CLUB OBLIGATOIRE : Les enfants doivent être obligatoirement autonomes dans les vestiaires.', marginX + 3, bannerY + 3.8)
+  doc.roundedRect(marginX, bannerY, contentWidth, bannerH, 1.2, 1.2, 'FD')
 
   doc.setFontSize(7)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(159, 18, 57) // Rose 800
+  doc.text('RÈGLE DU CLUB : Les enfants doivent être obligatoirement autonomes dans les vestiaires.', marginX + 3, bannerY + 3.2)
+
+  doc.setFontSize(6.5)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(100, 116, 139)
   const lieuPrecise = data.lieuTest || 'Piscine Alphonse Roudière (Cavaillon)'
-  doc.text(`Lieu : ${lieuPrecise} · Prévoir maillot, bonnet et lunettes. Présentation 5 min avant le début.`, marginX + 3, bannerY + 7.2)
+  doc.text(`Lieu : ${lieuPrecise} · Présentation 5 min avant. Prévoir maillot, bonnet et lunettes.`, marginX + 3, bannerY + 6.2)
 
-  // 7. Grille d'Évaluation Technique des Critères de Sélection
-  const tableY = bannerY + bannerH + 3 // 73 mm
+  // 7. Grille d'Évaluation Technique : LES CRITÈRES DE SÉLECTION
+  const tableY = bannerY + bannerH + 2.5
 
   // En-tête titre de la grille
   doc.setFillColor(30, 41, 59) // Slate 800
-  doc.rect(marginX, tableY, contentWidth, 5.2, 'F')
+  doc.rect(marginX, tableY, contentWidth, 5.5, 'F')
   doc.setFontSize(8)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(255, 255, 255)
-  doc.text('GRILLE D\'ÉVALUATION TECHNIQUE · CRITÈRES DE SÉLECTION', marginX + 3, tableY + 3.7)
+  doc.text('LES CRITÈRES DE SÉLECTION', marginX + 3, tableY + 3.8)
 
+  // Tableau conforme aux critères demandés :
+  // Col 0: Domaine (ex: Les Entrées dans l’eau :)
+  // Col 1: Intitulé (ex: Je suis capable de :)
+  // Col 2: Critère spécifique (ex: PLONGER, SAUTER, Crawl, etc.)
+  // Col 3: [ ] Non acquis ( - )
+  // Col 4: [ ] Acquis ( + )
   const bodyData = [
-    // 1. Entrées dans l'eau
+    // 1. Les Entrées dans l’eau :
     [
-      { content: 'Entrées dans l\'eau', rowSpan: 2, styles: { fontStyle: 'bold', valign: 'middle' } },
-      { content: 'Je suis capable de :', rowSpan: 2, styles: { fontStyle: 'italic', valign: 'middle', textColor: [100, 116, 139] } },
-      { content: 'PLONGER (départ du bord ou du plot)', styles: { fontStyle: 'bold' } },
-      { content: '[  ] Acquis       [  ] En cours       [  ] Non acquis', styles: { halign: 'center' } },
+      { content: 'Les Entrées dans l’eau :', rowSpan: 2, styles: { fontStyle: 'bold', valign: 'middle' } },
+      { content: 'Je suis capable de :', rowSpan: 2, styles: { fontStyle: 'normal', valign: 'middle' } },
+      { content: 'PLONGER', styles: { fontStyle: 'bold' } },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
     ],
     [
-      { content: 'SAUTER (en grande profondeur sans aide)', styles: { fontStyle: 'bold' } },
-      { content: '[  ] Acquis       [  ] En cours       [  ] Non acquis', styles: { halign: 'center' } },
+      { content: 'SAUTER', styles: { fontStyle: 'bold' } },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
     ],
-    // 2. Déplacements
+
+    // 2. Les Déplacements :
     [
-      { content: 'Déplacements', rowSpan: 2, styles: { fontStyle: 'bold', valign: 'middle' } },
-      { content: 'Je suis capable de :', rowSpan: 2, styles: { fontStyle: 'italic', valign: 'middle', textColor: [100, 116, 139] } },
-      { content: 'Me déplacer sur le ventre (avec ou sans matériel)' },
-      { content: '[  ] Acquis       [  ] En cours       [  ] Non acquis', styles: { halign: 'center' } },
-    ],
-    [
-      { content: 'Me déplacer sur le dos (propulsion équilibrée)' },
-      { content: '[  ] Acquis       [  ] En cours       [  ] Non acquis', styles: { halign: 'center' } },
-    ],
-    // 3. Nages
-    [
-      { content: 'Nages', rowSpan: 5, styles: { fontStyle: 'bold', valign: 'middle' } },
-      { content: 'Je suis capable de nager le :', rowSpan: 5, styles: { fontStyle: 'italic', valign: 'middle', textColor: [100, 116, 139] } },
-      { content: 'Crawl (respiration aquatique latérale)' },
-      { content: '[  ] Acquis       [  ] En cours       [  ] Non acquis', styles: { halign: 'center' } },
+      { content: 'Les Déplacements :', rowSpan: 2, styles: { fontStyle: 'bold', valign: 'middle' } },
+      { content: 'Je suis capable de :', rowSpan: 2, styles: { fontStyle: 'normal', valign: 'middle' } },
+      { content: 'Me déplacer sur le ventre' },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
     ],
     [
-      { content: 'Dos crawlé (alignement tête-tronc)' },
-      { content: '[  ] Acquis       [  ] En cours       [  ] Non acquis', styles: { halign: 'center' } },
+      { content: 'Me déplacer sur le dos' },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+    ],
+
+    // 3. Les Nages :
+    [
+      { content: 'Les Nages :', rowSpan: 5, styles: { fontStyle: 'bold', valign: 'middle' } },
+      { content: 'Je suis capable de nager le :', rowSpan: 5, styles: { fontStyle: 'normal', valign: 'middle' } },
+      { content: 'Crawl' },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
     ],
     [
-      { content: 'Brasse (ciseau efficace, coordination bras-jambes)' },
-      { content: '[  ] Acquis       [  ] En cours       [  ] Non acquis', styles: { halign: 'center' } },
+      { content: 'Dos' },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
     ],
     [
-      { content: 'Papillon (ondulation et passage de bras)' },
-      { content: '[  ] Acquis       [  ] En cours       [  ] Non acquis', styles: { halign: 'center' } },
+      { content: 'Brasse' },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
     ],
     [
-      { content: 'Les 4 nages (enchaînement complet)' },
-      { content: '[  ] Acquis       [  ] En cours       [  ] Non acquis', styles: { halign: 'center' } },
-    ],
-    // 4. Immersions
-    [
-      { content: 'Immersions', rowSpan: 2, styles: { fontStyle: 'bold', valign: 'middle' } },
-      { content: 'Je suis capable de :', rowSpan: 2, styles: { fontStyle: 'italic', valign: 'middle', textColor: [100, 116, 139] } },
-      { content: 'M\'immerger (tête sous l\'eau, expiration complète)' },
-      { content: '[  ] Acquis       [  ] En cours       [  ] Non acquis', styles: { halign: 'center' } },
+      { content: 'Papillon' },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
     ],
     [
-      { content: 'Récupérer un objet au fond (grande profondeur)' },
-      { content: '[  ] Acquis       [  ] En cours       [  ] Non acquis', styles: { halign: 'center' } },
+      { content: 'Les 4 nages' },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+    ],
+
+    // 4. Les Immersions :
+    [
+      { content: 'Les Immersions :', rowSpan: 2, styles: { fontStyle: 'bold', valign: 'middle' } },
+      { content: 'Je suis capable de :', rowSpan: 2, styles: { fontStyle: 'normal', valign: 'middle' } },
+      { content: 'M’immerger' },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+    ],
+    [
+      { content: 'Récupérer un objet au fond' },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
+      { content: '[   ]', styles: { halign: 'center', fontStyle: 'bold' } },
     ],
   ]
 
   autoTable(doc, {
-    startY: tableY + 5.2,
+    startY: tableY + 5.5,
     margin: { left: marginX, right: marginX },
+    head: [[
+      { content: 'DOMAINE', styles: { halign: 'left', fontStyle: 'bold', fillColor: [241, 245, 249], textColor: [51, 65, 85] } },
+      { content: 'INTITULÉ', styles: { halign: 'left', fontStyle: 'bold', fillColor: [241, 245, 249], textColor: [51, 65, 85] } },
+      { content: 'CRITÈRE ÉVALUÉ', styles: { halign: 'left', fontStyle: 'bold', fillColor: [241, 245, 249], textColor: [51, 65, 85] } },
+      { content: 'NON ACQUIS ( - )', styles: { halign: 'center', fontStyle: 'bold', fillColor: [254, 242, 242], textColor: [159, 18, 57] } },
+      { content: 'ACQUIS ( + )', styles: { halign: 'center', fontStyle: 'bold', fillColor: [236, 253, 245], textColor: [6, 95, 70] } },
+    ]],
     body: bodyData as any,
     theme: 'plain',
     styles: {
       lineColor: [203, 213, 225],
       lineWidth: 0.2,
       fontSize: 7.5,
-      cellPadding: 1.8,
+      cellPadding: 1.6,
       textColor: [30, 41, 59],
     },
     columnStyles: {
-      0: { cellWidth: 32 },
-      1: { cellWidth: 44 },
-      2: { cellWidth: 60 },
-      3: { cellWidth: 50 },
+      0: { cellWidth: 44 },
+      1: { cellWidth: 50 },
+      2: { cellWidth: 44 },
+      3: { cellWidth: 24 },
+      4: { cellWidth: 24 },
     },
   })
 
-  // 8. Grille de Choix / Orientation du Groupe Retenu
-  const orientY = (doc as any).lastAutoTable.finalY + 3
-  const orientH = 29
+  // 8. ORIENTATION & CHOIX DU GROUPE PAR L'ÉDUCATEUR
+  const orientY = (doc as any).lastAutoTable.finalY + 3.5
+  const orientH = 25
   doc.setFillColor(255, 255, 255)
   doc.setDrawColor(203, 213, 225)
   doc.roundedRect(marginX, orientY, contentWidth, orientH, 1.5, 1.5, 'FD')
 
   // En-tête bandeau
   doc.setFillColor(241, 245, 249)
-  doc.roundedRect(marginX + 0.1, orientY + 0.1, contentWidth - 0.2, 5, 1.5, 1.5, 'F')
-  doc.rect(marginX + 0.1, orientY + 2.5, contentWidth - 0.2, 2.6, 'F')
+  doc.roundedRect(marginX + 0.1, orientY + 0.1, contentWidth - 0.2, 5.5, 1.5, 1.5, 'F')
+  doc.rect(marginX + 0.1, orientY + 2.5, contentWidth - 0.2, 3.1, 'F')
 
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(30, 41, 59)
-  doc.text('ORIENTATION & GROUPE RETENU (cocher la case correspondante)', marginX + 3, orientY + 3.7)
+  doc.text('ORIENTATION & CHOIX DU GROUPE PAR L\'ÉDUCATEUR', marginX + 3.5, orientY + 4)
 
-  // Grille des groupes
-  doc.setFontSize(7.5)
-  doc.setFont('helvetica', 'normal')
+  const normalizedRec = (data.groupeRecommande || '').trim().toUpperCase()
+
+  // Ligne 1 : GROUPE RETENU
+  const line1Y = orientY + 11.5
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
   doc.setTextColor(15, 23, 42)
+  doc.text('GROUPE RETENU :', marginX + 3.5, line1Y)
 
-  const groupRows = [
-    ['ENF 1 (Éveil aquatique)', 'Avenirs 1', 'Jeune Loisir / Juniors', 'Compétition Benjamins'],
-    ['ENF 2 (Apprentissage)', 'Avenirs 2 / 3', 'Avenirs Loisirs', 'Compétition Juniors'],
-  ]
+  const groupesCibles = ['ENF 1', 'ENF 2', 'AVENIR LOISIR', 'AVENIR 1']
+  let grpX = marginX + 38
+  groupesCibles.forEach((grp) => {
+    const isChecked = !isVierge && Boolean(normalizedRec) && (
+      normalizedRec === grp ||
+      normalizedRec.startsWith(grp) ||
+      (grp === 'AVENIR LOISIR' && normalizedRec.includes('LOISIR')) ||
+      (grp === 'AVENIR 1' && (normalizedRec === 'AVENIR 1' || normalizedRec === 'AVENIRS 1'))
+    )
 
-  const colWidthGroup = contentWidth / 4
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8.5)
+    if (isChecked) {
+      doc.setTextColor(5, 150, 105)
+      doc.text('[X]', grpX, line1Y)
+    } else {
+      doc.setTextColor(148, 163, 184)
+      doc.text('[   ]', grpX, line1Y)
+    }
 
-  groupRows.forEach((row, rIdx) => {
-    const yRow = orientY + 9 + rIdx * 5.5
-    row.forEach((grpName, cIdx) => {
-      const prefix = grpName.split('(')[0].trim().toLowerCase()
-      const isChecked =
-        !isVierge &&
-        !!data.groupeRecommande &&
-        (data.groupeRecommande.toLowerCase() === grpName.toLowerCase() ||
-          data.groupeRecommande.toLowerCase().startsWith(prefix) ||
-          data.groupeRecommande.toLowerCase().includes(prefix))
-      const boxSymbol = isChecked ? '[X]' : '[  ]'
-      if (isChecked) {
-        doc.setFont('helvetica', 'bold')
-        doc.setTextColor(5, 150, 105) // Vert si coché
-      } else {
-        doc.setFont('helvetica', 'normal')
-        doc.setTextColor(30, 41, 59)
-      }
-      doc.text(`${boxSymbol} ${grpName}`, marginX + 3 + cIdx * colWidthGroup, yRow)
-    })
+    doc.setFontSize(8)
+    doc.setTextColor(15, 23, 42)
+    doc.text(grp, grpX + 7, line1Y)
+
+    grpX += 36
   })
 
-  // Ligne de validation groupe retenu
-  const finalGroupY = orientY + 23
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(8.5)
-  doc.setTextColor(15, 23, 42)
-  doc.text('GROUPE VALIDÉ PAR L\'ÉDUCATEUR :', marginX + 3, finalGroupY)
+  // Séparateur fin de ligne groupe
+  doc.setDrawColor(241, 245, 249)
+  doc.line(marginX + 3.5, orientY + 15.5, marginX + contentWidth - 3.5, orientY + 15.5)
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9)
-  if (!isVierge && data.groupeRecommande) {
-    doc.setTextColor(5, 150, 105)
-    doc.text(data.groupeRecommande, marginX + 68, finalGroupY)
-  } else {
-    doc.setTextColor(148, 163, 184)
-    doc.text('..................................................................................................................', marginX + 68, finalGroupY)
-  }
-
-  // 9. Disponibilités & Observations & Visa de l'Éducateur
-  const bottomY = orientY + orientH + 3
-  const bottomH = 50
-  const obsW = 120
-  const visaW = contentWidth - obsW - 3 // 63 mm
-
-  // Bloc Observations & Disponibilités (Gauche)
-  doc.setFillColor(255, 255, 255)
-  doc.setDrawColor(203, 213, 225)
-  doc.roundedRect(marginX, bottomY, obsW, bottomH, 1.5, 1.5, 'FD')
-
-  // Sous-bloc Présence / Disponibilités
-  doc.setFillColor(248, 250, 252)
-  doc.roundedRect(marginX + 0.1, bottomY + 0.1, obsW - 0.2, 7, 1.5, 1.5, 'F')
-  doc.rect(marginX + 0.1, bottomY + 4, obsW - 0.2, 3.1, 'F')
-
-  doc.setFontSize(7.5)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(30, 41, 59)
-  doc.text('DISPONIBILITÉS :   [  ] Mercredi       [  ] Vendredi       [  ] Samedi', marginX + 3, bottomY + 4.8)
-
-  doc.setFontSize(7.5)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(71, 85, 105)
-  doc.text('OBSERVATIONS DU COACH :', marginX + 3, bottomY + 11.5)
-
-  // Contenu Observations
+  // Ligne 2 : FRÉQUENCE
+  const line2Y = orientY + 20.8
   doc.setFontSize(8)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('helvetica', 'bold')
   doc.setTextColor(15, 23, 42)
+  doc.text('FRÉQUENCE :', marginX + 3.5, line2Y)
 
-  let lineOffset = bottomY + 17
-  if (!isVierge && data.commentaireCoach) {
-    const coachLines = doc.splitTextToSize(data.commentaireCoach, obsW - 6)
-    doc.text(coachLines, marginX + 3, lineOffset)
-    lineOffset += coachLines.length * 4.5
-  }
+  doc.setFontSize(8.5)
+  doc.setTextColor(148, 163, 184)
+  doc.text('[   ]', marginX + 38, line2Y)
+  doc.setFontSize(8)
+  doc.setTextColor(15, 23, 42)
+  doc.text('Mercredi', marginX + 45, line2Y)
 
-  // Lignes de pointillés pour complétion manuscrite
-  doc.setTextColor(203, 213, 225)
-  while (lineOffset <= bottomY + bottomH - 3) {
-    doc.text('.........................................................................................................................................', marginX + 3, lineOffset)
-    lineOffset += 5.5
-  }
+  doc.setFontSize(8.5)
+  doc.setTextColor(148, 163, 184)
+  doc.text('[   ]', marginX + 80, line2Y)
+  doc.setFontSize(8)
+  doc.setTextColor(15, 23, 42)
+  doc.text('Vendredi', marginX + 87, line2Y)
 
-  // Bloc Visa / Éducateur (Droite)
-  const visaX = marginX + obsW + 3
+  // 9. VISA ÉDUCATEUR (Unique cartouche final)
+  const visaY = orientY + orientH + 3.5
+  const visaH = 30
   doc.setFillColor(255, 255, 255)
   doc.setDrawColor(203, 213, 225)
-  doc.roundedRect(visaX, bottomY, visaW, bottomH, 1.5, 1.5, 'FD')
+  doc.roundedRect(marginX, visaY, contentWidth, visaH, 1.5, 1.5, 'FD')
 
   doc.setFillColor(241, 245, 249)
-  doc.roundedRect(visaX + 0.1, bottomY + 0.1, visaW - 0.2, 7, 1.5, 1.5, 'F')
-  doc.rect(visaX + 0.1, bottomY + 4, visaW - 0.2, 3.1, 'F')
+  doc.roundedRect(marginX + 0.1, visaY + 0.1, contentWidth - 0.2, 5.5, 1.5, 1.5, 'F')
+  doc.rect(marginX + 0.1, visaY + 2.5, contentWidth - 0.2, 3.1, 'F')
 
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(30, 41, 59)
-  doc.text('VISA ÉDUCATEUR', visaX + 3, bottomY + 4.8)
+  doc.text('VISA DE L\'ÉDUCATEUR', marginX + 3.5, visaY + 4)
 
+  // 3 Colonnes à l'intérieur du Visa
+  const col1X = marginX + 5
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(71, 85, 105)
-  doc.text('Nom de l\'éducateur :', visaX + 3, bottomY + 13)
-  doc.text('.....................................................', visaX + 3, bottomY + 18)
+  doc.text('Nom & Prénom de l\'éducateur :', col1X, visaY + 11.5)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(15, 23, 42)
+  doc.text('.....................................................................', col1X, visaY + 19)
 
-  doc.text('Date de validation :', visaX + 3, bottomY + 25)
-  doc.text('..... / ..... / 2026', visaX + 3, bottomY + 30)
-
-  doc.text('Signature :', visaX + 3, bottomY + 36)
-  doc.setDrawColor(226, 232, 240)
-  doc.rect(visaX + 3, bottomY + 38, visaW - 6, 9)
-
-  // 10. Pied de page légal et officiel
-  doc.setFontSize(6.5)
+  const col2X = marginX + 75
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(148, 163, 184)
-  const footerText = 'Triton Club Cavaillon · Piscine couverte Alphonse Roudière, Bd Jean Moulin, 84300 Cavaillon · tritoncavaillon@gmail.com · Document officiel'
-  doc.text(footerText, pageWidth / 2, 289, { align: 'center' })
+  doc.setTextColor(71, 85, 105)
+  doc.text('Date de validation :', col2X, visaY + 11.5)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(15, 23, 42)
+  const dateVal = data.dateTest ? formatCompactDateFr(data.dateTest) : '..... / ..... / 2026'
+  doc.text(dateVal, col2X, visaY + 19)
+
+  const col3X = marginX + 125
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(71, 85, 105)
+  doc.text('Signature de l\'éducateur :', col3X, visaY + 11.5)
+
+  doc.setDrawColor(203, 213, 225)
+  doc.setFillColor(248, 250, 252)
+  doc.roundedRect(col3X, visaY + 13.5, 55, 13, 1, 1, 'FD')
 }
 
 /**

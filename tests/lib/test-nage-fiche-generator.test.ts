@@ -31,7 +31,7 @@ describe('test-nage-fiche-generator', () => {
       heureFin: '14:05',
       lieuTest: 'Piscine couverte Alphonse Roudière',
       titreSession: 'Tests de Nage - Rentrée 2026',
-      groupeRecommande: 'ENF 1 (Éveil aquatique)',
+      groupeRecommande: 'ENF 1',
       commentaireCoach: 'Bonne aisance, travail sur la tête sous l\'eau',
       isVierge: false,
     })
@@ -91,7 +91,7 @@ describe('test-nage-fiche-generator', () => {
               niveauEstime: 'Nageur',
               remarques: null,
               statut: 'inscrit',
-              groupeRecommande: 'ENF 2 (Apprentissage)',
+              groupeRecommande: 'ENF 2',
               commentaireCoach: null,
             },
           ],
