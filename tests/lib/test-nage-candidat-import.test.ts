@@ -4,7 +4,7 @@ import {
   cleanEmail,
   normalizeGroupe,
   parseDateNaissance,
-} from '@/app/api/admin/tests-nage/candidats/import/route'
+} from '@/lib/test-nage-candidat-import'
 
 describe('test-nage-candidat-import helpers', () => {
   it('should clean and format French phone numbers correctly', () => {
