@@ -34,6 +34,7 @@ import {
   generateFicheEvaluationPDF,
   generateFicheViergePDF,
   generateFichesJourneePDF,
+  generateProgrammePassagePDF,
 } from '@/lib/pdf'
 
 interface InscriptionItem {
@@ -179,7 +180,37 @@ export default function TestsNageManager() {
 
   // Formulaire import candidats
   const [importText, setImportText] = useState('')
+  const [importFileName, setImportFileName] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
+
+  const handleFileUpload = (file: File) => {
+    if (!file) return
+    setImportFileName(file.name)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target?.result as string
+      if (text) {
+        setImportText(text)
+        const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0)
+        toast.success(`Fichier "${file.name}" chargé (${lines.length} lignes)`)
+      }
+    }
+    reader.readAsText(file, 'UTF-8')
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) handleFileUpload(file)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) handleFileUpload(file)
+  }
 
   // Formulaire inscription manuelle
   const [manualNom, setManualNom] = useState('')
@@ -821,6 +852,27 @@ export default function TestsNageManager() {
     }
   }
 
+  // Télécharger le programme des passages de la journée en PDF (format A4 bord de bassin)
+  const handleDownloadProgrammePDF = () => {
+    if (!currentSession) {
+      toast.error('Veuillez sélectionner une session')
+      return
+    }
+    if (currentSession.creneaux.length === 0) {
+      toast.error('Cette session ne contient aucun créneau')
+      return
+    }
+    try {
+      const doc = generateProgrammePassagePDF(currentSession)
+      const dateFormatted = formatCompactDateFr(currentSession.date).replace(/\//g, '-')
+      doc.save(`programme_tests_nage_${dateFormatted}.pdf`)
+      toast.success('Programme des passages (PDF) téléchargé !')
+    } catch (err) {
+      console.error('Erreur génération programme PDF:', err)
+      toast.error('Erreur lors de la génération du programme PDF')
+    }
+  }
+
   // Filtrage des candidats
   const filteredCandidats = useMemo(() => {
     return candidats.filter((c) => {
@@ -932,9 +984,6 @@ export default function TestsNageManager() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="p-2 bg-emerald-50 text-primary rounded-xl shrink-0">
-                <Waves className="w-5 h-5" />
-              </span>
               <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
                 Tests de Nage & Niveau
               </h2>
@@ -958,9 +1007,6 @@ export default function TestsNageManager() {
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500 font-medium mt-1">
-              Planning des passages, pointage en bord de bassin et validation des groupes.
-            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -971,15 +1017,6 @@ export default function TestsNageManager() {
             >
               <Copy className="w-3.5 h-3.5 text-primary" />
               <span>Lien public</span>
-            </button>
-
-            <button
-              onClick={handleDownloadFicheVierge}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors cursor-pointer"
-              title="Télécharger une fiche d'évaluation vierge à imprimer"
-            >
-              <FileText className="w-3.5 h-3.5 text-slate-600" />
-              <span>Fiche vierge</span>
             </button>
 
             <button
@@ -999,34 +1036,6 @@ export default function TestsNageManager() {
             </button>
           </div>
         </div>
-
-        {/* Ligne de statistiques condensée et claire */}
-        {currentSession && (
-          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 text-xs">
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 rounded-xl border border-slate-200/80 font-bold text-slate-700">
-              <Users className="w-3.5 h-3.5 text-slate-500" />
-              <span>Inscrits :</span>
-              <span className="text-slate-900 font-black">{currentSession.stats.totalInscrits} / {currentSession.stats.totalPlaces}</span>
-            </div>
-
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 rounded-xl border border-emerald-200 font-bold text-emerald-800">
-              <span>✅ Présents :</span>
-              <span className="font-black">{currentSession.stats.totalPresents}</span>
-            </div>
-
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 rounded-xl border border-amber-200 font-bold text-amber-800">
-              <span>📋 Listing initial :</span>
-              <span className="font-black">{candidats.length}</span>
-            </div>
-
-            {horsListingCount > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-rose-50 rounded-xl border border-rose-200 font-bold text-rose-800">
-                <span>🔴 Hors listing :</span>
-                <span className="font-black">{horsListingCount}</span>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ─── ONGLETS DE NAVIGATION SOUS-MODULE ─── */}
@@ -1040,7 +1049,7 @@ export default function TestsNageManager() {
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            📋 Feuille de passage (Bord de bassin)
+            Feuille de passage
           </button>
 
           <button
@@ -1051,7 +1060,7 @@ export default function TestsNageManager() {
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            👥 Suivi des Candidats ({candidats.length})
+            Suivi des Candidats
           </button>
 
           <button
@@ -1062,7 +1071,7 @@ export default function TestsNageManager() {
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            ⚙️ Sessions & Plages ({sessions.length})
+            Sessions & Plages
           </button>
         </div>
 
@@ -1077,19 +1086,11 @@ export default function TestsNageManager() {
               <span>📑 Toutes les fiches ({currentSession.stats.totalInscrits})</span>
             </button>
             <button
-              onClick={handleDownloadFicheVierge}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-              title="Télécharger une fiche d'évaluation vierge à imprimer"
-            >
-              <FileText className="w-3.5 h-3.5 text-slate-500" />
-              <span>Fiche vierge</span>
-            </button>
-            <button
-              onClick={() => window.print()}
+              onClick={handleDownloadProgrammePDF}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black shadow-xs transition-colors cursor-pointer"
-              title="Imprimer ou exporter en PDF la feuille de passage de la journée"
+              title="Télécharger le programme officiel des passages (PDF imprimable A4)"
             >
-              <Printer className="w-3.5 h-3.5" />
+              <Download className="w-3.5 h-3.5" />
               <span>📄 Programme (PDF)</span>
             </button>
             <button
@@ -2029,20 +2030,67 @@ export default function TestsNageManager() {
             <form onSubmit={handleImportCandidats} className="space-y-4 text-xs font-medium text-slate-700">
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-slate-600 text-[11px] space-y-1.5">
                 <p className="font-bold text-slate-900">Format accepté (Excel / CSV / Fichier texte) :</p>
-                <p>Copiez-collez simplement votre tableau ou export. Détection automatique intelligente des colonnes :</p>
+                <p>Importez directement votre fichier <strong>.csv</strong> ou copiez-collez vos lignes. Détection automatique intelligente des colonnes :</p>
                 <p className="font-mono bg-white p-2 rounded-lg border border-slate-200 text-slate-800 text-[10.5px]">
                   Nom ; Prénom ; Date de naissance ; Email ; N° téléphone ; Genre ; Formule ; Notes
                 </p>
                 <p className="text-emerald-800 font-bold bg-emerald-50 border border-emerald-200/60 p-2 rounded-lg flex items-center gap-1.5">
                   <span>✨</span>
-                  <span><strong>Anti-doublon & réparation :</strong> Calcul automatique de l&apos;âge exact, réparation des numéros Excel corrompus et fusion des métadonnées (Genre, Formule, Notes).</span>
+                  <span><strong>Anti-doublon & complétion :</strong> Calcul de l&apos;âge exact, réparation des numéros Excel corrompus et complétion automatique des données manquantes.</span>
                 </p>
+              </div>
+
+              {/* Zone de Glisser-Déposer / Sélection Directe Fichier CSV */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".csv,.txt,.tsv,text/csv,text/plain"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
+                  dragOver
+                    ? 'border-primary bg-primary/5 scale-[1.01]'
+                    : importFileName
+                    ? 'border-emerald-400 bg-emerald-50/50'
+                    : 'border-slate-300 hover:border-primary hover:bg-slate-50/80 bg-slate-50/40'
+                }`}
+              >
+                <div className="p-2.5 rounded-full bg-white shadow-2xs text-primary border border-slate-200">
+                  <Upload className="w-5 h-5" />
+                </div>
+                {importFileName ? (
+                  <div>
+                    <p className="font-bold text-emerald-900 text-xs flex items-center justify-center gap-1.5">
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span>Fichier sélectionné : <strong>{importFileName}</strong></span>
+                    </p>
+                    <p className="text-[10.5px] text-slate-500 mt-0.5">
+                      {importText.split(/\r?\n/).filter((l) => l.trim().length > 0).length} ligne(s) chargée(s) · Cliquez pour changer de fichier
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="font-bold text-slate-800 text-xs">
+                      Glissez-déposez votre fichier <strong>.csv</strong> ici, ou <span className="text-primary underline">cliquez pour parcourir vos fichiers</span>
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Formats supportés : .csv, .txt, .tsv (export Excel avec points-virgules ou virgules)
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block font-bold uppercase tracking-wider text-slate-700">
-                    Collez vos lignes ci-dessous *
+                    Aperçu ou collage direct des données *
                   </label>
                   {candidats.length > 0 && (
                     <button
@@ -2059,11 +2107,14 @@ export default function TestsNageManager() {
                   )}
                 </div>
                 <textarea
-                  rows={8}
+                  rows={6}
                   required
                   value={importText}
-                  onChange={(e) => setImportText(e.target.value)}
-                  placeholder={`DUPONT Lucas 7 DUPONT Jean parent@exemple.fr 0600000000\nMARTIN Emma 8 MARTIN Claire claire@mail.fr 0611223344`}
+                  onChange={(e) => {
+                    setImportText(e.target.value)
+                    if (!e.target.value) setImportFileName(null)
+                  }}
+                  placeholder={`Nom;Prénom;Date de naissance;Email;N° téléphone;Genre;Formule;Notes\nCARLIEZ KOYTCHA;Keya;08/05/2018;afsouk@hotmail.com;0784024886;féminin;ENF2 Seulement Mercredi (En cours);TEST ENF`}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary focus:bg-white outline-none font-mono text-xs"
                 />
               </div>

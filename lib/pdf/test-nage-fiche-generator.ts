@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { formatCompactDateFr } from '@/lib/date'
+import { formatCompactDateFr, formatWeekdayLongDateFr } from '@/lib/date'
 
 // Logo officiel Triton Club Cavaillon en base64 (format JPEG universellement supporté)
 export const TRITON_LOGO_BASE64 =
@@ -601,6 +601,241 @@ export function generateFichesJourneePDF(session: {
       commentaireCoach: item.insc.commentaireCoach,
       isVierge: false,
     }, index === 0)
+  })
+
+  return doc
+}
+
+/**
+ * Génère un listing / programme de passage PDF officiel (Feuille de passage bord de bassin)
+ * Tableau structuré et propre avec horaires, noms, âges, téléphones, groupe pré-inscrit,
+ * pointage présence et cases pour le coach.
+ */
+export function generateProgrammePassagePDF(session: {
+  titre: string
+  date: string | Date
+  lieu?: string | null
+  heureDebut?: string | null
+  heureFin?: string | null
+  dureeMinutes?: number | null
+  stats?: {
+    totalInscrits?: number
+    nbCreneaux?: number
+  } | null
+  creneaux: Array<{
+    id?: string
+    heureDebut: string
+    heureFin: string
+    capacite?: number
+    actif?: boolean
+    inscriptions: Array<{
+      id?: string
+      nomEnfant: string
+      prenomEnfant: string
+      age?: number | null
+      dateNaissance?: string | Date | null
+      nomParent?: string | null
+      telephoneParent?: string | null
+      emailParent?: string | null
+      niveauEstime?: string | null
+      remarques?: string | null
+      statut?: string | null
+      groupeRecommande?: string | null
+      commentaireCoach?: string | null
+      candidatId?: string | null
+      candidat?: {
+        id?: string
+        statut?: string
+        groupeRecommande?: string | null
+      } | null
+    }>
+  }>
+}): jsPDF {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const pageWidth = doc.internal.pageSize.getWidth() // 210 mm
+  const pageHeight = doc.internal.pageSize.getHeight() // 297 mm
+  const marginX = 8
+
+  // Trier les créneaux par heure de début
+  const sortedCreneaux = [...session.creneaux].sort((a, b) => a.heureDebut.localeCompare(b.heureDebut))
+
+  // Calcul du nombre total d'inscrits
+  let totalInscrits = 0
+  sortedCreneaux.forEach((cr) => {
+    totalInscrits += cr.inscriptions?.length || 0
+  })
+
+  // Date au format français complet (ex: Samedi 5 septembre 2026)
+  let dateLongue = ''
+  try {
+    const raw = formatWeekdayLongDateFr(session.date)
+    dateLongue = raw.charAt(0).toUpperCase() + raw.slice(1)
+  } catch {
+    dateLongue = formatCompactDateFr(session.date)
+  }
+
+  // Préparer les données du tableau
+  const tableRows: any[] = []
+
+  sortedCreneaux.forEach((cr) => {
+    const horaireStr = `${cr.heureDebut} - ${cr.heureFin}`
+
+    if (!cr.inscriptions || cr.inscriptions.length === 0) {
+      tableRows.push([
+        horaireStr,
+        { content: '— Créneau libre —', styles: { fontStyle: 'italic', textColor: [148, 163, 184] } },
+        '—',
+        '—',
+        '[   ]',
+        '..............................',
+        '..............................',
+      ])
+    } else {
+      cr.inscriptions.forEach((insc) => {
+        const isHorsListing = !insc.candidatId || insc.candidat?.statut === 'hors_listing' || (insc.statut as string) === 'hors_listing'
+        const nomComplet = `${(insc.nomEnfant || '').toUpperCase()} ${insc.prenomEnfant || ''}`.trim()
+        const ageStr = insc.age ? ` (${insc.age} ans)` : ''
+        const parentStr = insc.nomParent ? `\nPar: ${insc.nomParent}` : ''
+        const hlBadge = isHorsListing ? ' [Hors listing]' : ''
+        const candidatNom = `${nomComplet}${ageStr}${hlBadge}${parentStr}`
+
+        const telStr = insc.telephoneParent || '—'
+        const groupeStr = insc.groupeRecommande || insc.candidat?.groupeRecommande || '—'
+
+        let presenceStr = '[   ] Présent'
+        if (insc.statut === 'present') presenceStr = '✓ Présent'
+        else if (insc.statut === 'absent') presenceStr = '✗ Absent'
+
+        const groupeRetenuStr = '..............................'
+        const obsStr = insc.remarques ? insc.remarques : '..............................'
+
+        tableRows.push([
+          horaireStr,
+          candidatNom,
+          telStr,
+          groupeStr,
+          presenceStr,
+          groupeRetenuStr,
+          obsStr,
+        ])
+      })
+    }
+  })
+
+  // Configuration AutoTable avec en-têtes répétés et en-tête de page stylé
+  autoTable(doc, {
+    startY: 28,
+    margin: { left: marginX, right: marginX, top: 16, bottom: 9 },
+    head: [
+      ['HORAIRE', 'NAGEUR (CANDIDAT)', 'TÉLÉPHONE', 'GROUPE INSCRIT', 'PRÉSENCE', 'GROUPE RETENU (COACH)', 'OBSERVATIONS / VISA'],
+    ],
+    body: tableRows,
+    theme: 'grid',
+    showHead: 'everyPage',
+    headStyles: {
+      fillColor: [15, 23, 42], // Slate 900
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 7.2,
+      halign: 'left',
+      cellPadding: 2,
+    },
+    styles: {
+      font: 'helvetica',
+      fontSize: 7.2,
+      cellPadding: 2,
+      valign: 'middle',
+      lineColor: [203, 213, 225],
+      lineWidth: 0.15,
+      textColor: [15, 23, 42],
+    },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252], // Slate 50
+    },
+    columnStyles: {
+      0: { cellWidth: 23, halign: 'center', fontStyle: 'bold' },
+      1: { cellWidth: 46, fontStyle: 'bold' },
+      2: { cellWidth: 25 },
+      3: { cellWidth: 30, fontStyle: 'bold', textColor: [5, 150, 105] },
+      4: { cellWidth: 20, halign: 'center' },
+      5: { cellWidth: 26 },
+      6: { cellWidth: 24 },
+    },
+    didDrawPage: (data: any) => {
+      if (data.pageNumber === 1) {
+        // --- En-tête Page 1 ---
+        try {
+          doc.addImage(TRITON_LOGO_BASE64, 'JPEG', marginX, 7, 15, 15)
+        } catch (err) {
+          console.warn('Erreur logo PDF programme:', err)
+        }
+
+        // Titres Club
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(13)
+        doc.setTextColor(15, 23, 42) // Slate 900
+        doc.text('TRITON CLUB CAVAILLON', marginX + 18, 12)
+
+        doc.setFontSize(9)
+        doc.setTextColor(2, 132, 199) // Sky 600
+        doc.text('PROGRAMME DE PASSAGE · TESTS DE NAGE', marginX + 18, 17)
+
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(7.5)
+        doc.setTextColor(100, 116, 139)
+        doc.text(getSaisonSportive(session.date), marginX + 18, 21.5)
+
+        // Boîte infos séance à droite
+        const boxW = 88
+        const boxH = 16.5
+        const boxX = pageWidth - marginX - boxW
+        const boxY = 7
+
+        doc.setFillColor(248, 250, 252) // Slate 50
+        doc.setDrawColor(203, 213, 225) // Slate 300
+        doc.setLineWidth(0.2)
+        doc.roundedRect(boxX, boxY, boxW, boxH, 1.5, 1.5, 'FD')
+
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8)
+        doc.setTextColor(15, 23, 42)
+        doc.text(session.titre || 'Tests de Nage', boxX + 3, boxY + 4.2)
+
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(7)
+        doc.setTextColor(51, 65, 85)
+        doc.text(`📅 ${dateLongue}`, boxX + 3, boxY + 8)
+
+        const lieuStr = session.lieu || 'Piscine Alphonse Roudière'
+        const horaireGlobal = session.heureDebut && session.heureFin ? ` · ⏰ ${session.heureDebut} à ${session.heureFin}` : ''
+        doc.text(`📍 ${lieuStr}${horaireGlobal}`, boxX + 3, boxY + 11.8)
+
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(2, 132, 199)
+        doc.text(`Total : ${totalInscrits} nageur(s) inscrit(s)`, boxX + 3, boxY + 15)
+      } else {
+        // --- En-tête simplifié Pages 2+ ---
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8)
+        doc.setTextColor(71, 85, 105)
+        doc.text(`Triton Club Cavaillon · Programme des Tests — ${session.titre} (${dateLongue})`, marginX, 10)
+        doc.setDrawColor(203, 213, 225)
+        doc.setLineWidth(0.2)
+        doc.line(marginX, 12, pageWidth - marginX, 12)
+      }
+
+      // --- Pied de page sur toutes les pages ---
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(6.5)
+      doc.setTextColor(148, 163, 184)
+      doc.text(
+        `Triton Club Cavaillon · Feuille de passage officielle · Édité le ${formatCompactDateFr(new Date())}`,
+        marginX,
+        pageHeight - 4.5
+      )
+      const pageStr = `Page ${data.pageNumber}`
+      doc.text(pageStr, pageWidth - marginX - doc.getTextWidth(pageStr), pageHeight - 4.5)
+    },
   })
 
   return doc

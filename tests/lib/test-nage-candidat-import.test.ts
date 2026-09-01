@@ -4,6 +4,8 @@ import {
   cleanEmail,
   normalizeGroupe,
   parseDateNaissance,
+  detectHeader,
+  splitRow,
 } from '@/lib/test-nage-candidat-import'
 
 describe('test-nage-candidat-import helpers', () => {
@@ -43,5 +45,21 @@ describe('test-nage-candidat-import helpers', () => {
     expect(res.date?.getMonth()).toBe(4) // May = index 4
     expect(res.date?.getDate()).toBe(8)
     expect(res.age).toBeGreaterThanOrEqual(7)
+  })
+
+  it('should detect headers and split CSV rows accurately', () => {
+    const headerLine = '\uFEFFNom;Prénom;Date de naissance;Email;N° téléphone;Genre;Formule;Notes'
+    const cells = splitRow(headerLine)
+    expect(cells.length).toBe(8)
+    const map = detectHeader(cells)
+    expect(map).toBeDefined()
+    expect(map?.nom).toBe(0)
+    expect(map?.prenom).toBe(1)
+    expect(map?.dateNaissance).toBe(2)
+    expect(map?.email).toBe(3)
+    expect(map?.telephone).toBe(4)
+    expect(map?.genre).toBe(5)
+    expect(map?.formule).toBe(6)
+    expect(map?.notes).toBe(7)
   })
 })

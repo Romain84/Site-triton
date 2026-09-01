@@ -3,6 +3,7 @@ import {
   generateFicheEvaluationPDF,
   generateFicheViergePDF,
   generateFichesJourneePDF,
+  generateProgrammePassagePDF,
   getSaisonSportive,
 } from '@/lib/pdf/test-nage-fiche-generator'
 
@@ -138,5 +139,45 @@ describe('test-nage-fiche-generator', () => {
     expect(doc).toBeDefined()
     const pageCount = doc.internal.pages.length - 1
     expect(pageCount).toBe(1)
+  })
+
+  it('should generate a structured programme PDF table with passage times and registered candidates', () => {
+    const mockSession = {
+      titre: 'Tests de Nage 2026',
+      date: '2026-09-05',
+      lieu: 'Piscine Alphonse Roudière',
+      heureDebut: '14:00',
+      heureFin: '14:30',
+      creneaux: [
+        {
+          heureDebut: '14:00',
+          heureFin: '14:05',
+          inscriptions: [
+            {
+              id: 'insc-1',
+              nomEnfant: 'Martin',
+              prenomEnfant: 'Léo',
+              age: 8,
+              dateNaissance: '2018-05-14',
+              nomParent: 'Sophie Martin',
+              telephoneParent: '0612345678',
+              statut: 'inscrit',
+              groupeRecommande: 'ENF 2 (Mercredi)',
+              remarques: null,
+            },
+          ],
+        },
+        {
+          heureDebut: '14:05',
+          heureFin: '14:10',
+          inscriptions: [],
+        },
+      ],
+    }
+
+    const doc = generateProgrammePassagePDF(mockSession)
+    expect(doc).toBeDefined()
+    const pageCount = doc.internal.pages.length - 1
+    expect(pageCount).toBeGreaterThanOrEqual(1)
   })
 })

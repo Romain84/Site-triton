@@ -161,7 +161,7 @@ export function detectHeader(cells: string[]): ColumnMap | null {
   let parent: number | undefined
 
   cells.forEach((rawCell, idx) => {
-    const c = rawCell.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    const c = rawCell.replace(/^\uFEFF/, '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
     if (nom === -1 && (c === 'nom' || c.includes('nom de famille') || c.includes('nom enfant') || c === 'last name')) {
       nom = idx
@@ -193,7 +193,7 @@ export function detectHeader(cells: string[]): ColumnMap | null {
 
 // Découpe une ligne selon le bon séparateur (tabulation, point-virgule, virgule)
 export function splitRow(row: string): string[] {
-  const trimmed = row.trim()
+  const trimmed = row.replace(/^\uFEFF/, '').trim()
   if (!trimmed) return []
 
   if (trimmed.includes('\t')) {
