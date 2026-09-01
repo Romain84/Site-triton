@@ -64,6 +64,7 @@ export async function GET() {
                   select: {
                     id: true,
                     statut: true,
+                    groupeRecommande: true,
                   },
                 },
               },

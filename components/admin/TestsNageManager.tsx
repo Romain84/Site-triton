@@ -55,6 +55,7 @@ interface InscriptionItem {
   candidat?: {
     id: string
     statut: string
+    groupeRecommande?: string | null
   } | null
 }
 
@@ -768,7 +769,7 @@ export default function TestsNageManager() {
         heureFin: creneau?.heureFin,
         lieuTest: currentSession?.lieu,
         titreSession: currentSession?.titre,
-        groupeRecommande: insc.groupeRecommande,
+        groupeRecommande: insc.groupeRecommande || insc.candidat?.groupeRecommande,
         commentaireCoach: insc.commentaireCoach,
         isVierge: false,
       })

@@ -377,7 +377,7 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
   doc.setTextColor(30, 41, 59)
   doc.text('ORIENTATION & CHOIX DU GROUPE PAR L\'ENTRAÎNEUR', marginX + 3.5, orientY + 3.8)
 
-  // Ligne 1 : GROUPE INSCRIT
+  // Ligne 1 : GROUPE INSCRIT (Extrait automatiquement de la BDD)
   const line1Y = orientY + 9.8
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
@@ -386,7 +386,8 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
 
   if (!isVierge && data.groupeRecommande) {
     doc.setFontSize(8.5)
-    doc.setTextColor(5, 150, 105)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(5, 150, 105) // Vert émeraude
     doc.text(data.groupeRecommande, marginX + 38, line1Y)
   } else {
     doc.setFontSize(7.5)
@@ -394,7 +395,7 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
     doc.text('.......................................................................................................................................', marginX + 38, line1Y)
   }
 
-  // Ligne 2 : CHOIX DU COACH : [ ] ENF 1   [ ] ENF 2   [ ] AVENIR LOISIR   [ ] AVENIR 1   [ ] Autre
+  // Ligne 2 : CHOIX DU COACH : [ ] ENF 1   [ ] ENF 2   [ ] AVENIR LOISIR   [ ] AVENIR 1   [ ] Autre : ...........
   const line2Y = orientY + 16.2
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
@@ -402,11 +403,11 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
   doc.text('CHOIX DU COACH :', marginX + 3.5, line2Y)
 
   const coachGroups = [
-    { label: 'ENF 1', width: 25 },
-    { label: 'ENF 2', width: 25 },
-    { label: 'AVENIR LOISIR', width: 34 },
-    { label: 'AVENIR 1', width: 27 },
-    { label: 'Autre', width: 20 },
+    { label: 'ENF 1', width: 23 },
+    { label: 'ENF 2', width: 23 },
+    { label: 'AVENIR LOISIR', width: 31 },
+    { label: 'AVENIR 1', width: 25 },
+    { label: 'Autre :', width: 14 },
   ]
   let gX = marginX + 38
   coachGroups.forEach((item) => {
@@ -419,6 +420,10 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
     doc.text(item.label, gX + 6, line2Y)
     gX += item.width
   })
+  // Ligne pointillée pour compléter à la main
+  doc.setFontSize(7.5)
+  doc.setTextColor(148, 163, 184)
+  doc.text('...........................................', gX, line2Y)
 
   // Séparateur fin de ligne groupe
   doc.setDrawColor(241, 245, 249)
@@ -592,7 +597,7 @@ export function generateFichesJourneePDF(session: {
       heureFin: item.creneauFin,
       lieuTest: session.lieu,
       titreSession: session.titre,
-      groupeRecommande: item.insc.groupeRecommande,
+      groupeRecommande: item.insc.groupeRecommande || item.insc.candidat?.groupeRecommande,
       commentaireCoach: item.insc.commentaireCoach,
       isVierge: false,
     }, index === 0)
