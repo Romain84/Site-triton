@@ -141,7 +141,7 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
 
   // 5. Blocs Coordonnées : Deux cartes aérées côte à côte
   const cardY = 25
-  const cardH = 22
+  const cardH = 26
   const colW = 91
 
   // CARTE GAUCHE : NAGEUR
@@ -162,26 +162,32 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(15, 23, 42)
   if (isVierge) {
-    doc.text('Nom & Prénom : .............................................................', marginX + 3.5, cardY + 11)
+    doc.text('Nom & Prénom : .............................................................', marginX + 3.5, cardY + 10.5)
   } else {
     const nomComplet = `${(data.nomEnfant || '').toUpperCase()} ${data.prenomEnfant || ''}`.trim() || 'Non renseigné'
-    doc.text(nomComplet, marginX + 3.5, cardY + 11)
+    doc.text(nomComplet, marginX + 3.5, cardY + 10.5)
   }
 
-  doc.setFontSize(8)
+  doc.setFontSize(7.5)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(51, 65, 85)
 
   if (isVierge) {
-    doc.text('Date de naissance : ..... / ..... / .........      Âge : ....... ans', marginX + 3.5, cardY + 17.5)
+    doc.text('Date de naissance : ..... / ..... / .........      Âge : ....... ans', marginX + 3.5, cardY + 16.5)
+    doc.text('Téléphone : .....................................................................', marginX + 3.5, cardY + 22.5)
   } else {
     const dateNais = data.dateNaissance ? formatCompactDateFr(data.dateNaissance) : 'Non renseignée'
     const ageStr = data.age ? `${data.age} ans` : '-'
-    doc.text(`Né(e) le : ${dateNais}    ·    Âge : ${ageStr}`, marginX + 3.5, cardY + 17.5)
+    doc.text(`Né(e) le : ${dateNais}    ·    Âge : ${ageStr}`, marginX + 3.5, cardY + 16.5)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(15, 23, 42)
+    doc.text(`Tél parent : ${data.telephoneParent || 'Non renseigné'}`, marginX + 3.5, cardY + 22.5)
   }
 
   // CARTE DROITE : SÉANCE & RESPONSABLE
   const card2X = marginX + colW + 4 // 107 mm
+  doc.setFillColor(255, 255, 255)
+  doc.setDrawColor(226, 232, 240)
   doc.roundedRect(card2X, cardY, colW, cardH, 2, 2, 'FD')
 
   doc.setFillColor(241, 245, 249)
@@ -192,35 +198,30 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
   doc.setTextColor(30, 41, 59)
   doc.text('SÉANCE & CONTACT RESPONSABLE', card2X + 3.5, cardY + 3.8)
 
-  // Badge horaire mis en valeur
-  doc.setFillColor(254, 240, 138) // Jaune surligneur #fef08a
-  doc.setDrawColor(250, 204, 21)
+  // Badge horaire simplifié (Fond blanc, bordure nette)
+  doc.setFillColor(255, 255, 255) // Fond blanc épuré
+  doc.setDrawColor(203, 213, 225) // Bordure slate 300
   doc.setLineWidth(0.2)
-  doc.roundedRect(card2X + 3.5, cardY + 7, colW - 7, 5.5, 1, 1, 'FD')
+  doc.roundedRect(card2X + 3.5, cardY + 6.5, colW - 7, 5.5, 1, 1, 'FD')
 
-  doc.setFontSize(8)
+  doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(113, 63, 18) // Amber 900
+  doc.setTextColor(15, 23, 42)
   const horaire = data.heureDebut ? `${data.heureDebut} à ${data.heureFin || ''}` : '..... : .....'
   const dateSessionStr = data.dateTest ? ` · ${formatCompactDateFr(data.dateTest)}` : ''
-  doc.text(`HORAIRE CONVOQUÉ : ${horaire}${dateSessionStr}`, card2X + 5, cardY + 10.8)
+  doc.text(`HORAIRE CONVOQUÉ : ${horaire}${dateSessionStr}`, card2X + 5, cardY + 10.3)
 
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(51, 65, 85)
 
   if (isVierge) {
-    doc.text('Parent / Tuteur : .............................................................', card2X + 3.5, cardY + 17)
-    doc.text('Téléphone : .....................................................................', card2X + 3.5, cardY + 22)
-    doc.text('Email : ............................................................................', card2X + 3.5, cardY + 27)
+    doc.text('Parent / Tuteur : .............................................................', card2X + 3.5, cardY + 16.5)
+    doc.text('Email : ............................................................................', card2X + 3.5, cardY + 22.5)
   } else {
-    doc.text(`Parent : ${data.nomParent || 'Non précisé'}`, card2X + 3.5, cardY + 17)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(15, 23, 42)
-    doc.text(`Tél : ${data.telephoneParent || 'Non renseigné'}`, card2X + 3.5, cardY + 22)
-    doc.setFont('helvetica', 'normal')
+    doc.text(`Parent : ${data.nomParent || 'Non précisé'}`, card2X + 3.5, cardY + 16.5)
     doc.setTextColor(71, 85, 105)
-    doc.text(`Email : ${data.emailParent || 'Non renseigné'}`, card2X + 3.5, cardY + 27)
+    doc.text(`Email : ${data.emailParent || 'Non renseigné'}`, card2X + 3.5, cardY + 22.5)
   }
 
   // 6. Bandeau de Consignes Sanitaires & Règle d'Autonomie
@@ -360,102 +361,92 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
   })
 
   // 8. ORIENTATION & CHOIX DU GROUPE PAR L'ENTRAÎNEUR
-  const orientY = (doc as any).lastAutoTable.finalY + 3
-  const orientH = 34
+  const orientY = (doc as any).lastAutoTable.finalY + 2.5
+  const orientH = 26
   doc.setFillColor(255, 255, 255)
   doc.setDrawColor(203, 213, 225)
   doc.roundedRect(marginX, orientY, contentWidth, orientH, 1.5, 1.5, 'FD')
 
   // En-tête bandeau
   doc.setFillColor(241, 245, 249)
-  doc.roundedRect(marginX + 0.1, orientY + 0.1, contentWidth - 0.2, 5.5, 1.5, 1.5, 'F')
-  doc.rect(marginX + 0.1, orientY + 2.5, contentWidth - 0.2, 3.1, 'F')
+  doc.roundedRect(marginX + 0.1, orientY + 0.1, contentWidth - 0.2, 5.2, 1.5, 1.5, 'F')
+  doc.rect(marginX + 0.1, orientY + 2.5, contentWidth - 0.2, 2.7, 'F')
 
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(30, 41, 59)
-  doc.text('ORIENTATION & CHOIX DU GROUPE PAR L\'ENTRAÎNEUR', marginX + 3.5, orientY + 4)
+  doc.text('ORIENTATION & CHOIX DU GROUPE PAR L\'ENTRAÎNEUR', marginX + 3.5, orientY + 3.8)
 
-  // Ligne 1 : INSCRIT DANS LE GROUPE
-  const line1Y = orientY + 10.5
+  // Ligne 1 : GROUPE INSCRIT
+  const line1Y = orientY + 9.8
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(15, 23, 42)
-  doc.text('INSCRIT DANS LE GROUPE :', marginX + 3.5, line1Y)
+  doc.text('GROUPE INSCRIT :', marginX + 3.5, line1Y)
 
   if (!isVierge && data.groupeRecommande) {
     doc.setFontSize(8.5)
     doc.setTextColor(5, 150, 105)
-    doc.text(data.groupeRecommande, marginX + 46, line1Y)
+    doc.text(data.groupeRecommande, marginX + 38, line1Y)
   } else {
     doc.setFontSize(7.5)
     doc.setTextColor(148, 163, 184)
-    doc.text('.......................................................................................................................................', marginX + 46, line1Y)
+    doc.text('.......................................................................................................................................', marginX + 38, line1Y)
   }
 
-  // Ligne 2 & 3 : CHOIX DU COACH (Tous les groupes du club)
-  const line2Y = orientY + 16.5
+  // Ligne 2 : CHOIX DU COACH : [ ] ENF 1   [ ] ENF 2   [ ] AVENIR LOISIR   [ ] AVENIR 1   [ ] Autre
+  const line2Y = orientY + 16.2
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(15, 23, 42)
   doc.text('CHOIX DU COACH :', marginX + 3.5, line2Y)
 
-  // Ligne 1 de groupes : ENF 1, ENF 2, AVENIR 1, AVENIR 2, AVENIR 3
-  const row1Groups = ['ENF 1', 'ENF 2', 'AVENIR 1', 'AVENIR 2', 'AVENIR 3']
-  let gX1 = marginX + 35
-  row1Groups.forEach((g) => {
+  const coachGroups = [
+    { label: 'ENF 1', width: 25 },
+    { label: 'ENF 2', width: 25 },
+    { label: 'AVENIR LOISIR', width: 34 },
+    { label: 'AVENIR 1', width: 27 },
+    { label: 'Autre', width: 20 },
+  ]
+  let gX = marginX + 38
+  coachGroups.forEach((item) => {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(8)
     doc.setTextColor(148, 163, 184)
-    doc.text('[   ]', gX1, line2Y)
+    doc.text('[   ]', gX, line2Y)
     doc.setFontSize(7.5)
     doc.setTextColor(15, 23, 42)
-    doc.text(g, gX1 + 6, line2Y)
-    gX1 += 30
-  })
-
-  // Ligne 2 de groupes : AVENIR LOISIR, JEUNE LOISIR, JUNIORS LOISIRS, COMPÉTITION, AUTRE
-  const line3Y = orientY + 22
-  const row2Groups = ['AVENIR LOISIR', 'JEUNE LOISIR', 'JUNIORS LOISIRS', 'COMPÉTITION', 'AUTRE']
-  let gX2 = marginX + 35
-  row2Groups.forEach((g) => {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
-    doc.setTextColor(148, 163, 184)
-    doc.text('[   ]', gX2, line3Y)
-    doc.setFontSize(7.5)
-    doc.setTextColor(15, 23, 42)
-    doc.text(g, gX2 + 6, line3Y)
-    gX2 += 30
+    doc.text(item.label, gX + 6, line2Y)
+    gX += item.width
   })
 
   // Séparateur fin de ligne groupe
   doc.setDrawColor(241, 245, 249)
-  doc.line(marginX + 3.5, orientY + 25.5, marginX + contentWidth - 3.5, orientY + 25.5)
+  doc.line(marginX + 3.5, orientY + 19.5, marginX + contentWidth - 3.5, orientY + 19.5)
 
-  // Ligne 4 : FRÉQUENCE
-  const line4Y = orientY + 30
+  // Ligne 3 : FRÉQUENCE
+  const line3Y = orientY + 23.5
   doc.setFontSize(7.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(15, 23, 42)
-  doc.text('FRÉQUENCE :', marginX + 3.5, line4Y)
+  doc.text('FRÉQUENCE :', marginX + 3.5, line3Y)
 
   doc.setFontSize(8)
   doc.setTextColor(148, 163, 184)
-  doc.text('[   ]', marginX + 35, line4Y)
+  doc.text('[   ]', marginX + 38, line3Y)
   doc.setFontSize(7.5)
   doc.setTextColor(15, 23, 42)
-  doc.text('Mercredi', marginX + 41, line4Y)
+  doc.text('Mercredi', marginX + 44, line3Y)
 
   doc.setFontSize(8)
   doc.setTextColor(148, 163, 184)
-  doc.text('[   ]', marginX + 75, line4Y)
+  doc.text('[   ]', marginX + 78, line3Y)
   doc.setFontSize(7.5)
   doc.setTextColor(15, 23, 42)
-  doc.text('Vendredi', marginX + 81, line4Y)
+  doc.text('Vendredi', marginX + 84, line3Y)
 
   // 9. ENTRAÎNEUR (Case Isabelle et case Chloé, Date du test, sans titre de visa ni signature)
-  const trainerY = orientY + orientH + 3
+  const trainerY = orientY + orientH + 2.5
   const trainerH = 11
   doc.setFillColor(255, 255, 255)
   doc.setDrawColor(203, 213, 225)
