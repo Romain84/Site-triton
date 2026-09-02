@@ -5,5 +5,6 @@ export {
   generateFicheViergePDF,
   generateFichesJourneePDF,
   generateProgrammePassagePDF,
+  parseAndFormatDateNaissance,
 } from './test-nage-fiche-generator'
 export type { EvaluationFicheData } from './test-nage-fiche-generator'

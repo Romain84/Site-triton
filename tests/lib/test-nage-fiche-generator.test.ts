@@ -5,6 +5,7 @@ import {
   generateFichesJourneePDF,
   generateProgrammePassagePDF,
   getSaisonSportive,
+  parseAndFormatDateNaissance,
 } from '@/lib/pdf/test-nage-fiche-generator'
 
 describe('test-nage-fiche-generator', () => {
@@ -179,5 +180,76 @@ describe('test-nage-fiche-generator', () => {
     expect(doc).toBeDefined()
     const pageCount = doc.internal.pages.length - 1
     expect(pageCount).toBeGreaterThanOrEqual(1)
+  })
+
+  it('should format date of birth and calculate age correctly for multiple date formats', () => {
+    // Format français DD/MM/YYYY
+    const res1 = parseAndFormatDateNaissance('08/05/2018', null)
+    expect(res1.dateStr).toBe('08/05/2018')
+    expect(res1.ageNumber).toBeGreaterThanOrEqual(7)
+    expect(res1.ageStr).toContain('ans')
+
+    // Format ISO YYYY-MM-DD
+    const res2 = parseAndFormatDateNaissance('2019-12-22T00:00:00.000Z', null)
+    expect(res2.dateStr).toBe('22/12/2019')
+    expect(res2.ageNumber).toBeGreaterThanOrEqual(6)
+
+    // Objet Date
+    const res3 = parseAndFormatDateNaissance(new Date(2020, 4, 1), null)
+    expect(res3.dateStr).toBe('01/05/2020')
+
+    // Âge explicite prioritaire
+    const res4 = parseAndFormatDateNaissance('01/05/2020', 6)
+    expect(res4.dateStr).toBe('01/05/2020')
+    expect(res4.ageNumber).toBe(6)
+    expect(res4.ageStr).toBe('6 ans')
+
+    // Date manquante mais âge présent
+    const res5 = parseAndFormatDateNaissance(null, 9)
+    expect(res5.dateStr).toBe('Non renseignée')
+    expect(res5.ageNumber).toBe(9)
+    expect(res5.ageStr).toBe('9 ans')
+  })
+
+  it('should use candidate fallbacks when generating session sheets if inscription fields are empty', () => {
+    const sessionWithCandidatFallback = {
+      titre: 'Tests de Nage 2026',
+      date: '2026-09-05',
+      lieu: 'Piscine Alphonse Roudière',
+      creneaux: [
+        {
+          heureDebut: '14:00',
+          heureFin: '14:05',
+          inscriptions: [
+            {
+              id: 'insc-fallback',
+              nomEnfant: 'Bernard',
+              prenomEnfant: 'Noah',
+              age: null,
+              dateNaissance: null,
+              nomParent: null,
+              telephoneParent: null,
+              emailParent: null,
+              groupeRecommande: null,
+              candidat: {
+                id: 'cand-1',
+                statut: 'planifie',
+                nom: 'Bernard',
+                prenom: 'Noah',
+                dateNaissance: '2017-07-13',
+                age: 9,
+                nomParent: 'Marc Bernard',
+                telephoneParent: '0784024886',
+                groupeRecommande: 'ENF 2',
+              },
+            },
+          ],
+        },
+      ],
+    }
+
+    const doc = generateFichesJourneePDF(sessionWithCandidatFallback)
+    expect(doc).toBeDefined()
+    expect(doc.internal.pages.length - 1).toBe(1)
   })
 })

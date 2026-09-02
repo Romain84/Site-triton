@@ -57,6 +57,11 @@ interface InscriptionItem {
     id: string
     statut: string
     groupeRecommande?: string | null
+    dateNaissance?: string | null
+    age?: number | null
+    telephoneParent?: string | null
+    nomParent?: string | null
+    emailParent?: string | null
   } | null
 }
 
@@ -784,14 +789,21 @@ export default function TestsNageManager() {
   // Télécharger la fiche d'évaluation individuelle d'un enfant
   const handleDownloadFicheIndividuelle = (insc: InscriptionItem, creneau?: CreneauItem) => {
     try {
+      const rawDateNais = insc.dateNaissance || insc.candidat?.dateNaissance
+      const rawAge = insc.age ?? insc.candidat?.age
+      const tel = insc.telephoneParent || insc.candidat?.telephoneParent
+      const parent = insc.nomParent || insc.candidat?.nomParent
+      const email = insc.emailParent || insc.candidat?.emailParent
+      const groupe = insc.groupeRecommande || insc.candidat?.groupeRecommande
+
       const doc = generateFicheEvaluationPDF({
         nomEnfant: insc.nomEnfant,
         prenomEnfant: insc.prenomEnfant,
-        dateNaissance: insc.dateNaissance,
-        age: insc.age,
-        nomParent: insc.nomParent,
-        emailParent: insc.emailParent,
-        telephoneParent: insc.telephoneParent,
+        dateNaissance: rawDateNais,
+        age: rawAge,
+        nomParent: parent,
+        emailParent: email,
+        telephoneParent: tel,
         niveauEstime: insc.niveauEstime,
         remarques: insc.remarques,
         statut: insc.statut,
@@ -800,7 +812,7 @@ export default function TestsNageManager() {
         heureFin: creneau?.heureFin,
         lieuTest: currentSession?.lieu,
         titreSession: currentSession?.titre,
-        groupeRecommande: insc.groupeRecommande || insc.candidat?.groupeRecommande,
+        groupeRecommande: groupe,
         commentaireCoach: insc.commentaireCoach,
         isVierge: false,
       })

@@ -36,6 +36,80 @@ export const GROUPES_CLUB = [
 ]
 
 /**
+ * Parse et formate de manière infaillible une date de naissance (Date, ISO, JJ/MM/AAAA)
+ * et calcule dynamiquement l'âge si non fourni ou si égal à 0.
+ */
+export function parseAndFormatDateNaissance(
+  dateInput?: string | Date | null,
+  ageInput?: number | null
+): { dateStr: string; ageStr: string; ageNumber: number | null } {
+  let day: number | null = null
+  let month: number | null = null
+  let year: number | null = null
+
+  if (dateInput) {
+    if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
+      day = dateInput.getDate()
+      month = dateInput.getMonth() + 1
+      year = dateInput.getFullYear()
+    } else if (typeof dateInput === 'string') {
+      const clean = dateInput.trim()
+      // 1. Format JJ/MM/AAAA ou JJ-MM-AAAA
+      const frMatch = clean.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/)
+      if (frMatch) {
+        day = parseInt(frMatch[1], 10)
+        month = parseInt(frMatch[2], 10)
+        year = parseInt(frMatch[3], 10)
+      } else {
+        // 2. Format ISO AAAA-MM-JJ
+        const isoMatch = clean.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/)
+        if (isoMatch) {
+          year = parseInt(isoMatch[1], 10)
+          month = parseInt(isoMatch[2], 10)
+          day = parseInt(isoMatch[3], 10)
+        } else {
+          const d = new Date(clean)
+          if (!isNaN(d.getTime())) {
+            day = d.getDate()
+            month = d.getMonth() + 1
+            year = d.getFullYear()
+          }
+        }
+      }
+    }
+  }
+
+  let dateStr = 'Non renseignée'
+  if (day !== null && month !== null && year !== null) {
+    const dStr = day.toString().padStart(2, '0')
+    const mStr = month.toString().padStart(2, '0')
+    dateStr = `${dStr}/${mStr}/${year}`
+  }
+
+  // Calcul ou récupération de l'âge
+  let calculatedAge: number | null = null
+  if (ageInput !== null && ageInput !== undefined && ageInput > 0) {
+    calculatedAge = ageInput
+  } else if (day !== null && month !== null && year !== null) {
+    const today = new Date()
+    let a = today.getFullYear() - year
+    const m = today.getMonth() + 1 - month
+    if (m < 0 || (m === 0 && today.getDate() < day)) {
+      a--
+    }
+    calculatedAge = Math.max(0, a)
+  }
+
+  const ageStr = calculatedAge !== null && calculatedAge > 0 ? `${calculatedAge} ans` : '-'
+
+  return {
+    dateStr,
+    ageStr,
+    ageNumber: calculatedAge,
+  }
+}
+
+/**
  * Détermine la saison sportive (ex: "SAISON 2025 – 2026") à partir d'une date
  */
 export function getSaisonSportive(dateInput?: string | Date | null): string {
@@ -176,8 +250,7 @@ export function renderFichePage(doc: jsPDF, data: EvaluationFicheData, isFirstPa
     doc.text('Date de naissance : ..... / ..... / .........      Âge : ....... ans', marginX + 3.5, cardY + 16.5)
     doc.text('Téléphone : .....................................................................', marginX + 3.5, cardY + 22.5)
   } else {
-    const dateNais = data.dateNaissance ? formatCompactDateFr(data.dateNaissance) : 'Non renseignée'
-    const ageStr = data.age ? `${data.age} ans` : '-'
+    const { dateStr: dateNais, ageStr } = parseAndFormatDateNaissance(data.dateNaissance, data.age)
     doc.text(`Né(e) le : ${dateNais}    ·    Âge : ${ageStr}`, marginX + 3.5, cardY + 16.5)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(15, 23, 42)
@@ -531,19 +604,30 @@ export function generateFichesJourneePDF(session: {
     heureDebut: string
     heureFin: string
     inscriptions: Array<{
-      id: string
+      id?: string
       nomEnfant: string
       prenomEnfant: string
       age?: number | null
-      dateNaissance?: string | null
+      dateNaissance?: string | Date | null
       nomParent?: string | null
-      emailParent?: string
-      telephoneParent?: string
+      emailParent?: string | null
+      telephoneParent?: string | null
       niveauEstime?: string | null
       remarques?: string | null
-      statut?: string
+      statut?: string | null
       groupeRecommande?: string | null
       commentaireCoach?: string | null
+      candidatId?: string | null
+      candidat?: {
+        id?: string
+        statut?: string
+        groupeRecommande?: string | null
+        dateNaissance?: string | Date | null
+        age?: number | null
+        nomParent?: string | null
+        telephoneParent?: string | null
+        emailParent?: string | null
+      } | null
     }>
   }>
 }): jsPDF {
@@ -581,14 +665,21 @@ export function generateFichesJourneePDF(session: {
 
   // Générer une page par enfant
   allInscriptions.forEach((item, index) => {
+    const rawDateNais = item.insc.dateNaissance || item.insc.candidat?.dateNaissance
+    const rawAge = item.insc.age ?? item.insc.candidat?.age
+    const tel = item.insc.telephoneParent || item.insc.candidat?.telephoneParent
+    const parent = item.insc.nomParent || item.insc.candidat?.nomParent
+    const email = item.insc.emailParent || item.insc.candidat?.emailParent
+    const groupe = item.insc.groupeRecommande || item.insc.candidat?.groupeRecommande
+
     renderFichePage(doc, {
       nomEnfant: item.insc.nomEnfant,
       prenomEnfant: item.insc.prenomEnfant,
-      dateNaissance: item.insc.dateNaissance,
-      age: item.insc.age,
-      nomParent: item.insc.nomParent,
-      emailParent: item.insc.emailParent,
-      telephoneParent: item.insc.telephoneParent,
+      dateNaissance: rawDateNais,
+      age: rawAge,
+      nomParent: parent,
+      emailParent: email,
+      telephoneParent: tel,
       niveauEstime: item.insc.niveauEstime,
       remarques: item.insc.remarques,
       statut: item.insc.statut,
@@ -597,7 +688,7 @@ export function generateFichesJourneePDF(session: {
       heureFin: item.creneauFin,
       lieuTest: session.lieu,
       titreSession: session.titre,
-      groupeRecommande: item.insc.groupeRecommande || item.insc.candidat?.groupeRecommande,
+      groupeRecommande: groupe,
       commentaireCoach: item.insc.commentaireCoach,
       isVierge: false,
     }, index === 0)
@@ -647,6 +738,10 @@ export function generateProgrammePassagePDF(session: {
         id?: string
         statut?: string
         groupeRecommande?: string | null
+        dateNaissance?: string | Date | null
+        age?: number | null
+        nomParent?: string | null
+        telephoneParent?: string | null
       } | null
     }>
   }>
@@ -694,12 +789,18 @@ export function generateProgrammePassagePDF(session: {
       cr.inscriptions.forEach((insc) => {
         const isHorsListing = !insc.candidatId || insc.candidat?.statut === 'hors_listing' || (insc.statut as string) === 'hors_listing'
         const nomComplet = `${(insc.nomEnfant || '').toUpperCase()} ${insc.prenomEnfant || ''}`.trim()
-        const ageStr = insc.age ? ` (${insc.age} ans)` : ''
-        const parentStr = insc.nomParent ? `\nPar: ${insc.nomParent}` : ''
-        const hlBadge = isHorsListing ? ' [Hors listing]' : ''
-        const candidatNom = `${nomComplet}${ageStr}${hlBadge}${parentStr}`
+        
+        const rawDateNais = insc.dateNaissance || insc.candidat?.dateNaissance
+        const rawAge = insc.age ?? insc.candidat?.age
+        const { ageStr, ageNumber } = parseAndFormatDateNaissance(rawDateNais, rawAge)
+        const ageLabel = ageNumber ? ` (${ageNumber} ans)` : ageStr !== '-' ? ` (${ageStr})` : ''
 
-        const telStr = insc.telephoneParent || '—'
+        const parentName = insc.nomParent || insc.candidat?.nomParent
+        const parentStr = parentName ? `\nPar: ${parentName}` : ''
+        const hlBadge = isHorsListing ? ' [Hors listing]' : ''
+        const candidatNom = `${nomComplet}${ageLabel}${hlBadge}${parentStr}`
+
+        const telStr = insc.telephoneParent || insc.candidat?.telephoneParent || '—'
         const groupeStr = insc.groupeRecommande || insc.candidat?.groupeRecommande || '—'
 
         let presenceStr = '[   ] Présent'
