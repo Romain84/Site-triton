@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
@@ -287,9 +287,36 @@ export default function TestNageBooking() {
     }
   }, [nomParent, remarques])
 
+  // Détection des créneaux passés (si la session a lieu aujourd'hui)
+  const isCreneauPasse = useCallback((sessionDateStr?: string | Date | null, heureFinStr?: string | null) => {
+    if (!sessionDateStr || !heureFinStr) return false
+    const sessionDate = new Date(sessionDateStr)
+    const now = new Date()
+    const isToday =
+      sessionDate.getFullYear() === now.getFullYear() &&
+      sessionDate.getMonth() === now.getMonth() &&
+      sessionDate.getDate() === now.getDate()
+
+    if (isToday) {
+      const [h, m] = heureFinStr.split(':').map(Number)
+      const slotEndMinutes = h * 60 + m
+      const nowMinutes = now.getHours() * 60 + now.getMinutes()
+      return slotEndMinutes < nowMinutes
+    }
+
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const sessionStart = new Date(sessionDate.getFullYear(), sessionDate.getMonth(), sessionDate.getDate()).getTime()
+    return sessionStart < todayStart
+  }, [])
+
   const currentSession = useMemo(() => {
     return sessions.find((s) => s.id === selectedSessionId) || sessions[0] || null
   }, [sessions, selectedSessionId])
+
+  const visibleCreneaux = useMemo(() => {
+    if (!currentSession) return []
+    return currentSession.creneaux.filter((cr) => !isCreneauPasse(currentSession.date, cr.heureFin))
+  }, [currentSession, isCreneauPasse])
 
   // Suggestions directes basées sur le nom de l'enfant
   const nomSuggestions = useMemo(() => {
@@ -1150,8 +1177,13 @@ export default function TestNageBooking() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
-              {currentSession.creneaux.map((cr) => {
+            {visibleCreneaux.length === 0 ? (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center text-xs text-slate-500 font-medium">
+                Tous les créneaux pour cette date sont terminés. Veuillez choisir une autre date ou contacter le club.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                {visibleCreneaux.map((cr) => {
                 const isSelected = selectedCreneau?.id === cr.id
                 return (
                   <button
@@ -1200,6 +1232,7 @@ export default function TestNageBooking() {
                 )
               })}
             </div>
+            )}
           </div>
 
           {/* Formulaire d'inscription rapide directement sous les créneaux */}

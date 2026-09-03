@@ -46,9 +46,48 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     const { id } = await params
 
+    // 1. Récupérer les candidats concernés par les créneaux de cette session
+    const sessionWithInscriptions = await prisma.sessionTestNage.findUnique({
+      where: { id },
+      include: {
+        creneaux: {
+          include: {
+            inscriptions: {
+              select: { candidatId: true },
+            },
+          },
+        },
+      },
+    })
+
+    const candidatIdsToReset: string[] = []
+    if (sessionWithInscriptions) {
+      sessionWithInscriptions.creneaux.forEach((cr) => {
+        cr.inscriptions.forEach((insc) => {
+          if (insc.candidatId) {
+            candidatIdsToReset.push(insc.candidatId)
+          }
+        })
+      })
+    }
+
+    // 2. Supprimer la session (suppression en cascade des créneaux et des réservations)
     await prisma.sessionTestNage.delete({
       where: { id },
     })
+
+    // 3. Remettre les candidats concernés en statut "a_planifier"
+    if (candidatIdsToReset.length > 0) {
+      await prisma.candidatTestNage.updateMany({
+        where: {
+          id: { in: candidatIdsToReset },
+          statut: 'planifie',
+        },
+        data: {
+          statut: 'a_planifier',
+        },
+      })
+    }
 
     return NextResponse.json({
       success: true,

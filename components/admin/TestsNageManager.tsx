@@ -169,6 +169,15 @@ export default function TestsNageManager() {
   const [showManualAddModal, setShowManualAddModal] = useState(false)
   const [manualAddCreneauId, setManualAddCreneauId] = useState<string>('')
 
+  // Filtres de créneaux (Feuille de passage)
+  const [creneauFilter, setCreneauFilter] = useState<'tous' | 'a_venir' | 'avec_inscrits'>('tous')
+
+  // Modale de fusion de sessions
+  const [showFusionModal, setShowFusionModal] = useState(false)
+  const [fusionSourceSessionId, setFusionSourceSessionId] = useState<string>('')
+  const [fusionTargetSessionId, setFusionTargetSessionId] = useState<string>('')
+  const [fusionLoading, setFusionLoading] = useState(false)
+
   // Filtres candidats
   const [candidatFilter, setCandidatFilter] = useState<'tous' | 'a_planifier' | 'planifie' | 'present' | 'absent' | 'hors_listing' | 'relances'>('tous')
   const [candidatSearch, setCandidatSearch] = useState('')
@@ -335,9 +344,40 @@ export default function TestsNageManager() {
     }
   }
 
+  // Détection des créneaux passés (pour alléger l'interface)
+  const isCreneauPasse = useCallback((sessionDateStr?: string | Date | null, heureFinStr?: string | null) => {
+    if (!sessionDateStr || !heureFinStr) return false
+    const sessionDate = new Date(sessionDateStr)
+    const now = new Date()
+    const isToday =
+      sessionDate.getFullYear() === now.getFullYear() &&
+      sessionDate.getMonth() === now.getMonth() &&
+      sessionDate.getDate() === now.getDate()
+
+    if (isToday) {
+      const [h, m] = heureFinStr.split(':').map(Number)
+      const slotEndMinutes = h * 60 + m
+      const nowMinutes = now.getHours() * 60 + now.getMinutes()
+      return slotEndMinutes < nowMinutes
+    }
+
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const sessionStart = new Date(sessionDate.getFullYear(), sessionDate.getMonth(), sessionDate.getDate()).getTime()
+    return sessionStart < todayStart
+  }, [])
+
   const currentSession = useMemo(() => {
     return sessions.find((s) => s.id === selectedSessionId) || sessions[0] || null
   }, [sessions, selectedSessionId])
+
+  const visibleCreneaux = useMemo(() => {
+    if (!currentSession) return []
+    return currentSession.creneaux.filter((cr) => {
+      if (creneauFilter === 'avec_inscrits') return cr.inscriptions.length > 0
+      if (creneauFilter === 'a_venir') return !isCreneauPasse(currentSession.date, cr.heureFin)
+      return true
+    })
+  }, [currentSession, creneauFilter, isCreneauPasse])
 
   // Copier le lien public
   const handleCopyPublicLink = () => {
@@ -757,6 +797,45 @@ export default function TestsNageManager() {
       }
     } catch {
       toast.error('Erreur lors de la suppression')
+    }
+  }
+
+  // Fusion de deux sessions sans perte de données
+  const handleFusionSessions = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!fusionSourceSessionId || !fusionTargetSessionId) {
+      toast.error('Veuillez sélectionner la session à intégrer et la session principale cible')
+      return
+    }
+    if (fusionSourceSessionId === fusionTargetSessionId) {
+      toast.error('Veuillez sélectionner deux sessions distinctes pour la fusion')
+      return
+    }
+
+    setFusionLoading(true)
+    try {
+      const res = await fetch('/api/admin/tests-nage/sessions/fusionner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceSessionId: fusionSourceSessionId,
+          targetSessionId: fusionTargetSessionId,
+        }),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(data.message || 'Sessions fusionnées avec succès !')
+        setShowFusionModal(false)
+        setSelectedSessionId(fusionTargetSessionId)
+        await loadData()
+      } else {
+        toast.error(data.error || 'Erreur lors de la fusion')
+      }
+    } catch {
+      toast.error('Erreur réseau lors de la fusion')
+    } finally {
+      setFusionLoading(false)
     }
   }
 
@@ -1227,7 +1306,68 @@ export default function TestsNageManager() {
             </div>
           ) : (
             <div className="space-y-3 print:hidden">
-              {currentSession.creneaux.map((cr) => {
+              {/* Filtre d'affichage des créneaux pour ne pas surcharger l'interface */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-slate-700">Affichage créneaux :</span>
+                  <div className="inline-flex rounded-xl bg-white p-1 border border-slate-200 shadow-3xs">
+                    <button
+                      type="button"
+                      onClick={() => setCreneauFilter('tous')}
+                      className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                        creneauFilter === 'tous'
+                          ? 'bg-slate-900 text-white shadow-3xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Tous ({currentSession.creneaux.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCreneauFilter('a_venir')}
+                      className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                        creneauFilter === 'a_venir'
+                          ? 'bg-primary text-white shadow-3xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                      title="Masque les créneaux dont l'horaire est déjà passé aujourd'hui"
+                    >
+                      🕒 À venir & En cours ({currentSession.creneaux.filter((cr) => !isCreneauPasse(currentSession.date, cr.heureFin)).length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCreneauFilter('avec_inscrits')}
+                      className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                        creneauFilter === 'avec_inscrits'
+                          ? 'bg-emerald-600 text-white shadow-3xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      👥 Avec inscrits ({currentSession.creneaux.filter((cr) => cr.inscriptions.length > 0).length})
+                    </button>
+                  </div>
+                </div>
+
+                {creneauFilter === 'a_venir' && currentSession.creneaux.some((cr) => isCreneauPasse(currentSession.date, cr.heureFin)) && (
+                  <span className="text-[11px] font-medium text-slate-500 italic">
+                    💡 Créneaux passés masqués pour ne pas surcharger l&apos;interface
+                  </span>
+                )}
+              </div>
+
+              {visibleCreneaux.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-500 font-medium space-y-2">
+                  <p>Aucun créneau ne correspond au filtre sélectionné.</p>
+                  <button
+                    type="button"
+                    onClick={() => setCreneauFilter('tous')}
+                    className="font-bold text-primary hover:underline cursor-pointer"
+                  >
+                    Afficher tous les créneaux ({currentSession.creneaux.length}) →
+                  </button>
+                </div>
+              ) : (
+                visibleCreneaux.map((cr) => {
                 const isComplet = cr.inscriptions.length >= cr.capacite
                 return (
                   <div
@@ -1454,16 +1594,18 @@ export default function TestsNageManager() {
                               </button>
                             </div>
                           </div>
-                        )})}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })
           )}
         </div>
       )}
+    </div>
+  )}
 
       {/* ─── VUE 2 : SUIVI DES CANDIDATS (LISTING GLOBAL) ─── */}
       {activeSubTab === 'candidats' && (
@@ -1831,13 +1973,30 @@ export default function TestsNageManager() {
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">
               Sessions de tests configurées
             </h3>
-            <button
-              onClick={() => setShowCreateSessionModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary-dark transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Nouvelle session</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {sessions.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFusionSourceSessionId(sessions[1]?.id || '')
+                    setFusionTargetSessionId(sessions[0]?.id || '')
+                    setShowFusionModal(true)
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-bold text-xs transition-colors cursor-pointer"
+                  title="Fusionner deux sessions en une seule sans perdre aucune réservation"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-purple-700" />
+                  <span>Fusionner 2 sessions</span>
+                </button>
+              )}
+              <button
+                onClick={() => setShowCreateSessionModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary-dark transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Nouvelle session</span>
+              </button>
+            </div>
           </div>
 
           <div className="divide-y divide-slate-100">
@@ -2941,6 +3100,100 @@ export default function TestsNageManager() {
                   className="flex-1 py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
                 >
                   {creatingCandidat ? 'Ajout en cours...' : 'Ajouter le candidat'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODALE : FUSION DE DEUX SESSIONS ─── */}
+      {showFusionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full border border-slate-200 shadow-xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold text-sm">
+                  🔄
+                </div>
+                <h3 className="text-base font-black text-slate-900">
+                  Fusionner deux sessions de tests
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowFusionModal(false)}
+                className="text-slate-400 hover:text-slate-700 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Cette opération regroupe <strong>tous les créneaux et toutes les inscriptions</strong> de la session source dans la session cible. <strong>Aucune réservation ni donnée n&apos;est perdue.</strong>
+            </p>
+
+            <form onSubmit={handleFusionSessions} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="block font-bold uppercase tracking-wider text-slate-700">
+                  1. Session à intégrer (sera fusionnée et supprimée) :
+                </label>
+                <select
+                  value={fusionSourceSessionId}
+                  onChange={(e) => setFusionSourceSessionId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-purple-500 focus:bg-white outline-none font-bold"
+                  required
+                >
+                  <option value="">Sélectionnez la session source...</option>
+                  {sessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.titre} ({formatCompactDateFr(s.date)} · {s.heureDebut}-{s.heureFin}) — {s.stats.totalInscrits} inscrits
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold uppercase tracking-wider text-slate-700">
+                  2. Session cible (session principale conservée) :
+                </label>
+                <select
+                  value={fusionTargetSessionId}
+                  onChange={(e) => setFusionTargetSessionId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-purple-500 focus:bg-white outline-none font-bold"
+                  required
+                >
+                  <option value="">Sélectionnez la session principale cible...</option>
+                  {sessions.filter((s) => s.id !== fusionSourceSessionId).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.titre} ({formatCompactDateFr(s.date)} · {s.heureDebut}-{s.heureFin}) — {s.stats.totalInscrits} inscrits
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="p-3.5 bg-purple-50 rounded-2xl border border-purple-200 text-purple-900 text-[11px] space-y-1.5">
+                <p className="font-bold">✨ Résultat de la fusion :</p>
+                <ul className="list-disc list-inside space-y-1 text-purple-800 font-medium">
+                  <li>Tous les créneaux horaires sont conservés et rassemblés sous une même séance.</li>
+                  <li>Toutes les réservations, présences et fiches d&apos;évaluation restent intactes.</li>
+                  <li>L&apos;amplitude horaire globale de la session est automatiquement recalculée.</li>
+                </ul>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFusionModal(false)}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={fusionLoading || !fusionSourceSessionId || !fusionTargetSessionId || fusionSourceSessionId === fusionTargetSessionId}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold transition-colors cursor-pointer disabled:opacity-50 shadow-xs flex items-center justify-center gap-1.5"
+                >
+                  {fusionLoading ? 'Fusion en cours...' : '🔄 Confirmer la fusion'}
                 </button>
               </div>
             </form>
