@@ -591,16 +591,18 @@ export default function ParametresManager() {
       })
 
       if (!response.ok) {
-        throw new Error('Erreur de sauvegarde')
+        const errorData = await response.json().catch(() => ({}))
+        const msg = errorData.error || errorData.message || 'Erreur lors de la sauvegarde automatique'
+        throw new Error(msg)
       }
 
       const data = await response.json()
       setSettings(data.settings)
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus('idle'), 3000)
-    } catch {
+    } catch (err: any) {
       setSaveStatus('error')
-      setError('Erreur lors de la sauvegarde automatique')
+      setError(err?.message || 'Erreur lors de la sauvegarde automatique')
     }
   }
 

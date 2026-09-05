@@ -11,7 +11,7 @@ const createCoachSchema = z.object({
   email: z.string().email('Email invalide').optional().nullable(),
   password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères').optional().nullable(),
   telephone: z.string().max(20).optional().nullable(),
-  photo: z.string().url('URL de photo invalide').optional().nullable(),
+  photo: z.string().optional().nullable(),
   bio: z.string().max(2000).optional().nullable(),
   specialites: z.string().max(500).optional().nullable(),
   siret: z.string().regex(/^[0-9]{14}$/, 'Le SIRET doit contenir 14 chiffres').optional().nullable().or(z.literal('')),
