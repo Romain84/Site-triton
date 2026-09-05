@@ -57,7 +57,7 @@ const histoireTimeline = [
   {
     annee: '2015 - 2016',
     titre: 'Nouveau Cap & Affiliation FFN',
-    description: 'Le Triton s\'affilie à la Fédération Française de Natation (FFN) pour propulser ses compétiteurs. Il reprend en parallèle l\'activité Performance Adulte de la communauté de communes LMV pour élargir son public.',
+    description: 'Le Triton s\'affilie à la Fédération Française de Natation (FFN) pour propulser ses compétiteurs sur les circuits officiels, tout en diversifiant ses activités pour accueillir un public élargi de passionnés.',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
@@ -67,7 +67,7 @@ const histoireTimeline = [
   {
     annee: 'Aujourd\'hui',
     titre: 'Une Structure d\'Excellence',
-    description: 'Une quarantaine de licenciés, un encadrement professionnel (maîtres-nageurs diplômés d\'État mis à disposition par LMV) et des bénévoles engagés assurent des résultats remarquables sur les circuits régionaux et nationaux.',
+    description: 'Des licenciés passionnés de tous âges, un encadrement professionnel diplômé d\'État et des bénévoles engagés assurent un épanouissement sportif et de remarquables résultats sur les circuits régionaux et nationaux.',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5a2 2 0 10-2 2h2zm0 8h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
