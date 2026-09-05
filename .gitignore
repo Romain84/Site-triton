@@ -33,3 +33,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# sensitive uploads
+/public/uploads/factures/
+/public/uploads/recus/

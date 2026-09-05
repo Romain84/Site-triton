@@ -39,11 +39,15 @@ RUN npm prune --omit=dev
 
 # Etape 3 : Image finale de production (ultra-légère)
 FROM node:20-alpine AS runner
-RUN apk add --no-cache libc6-compat openssl
+RUN apk add --no-cache libc6-compat openssl su-exec
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Création de l'utilisateur et groupe non-privilégiés
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001 -G nodejs
 
 # Copier uniquement les fichiers nécessaires au fonctionnement
 COPY package*.json ./
@@ -53,6 +57,10 @@ COPY --from=builder /app/chatbot_knowledge.json ./
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
+
+# Configuration des dossiers persistants et attribution des droits
+RUN mkdir -p /app/public/uploads /app/backups && \
+    chown -R nextjs:nodejs /app
 
 EXPOSE 3000
 

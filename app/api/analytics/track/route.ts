@@ -131,7 +131,7 @@ async function resolveGeoIp(ip: string, requestHeaders?: Headers) {
   return { pays: 'France', codePays: 'FR', region: 'Vaucluse', ville: 'Cavaillon', latitude: 43.8333, longitude: 5.0333, codePostal: '84300', fai: 'Inconnu', timezone: 'Europe/Paris' }
 }
 
-import { getClientIp } from '@/lib/api/request'
+import { getClientIp, anonymizeIp } from '@/lib/api/request'
 
 export async function POST(request: NextRequest) {
   try {
@@ -154,14 +154,15 @@ export async function POST(request: NextRequest) {
     // Récupération propre de l'IP
     const rawIp = getClientIp(request)
     const cleanIp = rawIp.replace('::ffff:', '')
+    const anonymizedIp = anonymizeIp(cleanIp)
 
-    // 1. Géolocalisation avec fallback multi-fournisseurs et cache
+    // 1. Géolocalisation avec fallback multi-fournisseurs et cache (utilise l'IP pour la précision de région/ville)
     const geo = await resolveGeoIp(cleanIp, request.headers)
 
-    // 2. Insertion standard via Prisma ORM
+    // 2. Insertion standard via Prisma ORM avec IP anonymisée (RGPD / CNIL)
     const visite = await prisma.visite.create({
       data: {
-        ip: cleanIp,
+        ip: anonymizedIp,
         pays: geo.pays,
         codePays: geo.codePays,
         region: geo.region,
@@ -177,7 +178,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({ success: true, id: visite.id, ville: geo.ville, ip: cleanIp })
+    return NextResponse.json({ success: true, id: visite.id, ville: geo.ville, ip: anonymizedIp })
   } catch (error) {
     console.error('Erreur analytics track POST:', error)
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 })
@@ -193,13 +194,14 @@ export async function GET(request: NextRequest) {
 
   const rawIp = getClientIp(request)
   const cleanIp = rawIp.replace('::ffff:', '')
+  const anonymizedIp = anonymizeIp(cleanIp)
 
   const geo = await resolveGeoIp(cleanIp)
 
   try {
     const visite = await prisma.visite.create({
       data: {
-        ip: cleanIp,
+        ip: anonymizedIp,
         pays: geo.pays,
         codePays: geo.codePays,
         region: geo.region,
@@ -214,7 +216,7 @@ export async function GET(request: NextRequest) {
         navigateur: 'Mobile Test',
       },
     })
-    return NextResponse.json({ success: true, message: 'Visite de test enregistrée avec succès !', id: visite.id, ip: cleanIp, ville: geo.ville })
+    return NextResponse.json({ success: true, message: 'Visite de test enregistrée avec succès !', id: visite.id, ip: anonymizedIp, ville: geo.ville })
   } catch (err) {
     return NextResponse.json({ success: false, error: String(err) }, { status: 500 })
   }

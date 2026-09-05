@@ -7,6 +7,7 @@ import { logger } from '@/lib/logger'
 import { apiError, apiSuccess } from '@/lib/api/response'
 import { isSameOriginRequest } from '@/lib/security/origin'
 import { formRateLimiter } from '@/lib/rate-limiter'
+import { getClientIp } from '@/lib/api/request'
 
 const log = logger.withContext('Coach')
 
@@ -25,9 +26,7 @@ export async function POST(request: NextRequest) {
       return apiError('Origine non autorisée', 403, undefined, 'FORBIDDEN_ORIGIN')
     }
 
-    const ip = request.headers.get('x-forwarded-for') ||
-      request.headers.get('x-real-ip') ||
-      'unknown'
+    const ip = getClientIp(request)
 
     const rateLimitResult = formRateLimiter.checkLimit(ip, 'auth-coach-change-password')
     if (!rateLimitResult.allowed) {

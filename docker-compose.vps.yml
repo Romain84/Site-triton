@@ -49,7 +49,9 @@ services:
     command: >
       sh -c "
         npx prisma db push &&
-        npm run start
+        mkdir -p /app/public/uploads /app/backups &&
+        chown -R nextjs:nodejs /app/public/uploads /app/backups &&
+        exec su-exec nextjs npm run start
       "
 
 volumes:

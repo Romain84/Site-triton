@@ -50,6 +50,58 @@ export async function middleware(request: NextRequest) {
   ].join('; ')
   response.headers.set('Content-Security-Policy', csp)
 
+  // Protection des documents sensibles téléversés (Reçus fiscaux Cerfa & Factures coachs)
+  if (pathname.startsWith('/uploads/recus/')) {
+    const adminToken = request.cookies.get('admin_session')?.value
+    if (!adminToken) {
+      return NextResponse.json({ error: 'Accès interdit - Authentification requise' }, { status: 401 })
+    }
+    try {
+      const { payload } = await jwtVerify(adminToken, getSessionSecretKey())
+      if (payload.type !== 'admin' || !payload.userId) {
+        return NextResponse.json({ error: 'Accès interdit - Droits administrateur requis' }, { status: 403 })
+      }
+      return response
+    } catch {
+      return NextResponse.json({ error: 'Session invalide ou expirée' }, { status: 401 })
+    }
+  }
+
+  if (pathname.startsWith('/uploads/factures/')) {
+    const adminToken = request.cookies.get('admin_session')?.value
+    const coachToken = request.cookies.get('coach_session')?.value
+
+    let isAuthorized = false
+
+    if (adminToken) {
+      try {
+        const { payload } = await jwtVerify(adminToken, getSessionSecretKey())
+        if (payload.type === 'admin' && payload.userId) {
+          isAuthorized = true
+        }
+      } catch {
+        // Ignorer, tester le coachToken si présent
+      }
+    }
+
+    if (!isAuthorized && coachToken) {
+      try {
+        const { payload } = await jwtVerify(coachToken, getSessionSecretKey())
+        if (payload.type === 'coach' && payload.coachId) {
+          isAuthorized = true
+        }
+      } catch {
+        // Ignorer
+      }
+    }
+
+    if (!isAuthorized) {
+      return NextResponse.json({ error: 'Accès interdit - Connexion requise' }, { status: 401 })
+    }
+
+    return response
+  }
+
   // Protection des routes administrateur (HTML et API).
   const isPublicAdminRoute = ['/admin/login', '/admin/mot-de-passe-oublie', '/admin/reset-password'].includes(pathname)
   const isApiAdminRoute = pathname.startsWith('/api/admin')
@@ -138,6 +190,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/uploads/factures/:path*',
+    '/uploads/recus/:path*',
     '/api/admin/:path*',
     '/api/coach/:path*',
     '/api/auth/admin/:path*',
