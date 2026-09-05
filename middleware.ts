@@ -40,7 +40,7 @@ export async function middleware(request: NextRequest) {
     "default-src 'self'",
     scriptSrc,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.stripe.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://server.arcgisonline.com",
+    "img-src 'self' data: blob: https://*.stripe.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://server.arcgisonline.com https://*.public.blob.vercel-storage.com https://*.blob.vercel-storage.com",
     "font-src 'self'",
     "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://www.google.com https://maps.google.com https://www.google.fr",
     "connect-src 'self' https://api.stripe.com https://ipwho.is https://ipapi.co",
