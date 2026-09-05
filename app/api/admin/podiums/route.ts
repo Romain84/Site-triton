@@ -1,9 +1,12 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { apiError, apiSuccess } from '@/lib/api/response'
+import { requireAdmin } from '@/lib/api/guards'
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
     const { searchParams } = new URL(request.url)
     const nageur = searchParams.get('nageur')
     const categorie = searchParams.get('categorie')

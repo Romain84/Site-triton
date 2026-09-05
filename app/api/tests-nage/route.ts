@@ -89,34 +89,48 @@ function maskEmail(email: string | null | undefined): string | null {
   return `${maskedName}@${maskedDomain}${domainExt}`
 }
 
-    // 2. Récupérer la liste des candidats à planifier (pour l'autocomplétion)
-    // Sécurité RGPD : Ne jamais exposer le téléphone en clair, masquer l'adresse email
-    const rawCandidats = await prisma.candidatTestNage.findMany({
-      where: {
-        statut: 'a_planifier',
-        ...(sessionId ? { OR: [{ sessionId }, { sessionId: null }] } : {}),
-      },
-      select: {
-        id: true,
-        nom: true,
-        prenom: true,
-        age: true,
-        dateNaissance: true,
-        emailParent: true,
-        groupeRecommande: true,
-      },
-      orderBy: [{ nom: 'asc' }, { prenom: 'asc' }],
-    })
+    // 2. Sécurité RGPD : Ne JAMAIS exposer publiquement la liste exhaustive des mineurs.
+    // Si un candidat spécifique est demandé par son identifiant unique (lien direct reçu par les parents),
+    // on renvoie uniquement son dossier. Sinon, la liste publique reste vide.
+    const candidatId = searchParams.get('c') || searchParams.get('candidatId')
+    let candidats: Array<{
+      id: string
+      nom: string
+      prenom: string
+      age: number | null
+      dateNaissance: Date | null
+      groupeRecommande: string | null
+      emailParentMasque: string | null
+    }> = []
 
-    const candidats = rawCandidats.map((c) => ({
-      id: c.id,
-      nom: c.nom,
-      prenom: c.prenom,
-      age: c.age,
-      dateNaissance: c.dateNaissance,
-      groupeRecommande: c.groupeRecommande,
-      emailParentMasque: maskEmail(c.emailParent),
-    }))
+    if (candidatId) {
+      const singleCandidat = await prisma.candidatTestNage.findUnique({
+        where: { id: candidatId },
+        select: {
+          id: true,
+          nom: true,
+          prenom: true,
+          age: true,
+          dateNaissance: true,
+          emailParent: true,
+          groupeRecommande: true,
+        },
+      })
+
+      if (singleCandidat) {
+        candidats = [
+          {
+            id: singleCandidat.id,
+            nom: singleCandidat.nom,
+            prenom: singleCandidat.prenom,
+            age: singleCandidat.age,
+            dateNaissance: singleCandidat.dateNaissance,
+            groupeRecommande: singleCandidat.groupeRecommande,
+            emailParentMasque: maskEmail(singleCandidat.emailParent),
+          },
+        ]
+      }
+    }
 
     // 3. Formater les créneaux avec les places restantes
     const formattedSessions = sessions.map((session) => ({

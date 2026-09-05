@@ -27,6 +27,7 @@ export async function middleware(request: NextRequest) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('X-XSS-Protection', '1; mode=block')
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
 
   // En développement, React nécessite 'unsafe-eval' pour le HMR et le débogage.
   const isDev = process.env.NODE_ENV === 'development'
@@ -34,15 +35,15 @@ export async function middleware(request: NextRequest) {
     ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com"
     : "script-src 'self' 'unsafe-inline' https://js.stripe.com"
 
-  // Politique CSP commune pour limiter les ressources autorisées.
+  // Politique CSP pour limiter les ressources autorisées.
   const csp = [
     "default-src 'self'",
-    scriptSrc + " https://unpkg.com",
-    "style-src 'self' 'unsafe-inline' https://unpkg.com",
-    "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://*.stripe.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://server.arcgisonline.com https://unpkg.com",
+    scriptSrc,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https://*.stripe.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://server.arcgisonline.com",
     "font-src 'self'",
     "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://www.google.com https://maps.google.com https://www.google.fr",
-    "connect-src 'self' https://api.stripe.com http://ip-api.com https://ipwho.is https://ipapi.co",
+    "connect-src 'self' https://api.stripe.com https://ipwho.is https://ipapi.co",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -67,12 +68,12 @@ export async function middleware(request: NextRequest) {
     try {
       const { payload } = await jwtVerify(token, getSessionSecretKey())
 
-      // Sécurité 1 : Rôle Coach -> redirection ou bloqué
-      if (payload.role === 'coach') {
+      // Sécurité 1 : Exiger explicitement une session de type 'admin'
+      if (payload.type !== 'admin' || !payload.userId) {
         if (pathname.startsWith('/api/')) {
-          return NextResponse.json({ error: 'Accès interdit - Espace Coach requis' }, { status: 403 })
+          return NextResponse.json({ error: 'Accès interdit - Droits administrateur requis' }, { status: 403 })
         }
-        return NextResponse.redirect(new URL('/coach', request.url))
+        return NextResponse.redirect(new URL('/admin/login', request.url))
       }
 
       // Sécurité 2 : Rôle Superviseur -> interdiction des routes finances
@@ -97,7 +98,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-
   // Protection des routes coach (HTML et API).
   const isPublicCoachRoute = ['/coach/login', '/coach/mot-de-passe-oublie', '/coach/reset-password'].includes(pathname)
   const isApiCoachRoute = pathname.startsWith('/api/coach')
@@ -114,7 +114,16 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      await jwtVerify(token, getSessionSecretKey())
+      const { payload } = await jwtVerify(token, getSessionSecretKey())
+
+      // Sécurité : Exiger explicitement une session de type 'coach'
+      if (payload.type !== 'coach' || !payload.coachId) {
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json({ error: 'Accès interdit - Espace Coach requis' }, { status: 403 })
+        }
+        return NextResponse.redirect(new URL('/coach/login', request.url))
+      }
+
       return response
     } catch {
       if (pathname.startsWith('/api/')) {

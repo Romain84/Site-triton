@@ -17,7 +17,7 @@ export interface AdminSession {
 
 export async function createCoachSession(coach: CoachSession) {
   const secretKey = getSessionSecretKey()
-  const token = await new SignJWT({ ...coach, type: 'coach' })
+  const token = await new SignJWT({ ...coach, type: 'coach', role: 'coach' })
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime('7d')
     .sign(secretKey)

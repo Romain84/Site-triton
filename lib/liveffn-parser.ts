@@ -16,7 +16,10 @@ export interface LiveFFNData {
  */
 export async function fetchLiveFFNData(liveffnUrl: string): Promise<LiveFFNData | null> {
   try {
-    if (!liveffnUrl.includes('liveffn.com')) {
+    const parsed = new URL(liveffnUrl)
+    const validHostnames = ['liveffn.com', 'www.liveffn.com']
+    if (!validHostnames.includes(parsed.hostname.toLowerCase()) || (parsed.protocol !== 'https:' && parsed.protocol !== 'http:')) {
+      liveffnLogger.warn(`URL LiveFFN invalide ou domaine non autorisé: ${liveffnUrl}`)
       return null
     }
 

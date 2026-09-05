@@ -35,7 +35,6 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:TritonNewSite84@db:5432/postgres?schema=public
       - SESSION_SECRET=local-development-secret-key-123456789
-      - BLOB_READ_WRITE_TOKEN=vercel_blob_rw_O668kGM0NLjS2W9j_fwjTlDnE1iX7Qcx3IuBMB41EODbq0t
       - STRIPE_SECRET_KEY=sk_test_51S5tcrLOxXo6f8ZWuQHkJXvPWPQ1lDFb7tYzGFPRw7h244rE1YNdvjiNCaeL44bDrwZqpiHhIN3sldG6RyK0Z2nF00kNH3hHbv
       - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51S5tcrLOxXo6f8ZWtiePJopwWZaEGqSY0fFHLVOaT9QqBWeqAIDc3Ja6kElSGFCr9aiCm9UEGJZA5CIgthQauulC00ygGM69UN
       - NEXT_PUBLIC_URL=http://localhost:3000
@@ -43,7 +42,7 @@ services:
     command: >
       sh -c "
         npm install &&
-        npx prisma db push --accept-data-loss &&
+        npx prisma db push &&
         npm run dev
       "
 

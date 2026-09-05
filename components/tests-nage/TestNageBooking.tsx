@@ -166,6 +166,8 @@ export default function TestNageBooking() {
       const url = new URL('/api/tests-nage', window.location.origin)
       if (code) url.searchParams.set('code', code)
       if (tokenParam) url.searchParams.set('token', tokenParam)
+      const cid = searchParams.get('c') || searchParams.get('candidatId')
+      if (cid) url.searchParams.set('c', cid)
 
       const res = await fetch(url.toString(), {
         headers: code ? { 'x-tests-code': code } : {},

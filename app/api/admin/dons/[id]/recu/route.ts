@@ -6,7 +6,6 @@ import { generateDonationPDF } from '@/lib/pdf/recu-pdf-generator'
 import { queueEmail } from '@/lib/email'
 import { logAdminAudit } from '@/lib/admin-audit'
 import { logger } from '@/lib/logger'
-import { put } from '@vercel/blob'
 import fs from 'fs/promises'
 import path from 'path'
 
@@ -171,29 +170,13 @@ export async function POST(request: NextRequest, { params }: Params) {
     const pdfArrayBuffer = doc.output('arraybuffer')
     const pdfBuffer = Buffer.from(pdfArrayBuffer)
 
-    // --- STOCKAGE DU PDF (Vercel Blob avec fallback local) ---
-    let pdfUrl = ''
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      try {
-        const blob = await put(`recus/${updatedDon.numeroRecu}.pdf`, pdfBuffer, {
-          access: 'public',
-          contentType: 'application/pdf',
-        })
-        pdfUrl = blob.url
-      } catch (err) {
-        logger.error('Erreur stockage Blob, tentative de fallback local', err)
-      }
-    }
-
-    // Fallback local si Blob non configuré ou échoué
-    if (!pdfUrl) {
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'recus')
-      await fs.mkdir(uploadDir, { recursive: true })
-      const fileName = `${Date.now()}-${updatedDon.numeroRecu}.pdf`
-      const filePath = path.join(uploadDir, fileName)
-      await fs.writeFile(filePath, pdfBuffer)
-      pdfUrl = `/uploads/recus/${fileName}`
-    }
+    // --- STOCKAGE DU PDF EN LOCAL PERSISTANT ---
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'recus')
+    await fs.mkdir(uploadDir, { recursive: true })
+    const fileName = `${Date.now()}-${updatedDon.numeroRecu}.pdf`
+    const filePath = path.join(uploadDir, fileName)
+    await fs.writeFile(filePath, pdfBuffer)
+    const pdfUrl = `/uploads/recus/${fileName}`
 
     // Mettre à jour l'URL du PDF sur le don
     const donFinal = await prisma.don.update({

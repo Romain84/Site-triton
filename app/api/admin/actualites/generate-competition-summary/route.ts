@@ -3,11 +3,15 @@ import { apiError, apiSuccess } from '@/lib/api/response'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
 import { fetchLiveFFNData } from '@/lib/liveffn-parser'
+import { requireAdmin } from '@/lib/api/guards'
 
 const aiLogger = logger.withContext('CompetitionSummaryAI')
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
     const body = await request.json()
     const { rawNotes, competitionName, lieu, liveffnUrl } = body
 
@@ -15,18 +19,26 @@ export async function POST(request: NextRequest) {
     let effectiveTitle = competitionName || ''
     let effectiveLieu = lieu || ''
 
-    // 1. Si une URL LiveFFN est fournie, extraire les données depuis LiveFFN
-    if (liveffnUrl && typeof liveffnUrl === 'string' && liveffnUrl.includes('liveffn.com')) {
-      const liveData = await fetchLiveFFNData(liveffnUrl)
-      if (liveData) {
-        if (!effectiveTitle && liveData.title) effectiveTitle = liveData.title
-        if (!effectiveLieu && liveData.location) effectiveLieu = liveData.location
+    // 1. Si une URL LiveFFN est fournie, valider strictement l'hôte et extraire les données
+    if (liveffnUrl && typeof liveffnUrl === 'string') {
+      try {
+        const parsed = new URL(liveffnUrl)
+        const validHostnames = ['liveffn.com', 'www.liveffn.com']
+        if (validHostnames.includes(parsed.hostname.toLowerCase()) && (parsed.protocol === 'https:' || parsed.protocol === 'http:')) {
+          const liveData = await fetchLiveFFNData(liveffnUrl)
+          if (liveData) {
+            if (!effectiveTitle && liveData.title) effectiveTitle = liveData.title
+            if (!effectiveLieu && liveData.location) effectiveLieu = liveData.location
 
-        const tritonText = liveData.tritonResults.length > 0
-          ? liveData.tritonResults.join('\n')
-          : liveData.rawTextContent
+            const tritonText = liveData.tritonResults.length > 0
+              ? liveData.tritonResults.join('\n')
+              : liveData.rawTextContent
 
-        effectiveNotes = `RÉSULTATS IMPORTÉS DIRECTEMENT DE LIVEFFN (${liveffnUrl}) :\n${tritonText}\n\nNOTES COMPLÉMENTAIRES DU COACH :\n${rawNotes || 'Aucune'}`
+            effectiveNotes = `RÉSULTATS IMPORTÉS DIRECTEMENT DE LIVEFFN (${liveffnUrl}) :\n${tritonText}\n\nNOTES COMPLÉMENTAIRES DU COACH :\n${rawNotes || 'Aucune'}`
+          }
+        }
+      } catch {
+        // Ignorer les URLs malformées
       }
     }
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminSession } from '@/lib/auth/session'
-import { put } from '@vercel/blob'
 import { logger } from '@/lib/logger'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
@@ -40,11 +39,11 @@ export async function POST(request: NextRequest) {
     }
 
     const fileExtLower = path.extname(file.name).toLowerCase()
-    const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.bmp', '.heic', '.avif']
-    const isImageMime = file.type ? file.type.startsWith('image/') : false
+    const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.heic', '.avif']
+    const isImageMime = file.type ? file.type.startsWith('image/') && file.type !== 'image/svg+xml' : false
     const isImageExt = validExtensions.includes(fileExtLower)
 
-    // Validation du type flexible
+    // Validation du type (les SVGs sont exclus pour prévenir les attaques XSS stocké)
     if (!isImageMime && !isImageExt) {
       logAdminAudit({
         action: 'upload.logo.error',
@@ -54,7 +53,7 @@ export async function POST(request: NextRequest) {
         details: { fileName: file.name, size: file.size, mimeType: file.type, error: `Format non supporté: ${file.type || fileExtLower}` },
       })
       return NextResponse.json(
-        { error: `Format de logo non supporté (${file.type || fileExtLower})` },
+        { error: `Format de logo non supporté (${file.type || fileExtLower}). Les formats autorisés sont JPG, PNG, WebP, GIF, AVIF.` },
         { status: 400 }
       )
     }
@@ -76,49 +75,29 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer()
     let buffer = Buffer.from(bytes)
-    let contentType = file.type
     let fileExt = path.extname(file.name).toLowerCase()
     let originalName = path.basename(file.name, fileExt).replace(/[^a-zA-Z0-9.-]/g, '_')
 
-    // Convertir en WebP si ce n'est pas un SVG (conserve la transparence pour les PNGs)
-    if (file.type !== 'image/svg+xml') {
-      try {
-        buffer = await sharp(buffer)
-          .webp({ quality: 90, alphaQuality: 100 })
-          .toBuffer()
-        contentType = 'image/webp'
-        fileExt = '.webp'
-      } catch (err) {
-        uploadLogger.warn('Erreur lors de la conversion sharp en WebP, utilisation du buffer d\'origine', err)
-      }
+    // Convertir en WebP (conserve la transparence pour les logos PNG)
+    try {
+      buffer = await sharp(buffer)
+        .webp({ quality: 90, alphaQuality: 100 })
+        .toBuffer()
+      fileExt = '.webp'
+    } catch (err) {
+      uploadLogger.warn('Erreur lors de la conversion sharp en WebP, utilisation du buffer d\'origine', err)
     }
 
-    let url = ''
     const fileName = `logo-${Date.now()}-${originalName}${fileExt}`
 
-    // Upload vers Vercel Blob si configuré
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      try {
-        const blob = await put(fileName, buffer, {
-          access: 'public',
-          contentType,
-        })
-        url = blob.url
-      } catch (err) {
-        uploadLogger.error('Erreur stockage Blob, tentative de fallback local', err)
-      }
-    }
+    // Sauvegarde locale persistante dans /public/uploads/logos
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'logos')
+    await mkdir(uploadDir, { recursive: true })
+    const filePath = path.join(uploadDir, fileName)
 
-    // Fallback local si Blob non configuré ou ayant échoué
-    if (!url) {
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'logos')
-      await mkdir(uploadDir, { recursive: true })
-      const filePath = path.join(uploadDir, fileName)
-
-      await writeFile(filePath, buffer)
-      url = `/uploads/logos/${fileName}`
-      uploadLogger.info(`Logo sauvegardé localement sous : ${url}`)
-    }
+    await writeFile(filePath, buffer)
+    const url = `/uploads/logos/${fileName}`
+    uploadLogger.info(`Logo sauvegardé localement sous : ${url}`)
 
     logAdminAudit({
       action: 'upload.logo.success',

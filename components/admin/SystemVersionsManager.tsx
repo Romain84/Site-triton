@@ -142,7 +142,7 @@ export default function SystemVersionsManager() {
     {
       title: '🖼️ Traitement d\'Image & Médias',
       color: 'bg-amber-50 border-amber-100 text-amber-900',
-      packages: ['sharp', '@vercel/blob'],
+      packages: ['sharp'],
     },
     {
       title: '💳 Paiements & E-Commerce',
