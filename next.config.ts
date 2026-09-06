@@ -115,6 +115,30 @@ const nextConfig: NextConfig = {
         { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       ],
     },
+    // Mise en cache navigateur optimisée pour les médias publics (30 jours)
+    {
+      source: '/uploads/:folder(actualites|coaches|logos|galerie|documents)/:path*',
+      headers: [
+        {
+          key: 'Cache-Control',
+          value: 'public, max-age=2592000, stale-while-revalidate=86400',
+        },
+      ],
+    },
+    // Interdiction stricte de mise en cache pour les documents sensibles téléversés
+    {
+      source: '/uploads/:folder(recus|factures)/:path*',
+      headers: [
+        {
+          key: 'Cache-Control',
+          value: 'private, no-cache, no-store, must-revalidate',
+        },
+        {
+          key: 'Pragma',
+          value: 'no-cache',
+        },
+      ],
+    },
   ],
 }
 
