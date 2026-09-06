@@ -183,17 +183,6 @@ export default function FinancesManager() {
   }
 
   // ─── Données dérivées ───────────────────────────────────────────────────────
-  if (loading && !data) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="mt-3 text-slate-500 font-medium text-xs">Chargement du tableau de bord financier...</p>
-        </div>
-      </div>
-    )
-  }
-
   const selectedPeriod = data?.selectedPeriod
   const overview = data?.overview || []
   const soldeDepartSaison = data?.soldeDepartSaison || 0
@@ -344,6 +333,17 @@ export default function FinancesManager() {
       return true
     })
   }, [unifiedOperations, journalTypeFilter, journalSearch])
+
+  if (loading && !data) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="mt-3 text-slate-500 font-medium text-xs">Chargement du tableau de bord financier...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
