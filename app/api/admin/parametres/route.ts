@@ -18,6 +18,7 @@ const updateSettingsSchema = z.object({
   montantForfaitRegional: z.coerce.number().min(0).optional(),
   reductionEnfantBureau: z.coerce.number().min(0).max(100).optional(),
   boutiqueOuverte: z.boolean().optional(),
+  dateLivraisonBoutique: z.string().max(255).nullable().optional(),
   facturationElectronique: z.boolean().optional(),
   emailClub: z.string().email().or(z.literal('')).optional(),
   logoUrl: z.string().or(z.literal('')).nullable().optional(),
@@ -60,6 +61,7 @@ const settingsSelect = {
   montantForfaitRegional: true,
   reductionEnfantBureau: true,
   boutiqueOuverte: true,
+  dateLivraisonBoutique: true,
   facturationElectronique: true,
   emailClub: true,
   emailNotification: true,
@@ -131,6 +133,7 @@ export async function GET() {
           nbCompetitionsAnnee: 20,
           nbDemiJourneesParCompetition: 2,
           boutiqueOuverte: true,
+          dateLivraisonBoutique: 'Mi-Octobre 2026',
           emailClub: '',
           logoUrl: null,
           statutsUrl: null,
@@ -198,6 +201,7 @@ export async function PUT(request: NextRequest) {
     if (val.montantForfaitRegional !== undefined) updateData.montantForfaitRegional = val.montantForfaitRegional
     if (val.reductionEnfantBureau !== undefined) updateData.reductionEnfantBureau = val.reductionEnfantBureau
     if (val.boutiqueOuverte !== undefined) updateData.boutiqueOuverte = val.boutiqueOuverte
+    if (val.dateLivraisonBoutique !== undefined) updateData.dateLivraisonBoutique = val.dateLivraisonBoutique || null
     if (val.facturationElectronique !== undefined) updateData.facturationElectronique = val.facturationElectronique
     if (val.emailClub !== undefined) updateData.emailClub = val.emailClub
     if (val.logoUrl !== undefined) updateData.logoUrl = val.logoUrl || null
@@ -255,6 +259,7 @@ export async function PUT(request: NextRequest) {
           montantForfaitRegional: val.montantForfaitRegional ?? 50,
           reductionEnfantBureau: val.reductionEnfantBureau ?? 50,
           boutiqueOuverte: val.boutiqueOuverte ?? true,
+          dateLivraisonBoutique: val.dateLivraisonBoutique || 'Mi-Octobre 2026',
           emailClub: val.emailClub ?? '',
           logoUrl: val.logoUrl || null,
           statutsUrl: val.statutsUrl || null,

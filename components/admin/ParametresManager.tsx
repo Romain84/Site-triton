@@ -17,6 +17,7 @@ interface Settings {
   montantForfaitRegional: number
   reductionEnfantBureau: number
   boutiqueOuverte: boolean
+  dateLivraisonBoutique?: string | null
   facturationElectronique?: boolean
   emailClub: string | null
   logoUrl: string | null
@@ -66,6 +67,7 @@ export default function ParametresManager() {
   const [montantForfaitRegional, setMontantForfaitRegional] = useState('50')
   const [reductionEnfantBureau, setReductionEnfantBureau] = useState('50')
   const [boutiqueOuverte, setBoutiqueOuverte] = useState(true)
+  const [dateLivraisonBoutique, setDateLivraisonBoutique] = useState('Mi-Octobre 2026')
   const [facturationElectronique, setFacturationElectronique] = useState(false)
   const [emailClub, setEmailClub] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
@@ -124,6 +126,7 @@ export default function ParametresManager() {
         setMontantForfaitRegional(s.montantForfaitRegional?.toString() || '50')
         setReductionEnfantBureau(s.reductionEnfantBureau?.toString() || '50')
         setBoutiqueOuverte(s.boutiqueOuverte ?? true)
+        setDateLivraisonBoutique(s.dateLivraisonBoutique || 'Mi-Octobre 2026')
         setFacturationElectronique(s.facturationElectronique ?? false)
         setEmailClub(s.emailClub || '')
         setLogoUrl(s.logoUrl || '')
@@ -460,6 +463,7 @@ export default function ParametresManager() {
           montantForfaitRegional,
           reductionEnfantBureau,
           boutiqueOuverte,
+          dateLivraisonBoutique: dateLivraisonBoutique || null,
           facturationElectronique,
           emailClub,
           logoUrl: logoUrl || null,
@@ -517,6 +521,7 @@ export default function ParametresManager() {
       montantForfaitRegional !== (settings.montantForfaitRegional?.toString() || '50') ||
       reductionEnfantBureau !== (settings.reductionEnfantBureau?.toString() || '50') ||
       boutiqueOuverte !== (settings.boutiqueOuverte ?? true) ||
+      dateLivraisonBoutique !== (settings.dateLivraisonBoutique || 'Mi-Octobre 2026') ||
       facturationElectronique !== (settings.facturationElectronique ?? false) ||
       emailClub !== (settings.emailClub || '') ||
       logoUrl !== (settings.logoUrl || '') ||
@@ -562,6 +567,8 @@ export default function ParametresManager() {
           montantForfaitRegional,
           reductionEnfantBureau,
           boutiqueOuverte,
+          dateLivraisonBoutique: dateLivraisonBoutique || null,
+          facturationElectronique,
           emailClub,
           logoUrl: logoUrl || null,
           statutsUrl: statutsUrl || null,
@@ -667,6 +674,8 @@ export default function ParametresManager() {
     montantForfaitRegional,
     reductionEnfantBureau,
     boutiqueOuverte,
+    dateLivraisonBoutique,
+    facturationElectronique,
     emailClub,
     logoUrl,
     statutsUrl,
@@ -1190,6 +1199,22 @@ export default function ParametresManager() {
                       ⚠️ La boutique est fermée aux ventes.
                     </div>
                   )}
+
+                  <div className="mt-4 pt-3 border-t border-slate-100">
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      Estimation date de réception au club
+                    </label>
+                    <input
+                      type="text"
+                      value={dateLivraisonBoutique}
+                      onChange={(e) => setDateLivraisonBoutique(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white text-xs outline-none text-slate-800"
+                      placeholder="Ex: Mi-Octobre 2026, 15 Novembre 2026..."
+                    />
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Indiquée dans l&apos;email de confirmation d&apos;achat envoyé au client pour lui préciser quand retirer sa commande au club.
+                    </p>
+                  </div>
 
                   <div className="mt-6 pt-4 border-t border-slate-100">
                     <h3 className="text-md font-bold text-slate-900 mb-3">Facturation Électronique (ABBY)</h3>

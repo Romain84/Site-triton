@@ -144,6 +144,44 @@ describe('Email Templates', () => {
 
       expect(result.html).toContain('15.00')
     })
+
+    it('should include Triton branding and estimated pickup date when provided', () => {
+      const result = getCommandeConfirmationEmail({
+        numeroCommande: 'CMD-2024-001',
+        prenom: 'Pierre',
+        nom: 'Martin',
+        prenomNageur: 'Lucas',
+        nomNageur: 'Martin',
+        lignes: [
+          { nom: 'Parka Club', quantite: 1, prix: 80, taille: 'L' },
+        ],
+        total: 80,
+        dateLivraison: '15 Novembre 2026',
+      })
+
+      expect(result.html).toContain('TRITON CLUB CAVAILLON')
+      expect(result.html).toContain('15 Novembre 2026')
+      expect(result.html).toContain('à réceptionner au club vers')
+      expect(result.text).toContain('15 Novembre 2026')
+      expect(result.text).toContain('à réceptionner au club vers')
+    })
+
+    it('should fallback to default delivery date when dateLivraison is omitted', () => {
+      const result = getCommandeConfirmationEmail({
+        numeroCommande: 'CMD-2024-001',
+        prenom: 'Pierre',
+        nom: 'Martin',
+        prenomNageur: 'Lucas',
+        nomNageur: 'Martin',
+        lignes: [
+          { nom: 'Bonnet', quantite: 1, prix: 15 },
+        ],
+        total: 15,
+      })
+
+      expect(result.html).toContain('Mi-Octobre 2026')
+      expect(result.text).toContain('Mi-Octobre 2026')
+    })
   })
 
   describe('getPasswordResetEmail', () => {

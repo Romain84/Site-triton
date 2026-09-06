@@ -53,10 +53,15 @@ export async function POST(request: NextRequest) {
 
         // Envoi des e-mails automatiques de confirmation
         try {
-          const dbCommande = await prisma.commande.findUnique({
-            where: { id: commande.id },
-            include: { lignes: true },
-          })
+          const [dbCommande, settings] = await Promise.all([
+            prisma.commande.findUnique({
+              where: { id: commande.id },
+              include: { lignes: true },
+            }),
+            prisma.settings.findFirst({
+              select: { emailNotification: true, smtpUser: true, dateLivraisonBoutique: true },
+            }),
+          ])
 
           if (dbCommande) {
             const lignesData = dbCommande.lignes.map((l) => ({
@@ -76,6 +81,7 @@ export async function POST(request: NextRequest) {
               nomNageur: dbCommande.nomNageur,
               lignes: lignesData,
               total: dbCommande.total,
+              dateLivraison: settings?.dateLivraisonBoutique,
             })
 
             await queueEmail({
@@ -97,10 +103,6 @@ export async function POST(request: NextRequest) {
               total: dbCommande.total,
             })
 
-            // Récupérer l'e-mail de notification de l'admin
-            const settings = await prisma.settings.findFirst({
-              select: { emailNotification: true, smtpUser: true },
-            })
             const adminDestEmail = settings?.emailNotification || settings?.smtpUser
 
             if (adminDestEmail) {

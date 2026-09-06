@@ -353,58 +353,130 @@ export function getCommandeConfirmationEmail(data: {
     couleur?: string | null
   }>
   total: number
+  dateLivraison?: string | null
 }) {
-  const prenom       = escapeHtml(data.prenom)
-  const nom          = escapeHtml(data.nom)
-  const prenomNageur = escapeHtml(data.prenomNageur)
-  const nomNageur    = escapeHtml(data.nomNageur)
+  const prenom         = escapeHtml(data.prenom)
+  const nom            = escapeHtml(data.nom)
+  const prenomNageur   = escapeHtml(data.prenomNageur)
+  const nomNageur      = escapeHtml(data.nomNageur)
   const numeroCommande = escapeHtml(data.numeroCommande)
+  const dateLivraison  = escapeHtml(data.dateLivraison?.trim() || 'Mi-Octobre 2026')
 
   const subject = `Commande #${data.numeroCommande} confirmée — Triton Club Cavaillon`
 
   const lignesHtml = data.lignes.map((l) => `
-    <tr>
-      <td>${escapeHtml(l.nom)}${l.taille ? `<br><small>Taille : ${escapeHtml(l.taille)}</small>` : ''}${l.couleur ? `<br><small>Couleur : ${escapeHtml(l.couleur)}</small>` : ''}</td>
-      <td style="text-align:center">${l.quantite}</td>
-      <td style="text-align:right">${(l.prix * l.quantite).toFixed(2)} €</td>
+    <tr style="border-bottom:1px solid #f1f5f9;">
+      <td style="padding:10px 8px;">
+        <div style="font-size:13px;font-weight:600;color:#0f172a;">${escapeHtml(l.nom)}</div>
+        ${l.taille ? `<span style="display:inline-block;background-color:#f1f5f9;color:#475569;font-size:11px;padding:2px 6px;border-radius:4px;margin-top:2px;margin-right:4px;">Taille : ${escapeHtml(l.taille)}</span>` : ''}
+        ${l.couleur ? `<span style="display:inline-block;background-color:#f1f5f9;color:#475569;font-size:11px;padding:2px 6px;border-radius:4px;margin-top:2px;">Couleur : ${escapeHtml(l.couleur)}</span>` : ''}
+      </td>
+      <td style="padding:10px 8px;font-size:13px;color:#334155;text-align:center;">${l.quantite}</td>
+      <td style="padding:10px 8px;font-size:13px;font-weight:700;color:#0f172a;text-align:right;">${(l.prix * l.quantite).toFixed(2)} €</td>
     </tr>`).join('')
 
-  const html = buildEmailHtml({
-    accentColor: '#00bcd4',
-    headerContent: '<h1>Triton Club Cavaillon</h1><p style="margin:4px 0 0">Boutique</p>',
-    bodyContent: `
-      <h2>Merci pour votre commande !</h2>
-      <div class="info-box" style="text-align:center">
-        <p style="margin:0;font-size:13px">Numéro de commande</p>
-        <p style="margin:4px 0 0;font-size:24px;font-weight:bold;color:#2e7d32">#${numeroCommande}</p>
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Confirmation de commande - Triton Club Cavaillon</title>
+</head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.6;color:#0f172a;margin:0;padding:0;background-color:#f1f5f9;">
+  <div style="max-width:600px;margin:24px auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+    
+    <!-- En-tête Charte Triton -->
+    <div style="background-color:#0f172a;padding:28px 24px;text-align:center;border-top:4px solid #15803d;">
+      <p style="margin:0 0 6px 0;font-size:11px;font-weight:700;letter-spacing:0.25em;color:#22c55e;text-transform:uppercase;">Boutique Officielle</p>
+      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:900;letter-spacing:0.04em;">TRITON CLUB CAVAILLON</h1>
+      <p style="margin:4px 0 0 0;color:#94a3b8;font-size:12px;">Natation sportive &amp; loisir — Piscine Alphonse Roudière</p>
+    </div>
+
+    <!-- Contenu Principal -->
+    <div style="padding:28px 24px;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <span style="display:inline-block;background-color:#f0fdf4;color:#166534;font-size:12px;font-weight:700;padding:4px 12px;border-radius:9999px;border:1px solid #bbf7d0;">
+          ✓ Paiement validé
+        </span>
+        <h2 style="margin:12px 0 6px;color:#0f172a;font-size:20px;font-weight:800;">Merci pour votre commande !</h2>
+        <p style="margin:0;color:#64748b;font-size:14px;">Numéro de commande : <strong style="color:#0f172a;font-family:monospace;font-size:15px;">#${numeroCommande}</strong></p>
       </div>
-      <p>Bonjour ${prenom} ${nom},</p>
-      <p>Votre commande a bien été enregistrée et votre paiement confirmé.</p>
-      <p><strong>Pour :</strong> ${prenomNageur} ${nomNageur}</p>
-      <table class="recap">
-        <thead><tr><th>Article</th><th style="text-align:center">Qté</th><th style="text-align:right">Prix</th></tr></thead>
-        <tbody>${lignesHtml}</tbody>
+
+      <p style="font-size:14px;color:#334155;margin:0 0 16px;">Bonjour <strong>${prenom} ${nom}</strong>,</p>
+      <p style="font-size:14px;color:#334155;margin:0 0 20px;">
+        Nous avons bien enregistré votre commande pour le nageur : <strong>${prenomNageur} ${nomNageur}</strong>.
+      </p>
+
+      <!-- Encadré Retrait / Réception au club -->
+      <div style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #15803d;border-radius:8px;padding:16px 18px;margin:20px 0;">
+        <p style="margin:0 0 6px 0;font-size:13px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.02em;">
+          📍 Réception de votre commande
+        </p>
+        <p style="margin:0 0 6px 0;font-size:14px;color:#14532d;line-height:1.5;">
+          Votre commande sera à réceptionner au club vers <strong>${dateLivraison}</strong>.
+        </p>
+        <p style="margin:0;font-size:12px;color:#166534;line-height:1.4;">
+          Le retrait s'effectuera directement au bord du bassin auprès des éducateurs lors des créneaux d'entraînement (Piscine Alphonse Roudière, Cavaillon).
+        </p>
+      </div>
+
+      <!-- Récapitulatif de la commande -->
+      <h3 style="margin:24px 0 12px;font-size:15px;font-weight:700;color:#0f172a;border-bottom:2px solid #f1f5f9;padding-bottom:8px;">
+        Détail de vos articles
+      </h3>
+      <table style="width:100%;border-collapse:collapse;margin:12px 0 20px;">
+        <thead>
+          <tr style="border-bottom:2px solid #e2e8f0;text-align:left;">
+            <th style="padding:10px 8px;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;">Article</th>
+            <th style="padding:10px 8px;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;text-align:center;">Qté</th>
+            <th style="padding:10px 8px;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;text-align:right;">Prix</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${lignesHtml}
+        </tbody>
       </table>
-      <div class="total-block">Total : ${data.total.toFixed(2)} €</div>
-      <h3>Prochaines étapes</h3>
-      <ol>
-        <li>Votre commande sera préparée sous 24–48h</li>
-        <li>Vous recevrez un email quand elle sera prête</li>
-        <li>Retrait au club lors des entraînements</li>
-      </ol>
-      <p>À très bientôt !</p>
-      <p><em>L'équipe du Triton Club Cavaillon</em></p>
-    `,
-  })
+
+      <!-- Total -->
+      <div style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;margin-top:16px;text-align:right;">
+        <span style="font-size:14px;color:#64748b;font-weight:600;">Montant total réglé : </span>
+        <span style="font-size:20px;font-weight:800;color:#15803d;margin-left:8px;">${data.total.toFixed(2)} €</span>
+      </div>
+
+      <div style="margin-top:28px;padding-top:16px;border-top:1px solid #f1f5f9;font-size:13px;color:#64748b;line-height:1.5;">
+        <p style="margin:0 0 4px;">À très bientôt au bord du bassin,</p>
+        <p style="margin:0;font-weight:700;color:#0f172a;">L'équipe du Triton Club Cavaillon</p>
+      </div>
+    </div>
+
+    <!-- Pied de page Charte -->
+    <div style="background-color:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 20px;text-align:center;font-size:11px;color:#94a3b8;line-height:1.4;">
+      <p style="margin:0 0 4px 0;font-weight:600;color:#64748b;">Triton Club Cavaillon — Association loi 1901</p>
+      <p style="margin:0;">Piscine Alphonse Roudière, 84300 Cavaillon</p>
+    </div>
+  </div>
+</body>
+</html>`
 
   const text = `Commande #${data.numeroCommande} confirmée — Triton Club Cavaillon
 
 Bonjour ${data.prenom} ${data.nom},
-Votre commande a bien été enregistrée. Pour : ${data.prenomNageur} ${data.nomNageur}
 
-${data.lignes.map((l) => `- ${l.quantite}x ${l.nom} : ${(l.prix * l.quantite).toFixed(2)} €`).join('\n')}
+Merci pour votre commande sur la boutique officielle du Triton Club Cavaillon !
+Votre paiement a bien été validé.
+Bénéficiaire : ${data.prenomNageur} ${data.nomNageur}
 
-Total : ${data.total.toFixed(2)} €`
+RÉCEPTION DE VOTRE COMMANDE :
+Votre commande sera à réceptionner au club vers ${dateLivraison}.
+Le retrait s'effectuera directement au bord du bassin auprès des éducateurs lors des créneaux d'entraînement (Piscine Alphonse Roudière, Cavaillon).
+
+DÉTAIL DE VOTRE COMMANDE :
+${data.lignes.map((l) => `- ${l.quantite}x ${l.nom}${l.taille ? ` (Taille : ${l.taille})` : ''}${l.couleur ? ` (Couleur : ${l.couleur})` : ''} : ${(l.prix * l.quantite).toFixed(2)} €`).join('\n')}
+
+TOTAL : ${data.total.toFixed(2)} €
+
+Sportivement,
+L'équipe du Triton Club Cavaillon`
 
   return { subject, html, text }
 }

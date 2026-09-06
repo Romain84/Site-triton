@@ -329,6 +329,7 @@ model Settings {
   forfaitRegionalActif         Boolean  @default(false)
   montantForfaitRegional       Float    @default(50)
   boutiqueOuverte              Boolean  @default(true)
+  dateLivraisonBoutique        String?  @default("Mi-Octobre 2026")
   facturationElectronique      Boolean  @default(false)
   emailClub                    String?
   emailNotification            String?
