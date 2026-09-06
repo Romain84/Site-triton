@@ -32,13 +32,6 @@ export default function FinancesManager() {
   const [journalSearch, setJournalSearch] = useState('')
   const [journalTypeFilter, setJournalTypeFilter] = useState<'all' | 'recette' | 'depense'>('all')
 
-  // Saison sportive courante basée sur le mois et l'année sélectionnés (Septembre à Août)
-  const currentSportSeason = useMemo(() => {
-    return selectedMois >= 9
-      ? `${selectedAnnee}-${selectedAnnee + 1}`
-      : `${selectedAnnee - 1}-${selectedAnnee}`
-  }, [selectedMois, selectedAnnee])
-
   // Modal de transaction
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalDefaultType, setModalDefaultType] = useState<'recette' | 'depense' | undefined>(undefined)
@@ -467,11 +460,7 @@ export default function FinancesManager() {
 
         {/* ─── ONGLET 1 : BILAN FINANCIER ─── */}
         {activeTab === 'bilan' && (
-          <FinanceBilan
-            currentSeason={currentSportSeason}
-            selectedMois={selectedMois}
-            selectedAnnee={selectedAnnee}
-          />
+          <FinanceBilan />
         )}
 
         {/* ─── ONGLET 2 : JOURNAL DES OPÉRATIONS ─── */}

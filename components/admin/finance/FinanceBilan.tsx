@@ -65,21 +65,14 @@ const sortKeys = (keys: string[], orderList: string[], categoryMap: { [key: stri
   })
 }
 
-interface FinanceBilanProps {
-  currentSeason?: string
-  selectedMois?: number
-  selectedAnnee?: number
-}
-
-export default function FinanceBilan({ currentSeason, selectedMois, selectedAnnee }: FinanceBilanProps = {}) {
-  // Déterminer la saison par défaut
+export default function FinanceBilan() {
+  // Déterminer la saison par défaut (saison en cours : 1er août au 31 juillet)
   const defaultSaison = useMemo(() => {
-    if (currentSeason) return currentSeason
     const now = new Date()
-    const m = selectedMois ?? (now.getMonth() + 1)
-    const y = selectedAnnee ?? now.getFullYear()
-    return m >= 9 ? `${y}-${y + 1}` : `${y - 1}-${y}`
-  }, [currentSeason, selectedMois, selectedAnnee])
+    const m = now.getMonth() + 1
+    const y = now.getFullYear()
+    return m >= 8 ? `${y}-${y + 1}` : `${y - 1}-${y}`
+  }, [])
 
   const [saison, setSaison] = useState<string>(defaultSaison)
   const [data, setData] = useState<BilanData | null>(null)
@@ -90,16 +83,10 @@ export default function FinanceBilan({ currentSeason, selectedMois, selectedAnne
   const [auditCategoryLabel, setAuditCategoryLabel] = useState<string>('')
   const [auditTransactions, setAuditTransactions] = useState<Transaction[]>([])
 
-  // Synchroniser avec currentSeason si la période change dans FinancesManager
-  useEffect(() => {
-    if (currentSeason && currentSeason !== saison) {
-      setSaison(currentSeason)
-    }
-  }, [currentSeason])
-
   // Liste des saisons sélectionnables (ordre décroissant, de la plus récente à la plus ancienne)
   const saisonsList = useMemo(() => {
-    const baseYear = selectedAnnee || new Date().getFullYear()
+    const now = new Date()
+    const baseYear = now.getFullYear()
     const list: string[] = []
     for (let i = 2; i >= -3; i--) {
       const y = baseYear + i
@@ -109,7 +96,7 @@ export default function FinanceBilan({ currentSeason, selectedMois, selectedAnne
       list.unshift(saison)
     }
     return list
-  }, [selectedAnnee, saison])
+  }, [saison])
 
   const fetchBilan = async () => {
     if (!saison) return
@@ -264,7 +251,9 @@ export default function FinanceBilan({ currentSeason, selectedMois, selectedAnne
           <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-950 flex items-center gap-1.5">
             Rapport Financier de Saison
           </h4>
-          <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Période du 1er Septembre au 31 Août</p>
+          <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
+            Période du 1er Août au 31 Juillet (Cumul de toutes les opérations de la saison)
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -276,7 +265,7 @@ export default function FinanceBilan({ currentSeason, selectedMois, selectedAnne
             >
               {saisonsList.map((s) => (
                 <option key={s} value={s}>
-                  {s} (01/09 - 31/08)
+                  {s} (01/08 - 31/07)
                 </option>
               ))}
             </select>

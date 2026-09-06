@@ -16,12 +16,12 @@ export async function GET(request: NextRequest) {
     const saisonParam = searchParams.get('saison')
 
     // Déterminer la saison par défaut (saison en cours)
-    // Saison sportive : 1er septembre au 31 août
+    // Saison sportive : 1er août au 31 juillet
     const now = new Date()
     const currentMonth = now.getMonth() + 1
     const currentYear = now.getFullYear()
     let defaultSaison = ''
-    if (currentMonth >= 9) {
+    if (currentMonth >= 8) {
       defaultSaison = `${currentYear}-${currentYear + 1}`
     } else {
       defaultSaison = `${currentYear - 1}-${currentYear}`
@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
     const yearStart = parseInt(parts[0])
     const yearEnd = parseInt(parts[1])
 
-    const startDate = new Date(yearStart, 8, 1, 0, 0, 0, 0) // 1er Septembre
-    const endDate = new Date(yearEnd, 7, 31, 23, 59, 59, 999) // 31 Août
+    const startDate = new Date(yearStart, 7, 1, 0, 0, 0, 0) // 1er Août
+    const endDate = new Date(yearEnd, 6, 31, 23, 59, 59, 999) // 31 Juillet
 
     bilanLogger.info(`Génération du bilan financier pour la saison ${saison} (du ${startDate.toISOString()} au ${endDate.toISOString()})`)
 
@@ -56,13 +56,13 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // 2. Récupérer toutes les factures coaches validées ou payées sur la période
+    // 2. Récupérer toutes les factures coaches validées ou payées sur la période (Août yStart -> Juillet yEnd)
     const factures = await prisma.factureCoach.findMany({
       where: {
         statut: { in: ['generee', 'envoyee', 'payee'] },
         OR: [
-          { annee: yearStart, mois: { gte: 9 } },
-          { annee: yearEnd, mois: { lte: 8 } },
+          { annee: yearStart, mois: { gte: 8 } },
+          { annee: yearEnd, mois: { lte: 7 } },
         ],
       },
       include: {
@@ -88,18 +88,18 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Fonction robuste d'appartenance à la saison sportive (du 1er Septembre yStart au 31 Août yEnd)
+    // Fonction robuste d'appartenance à la saison sportive (du 1er Août yStart au 31 Juillet yEnd)
     const isDateInSeason = (dateInput: Date | string, yStart: number, yEnd: number) => {
       const d = new Date(dateInput)
       // Heure locale
       const yL = d.getFullYear()
       const mL = d.getMonth() + 1
-      if ((yL === yStart && mL >= 9) || (yL === yEnd && mL <= 8)) return true
+      if ((yL === yStart && mL >= 8) || (yL === yEnd && mL <= 7)) return true
 
       // Heure UTC (évite toute perte aux frontières minuit UTC / fuseau horaire)
       const yU = d.getUTCFullYear()
       const mU = d.getUTCMonth() + 1
-      if ((yU === yStart && mU >= 9) || (yU === yEnd && mU <= 8)) return true
+      if ((yU === yStart && mU >= 8) || (yU === yEnd && mU <= 7)) return true
 
       return false
     }
