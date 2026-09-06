@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { sortVariantes } from '@/lib/boutique/sizes'
 
 // GET: Obtenir un produit par slug (API publique)
 export async function GET(
@@ -23,6 +24,10 @@ export async function GET(
 
     if (!produit || !produit.actif) {
       return NextResponse.json({ error: 'Produit non trouvé' }, { status: 404 })
+    }
+
+    if (produit.variantes && Array.isArray(produit.variantes)) {
+      produit.variantes = sortVariantes(produit.variantes)
     }
 
     return NextResponse.json({ produit })

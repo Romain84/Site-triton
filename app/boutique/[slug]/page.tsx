@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useCart } from '@/context/CartContext'
 import { logger } from '@/lib/logger'
 import { sanitizeHtml } from '@/lib/sanitize'
+import { sortTailles, sortVariantes } from '@/lib/boutique/sizes'
 import toast from 'react-hot-toast'
 
 interface Variante {
@@ -78,7 +79,7 @@ export default function ProduitDetailPage() {
 
   // Définition des variables dérivées en haut du composant
   const countTailles = useMemo(() => {
-    let t = []
+    let t: string[] = []
     try {
       if (produit?.tailles) t = JSON.parse(produit.tailles)
     } catch {
@@ -89,11 +90,11 @@ export default function ProduitDetailPage() {
         t = Array.from(new Set(produit.variantes.map((v) => v.taille).filter(Boolean))) as string[]
       }
     }
-    return t
+    return sortTailles(t)
   }, [produit])
 
   const countCouleurs = useMemo(() => {
-    let c = []
+    let c: string[] = []
     try {
       if (produit?.couleurs) c = JSON.parse(produit.couleurs)
     } catch {
@@ -139,6 +140,12 @@ export default function ProduitDetailPage() {
         throw new TypeError("La réponse n'est pas au format JSON")
       }
       const data = await res.json()
+
+      // Trier les variantes par ordre logique
+      if (data.produit?.variantes && Array.isArray(data.produit.variantes)) {
+        data.produit.variantes = sortVariantes(data.produit.variantes)
+      }
+
       setProduit(data.produit)
 
       let productTailles: string[] = []
@@ -152,6 +159,7 @@ export default function ProduitDetailPage() {
           productTailles = Array.from(new Set(data.produit.variantes.map((v: any) => v.taille).filter(Boolean))) as string[]
         }
       }
+      productTailles = sortTailles(productTailles)
 
       let productCouleurs: string[] = []
       try {

@@ -6,6 +6,8 @@ import { logger } from '@/lib/logger'
 import { apiError, apiSuccess } from '@/lib/api/response'
 import { isSameOriginRequest } from '@/lib/security/origin'
 
+import { sortVariantes } from '@/lib/boutique/sizes'
+
 const boutiqueLogger = logger.withContext('Boutique')
 
 const createVarianteSchema = z.object({
@@ -34,10 +36,11 @@ export async function GET(
 
     const { id } = await params
 
-    const variantes = await prisma.varianteProduit.findMany({
+    const rawVariantes = await prisma.varianteProduit.findMany({
       where: { produitId: id },
-      orderBy: [{ taille: 'asc' }, { couleur: 'asc' }],
     })
+
+    const variantes = sortVariantes(rawVariantes)
 
     return apiSuccess({ variantes })
   } catch (error) {
