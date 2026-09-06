@@ -418,6 +418,7 @@ export default function FinancesManager() {
       <FinanceChart
         overview={overview}
         cumulativeOverview={cumulativeOverview}
+        soldeDepartSaison={soldeDepartSaison}
         selectedMois={selectedMois}
         selectedAnnee={selectedAnnee}
         onSelectMonth={(m, y) => {
