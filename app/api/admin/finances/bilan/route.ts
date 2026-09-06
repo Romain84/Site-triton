@@ -41,11 +41,10 @@ export async function GET(request: NextRequest) {
 
     bilanLogger.info(`Génération du bilan financier pour la saison ${saison} (du ${startDate.toISOString()} au ${endDate.toISOString()})`)
 
-    // 1. Récupérer toutes les commandes payées de la boutique sur la période
-    const commandes = await prisma.commande.findMany({
+    // 1. Récupérer toutes les commandes payées de la boutique
+    const allCommandes = await prisma.commande.findMany({
       where: {
         statutPaiement: { in: ['paye', 'payee'] },
-        createdAt: { gte: startDate, lte: endDate },
       },
       select: {
         id: true,
@@ -58,7 +57,6 @@ export async function GET(request: NextRequest) {
     })
 
     // 2. Récupérer toutes les factures coaches validées ou payées sur la période
-    // Une facture coach appartient à la saison si son mois/annee est compris entre Septembre A et Août B
     const factures = await prisma.factureCoach.findMany({
       where: {
         statut: { in: ['generee', 'envoyee', 'payee'] },
@@ -77,11 +75,8 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // 3. Récupérer toutes les transactions comptables manuelles de la période
-    const manualTransactions = await prisma.transactionComptable.findMany({
-      where: {
-        date: { gte: startDate, lte: endDate },
-      },
+    // 3. Récupérer toutes les transactions comptables manuelles
+    const allManualTransactions = await prisma.transactionComptable.findMany({
       select: {
         id: true,
         type: true,
@@ -93,12 +88,83 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // 4. Initialiser les catégories depuis la base de données
+    // Fonction robuste d'appartenance à la saison sportive (du 1er Septembre yStart au 31 Août yEnd)
+    const isDateInSeason = (dateInput: Date | string, yStart: number, yEnd: number) => {
+      const d = new Date(dateInput)
+      // Heure locale
+      const yL = d.getFullYear()
+      const mL = d.getMonth() + 1
+      if ((yL === yStart && mL >= 9) || (yL === yEnd && mL <= 8)) return true
+
+      // Heure UTC (évite toute perte aux frontières minuit UTC / fuseau horaire)
+      const yU = d.getUTCFullYear()
+      const mU = d.getUTCMonth() + 1
+      if ((yU === yStart && mU >= 9) || (yU === yEnd && mU <= 8)) return true
+
+      return false
+    }
+
+    const commandes = allCommandes.filter((cmd) => isDateInSeason(cmd.createdAt, yearStart, yearEnd))
+    const manualTransactions = allManualTransactions.filter((tx) => isDateInSeason(tx.date, yearStart, yearEnd))
+
+    // 4. Initialiser les catégories (standards + base de données)
     const dbCategories = await prisma.categorieComptable.findMany()
+
+    const standardRecettes: Record<string, string> = {
+      cotisation: 'Cotisations adhésions',
+      subvention: 'Subventions, dons',
+      don: 'Don / Sponsoring',
+      interets: 'Intérêts',
+      pass_sport: 'Pass sport subvention',
+      excedent: 'Excédent saison précédente',
+      boutique: 'Boutique en ligne',
+      benevolat_frais: 'Frais personnels bénévoles',
+      benevolat_heures: 'Heures bénévolats',
+      location_piscine: 'Location piscine',
+      autre_recette: 'Autre recette',
+    }
+
+    const standardDepenses: Record<string, string> = {
+      salaires: 'Salaires (factures coaches)',
+      licences_ffn: 'Licences FFN',
+      engagement_compet: 'Engagement compétition',
+      reunions_manifestations: 'Réunions, manifestations',
+      frais_swim_community: 'Frais swim community',
+      frais_bancaires: 'Frais bancaires',
+      frais_bureau: 'Frais bureau, gestion',
+      facture_externe: 'Facture fournisseur',
+      achat_materiel: 'Achat matériel (bonnets...)',
+      frais_fonctionnement: 'Frais mensuel (téléphone, assurances...)',
+      recompenses: 'Médailles, récompenses',
+      assurances: 'Assurances',
+      bnssa: 'Bnssa',
+      amendes: 'Amendes',
+      equipement: 'Équipement',
+      provision_equipement: 'Provision équipement',
+      provision_salaires: 'Provision salaires mai et juin',
+      provision_compet: 'Provision engagement compet.',
+      provision_qualif: 'Provision participation qualification',
+      benevolat_frais: 'Frais personnels bénévoles',
+      benevolat_heures: 'Heures bénévolats',
+      location_piscine: 'Location piscine',
+      autre_depense: 'Autre dépense',
+    }
 
     const recettesCategories: { [key: string]: { label: string; total: number; transactions: any[]; isVolontaire?: boolean } } = {}
     const depensesCategories: { [key: string]: { label: string; total: number; transactions: any[]; isVolontaire?: boolean } } = {}
 
+    // Pré-initialisation avec les catégories standard
+    Object.entries(standardRecettes).forEach(([code, label]) => {
+      const isVolontaire = ['benevolat_frais', 'benevolat_heures', 'location_piscine'].includes(code)
+      recettesCategories[code] = { label, total: 0, transactions: [], isVolontaire }
+    })
+
+    Object.entries(standardDepenses).forEach(([code, label]) => {
+      const isVolontaire = ['benevolat_frais', 'benevolat_heures', 'location_piscine'].includes(code)
+      depensesCategories[code] = { label, total: 0, transactions: [], isVolontaire }
+    })
+
+    // Surcharge et complétion avec les catégories de la base de données
     dbCategories.forEach((cat) => {
       const isVolontaire = cat.type === 'double' || ['benevolat_frais', 'benevolat_heures', 'location_piscine'].includes(cat.code)
       if (cat.type === 'recette' || cat.type === 'double') {
@@ -119,12 +185,6 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Assurer la présence des catégories système critiques au cas où
-    if (!recettesCategories.boutique) recettesCategories.boutique = { label: 'Boutique en ligne', total: 0, transactions: [] }
-    if (!depensesCategories.salaires) depensesCategories.salaires = { label: 'Salaires (factures coaches)', total: 0, transactions: [] }
-    if (!recettesCategories.autre_recette) recettesCategories.autre_recette = { label: 'Autre recette', total: 0, transactions: [] }
-    if (!depensesCategories.autre_depense) depensesCategories.autre_depense = { label: 'Autre dépense', total: 0, transactions: [] }
-
     // 5. Ventiler les Commandes Boutique (automatiquement Recette -> Boutique)
     commandes.forEach((cmd) => {
       const item = {
@@ -134,6 +194,9 @@ export async function GET(request: NextRequest) {
         montant: cmd.total,
         type: 'recette',
         source: 'boutique',
+      }
+      if (!recettesCategories.boutique) {
+        recettesCategories.boutique = { label: 'Boutique en ligne', total: 0, transactions: [] }
       }
       recettesCategories.boutique.total += cmd.total
       recettesCategories.boutique.transactions.push(item)
@@ -148,6 +211,9 @@ export async function GET(request: NextRequest) {
         montant: fac.montantTotal,
         type: 'depense',
         source: 'factures_coach',
+      }
+      if (!depensesCategories.salaires) {
+        depensesCategories.salaires = { label: 'Salaires (factures coaches)', total: 0, transactions: [] }
       }
       depensesCategories.salaires.total += fac.montantTotal
       depensesCategories.salaires.transactions.push(item)
@@ -170,37 +236,38 @@ export async function GET(request: NextRequest) {
       }
 
       // Cas particulier : Contributions volontaires (type 'double')
-      // Elles s'équilibrent des deux côtés
-      const foundCat = dbCategories.find(c => c.code === cat)
-      if (foundCat && foundCat.type === 'double') {
-        if (recettesCategories[cat]) {
-          recettesCategories[cat].total += montant
-          recettesCategories[cat].transactions.push({ ...transItem, type: 'recette' })
+      const foundCat = dbCategories.find((c) => c.code === cat)
+      const isDouble = (foundCat && foundCat.type === 'double') || ['benevolat_frais', 'benevolat_heures', 'location_piscine'].includes(cat)
+      if (isDouble) {
+        if (!recettesCategories[cat]) {
+          recettesCategories[cat] = { label: foundCat ? foundCat.nom : (standardRecettes[cat] || cat), total: 0, transactions: [], isVolontaire: true }
         }
-        if (depensesCategories[cat]) {
-          depensesCategories[cat].total += montant
-          depensesCategories[cat].transactions.push({ ...transItem, type: 'depense' })
+        recettesCategories[cat].total += montant
+        recettesCategories[cat].transactions.push({ ...transItem, type: 'recette' })
+
+        if (!depensesCategories[cat]) {
+          depensesCategories[cat] = { label: foundCat ? foundCat.nom : (standardDepenses[cat] || cat), total: 0, transactions: [], isVolontaire: true }
         }
+        depensesCategories[cat].total += montant
+        depensesCategories[cat].transactions.push({ ...transItem, type: 'depense' })
         return
       }
 
       // Mappage classique
       if (type === 'recette') {
-        if (recettesCategories[cat]) {
-          recettesCategories[cat].total += montant
-          recettesCategories[cat].transactions.push(transItem)
-        } else {
-          recettesCategories.autre_recette.total += montant
-          recettesCategories.autre_recette.transactions.push(transItem)
+        if (!recettesCategories[cat]) {
+          const customName = foundCat ? foundCat.nom : (standardRecettes[cat] || cat)
+          recettesCategories[cat] = { label: customName, total: 0, transactions: [] }
         }
-      } else { // depense
-        if (depensesCategories[cat]) {
-          depensesCategories[cat].total += montant
-          depensesCategories[cat].transactions.push(transItem)
-        } else {
-          depensesCategories.autre_depense.total += montant
-          depensesCategories.autre_depense.transactions.push(transItem)
+        recettesCategories[cat].total += montant
+        recettesCategories[cat].transactions.push(transItem)
+      } else {
+        if (!depensesCategories[cat]) {
+          const customName = foundCat ? foundCat.nom : (standardDepenses[cat] || cat)
+          depensesCategories[cat] = { label: customName, total: 0, transactions: [] }
         }
+        depensesCategories[cat].total += montant
+        depensesCategories[cat].transactions.push(transItem)
       }
     })
 

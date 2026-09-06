@@ -27,10 +27,17 @@ export default function FinancesManager() {
   const [data, setData] = useState<FinancesData | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'journal' | 'bilan' | 'projection' | 'categories'>('journal')
+  const [activeTab, setActiveTab] = useState<'bilan' | 'journal' | 'projection' | 'categories'>('bilan')
   const [journalSubFilter, setJournalSubFilter] = useState<'all' | 'comptabilite' | 'coaches' | 'boutique'>('all')
   const [journalSearch, setJournalSearch] = useState('')
   const [journalTypeFilter, setJournalTypeFilter] = useState<'all' | 'recette' | 'depense'>('all')
+
+  // Saison sportive courante basée sur le mois et l'année sélectionnés (Septembre à Août)
+  const currentSportSeason = useMemo(() => {
+    return selectedMois >= 9
+      ? `${selectedAnnee}-${selectedAnnee + 1}`
+      : `${selectedAnnee - 1}-${selectedAnnee}`
+  }, [selectedMois, selectedAnnee])
 
   // Modal de transaction
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -431,8 +438,8 @@ export default function FinancesManager() {
         {/* Navigation principale par onglets */}
         <div className="bg-slate-100/90 p-1.5 rounded-2xl flex flex-wrap gap-1 mb-6 border border-slate-200/60 max-w-5xl">
           {[
+            { id: 'bilan', label: 'Bilan Financier', icon: '📊' },
             { id: 'journal', label: 'Journal des Opérations', count: unifiedOperations.length, icon: '📒' },
-            { id: 'bilan', label: 'Bilan Saison', icon: '📊' },
             { id: 'projection', label: 'Prévisions & Budget', icon: '🔮' },
             { id: 'categories', label: 'Catégories & Paramètres', count: categories.length, icon: '⚙️' },
           ].map((tab) => (
@@ -458,7 +465,16 @@ export default function FinancesManager() {
           ))}
         </div>
 
-        {/* ─── ONGLET 1 : JOURNAL DES OPÉRATIONS ─── */}
+        {/* ─── ONGLET 1 : BILAN FINANCIER ─── */}
+        {activeTab === 'bilan' && (
+          <FinanceBilan
+            currentSeason={currentSportSeason}
+            selectedMois={selectedMois}
+            selectedAnnee={selectedAnnee}
+          />
+        )}
+
+        {/* ─── ONGLET 2 : JOURNAL DES OPÉRATIONS ─── */}
         {activeTab === 'journal' && (
           <div className="space-y-6">
             {/* Sous-filtre par source de données */}
@@ -852,11 +868,6 @@ export default function FinancesManager() {
               </div>
             )}
           </div>
-        )}
-
-        {/* ─── ONGLET 2 : BILAN SAISON ─── */}
-        {activeTab === 'bilan' && (
-          <FinanceBilan />
         )}
 
         {/* ─── ONGLET 3 : PRÉVISIONS & BUDGET ─── */}

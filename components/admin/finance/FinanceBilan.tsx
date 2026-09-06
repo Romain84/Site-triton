@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { moisNoms } from './types'
 
@@ -65,8 +65,23 @@ const sortKeys = (keys: string[], orderList: string[], categoryMap: { [key: stri
   })
 }
 
-export default function FinanceBilan() {
-  const [saison, setSaison] = useState<string>('')
+interface FinanceBilanProps {
+  currentSeason?: string
+  selectedMois?: number
+  selectedAnnee?: number
+}
+
+export default function FinanceBilan({ currentSeason, selectedMois, selectedAnnee }: FinanceBilanProps = {}) {
+  // Déterminer la saison par défaut
+  const defaultSaison = useMemo(() => {
+    if (currentSeason) return currentSeason
+    const now = new Date()
+    const m = selectedMois ?? (now.getMonth() + 1)
+    const y = selectedAnnee ?? now.getFullYear()
+    return m >= 9 ? `${y}-${y + 1}` : `${y - 1}-${y}`
+  }, [currentSeason, selectedMois, selectedAnnee])
+
+  const [saison, setSaison] = useState<string>(defaultSaison)
   const [data, setData] = useState<BilanData | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
 
@@ -75,27 +90,26 @@ export default function FinanceBilan() {
   const [auditCategoryLabel, setAuditCategoryLabel] = useState<string>('')
   const [auditTransactions, setAuditTransactions] = useState<Transaction[]>([])
 
-  // Déterminer la saison en cours (Septembre à Août)
+  // Synchroniser avec currentSeason si la période change dans FinancesManager
   useEffect(() => {
-    const now = new Date()
-    const currentMonth = now.getMonth() + 1
-    const currentYear = now.getFullYear()
-    let initialSaison = ''
-    if (currentMonth >= 9) {
-      initialSaison = `${currentYear}-${currentYear + 1}`
-    } else {
-      initialSaison = `${currentYear - 1}-${currentYear}`
+    if (currentSeason && currentSeason !== saison) {
+      setSaison(currentSeason)
     }
-    setSaison(initialSaison)
-  }, [])
+  }, [currentSeason])
 
-  // Liste des saisons sélectionnables
-  const now = new Date()
-  const yearNow = now.getFullYear()
-  const saisonsList = Array.from({ length: 6 }, (_, i) => {
-    const y = yearNow - 3 + i
-    return `${y}-${y + 1}`
-  })
+  // Liste des saisons sélectionnables (ordre décroissant, de la plus récente à la plus ancienne)
+  const saisonsList = useMemo(() => {
+    const baseYear = selectedAnnee || new Date().getFullYear()
+    const list: string[] = []
+    for (let i = 2; i >= -3; i--) {
+      const y = baseYear + i
+      list.push(`${y}-${y + 1}`)
+    }
+    if (saison && !list.includes(saison)) {
+      list.unshift(saison)
+    }
+    return list
+  }, [selectedAnnee, saison])
 
   const fetchBilan = async () => {
     if (!saison) return
