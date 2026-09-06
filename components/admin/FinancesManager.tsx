@@ -5,7 +5,6 @@ import toast from 'react-hot-toast'
 import { HelpTooltip } from '../ui/Tooltip'
 import FinanceChart from './finance/FinanceChart'
 import FinanceMetricCards from './finance/FinanceMetricCards'
-import FinanceProjection from './finance/FinanceProjection'
 import TransactionModal from './finance/TransactionModal'
 import TransactionTable from './finance/TransactionTable'
 import FinanceHistoryTable from './finance/FinanceHistoryTable'
@@ -27,7 +26,7 @@ export default function FinancesManager() {
   const [data, setData] = useState<FinancesData | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bilan' | 'journal' | 'projection' | 'categories'>('bilan')
+  const [activeTab, setActiveTab] = useState<'bilan' | 'journal' | 'categories'>('bilan')
   const [journalSubFilter, setJournalSubFilter] = useState<'all' | 'comptabilite' | 'coaches' | 'boutique'>('all')
   const [journalSearch, setJournalSearch] = useState('')
   const [journalTypeFilter, setJournalTypeFilter] = useState<'all' | 'recette' | 'depense'>('all')
@@ -203,6 +202,27 @@ export default function FinancesManager() {
   }
   const cumulativeOverview = getCumulativeOverview()
 
+  // Saison sportive courante (du 1er août au 31 juillet)
+  const currentNow = new Date()
+  const seasonStartYear = (currentNow.getMonth() + 1) >= 8 ? currentNow.getFullYear() : currentNow.getFullYear() - 1
+  const seasonEndYear = seasonStartYear + 1
+  const saisonLabel = `${seasonStartYear}-${seasonEndYear}`
+
+  const seasonOverview = useMemo(() => {
+    return overview.filter(item => {
+      return (item.year === seasonStartYear && item.month >= 8) ||
+             (item.year === seasonEndYear && item.month <= 7)
+    })
+  }, [overview, seasonStartYear, seasonEndYear])
+
+  const seasonIncome = useMemo(() => {
+    return seasonOverview.reduce((sum, item) => sum + item.income, 0)
+  }, [seasonOverview])
+
+  const seasonExpense = useMemo(() => {
+    return seasonOverview.reduce((sum, item) => sum + item.expense, 0)
+  }, [seasonOverview])
+
   // Tendances M-1
   const currentMonthItem = overview.find(o => o.month === selectedMois && o.year === selectedAnnee)
   const prevMois = selectedMois === 1 ? 12 : selectedMois - 1
@@ -348,32 +368,16 @@ export default function FinancesManager() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              Trésorerie &amp; Finances
-              <HelpTooltip title="Suivi de la trésorerie">
-                <p>Visualisation des rentrées d&apos;argent (boutique, cotisations) et des sorties (indemnités entraîneurs, frais courants).</p>
-                <p className="mt-1">Les factures en statut &quot;Brouillon&quot; ne sont pas comptabilisées dans ces chiffres.</p>
-              </HelpTooltip>
-            </h2>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">Gestion comptable, factures et bilans du club</p>
-          </div>
-
-          {/* Sélecteur de période */}
-          <div className="inline-flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/60 shadow-xs shrink-0 max-w-fit sm:ml-2">
-            <select value={selectedMois} onChange={(e) => setSelectedMois(Number(e.target.value))} aria-label="Sélectionner le mois" className="px-2.5 py-1.5 bg-white rounded-lg text-xs font-bold text-slate-800 border border-slate-200/40 outline-none focus:ring-0 cursor-pointer shadow-xs">
-              {moisNoms.map((nom, index) => (
-                <option key={index} value={index + 1}>{nom}</option>
-              ))}
-            </select>
-            <select value={selectedAnnee} onChange={(e) => setSelectedAnnee(Number(e.target.value))} aria-label="Sélectionner l'année" className="px-2.5 py-1.5 bg-white rounded-lg text-xs font-bold text-slate-800 border border-slate-200/40 outline-none focus:ring-0 cursor-pointer shadow-xs">
-              {anneesList.map((annee) => (
-                <option key={annee} value={annee}>{annee}</option>
-              ))}
-            </select>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            Trésorerie &amp; Finances
+            <HelpTooltip title="Suivi de la trésorerie">
+              <p>Visualisation des rentrées d&apos;argent (boutique, cotisations) et des sorties (indemnités entraîneurs, frais courants).</p>
+              <p className="mt-1">Les factures en statut &quot;Brouillon&quot; ne sont pas comptabilisées dans ces chiffres.</p>
+            </HelpTooltip>
+          </h2>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">Gestion comptable, factures et bilans du club</p>
         </div>
 
         {/* Boutons d'action rapides */}
@@ -406,12 +410,13 @@ export default function FinancesManager() {
       {/* Cartes métriques */}
       <FinanceMetricCards
         soldeDepartSaison={soldeDepartSaison}
-        totalIncome={selectedPeriod?.totalIncome || 0}
-        totalExpense={selectedPeriod?.totalExpense || 0}
+        totalIncome={seasonIncome}
+        totalExpense={seasonExpense}
         tresorerieGlobale={tresorerieGlobale}
         incomeTrend={incomeTrend}
         expenseTrend={expenseTrend}
         tresorerieTrend={tresorerieTrend}
+        saisonLabel={saisonLabel}
       />
 
       {/* Graphique SVG avec toggle */}
@@ -424,6 +429,7 @@ export default function FinancesManager() {
         onSelectMonth={(m, y) => {
           setSelectedMois(m)
           setSelectedAnnee(y)
+          setActiveTab('journal')
         }}
       />
 
@@ -434,7 +440,6 @@ export default function FinancesManager() {
           {[
             { id: 'bilan', label: 'Bilan Financier', icon: '📊' },
             { id: 'journal', label: 'Journal des Opérations', count: unifiedOperations.length, icon: '📒' },
-            { id: 'projection', label: 'Prévisions & Budget', icon: '🔮' },
             { id: 'categories', label: 'Catégories & Paramètres', count: categories.length, icon: '⚙️' },
           ].map((tab) => (
             <button
@@ -467,6 +472,100 @@ export default function FinancesManager() {
         {/* ─── ONGLET 2 : JOURNAL DES OPÉRATIONS ─── */}
         {activeTab === 'journal' && (
           <div className="space-y-6">
+            {/* Barre de contrôle du Journal : Sélecteur de mois & résumé mensuel */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Mois sélectionné :
+                </span>
+                <div className="inline-flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-xs shrink-0">
+                  <select
+                    value={selectedMois}
+                    onChange={(e) => setSelectedMois(Number(e.target.value))}
+                    aria-label="Sélectionner le mois"
+                    className="px-2.5 py-1.5 bg-transparent rounded-lg text-xs font-bold text-slate-800 border-none outline-none cursor-pointer"
+                  >
+                    {moisNoms.map((nom, index) => (
+                      <option key={index} value={index + 1}>{nom}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={selectedAnnee}
+                    onChange={(e) => setSelectedAnnee(Number(e.target.value))}
+                    aria-label="Sélectionner l'année"
+                    className="px-2.5 py-1.5 bg-transparent rounded-lg text-xs font-bold text-slate-800 border-none outline-none cursor-pointer"
+                  >
+                    {anneesList.map((annee) => (
+                      <option key={annee} value={annee}>{annee}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Boutons de navigation rapide */}
+                <div className="inline-flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedMois === 1) {
+                        setSelectedMois(12)
+                        setSelectedAnnee(selectedAnnee - 1)
+                      } else {
+                        setSelectedMois(selectedMois - 1)
+                      }
+                    }}
+                    className="px-2 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    title="Mois précédent"
+                  >
+                    ◀
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const now = new Date()
+                      setSelectedMois(now.getMonth() + 1)
+                      setSelectedAnnee(now.getFullYear())
+                    }}
+                    className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    title="Revenir au mois actuel"
+                  >
+                    Ce mois-ci
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedMois === 12) {
+                        setSelectedMois(1)
+                        setSelectedAnnee(selectedAnnee + 1)
+                      } else {
+                        setSelectedMois(selectedMois + 1)
+                      }
+                    }}
+                    className="px-2 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    title="Mois suivant"
+                  >
+                    ▶
+                  </button>
+                </div>
+              </div>
+
+              {/* Synthèse rapide du mois sélectionné */}
+              <div className="flex flex-wrap items-center gap-2 text-xs font-bold self-start md:self-auto">
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                  Recettes : +{(selectedPeriod?.totalIncome || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200/60">
+                  Dépenses : -{(selectedPeriod?.totalExpense || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                </span>
+                <span className={`px-2.5 py-1 rounded-lg border ${
+                  ((selectedPeriod?.totalIncome || 0) - (selectedPeriod?.totalExpense || 0)) >= 0
+                    ? 'bg-slate-900 text-white border-slate-800'
+                    : 'bg-rose-600 text-white border-rose-700'
+                }`}>
+                  Net : {((selectedPeriod?.totalIncome || 0) - (selectedPeriod?.totalExpense || 0)) >= 0 ? '+' : ''}
+                  {(((selectedPeriod?.totalIncome || 0) - (selectedPeriod?.totalExpense || 0))).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                </span>
+              </div>
+            </div>
             {/* Sous-filtre par source de données */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
               <div className="inline-flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/60 text-xs font-bold">
@@ -860,16 +959,7 @@ export default function FinancesManager() {
           </div>
         )}
 
-        {/* ─── ONGLET 3 : PRÉVISIONS & BUDGET ─── */}
-        {activeTab === 'projection' && (
-          <FinanceProjection
-            tresorerieGlobale={tresorerieGlobale}
-            anneesList={anneesList}
-            isActive={activeTab === 'projection'}
-          />
-        )}
-
-        {/* ─── ONGLET 4 : CATÉGORIES & PARAMÈTRES ─── */}
+        {/* ─── ONGLET 3 : CATÉGORIES & PARAMÈTRES ─── */}
         {activeTab === 'categories' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center pb-3 border-b border-slate-100">
