@@ -9,9 +9,21 @@ interface TransactionTableProps {
   onDelete: (id: string) => Promise<void>
   onAddNew: (type?: 'recette' | 'depense') => void
   onEdit?: (tx: TransactionComptableItem) => void
+  boutiqueCount?: number
+  boutiqueTotal?: number
+  onViewBoutique?: () => void
 }
 
-export default function TransactionTable({ transactions, categories, onDelete, onAddNew, onEdit }: TransactionTableProps) {
+export default function TransactionTable({
+  transactions,
+  categories,
+  onDelete,
+  onAddNew,
+  onEdit,
+  boutiqueCount,
+  boutiqueTotal,
+  onViewBoutique,
+}: TransactionTableProps) {
   const [txFilter, setTxFilter] = useState<'all' | 'recette' | 'depense'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null })
@@ -60,6 +72,31 @@ export default function TransactionTable({ transactions, categories, onDelete, o
 
   return (
     <div>
+      {/* Alerte explicative si des recettes boutique existent pour ce mois */}
+      {boutiqueCount !== undefined && boutiqueCount > 0 && (
+        <div className="mb-5 p-3.5 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">🛍️</span>
+            <div>
+              <span className="font-extrabold text-emerald-950">
+                {boutiqueCount} vente{boutiqueCount > 1 ? 's' : ''} boutique ({boutiqueTotal?.toFixed(2) || '0.00'} €) encaissée{boutiqueCount > 1 ? 's' : ''} ce mois
+              </span>
+              <p className="text-emerald-800/80 text-[11px] mt-0.5">
+                Ce tableau recense uniquement les écritures manuelles du club. Vos encaissements boutique sont répertoriés dans l&apos;onglet &quot;Ventes Boutique&quot; ou &quot;Toutes les opérations&quot;.
+              </p>
+            </div>
+          </div>
+          {onViewBoutique && (
+            <button
+              onClick={onViewBoutique}
+              className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-colors shrink-0 cursor-pointer shadow-2xs"
+            >
+              Consulter les ventes boutique →
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Header avec filtres, recherche et actions */}
       <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-6 gap-4 border-b border-slate-100 pb-4">
         {/* Filtres par type */}

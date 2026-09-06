@@ -25,6 +25,10 @@ export async function GET(request: NextRequest) {
         },
       },
       select: {
+        id: true,
+        numeroCommande: true,
+        prenom: true,
+        nom: true,
         total: true,
         createdAt: true,
       },
@@ -69,11 +73,25 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    // Fonctions d'agrégation et de correspondance de dates
+    const getMonthKey = (dInput: Date | string) => {
+      const d = new Date(dInput)
+      return `${d.getFullYear()}-${d.getMonth() + 1}`
+    }
+
+    const isMatchPeriod = (dInput: Date | string, annee: number, mois: number) => {
+      const d = new Date(dInput)
+      // Correspondance en heure locale
+      if (d.getFullYear() === annee && (d.getMonth() + 1) === mois) return true
+      // Correspondance en UTC (évite tout décalage aux bornes de mois entre fuseaux)
+      if (d.getUTCFullYear() === annee && (d.getUTCMonth() + 1) === mois) return true
+      return false
+    }
+
     // 3. Agréger les données par année/mois pour le tableau de bord global
     const monthlyRevenue: { [key: string]: number } = {}
     commandes.forEach((cmd) => {
-      const date = new Date(cmd.createdAt)
-      const key = `${date.getFullYear()}-${date.getMonth() + 1}`
+      const key = getMonthKey(cmd.createdAt)
       monthlyRevenue[key] = (monthlyRevenue[key] || 0) + cmd.total
     })
 
@@ -85,8 +103,7 @@ export async function GET(request: NextRequest) {
 
     // Fusionner les transactions manuelles dans l'agrégation mensuelle
     manualTransactions.forEach((t) => {
-      const date = new Date(t.date)
-      const key = `${date.getFullYear()}-${date.getMonth() + 1}`
+      const key = getMonthKey(t.date)
       if (t.type === 'recette') {
         monthlyRevenue[key] = (monthlyRevenue[key] || 0) + t.montant
       } else {
@@ -103,37 +120,18 @@ export async function GET(request: NextRequest) {
       return { year, month, income, expense, net }
     }).sort((a, b) => b.year - a.year || b.month - a.month)
 
-    // 4. Détails pour la période sélectionnée
+    // 4. Détails pour la période sélectionnée (100% alignés avec le graphe overview)
     const detailedFactures = factures.filter(
       (f) => f.mois === selectMois && f.annee === selectAnnee
     )
 
-    const startOfMonth = new Date(selectAnnee, selectMois - 1, 1)
-    const endOfMonth = new Date(selectAnnee, selectMois, 0, 23, 59, 59, 999)
-    const detailedCommandes = await prisma.commande.findMany({
-      where: {
-        statutPaiement: {
-          in: ['paye', 'payee'],
-        },
-        createdAt: {
-          gte: startOfMonth,
-          lte: endOfMonth,
-        },
-      },
-      select: {
-        id: true,
-        numeroCommande: true,
-        prenom: true,
-        nom: true,
-        total: true,
-        createdAt: true,
-      },
-    })
+    const detailedCommandes = commandes.filter((cmd) =>
+      isMatchPeriod(cmd.createdAt, selectAnnee, selectMois)
+    )
 
-    const detailedTransactions = manualTransactions.filter((t) => {
-      const d = new Date(t.date)
-      return d >= startOfMonth && d <= endOfMonth
-    })
+    const detailedTransactions = manualTransactions.filter((t) =>
+      isMatchPeriod(t.date, selectAnnee, selectMois)
+    )
 
     const totalIncome = detailedCommandes.reduce((sum, c) => sum + c.total, 0) +
       detailedTransactions.filter((t) => t.type === 'recette').reduce((sum, t) => sum + t.montant, 0)

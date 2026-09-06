@@ -415,7 +415,16 @@ export default function FinancesManager() {
       />
 
       {/* Graphique SVG avec toggle */}
-      <FinanceChart overview={overview} cumulativeOverview={cumulativeOverview} />
+      <FinanceChart
+        overview={overview}
+        cumulativeOverview={cumulativeOverview}
+        selectedMois={selectedMois}
+        selectedAnnee={selectedAnnee}
+        onSelectMonth={(m, y) => {
+          setSelectedMois(m)
+          setSelectedAnnee(y)
+        }}
+      />
 
       {/* Onglets détaillés */}
       <div className="card p-5 bg-white border border-slate-200/90 rounded-2xl shadow-2xs">
@@ -556,13 +565,35 @@ export default function FinancesManager() {
                   <div className="flex flex-col items-center justify-center text-center py-12 px-4 bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl">
                     <span className="text-3xl mb-2">📒</span>
                     <p className="font-bold text-slate-800 text-sm">
-                      {journalSearch ? 'Aucune opération ne correspond à votre recherche' : 'Aucune opération financière enregistrée pour ce mois'}
+                      {journalSearch
+                        ? 'Aucune opération ne correspond à votre recherche'
+                        : `Aucune opération financière enregistrée pour ${moisNoms[selectedMois - 1]} ${selectedAnnee}`}
                     </p>
                     <p className="text-xs text-slate-500 mt-1 max-w-sm">
                       {journalSearch
                         ? 'Vérifiez vos termes de recherche ou réinitialisez le filtre.'
                         : 'Enregistrez des écritures manuelles, validez des factures coachs ou consultez les ventes de la boutique.'}
                     </p>
+                    {!journalSearch && overview.some(o => (o.income > 0 || o.expense > 0) && !(o.month === selectedMois && o.year === selectedAnnee)) && (() => {
+                      const active = overview.find(o => (o.income > 0 || o.expense > 0) && !(o.month === selectedMois && o.year === selectedAnnee))
+                      if (!active) return null
+                      return (
+                        <div className="mt-4 p-3.5 bg-indigo-50/90 border border-indigo-200/80 rounded-2xl text-xs flex flex-col sm:flex-row items-center gap-3 shadow-2xs">
+                          <span className="text-indigo-950 font-medium">
+                            💡 Des flux financiers ({active.income > 0 ? `+${active.income.toFixed(2)} €` : ''}{active.expense > 0 ? ` -${active.expense.toFixed(2)} €` : ''}) sont enregistrés pour <strong>{moisNoms[active.month - 1]} {active.year}</strong>.
+                          </span>
+                          <button
+                            onClick={() => {
+                              setSelectedMois(active.month)
+                              setSelectedAnnee(active.year)
+                            }}
+                            className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-all shadow-xs cursor-pointer shrink-0"
+                          >
+                            Consulter {moisNoms[active.month - 1]} {active.year} →
+                          </button>
+                        </div>
+                      )
+                    })()}
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
@@ -695,6 +726,9 @@ export default function FinancesManager() {
               <TransactionTable
                 transactions={selectedPeriod?.transactions || []}
                 categories={categories}
+                boutiqueCount={selectedPeriod?.commandes?.length || 0}
+                boutiqueTotal={selectedPeriod?.commandes?.reduce((sum, c) => sum + c.total, 0) || 0}
+                onViewBoutique={() => setJournalSubFilter('boutique')}
                 onDelete={handleDeleteTransaction}
                 onAddNew={(type) => {
                   setEditingTransaction(null)

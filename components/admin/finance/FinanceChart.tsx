@@ -6,9 +6,18 @@ import { MonthlyOverviewItem, CumulativeOverviewItem, moisNoms } from './types'
 interface FinanceChartProps {
   overview: MonthlyOverviewItem[]
   cumulativeOverview: CumulativeOverviewItem[]
+  selectedMois?: number
+  selectedAnnee?: number
+  onSelectMonth?: (mois: number, annee: number) => void
 }
 
-export default function FinanceChart({ overview, cumulativeOverview }: FinanceChartProps) {
+export default function FinanceChart({
+  overview,
+  cumulativeOverview,
+  selectedMois,
+  selectedAnnee,
+  onSelectMonth,
+}: FinanceChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   const [isCollapsed, setIsCollapsed] = useState(false)
 
@@ -136,6 +145,27 @@ export default function FinanceChart({ overview, cumulativeOverview }: FinanceCh
             {/* Ligne d'axe X zéro */}
             <line x1={paddingLeft} y1={yZero} x2={800 - paddingRight} y2={yZero} stroke="#cbd5e1" strokeWidth={1.5} />
 
+            {/* Colonne du mois actuellement sélectionné */}
+            {chartOverview.map((item, idx) => {
+              const isSelected = selectedMois !== undefined && selectedAnnee !== undefined && item.month === selectedMois && item.year === selectedAnnee
+              if (!isSelected) return null
+              const colX = paddingLeft + idx * colWidth
+              return (
+                <rect
+                  key={`selected-${idx}`}
+                  x={colX + 2}
+                  y={paddingTop}
+                  width={colWidth - 4}
+                  height={chartHeight}
+                  fill="#f1f5f9"
+                  stroke="#94a3b8"
+                  strokeWidth={1.2}
+                  strokeDasharray="3 3"
+                  rx={8}
+                />
+              )
+            })}
+
             {/* Arrière-plan de colonne au survol */}
             {hoveredIndex !== null && (
               <rect x={paddingLeft + hoveredIndex * colWidth + 4} y={paddingTop} width={colWidth - 8} height={chartHeight} fill="#f8fafc" rx={8} />
@@ -178,24 +208,53 @@ export default function FinanceChart({ overview, cumulativeOverview }: FinanceCh
               const colX = paddingLeft + idx * colWidth
               const centerX = colX + colWidth / 2
               const isHovered = hoveredIndex === idx
+              const isSelected = selectedMois !== undefined && selectedAnnee !== undefined && item.month === selectedMois && item.year === selectedAnnee
+
               return (
                 <g key={idx}>
                   {isHovered && (
                     <line x1={centerX} y1={paddingTop} x2={centerX} y2={paddingTop + chartHeight} stroke="#64748b" strokeWidth={1.2} strokeDasharray="3 3" />
                   )}
-                  <circle cx={centerX} cy={getY(chartCumulative[idx]?.cumulative || 0)} r={isHovered ? 6 : 4.5} fill="#6366f1" stroke="#ffffff" strokeWidth={2} className="transition-all duration-150" />
-                  <text x={centerX} y={300 - 15} textAnchor="middle" className="text-[9px] font-extrabold fill-slate-500 uppercase">
+                  <circle
+                    cx={centerX}
+                    cy={getY(chartCumulative[idx]?.cumulative || 0)}
+                    r={isHovered ? 6.5 : isSelected ? 5.5 : 4.5}
+                    fill={isSelected ? '#4338ca' : '#6366f1'}
+                    stroke="#ffffff"
+                    strokeWidth={isSelected ? 2.5 : 2}
+                    className="transition-all duration-150"
+                  />
+                  <text
+                    x={centerX}
+                    y={300 - 15}
+                    textAnchor="middle"
+                    className={`text-[9px] uppercase ${isSelected ? 'fill-slate-950 font-black' : 'fill-slate-500 font-extrabold'}`}
+                  >
                     {moisNoms[item.month - 1].slice(0, 3)}. {item.year.toString().slice(2)}
                   </text>
+                  {isSelected && (
+                    <circle cx={centerX} y={300 - 6} r={2} fill="#4338ca" />
+                  )}
                 </g>
               )
             })}
 
-            {/* Zones de détection pour le survol */}
-            {chartOverview.map((_, idx) => {
+            {/* Zones de détection pour le survol et le clic */}
+            {chartOverview.map((item, idx) => {
               const colX = paddingLeft + idx * colWidth
               return (
-                <rect key={idx} x={colX} y={paddingTop} width={colWidth} height={chartHeight} fill="transparent" className="cursor-pointer" onMouseEnter={() => setHoveredIndex(idx)} onMouseLeave={() => setHoveredIndex(null)} />
+                <rect
+                  key={idx}
+                  x={colX}
+                  y={paddingTop}
+                  width={colWidth}
+                  height={chartHeight + 35}
+                  fill="transparent"
+                  className={onSelectMonth ? 'cursor-pointer' : ''}
+                  onClick={() => onSelectMonth?.(item.month, item.year)}
+                  onMouseEnter={() => setHoveredIndex(idx)}
+                  onMouseLeave={() => setHoveredIndex(null)}
+                />
               )
             })}
           </svg>
@@ -209,8 +268,11 @@ export default function FinanceChart({ overview, cumulativeOverview }: FinanceCh
                 top: `${Math.max(10, Math.min(getY(chartCumulative[hoveredIndex]?.cumulative || 0) - 110, 160))}px`,
               }}
             >
-              <div className="font-extrabold text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-1">
-                {moisNoms[chartOverview[hoveredIndex].month - 1]} {chartOverview[hoveredIndex].year}
+              <div className="font-extrabold text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-1 flex justify-between items-center">
+                <span>{moisNoms[chartOverview[hoveredIndex].month - 1]} {chartOverview[hoveredIndex].year}</span>
+                {selectedMois === chartOverview[hoveredIndex].month && selectedAnnee === chartOverview[hoveredIndex].year && (
+                  <span className="text-[9px] bg-indigo-500/30 text-indigo-300 px-1.5 py-0.2 rounded font-bold">Sélectionné</span>
+                )}
               </div>
               <div className="space-y-1">
                 <div className="flex justify-between gap-6">
@@ -233,6 +295,11 @@ export default function FinanceChart({ overview, cumulativeOverview }: FinanceCh
                     {chartCumulative[hoveredIndex]?.cumulative.toFixed(2)} €
                   </span>
                 </div>
+                {onSelectMonth && (
+                  <div className="border-t border-slate-800 pt-1.5 text-[10px] text-indigo-300 font-bold text-center">
+                    👆 Cliquer pour afficher ce mois
+                  </div>
+                )}
               </div>
             </div>
           )}
