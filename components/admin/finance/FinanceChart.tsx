@@ -14,15 +14,20 @@ export default function FinanceChart({ overview, cumulativeOverview }: FinanceCh
 
   if (overview.length === 0) return null
 
+  // Ordonner chronologiquement : du plus ancien (à gauche) au plus récent (à droite)
+  const chartOverview = [...overview].reverse()
+  const chartCumulative = [...cumulativeOverview].reverse()
+
   const paddingLeft = 60
   const paddingRight = 20
   const paddingTop = 30
   const paddingBottom = 40
   const chartWidth = 800 - paddingLeft - paddingRight
   const chartHeight = 300 - paddingTop - paddingBottom
+  const yBottom = paddingTop + chartHeight
 
-  const minDomain = Math.min(0, ...overview.map(item => item.net), ...cumulativeOverview.map(item => item.cumulative))
-  const maxDomain = Math.max(...overview.map(item => Math.max(item.income, item.expense)), ...cumulativeOverview.map(item => item.cumulative)) * 1.15
+  const minDomain = Math.min(0, ...chartOverview.map(item => item.net), ...chartCumulative.map(item => item.cumulative))
+  const maxDomain = Math.max(...chartOverview.map(item => Math.max(item.income, item.expense)), ...chartCumulative.map(item => item.cumulative)) * 1.15
   const domainHeight = maxDomain - minDomain
 
   const getY = (v: number) => {
@@ -30,7 +35,7 @@ export default function FinanceChart({ overview, cumulativeOverview }: FinanceCh
     return paddingTop + chartHeight - ((v - minDomain) / domainHeight) * chartHeight
   }
 
-  const colWidth = chartWidth / overview.length
+  const colWidth = chartWidth / chartOverview.length
   const yZero = getY(0)
 
   const tickCount = 4
@@ -38,14 +43,14 @@ export default function FinanceChart({ overview, cumulativeOverview }: FinanceCh
     return minDomain + (idx * domainHeight) / (tickCount - 1)
   })
 
-  const pathPoints = cumulativeOverview.map((item, idx) => {
+  const pathPoints = chartCumulative.map((item, idx) => {
     const cx = paddingLeft + idx * colWidth + colWidth / 2
     const cy = getY(item.cumulative)
     return `${idx === 0 ? 'M' : 'L'} ${cx} ${cy}`
   }).join(' ')
 
-  const areaPoints = cumulativeOverview.length > 0
-    ? `${pathPoints} L ${paddingLeft + (cumulativeOverview.length - 1) * colWidth + colWidth / 2} ${yZero} L ${paddingLeft + colWidth / 2} ${yZero} Z`
+  const areaPoints = chartCumulative.length > 0
+    ? `${pathPoints} L ${paddingLeft + (chartCumulative.length - 1) * colWidth + colWidth / 2} ${yBottom} L ${paddingLeft + colWidth / 2} ${yBottom} Z`
     : ''
 
   const barWidth = Math.max(4, colWidth * 0.18)
@@ -137,7 +142,7 @@ export default function FinanceChart({ overview, cumulativeOverview }: FinanceCh
             )}
 
             {/* Histogrammes */}
-            {overview.map((item, idx) => {
+            {chartOverview.map((item, idx) => {
               const colX = paddingLeft + idx * colWidth
               const centerX = colX + colWidth / 2
               const yIncome = getY(item.income)
@@ -161,7 +166,7 @@ export default function FinanceChart({ overview, cumulativeOverview }: FinanceCh
             })}
 
             {/* Zone dégradée et Courbe de tendance */}
-            {overview.length > 0 && (
+            {chartOverview.length > 0 && (
               <g>
                 <path d={areaPoints} fill="url(#net-gradient)" />
                 <path d={pathPoints} fill="none" stroke="#6366f1" strokeWidth={3} filter="url(#shadow)" strokeLinecap="round" strokeLinejoin="round" />
@@ -169,7 +174,7 @@ export default function FinanceChart({ overview, cumulativeOverview }: FinanceCh
             )}
 
             {/* Points et axes X */}
-            {overview.map((item, idx) => {
+            {chartOverview.map((item, idx) => {
               const colX = paddingLeft + idx * colWidth
               const centerX = colX + colWidth / 2
               const isHovered = hoveredIndex === idx
@@ -178,7 +183,7 @@ export default function FinanceChart({ overview, cumulativeOverview }: FinanceCh
                   {isHovered && (
                     <line x1={centerX} y1={paddingTop} x2={centerX} y2={paddingTop + chartHeight} stroke="#64748b" strokeWidth={1.2} strokeDasharray="3 3" />
                   )}
-                  <circle cx={centerX} cy={getY(cumulativeOverview[idx]?.cumulative || 0)} r={isHovered ? 6 : 4.5} fill="#6366f1" stroke="#ffffff" strokeWidth={2} className="transition-all duration-150" />
+                  <circle cx={centerX} cy={getY(chartCumulative[idx]?.cumulative || 0)} r={isHovered ? 6 : 4.5} fill="#6366f1" stroke="#ffffff" strokeWidth={2} className="transition-all duration-150" />
                   <text x={centerX} y={300 - 15} textAnchor="middle" className="text-[9px] font-extrabold fill-slate-500 uppercase">
                     {moisNoms[item.month - 1].slice(0, 3)}. {item.year.toString().slice(2)}
                   </text>
@@ -187,7 +192,7 @@ export default function FinanceChart({ overview, cumulativeOverview }: FinanceCh
             })}
 
             {/* Zones de détection pour le survol */}
-            {overview.map((_, idx) => {
+            {chartOverview.map((_, idx) => {
               const colX = paddingLeft + idx * colWidth
               return (
                 <rect key={idx} x={colX} y={paddingTop} width={colWidth} height={chartHeight} fill="transparent" className="cursor-pointer" onMouseEnter={() => setHoveredIndex(idx)} onMouseLeave={() => setHoveredIndex(null)} />
@@ -201,31 +206,31 @@ export default function FinanceChart({ overview, cumulativeOverview }: FinanceCh
               className="absolute z-10 bg-slate-950/95 text-white p-3.5 rounded-xl shadow-lg border border-slate-800 text-[11px] space-y-2 pointer-events-none transition-all duration-150"
               style={{
                 left: `${Math.min(Math.max(paddingLeft, paddingLeft + hoveredIndex * colWidth + colWidth / 2 - 90), 800 - paddingRight - 180)}px`,
-                top: `${Math.max(10, Math.min(getY(cumulativeOverview[hoveredIndex]?.cumulative || 0) - 110, 160))}px`,
+                top: `${Math.max(10, Math.min(getY(chartCumulative[hoveredIndex]?.cumulative || 0) - 110, 160))}px`,
               }}
             >
               <div className="font-extrabold text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-1">
-                {moisNoms[overview[hoveredIndex].month - 1]} {overview[hoveredIndex].year}
+                {moisNoms[chartOverview[hoveredIndex].month - 1]} {chartOverview[hoveredIndex].year}
               </div>
               <div className="space-y-1">
                 <div className="flex justify-between gap-6">
                   <span className="text-slate-400">Argent Reçu (Recettes) :</span>
-                  <span className="font-bold text-emerald-400">+{overview[hoveredIndex].income.toFixed(2)} €</span>
+                  <span className="font-bold text-emerald-400">+{chartOverview[hoveredIndex].income.toFixed(2)} €</span>
                 </div>
                 <div className="flex justify-between gap-6">
                   <span className="text-slate-400">Argent Dépensé (Dépenses) :</span>
-                  <span className="font-bold text-sky-400">-{overview[hoveredIndex].expense.toFixed(2)} €</span>
+                  <span className="font-bold text-sky-400">-{chartOverview[hoveredIndex].expense.toFixed(2)} €</span>
                 </div>
                 <div className="border-t border-slate-800 pt-1.5 flex justify-between gap-6">
                   <span className="text-slate-200 font-semibold">Gains / Pertes du mois :</span>
-                  <span className={`font-black ${overview[hoveredIndex].net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {overview[hoveredIndex].net >= 0 ? '+' : ''}{overview[hoveredIndex].net.toFixed(2)} €
+                  <span className={`font-black ${chartOverview[hoveredIndex].net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {chartOverview[hoveredIndex].net >= 0 ? '+' : ''}{chartOverview[hoveredIndex].net.toFixed(2)} €
                   </span>
                 </div>
                 <div className="flex justify-between gap-6">
                   <span className="text-slate-200 font-semibold">Solde Global Restant :</span>
                   <span className="font-black text-indigo-400">
-                    {cumulativeOverview[hoveredIndex]?.cumulative.toFixed(2)} €
+                    {chartCumulative[hoveredIndex]?.cumulative.toFixed(2)} €
                   </span>
                 </div>
               </div>

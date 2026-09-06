@@ -20,26 +20,40 @@ export default function FinanceMetricCards({
   tresorerieTrend,
 }: FinanceMetricCardsProps) {
   const fmt = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const monthlyNet = totalIncome - totalExpense
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Solde Initial */}
-      <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
+      {/* Trésorerie Globale */}
+      <div className={`p-5 rounded-2xl shadow-2xs hover:shadow-xs transition-all border flex flex-col justify-between ${
+        tresorerieGlobale >= 0 
+          ? 'bg-slate-900 text-white border-slate-800' 
+          : 'bg-rose-950 text-white border-rose-900'
+      }`}>
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              Solde Initial Saison
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+              Trésorerie Globale
             </span>
-            <span className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 text-sm">
-              🏦
-            </span>
+            <div className="flex items-center gap-1.5">
+              {tresorerieTrend !== null && (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                  tresorerieTrend >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+                }`}>
+                  {tresorerieTrend >= 0 ? '+' : ''}{tresorerieTrend.toFixed(1)}%
+                </span>
+              )}
+              <span className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-white text-sm">
+                💳
+              </span>
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 tracking-tight">
-            {fmt(soldeDepartSaison)} €
+          <div className="text-2xl font-black tracking-tight text-white">
+            {fmt(tresorerieGlobale)} €
           </div>
         </div>
-        <p className="text-xs text-slate-500 mt-3 font-medium">
-          Caisse au démarrage de la saison
+        <p className="text-xs mt-3 font-medium text-slate-400">
+          Solde bancaire théorique disponible (Solde départ : {fmt(soldeDepartSaison)} €)
         </p>
       </div>
 
@@ -101,36 +115,31 @@ export default function FinanceMetricCards({
         </p>
       </div>
 
-      {/* Trésorerie Globale */}
+      {/* Résultat Net du Mois */}
       <div className={`p-5 rounded-2xl shadow-2xs hover:shadow-xs transition-all border flex flex-col justify-between ${
-        tresorerieGlobale >= 0 
-          ? 'bg-slate-900 text-white border-slate-800' 
-          : 'bg-rose-950 text-white border-rose-900'
+        monthlyNet >= 0
+          ? 'bg-emerald-50/30 border-emerald-200/60'
+          : 'bg-rose-50/30 border-rose-200/60'
       }`}>
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
-              Trésorerie Globale
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${monthlyNet >= 0 ? 'text-emerald-900' : 'text-rose-900'}`}>
+              Résultat Net du Mois
             </span>
-            <div className="flex items-center gap-1.5">
-              {tresorerieTrend !== null && (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                  tresorerieTrend >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
-                }`}>
-                  {tresorerieTrend >= 0 ? '+' : ''}{tresorerieTrend.toFixed(1)}%
-                </span>
-              )}
-              <span className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-white text-sm">
-                💳
-              </span>
-            </div>
+            <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm ${
+              monthlyNet >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+            }`}>
+              ⚖️
+            </span>
           </div>
-          <div className="text-2xl font-black tracking-tight text-white">
-            {fmt(tresorerieGlobale)} €
+          <div className={`text-2xl font-black tracking-tight ${
+            monthlyNet >= 0 ? 'text-emerald-950' : 'text-rose-950'
+          }`}>
+            {monthlyNet >= 0 ? '+' : ''}{fmt(monthlyNet)} €
           </div>
         </div>
-        <p className="text-xs mt-3 font-medium text-slate-400">
-          Solde bancaire théorique disponible
+        <p className={`text-xs mt-3 font-medium ${monthlyNet >= 0 ? 'text-emerald-800/80' : 'text-rose-800/80'}`}>
+          {monthlyNet >= 0 ? 'Bilan mensuel excédentaire' : 'Bilan mensuel déficitaire'}
         </p>
       </div>
     </div>

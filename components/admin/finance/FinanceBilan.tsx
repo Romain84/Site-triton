@@ -297,20 +297,21 @@ export default function FinanceBilan() {
             <div className="w-16 h-0.5 bg-slate-950 mx-auto mt-4" />
           </div>
 
-          {/* Tableau Excel Côte-à-Côte */}
-          <div className="bg-white border-2 border-slate-950 rounded-2xl overflow-hidden shadow-md print-grid">
-            <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x-2 divide-slate-950">
+          {/* Tableau Côte-à-Côte Moderne */}
+          <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs print:border-2 print:border-black print-grid">
+            <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-200 print:divide-x-2 print:divide-black">
               
               {/* SECTION DÉPENSES */}
               <div className="flex-1 flex flex-col">
-                <div className="bg-slate-900 text-white text-center py-2.5 font-black text-sm border-b-2 border-slate-950 uppercase tracking-widest">
-                  Dépenses
+                <div className="bg-slate-900 text-white text-center py-3 font-extrabold text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+                  <span>📉</span>
+                  <span>Dépenses engagées</span>
                 </div>
-                <div className="grid grid-cols-12 bg-slate-100 border-b border-slate-400 text-[10px] font-black uppercase tracking-wider text-slate-600">
-                  <div className="col-span-8 py-2 px-3 text-left">Désignation</div>
-                  <div className="col-span-4 py-2 px-3 text-right border-l border-slate-300">Montant</div>
+                <div className="grid grid-cols-12 bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  <div className="col-span-8 py-2.5 px-3 text-left">Désignation du poste</div>
+                  <div className="col-span-4 py-2.5 px-3 text-right border-l border-slate-200">Montant</div>
                 </div>
-                <div className="flex-1 divide-y divide-slate-200">
+                <div className="flex-1 divide-y divide-slate-100">
                   {depKeys.map((key) => {
                     const cat = data.depenses[key]
                     if (!cat) return null
@@ -318,12 +319,12 @@ export default function FinanceBilan() {
                       <div
                         key={key}
                         onClick={() => openAudit(cat.label, cat)}
-                        className="grid grid-cols-12 text-xs py-2 px-3 hover:bg-slate-50 transition-colors cursor-pointer select-none no-print-cursor text-slate-800 font-medium"
+                        className="grid grid-cols-12 text-xs py-2.5 px-3 hover:bg-slate-50/80 transition-colors cursor-pointer select-none no-print-cursor text-slate-800 font-medium"
                       >
                         <div className="col-span-8 truncate pr-2 flex items-center gap-1.5">
-                          <span>{cat.label}</span>
+                          <span className="hover:text-primary transition-colors">{cat.label}</span>
                         </div>
-                        <div className="col-span-4 text-right font-mono font-bold border-l border-slate-200/80 pl-2">
+                        <div className="col-span-4 text-right font-mono font-bold border-l border-slate-100 pl-2 text-slate-900">
                           {cat.total > 0 ? formatEuro(cat.total) : '— €'}
                         </div>
                       </div>
@@ -331,9 +332,9 @@ export default function FinanceBilan() {
                   })}
                 </div>
                 {/* Total Dépenses */}
-                <div className="grid grid-cols-12 bg-slate-100 border-t-2 border-slate-950 text-xs font-black text-slate-950 py-2.5 px-3">
+                <div className="grid grid-cols-12 bg-slate-100/90 border-t-2 border-slate-200 text-xs font-black text-slate-900 py-3 px-3">
                   <div className="col-span-8 uppercase tracking-wider">Total dépenses</div>
-                  <div className="col-span-4 text-right font-mono text-sm">
+                  <div className="col-span-4 text-right font-mono text-sm text-rose-700 font-black">
                     {formatEuro(data.totals.depenses)}
                   </div>
                 </div>
@@ -341,14 +342,15 @@ export default function FinanceBilan() {
 
               {/* SECTION RECETTES */}
               <div className="flex-1 flex flex-col">
-                <div className="bg-slate-900 text-white text-center py-2.5 font-black text-sm border-b-2 border-slate-950 uppercase tracking-widest">
-                  Recettes
+                <div className="bg-slate-900 text-white text-center py-3 font-extrabold text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+                  <span>📈</span>
+                  <span>Recettes perçues</span>
                 </div>
-                <div className="grid grid-cols-12 bg-slate-100 border-b border-slate-400 text-[10px] font-black uppercase tracking-wider text-slate-600">
-                  <div className="col-span-8 py-2 px-3 text-left">Désignation</div>
-                  <div className="col-span-4 py-2 px-3 text-right border-l border-slate-300">Montant</div>
+                <div className="grid grid-cols-12 bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  <div className="col-span-8 py-2.5 px-3 text-left">Désignation du poste</div>
+                  <div className="col-span-4 py-2.5 px-3 text-right border-l border-slate-200">Montant</div>
                 </div>
-                <div className="flex-1 divide-y divide-slate-200">
+                <div className="flex-1 divide-y divide-slate-100">
                   {Array.from({ length: maxRows }).map((_, i) => {
                     const key = recKeys[i]
                     const cat = key ? data.recettes[key] : null
@@ -356,7 +358,7 @@ export default function FinanceBilan() {
                     if (!cat) {
                       // Ligne vide pour s'aligner avec le nombre de lignes de dépenses
                       return (
-                        <div key={`empty-${i}`} className="grid grid-cols-12 text-xs py-2 px-3 text-slate-300">
+                        <div key={`empty-${i}`} className="grid grid-cols-12 text-xs py-2.5 px-3 text-slate-300">
                           <div className="col-span-8">&nbsp;</div>
                           <div className="col-span-4 border-l border-slate-100">&nbsp;</div>
                         </div>
@@ -367,12 +369,12 @@ export default function FinanceBilan() {
                       <div
                         key={key}
                         onClick={() => openAudit(cat.label, cat)}
-                        className="grid grid-cols-12 text-xs py-2 px-3 hover:bg-slate-50 transition-colors cursor-pointer select-none no-print-cursor text-slate-800 font-medium"
+                        className="grid grid-cols-12 text-xs py-2.5 px-3 hover:bg-slate-50/80 transition-colors cursor-pointer select-none no-print-cursor text-slate-800 font-medium"
                       >
                         <div className="col-span-8 truncate pr-2 flex items-center gap-1.5">
-                          <span>{cat.label}</span>
+                          <span className="hover:text-primary transition-colors">{cat.label}</span>
                         </div>
-                        <div className="col-span-4 text-right font-mono font-bold border-l border-slate-200/80 pl-2">
+                        <div className="col-span-4 text-right font-mono font-bold border-l border-slate-100 pl-2 text-slate-900">
                           {cat.total > 0 ? formatEuro(cat.total) : '— €'}
                         </div>
                       </div>
@@ -380,9 +382,9 @@ export default function FinanceBilan() {
                   })}
                 </div>
                 {/* Total Recettes */}
-                <div className="grid grid-cols-12 bg-slate-100 border-t-2 border-slate-950 text-xs font-black text-slate-950 py-2.5 px-3">
+                <div className="grid grid-cols-12 bg-slate-100/90 border-t-2 border-slate-200 text-xs font-black text-slate-900 py-3 px-3">
                   <div className="col-span-8 uppercase tracking-wider">Total recettes</div>
-                  <div className="col-span-4 text-right font-mono text-sm">
+                  <div className="col-span-4 text-right font-mono text-sm text-emerald-700 font-black">
                     {formatEuro(data.totals.recettes)}
                   </div>
                 </div>
@@ -393,13 +395,13 @@ export default function FinanceBilan() {
 
           {/* TABLEAU DE GAIN / PERTE NET (Aligné en bas) */}
           <div className="flex justify-center pt-2">
-            <div className="w-full max-w-sm bg-white border-2 border-slate-950 rounded-xl overflow-hidden shadow-sm">
-              <div className="grid grid-cols-2 divide-x-2 divide-slate-950">
+            <div className="w-full max-w-sm bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs print:border-2 print:border-black">
+              <div className="grid grid-cols-2 divide-x divide-slate-200 print:divide-black">
                 
                 {/* Ligne Gain */}
-                <div className="flex flex-col justify-between divide-y-2 divide-slate-950">
-                  <div className={`py-3 px-4 text-xs font-black uppercase text-center ${data.totals.gain > 0 ? 'bg-emerald-500 text-white' : 'text-slate-400 bg-slate-50'}`}>
-                    Gain
+                <div className="flex flex-col justify-between divide-y divide-slate-200">
+                  <div className={`py-3 px-4 text-xs font-black uppercase text-center ${data.totals.gain > 0 ? 'bg-emerald-600 text-white' : 'text-slate-400 bg-slate-50'}`}>
+                    Gain net
                   </div>
                   <div className={`py-3 px-4 text-center font-mono font-black text-base ${data.totals.gain > 0 ? 'text-emerald-600' : 'text-slate-300'}`}>
                     {data.totals.gain > 0 ? formatEuro(data.totals.gain) : '—'}
@@ -407,9 +409,9 @@ export default function FinanceBilan() {
                 </div>
 
                 {/* Ligne Perte */}
-                <div className="flex flex-col justify-between divide-y-2 divide-slate-950">
-                  <div className={`py-3 px-4 text-xs font-black uppercase text-center ${data.totals.perte > 0 ? 'bg-rose-500 text-white' : 'text-slate-400 bg-slate-50'}`}>
-                    Perte
+                <div className="flex flex-col justify-between divide-y divide-slate-200">
+                  <div className={`py-3 px-4 text-xs font-black uppercase text-center ${data.totals.perte > 0 ? 'bg-rose-600 text-white' : 'text-slate-400 bg-slate-50'}`}>
+                    Perte nette
                   </div>
                   <div className={`py-3 px-4 text-center font-mono font-black text-base ${data.totals.perte > 0 ? 'text-rose-600' : 'text-slate-300'}`}>
                     {data.totals.perte > 0 ? formatEuro(data.totals.perte) : '—'}

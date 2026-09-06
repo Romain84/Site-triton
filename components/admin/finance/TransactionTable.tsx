@@ -8,9 +8,10 @@ interface TransactionTableProps {
   categories: any[]
   onDelete: (id: string) => Promise<void>
   onAddNew: (type?: 'recette' | 'depense') => void
+  onEdit?: (tx: TransactionComptableItem) => void
 }
 
-export default function TransactionTable({ transactions, categories, onDelete, onAddNew }: TransactionTableProps) {
+export default function TransactionTable({ transactions, categories, onDelete, onAddNew, onEdit }: TransactionTableProps) {
   const [txFilter, setTxFilter] = useState<'all' | 'recette' | 'depense'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null })
@@ -184,7 +185,16 @@ export default function TransactionTable({ transactions, categories, onDelete, o
                         <span className="text-slate-300 text-xs">-</span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+                      {onEdit && (
+                        <button
+                          onClick={() => onEdit(tx)}
+                          className="px-2.5 py-1 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                          aria-label={`Modifier l'écriture ${tx.libelle}`}
+                        >
+                          Modifier
+                        </button>
+                      )}
                       <button
                         onClick={() => setDeleteConfirm({ isOpen: true, id: tx.id })}
                         className="px-2.5 py-1 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"

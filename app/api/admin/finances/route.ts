@@ -45,6 +45,8 @@ export async function GET(request: NextRequest) {
         annee: true,
         statut: true,
         pdfPath: true,
+        createdAt: true,
+        datePaiement: true,
         coach: {
           select: {
             prenom: true,

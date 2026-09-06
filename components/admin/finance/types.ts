@@ -17,6 +17,8 @@ export interface FactureCoachItem {
   annee: number
   statut: string
   pdfPath: string | null
+  createdAt?: string
+  datePaiement?: string | null
   coach: {
     prenom: string
     nom: string | null
