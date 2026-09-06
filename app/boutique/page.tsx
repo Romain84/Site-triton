@@ -39,6 +39,23 @@ export default function BoutiquePage() {
   const [categories, setCategories] = useState<Categorie[]>([])
   const [selectedCategorie, setSelectedCategorie] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [boutiqueOuverte, setBoutiqueOuverte] = useState(true)
+
+  const loadStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/boutique/status')
+      if (res.ok) {
+        const data = await res.json()
+        setBoutiqueOuverte(data.boutiqueOuverte ?? true)
+      }
+    } catch {
+      // défaut ouvert
+    }
+  }, [])
+
+  useEffect(() => {
+    loadStatus()
+  }, [loadStatus])
 
   const loadProduits = useCallback(async () => {
     setLoading(true)
@@ -114,6 +131,18 @@ export default function BoutiquePage() {
             Découvrez tous nos produits du club
           </p>
         </div>
+
+        {!boutiqueOuverte && (
+          <div className="max-w-2xl mx-auto mb-10 p-4 bg-amber-50 border border-amber-200/80 rounded-2xl flex items-center gap-3.5 text-amber-900 shadow-xs">
+            <span className="text-2xl shrink-0">🔒</span>
+            <div>
+              <p className="font-bold text-sm">Boutique temporairement fermée aux commandes</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Vous pouvez consulter notre catalogue d&apos;équipements officiels. Les commandes en ligne seront réouvertes très prochainement !
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Filtres par catégorie */}
         {categories.length > 0 && (

@@ -23,6 +23,7 @@ export default function CheckoutPage() {
     nomNageur: '',
     note: '',
   })
+  const [memeNageur, setMemeNageur] = useState(false)
 
   const total = totalPrice
 
@@ -168,9 +169,14 @@ export default function CheckoutPage() {
                         <input
                           type="text"
                           value={formData.prenom}
-                          onChange={(e) =>
-                            setFormData({ ...formData, prenom: e.target.value })
-                          }
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setFormData((prev) => ({
+                              ...prev,
+                              prenom: val,
+                              ...(memeNageur ? { prenomNageur: val } : {}),
+                            }))
+                          }}
                           className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                           required
                         />
@@ -182,9 +188,14 @@ export default function CheckoutPage() {
                         <input
                           type="text"
                           value={formData.nom}
-                          onChange={(e) =>
-                            setFormData({ ...formData, nom: e.target.value })
-                          }
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setFormData((prev) => ({
+                              ...prev,
+                              nom: val,
+                              ...(memeNageur ? { nomNageur: val } : {}),
+                            }))
+                          }}
                           className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                           required
                         />
@@ -206,10 +217,33 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  <h2 className="text-2xl font-bold mt-8 mb-6">Informations du nageur</h2>
+                  <h2 className="text-2xl font-bold mt-8 mb-4">Informations du nageur</h2>
                   <p className="text-sm text-gray-600 mb-4">
-                    Si vous commandez pour quelqu&apos;un d&apos;autre (enfant, proche...), indiquez son nom ici.
+                    Indiquez l&apos;identité du nageur qui recevra l&apos;équipement au club.
                   </p>
+
+                  <div className="flex items-center gap-2.5 mb-5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <input
+                      type="checkbox"
+                      id="memeNageur"
+                      checked={memeNageur}
+                      onChange={(e) => {
+                        const checked = e.target.checked
+                        setMemeNageur(checked)
+                        if (checked) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            prenomNageur: prev.prenom,
+                            nomNageur: prev.nom,
+                          }))
+                        }
+                      }}
+                      className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded cursor-pointer"
+                    />
+                    <label htmlFor="memeNageur" className="text-xs md:text-sm font-semibold text-slate-750 cursor-pointer select-none">
+                      Je commande pour moi-même (recopier mon prénom et mon nom)
+                    </label>
+                  </div>
 
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
