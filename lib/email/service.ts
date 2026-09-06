@@ -416,7 +416,7 @@ export function getCommandeConfirmationEmail(data: {
           Votre commande sera à réceptionner au club vers <strong>${dateLivraison}</strong>.
         </p>
         <p style="margin:0;font-size:12px;color:#166534;line-height:1.4;">
-          Le retrait s'effectuera directement au bord du bassin auprès des éducateurs lors des créneaux d'entraînement (Piscine Alphonse Roudière, Cavaillon).
+          Un autre e-mail vous sera envoyé pour vous donner une date plus précise et les conditions de retrait au bord du bassin lors des créneaux d'entraînement (Piscine Alphonse Roudière, Cavaillon).
         </p>
       </div>
 
@@ -468,7 +468,7 @@ Bénéficiaire : ${data.prenomNageur} ${data.nomNageur}
 
 RÉCEPTION DE VOTRE COMMANDE :
 Votre commande sera à réceptionner au club vers ${dateLivraison}.
-Le retrait s'effectuera directement au bord du bassin auprès des éducateurs lors des créneaux d'entraînement (Piscine Alphonse Roudière, Cavaillon).
+Un autre e-mail vous sera envoyé pour vous donner une date plus précise et les conditions de retrait au bord du bassin lors des créneaux d'entraînement (Piscine Alphonse Roudière, Cavaillon).
 
 DÉTAIL DE VOTRE COMMANDE :
 ${data.lignes.map((l) => `- ${l.quantite}x ${l.nom}${l.taille ? ` (Taille : ${l.taille})` : ''}${l.couleur ? ` (Couleur : ${l.couleur})` : ''} : ${(l.prix * l.quantite).toFixed(2)} €`).join('\n')}

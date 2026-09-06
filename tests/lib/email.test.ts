@@ -162,8 +162,10 @@ describe('Email Templates', () => {
       expect(result.html).toContain('TRITON CLUB CAVAILLON')
       expect(result.html).toContain('15 Novembre 2026')
       expect(result.html).toContain('à réceptionner au club vers')
+      expect(result.html).toContain('Un autre e-mail vous sera envoyé')
       expect(result.text).toContain('15 Novembre 2026')
       expect(result.text).toContain('à réceptionner au club vers')
+      expect(result.text).toContain('conditions de retrait')
     })
 
     it('should fallback to default delivery date when dateLivraison is omitted', () => {
