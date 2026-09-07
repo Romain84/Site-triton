@@ -32,21 +32,22 @@ export async function middleware(request: NextRequest) {
   // En développement, React nécessite 'unsafe-eval' pour le HMR et le débogage.
   const isDev = process.env.NODE_ENV === 'development'
   const scriptSrc = isDev
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com"
-    : "script-src 'self' 'unsafe-inline' https://js.stripe.com"
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://unpkg.com"
+    : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://unpkg.com"
 
   // Politique CSP pour limiter les ressources autorisées.
   const csp = [
     "default-src 'self'",
     scriptSrc,
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.stripe.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://server.arcgisonline.com https://*.public.blob.vercel-storage.com https://*.blob.vercel-storage.com",
+    "style-src 'self' 'unsafe-inline' https://unpkg.com",
+    "img-src 'self' data: blob: https://*.stripe.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://server.arcgisonline.com https://*.public.blob.vercel-storage.com https://*.blob.vercel-storage.com https://unpkg.com",
     "font-src 'self'",
     "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://www.google.com https://maps.google.com https://www.google.fr",
     "connect-src 'self' https://api.stripe.com https://ipwho.is https://ipapi.co",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
+    "frame-ancestors 'none'",
   ].join('; ')
   response.headers.set('Content-Security-Policy', csp)
 
