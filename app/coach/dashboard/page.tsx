@@ -6,17 +6,12 @@ import Link from 'next/link'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import CoachAgendaBassin, { AgendaSession } from '@/components/coach/CoachAgendaBassin'
 import {
-  Calendar,
   CalendarDays,
-  Repeat,
   Receipt,
-  Sparkles,
-  ArrowRight,
   Clock,
   Euro,
   AlertCircle,
   ChevronRight,
-  CheckCircle2
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -26,7 +21,7 @@ async function getCoachData(coachId: string) {
   const currentMonth = now.getMonth() + 1
   const currentYear = now.getFullYear()
 
-  const [coach, currentMonthCalculations, availableShiftsCount, facturesRecentes] = await Promise.all([
+  const [coach, currentMonthCalculations, facturesRecentes] = await Promise.all([
     prisma.coach.findUnique({
       where: { id: coachId },
       select: {
@@ -39,13 +34,6 @@ async function getCoachData(coachId: string) {
       },
     }),
     calculerFactureCoach(coachId, currentMonth, currentYear),
-    prisma.evenementTournant.count({
-      where: {
-        coachId: null,
-        actif: true,
-        date: { gte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0) },
-      },
-    }),
     prisma.factureCoach.findMany({
       where: { coachId },
       orderBy: [{ annee: 'desc' }, { mois: 'desc' }],
@@ -97,7 +85,6 @@ async function getCoachData(coachId: string) {
   return {
     coach,
     currentMonthCalculations,
-    availableShiftsCount,
     facturesRecentes,
     upcomingTournants,
     planningsFixe,
@@ -114,7 +101,6 @@ export default async function CoachDashboard() {
   const {
     coach,
     currentMonthCalculations,
-    availableShiftsCount,
     facturesRecentes,
     upcomingTournants,
     planningsFixe,
@@ -228,7 +214,7 @@ export default async function CoachDashboard() {
                 className="inline-flex items-center gap-2 p-2.5 sm:px-3.5 sm:py-2 bg-amber-50 hover:bg-amber-100/80 border border-amber-200 text-amber-900 rounded-xl text-xs font-bold transition-colors"
               >
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Compléter SIRET & Profil</span>
+                <span>Compléter profil</span>
                 <ChevronRight className="w-3.5 h-3.5 text-amber-600" />
               </Link>
             )}
@@ -257,61 +243,6 @@ export default async function CoachDashboard() {
             </div>
           </div>
         </header>
-
-        {/* QUICK ACTIONS ROW */}
-        <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <Link
-            href="/coach/planning-tournant"
-            className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
-              availableShiftsCount > 0
-                ? 'bg-emerald-50/70 border-emerald-200 hover:bg-emerald-100/60'
-                : 'bg-white border-slate-200/80 hover:border-slate-300'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <Calendar className="w-5 h-5 text-slate-700" />
-              {availableShiftsCount > 0 ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white animate-pulse">
-                  {availableShiftsCount} libre{availableShiftsCount > 1 ? 's' : ''}
-                </span>
-              ) : (
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              )}
-            </div>
-            <div>
-              <p className="text-xs font-black text-slate-900">Créneaux tournants</p>
-              <p className="text-[11px] text-slate-500 font-medium">Prendre ou libérer</p>
-            </div>
-          </Link>
-
-          <Link
-            href="/coach/remplacements"
-            className="p-4 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 transition-all flex flex-col justify-between"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <Repeat className="w-5 h-5 text-slate-700" />
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </div>
-            <div>
-              <p className="text-xs font-black text-slate-900">Remplacements</p>
-              <p className="text-[11px] text-slate-500 font-medium">Déclarer ou accepter</p>
-            </div>
-          </Link>
-
-          <Link
-            href="/coach/facturation"
-            className="col-span-2 sm:col-span-1 p-4 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 transition-all flex flex-col justify-between"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <Receipt className="w-5 h-5 text-slate-700" />
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </div>
-            <div>
-              <p className="text-xs font-black text-slate-900">Facturation & PDF</p>
-              <p className="text-[11px] text-slate-500 font-medium">Télécharger ma facture</p>
-            </div>
-          </Link>
-        </section>
 
         {/* AGENDA SECTION */}
         <section className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-7 shadow-xs space-y-4">
