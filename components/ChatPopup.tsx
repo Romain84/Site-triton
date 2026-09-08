@@ -415,6 +415,11 @@ export default function ChatPopup() {
     }
   }
 
+  // Ne pas afficher le chatbot dans l'espace coach
+  if (pathname?.startsWith('/coach')) {
+    return null
+  }
+
   return (
     <>
       {/* Floating button */}
