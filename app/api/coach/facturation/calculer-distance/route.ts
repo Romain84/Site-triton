@@ -4,11 +4,13 @@ import { logger } from '@/lib/logger'
 
 const coachLogger = logger.withContext('CoachDistance')
 
+import { prisma } from '@/lib/prisma'
 import {
   DEPART_CAVAILLON,
   PISCINES_REGIONALES,
   haversineDistance,
   buildGoogleMapsUrl,
+  parsePiscinesFrequentes,
 } from '@/lib/competition-distance'
 
 export async function POST(request: NextRequest) {
@@ -162,11 +164,27 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET endpoint pour renvoyer la liste des piscines régionales prédéfinies
+// GET endpoint pour renvoyer la liste des piscines régionales configurées par l'administration
 export async function GET() {
-  return NextResponse.json({
-    piscines: PISCINES_REGIONALES,
-    depart: DEPART_CAVAILLON,
-    tarifKm: 0.30,
-  })
+  try {
+    const settings = await prisma.settings.findFirst({
+      select: { piscinesFrequentes: true },
+    })
+
+    const piscines = parsePiscinesFrequentes(settings?.piscinesFrequentes)
+
+    return NextResponse.json({
+      success: true,
+      piscines,
+      depart: DEPART_CAVAILLON,
+      tarifKm: 0.30,
+    })
+  } catch {
+    return NextResponse.json({
+      success: true,
+      piscines: parsePiscinesFrequentes(null),
+      depart: DEPART_CAVAILLON,
+      tarifKm: 0.30,
+    })
+  }
 }

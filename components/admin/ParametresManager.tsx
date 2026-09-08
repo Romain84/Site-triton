@@ -5,7 +5,12 @@ import Image from 'next/image'
 import { getErrorMessage } from '@/lib/utils'
 import { HelpTooltip, CalculationTooltip } from '@/components/ui/Tooltip'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, AlertTriangle, Cloud, Loader2, Save } from 'lucide-react'
+import { Check, AlertTriangle, Cloud, Loader2, Save, Plus, Trash2 } from 'lucide-react'
+import {
+  PiscineFrequenteConfig,
+  parsePiscinesFrequentes,
+  getDefaultPiscinesFrequentes,
+} from '@/lib/competition-distance'
 
 interface Settings {
   id: string
@@ -45,6 +50,7 @@ interface Settings {
   interSaisonActif: boolean
   texteFiligrane: string
   codeAccesTestsNage?: string | null
+  piscinesFrequentes?: string | null
 }
 
 export default function ParametresManager() {
@@ -99,6 +105,25 @@ export default function ParametresManager() {
   const [newTestDate, setNewTestDate] = useState('')
   const [interSaisonActif, setInterSaisonActif] = useState(false)
   const [texteFiligrane, setTexteFiligrane] = useState('Saison 2025 - 2026')
+  const [piscinesFrequentes, setPiscinesFrequentes] = useState<PiscineFrequenteConfig[]>([])
+  const [newPiscineNom, setNewPiscineNom] = useState('')
+  const [newPiscineKm, setNewPiscineKm] = useState('')
+
+  const handleAddPiscine = () => {
+    if (!newPiscineNom.trim() || !newPiscineKm) return
+    const km = parseFloat(newPiscineKm) || 0
+    const id = `piscine_${Date.now()}`
+    setPiscinesFrequentes((prev) => [
+      ...prev,
+      { id, nom: newPiscineNom.trim(), distanceKm: km },
+    ])
+    setNewPiscineNom('')
+    setNewPiscineKm('')
+  }
+
+  const handleRemovePiscine = (index: number) => {
+    setPiscinesFrequentes((prev) => prev.filter((_, i) => i !== index))
+  }
 
   // Upload state
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -153,6 +178,7 @@ export default function ParametresManager() {
         setDatesTests(s.datesTests || [])
         setInterSaisonActif(s.interSaisonActif ?? false)
         setTexteFiligrane(s.texteFiligrane || 'Saison 2025 - 2026')
+        setPiscinesFrequentes(parsePiscinesFrequentes(s.piscinesFrequentes))
         setIsInitialized(true)
       }
     } catch (err) {
@@ -491,6 +517,7 @@ export default function ParametresManager() {
           datesTests,
           interSaisonActif,
           texteFiligrane,
+          piscinesFrequentes: JSON.stringify(piscinesFrequentes),
         }),
       })
 
@@ -547,7 +574,8 @@ export default function ParametresManager() {
       debutCoursBnssa !== (settings.debutCoursBnssa || 'Jeudi 1er Octobre 2026') ||
       JSON.stringify(datesTests) !== JSON.stringify(settings.datesTests || []) ||
       interSaisonActif !== (settings.interSaisonActif ?? false) ||
-      texteFiligrane !== (settings.texteFiligrane || 'Saison 2025 - 2026')
+      texteFiligrane !== (settings.texteFiligrane || 'Saison 2025 - 2026') ||
+      JSON.stringify(piscinesFrequentes) !== JSON.stringify(parsePiscinesFrequentes(settings.piscinesFrequentes))
     )
   }
 
@@ -594,6 +622,7 @@ export default function ParametresManager() {
           datesTests,
           interSaisonActif,
           texteFiligrane,
+          piscinesFrequentes: JSON.stringify(piscinesFrequentes),
         }),
       })
 
@@ -1412,6 +1441,116 @@ export default function ParametresManager() {
                     <p>• <strong>Dirigeants (bureau) :</strong> Gratuité totale (100% de réduction).</p>
                     <p>• <strong>Enfants de dirigeants :</strong> {reductionEnfantBureau}% de réduction.</p>
                   </div>
+                </div>
+              </div>
+
+              {/* Bassins Fréquents Régionaux (Compétitions Coach) */}
+              <div className="card p-6 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+                  <div>
+                    <h3 className="text-md font-bold text-slate-900 flex items-center gap-1.5">
+                      🏊 Bassins Fréquents Régionaux &amp; Forfaits Kilométriques
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Piscines régionales hors Vaucluse utilisées lors de la facturation coach (forfait transport aller : <strong>0,30 € / km</strong> depuis la piscine Alphonse Roudière de Cavaillon).
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPiscinesFrequentes(getDefaultPiscinesFrequentes())
+                      setSuccess('Bassins réinitialisés aux valeurs standards (pensez à enregistrer).')
+                    }}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors self-start sm:self-auto"
+                  >
+                    Réinitialiser les bassins par défaut
+                  </button>
+                </div>
+
+                {/* Formulaire d'ajout rapide */}
+                <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-4 space-y-3">
+                  <p className="text-xs font-bold text-slate-800">Ajouter une piscine à la liste :</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                    <div className="sm:col-span-7 space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-600">Nom du bassin / Piscine &amp; Ville</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Piscine Yves Blanc, Aix-en-Provence"
+                        value={newPiscineNom}
+                        onChange={(e) => setNewPiscineNom(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs outline-none text-slate-900 focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+                    <div className="sm:col-span-3 space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-600">Distance aller (km)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="Ex: 56"
+                        value={newPiscineKm}
+                        onChange={(e) => setNewPiscineKm(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs outline-none text-slate-900 focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <button
+                        type="button"
+                        onClick={handleAddPiscine}
+                        disabled={!newPiscineNom.trim() || !newPiscineKm}
+                        className="w-full py-2 px-3 rounded-lg bg-slate-950 hover:bg-slate-800 text-white text-xs font-bold transition-all disabled:opacity-50"
+                      >
+                        Ajouter
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table des piscines configurées */}
+                <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-4">Piscine / Ville</th>
+                        <th className="py-2.5 px-4 text-center">Distance aller (Cavaillon)</th>
+                        <th className="py-2.5 px-4 text-center">Forfait calculé (aller × 0,30 €)</th>
+                        <th className="py-2.5 px-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {piscinesFrequentes.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="py-6 text-center text-slate-400">
+                            Aucun bassin configuré. Cliquez sur « Réinitialiser » pour charger la liste par défaut.
+                          </td>
+                        </tr>
+                      ) : (
+                        piscinesFrequentes.map((p, idx) => (
+                          <tr key={p.id || idx} className="hover:bg-slate-50/50">
+                            <td className="py-2.5 px-4 font-semibold text-slate-900">
+                              {p.nom}
+                            </td>
+                            <td className="py-2.5 px-4 text-center font-mono font-bold text-slate-800">
+                              {p.distanceKm} km
+                            </td>
+                            <td className="py-2.5 px-4 text-center font-mono text-emerald-700 font-bold">
+                              {(p.distanceKm * 0.30).toFixed(2)} €
+                            </td>
+                            <td className="py-2.5 px-4 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePiscine(idx)}
+                                className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors"
+                                title="Supprimer ce bassin"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </motion.div>

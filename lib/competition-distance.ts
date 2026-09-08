@@ -58,3 +58,47 @@ export function buildGoogleMapsUrl(destination: string): string {
   const origin = 'Piscine Alphonse Roudière, 84300 Cavaillon'
   return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`
 }
+
+export interface PiscineFrequenteConfig {
+  id: string
+  nom: string
+  distanceKm: number
+}
+
+export function getDefaultPiscinesFrequentes(): PiscineFrequenteConfig[] {
+  return [
+    { id: 'aix', nom: 'Piscine Yves Blanc, Aix-en-Provence', distanceKm: 56 },
+    { id: 'marseille', nom: 'Piscine Pierre de Coubertin, Marseille', distanceKm: 82 },
+    { id: 'istres', nom: "Centre Aquatique d'Istres", distanceKm: 46 },
+    { id: 'salon', nom: 'Centre Nautique de Salon-de-Provence', distanceKm: 26 },
+    { id: 'fos', nom: 'Piscine Municipale de Fos-sur-Mer', distanceKm: 55 },
+    { id: 'arles', nom: 'Piscine Guy Berthier, Arles', distanceKm: 45 },
+    { id: 'toulon', nom: 'Piscine du Port Marchand, Toulon', distanceKm: 122 },
+    { id: 'hyeres', nom: "Complexe Aquatique d'Hyères", distanceKm: 139 },
+    { id: 'saint-raphael', nom: 'Stade Nautique Alain Chateigner, Saint-Raphaël', distanceKm: 168 },
+    { id: 'antibes', nom: "Stade Nautique d'Antibes Jean Bouin", distanceKm: 196 },
+    { id: 'nice', nom: 'Piscine Jean Bouin, Nice', distanceKm: 218 },
+    { id: 'nimes', nom: 'Stade Nautique Nemausa, Nîmes', distanceKm: 62 },
+    { id: 'montpellier', nom: "Piscine Olympique d'Antigone, Montpellier", distanceKm: 108 },
+    { id: 'gap', nom: 'Stade Nautique de Fontreyne, Gap', distanceKm: 132 },
+    { id: 'manosque', nom: 'Centre Aqualudique de Manosque', distanceKm: 66 },
+    { id: 'digne', nom: 'Complexe Aquatique des Eaux Chaudes, Digne', distanceKm: 116 },
+  ]
+}
+
+export function parsePiscinesFrequentes(rawJson: string | null | undefined): PiscineFrequenteConfig[] {
+  if (!rawJson) return getDefaultPiscinesFrequentes()
+  try {
+    const parsed = JSON.parse(rawJson)
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed.map((p: any, idx: number) => ({
+        id: p.id || `piscine_${idx}`,
+        nom: String(p.nom || ''),
+        distanceKm: Number(p.distanceKm) || 0,
+      }))
+    }
+    return getDefaultPiscinesFrequentes()
+  } catch {
+    return getDefaultPiscinesFrequentes()
+  }
+}

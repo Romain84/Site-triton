@@ -49,6 +49,7 @@ const updateSettingsSchema = z.object({
   texteFiligrane: z.string().max(255).optional(),
   instagramAccountId: z.string().max(255).nullable().optional(),
   instagramAccessToken: z.string().max(2000).nullable().optional(),
+  piscinesFrequentes: z.string().optional(),
 })
 
 const settingsSelect = {
@@ -93,6 +94,7 @@ const settingsSelect = {
   texteFiligrane: true,
   instagramAccountId: true,
   instagramAccessToken: true,
+  piscinesFrequentes: true,
   createdAt: true,
   updatedAt: true,
 } as const
@@ -231,6 +233,7 @@ export async function PUT(request: NextRequest) {
     if (val.texteFiligrane !== undefined) updateData.texteFiligrane = val.texteFiligrane
     if (val.instagramAccountId !== undefined) updateData.instagramAccountId = val.instagramAccountId || null
     if (val.instagramAccessToken !== undefined) updateData.instagramAccessToken = val.instagramAccessToken || null
+    if (val.piscinesFrequentes !== undefined) updateData.piscinesFrequentes = val.piscinesFrequentes
     if (encryptedSmtpPassword !== undefined) updateData.smtpPassword = encryptedSmtpPassword
 
     // Get existing settings id or create new
@@ -288,6 +291,7 @@ export async function PUT(request: NextRequest) {
           texteFiligrane: val.texteFiligrane ?? 'Saison 2025 - 2026',
           instagramAccountId: val.instagramAccountId || null,
           instagramAccessToken: val.instagramAccessToken || null,
+          piscinesFrequentes: val.piscinesFrequentes || '[]',
         },
         select: settingsSelect,
       })

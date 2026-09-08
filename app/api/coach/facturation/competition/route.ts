@@ -27,12 +27,21 @@ export async function POST(request: NextRequest) {
     const body: AddCompetitionRequest = await request.json()
     const { mois, annee, typeCompetition, format, nomCompetition, lieu, date, distanceKm } = body
 
-    if (!mois || !annee || !typeCompetition || !format || !lieu || !date) {
+    if (!mois || !annee || !typeCompetition || !format || !date || (!nomCompetition && !nomCompetition?.trim())) {
       return NextResponse.json(
-        { error: 'Tous les champs obligatoires doivent être renseignés.' },
+        { error: 'Le nom de la compétition, la date, le niveau et le format sont obligatoires.' },
         { status: 400 }
       )
     }
+
+    if (typeCompetition === 'regionale' && (!lieu || !lieu.trim())) {
+      return NextResponse.json(
+        { error: 'Le lieu ou bassin de compétition est obligatoire pour une compétition régionale.' },
+        { status: 400 }
+      )
+    }
+
+    const lieuFinal = typeCompetition === 'regionale' ? lieu.trim() : (lieu?.trim() || 'Vaucluse (84)')
 
     // Tarifs officiels
     // Demi-journée : 50 €
@@ -84,8 +93,12 @@ export async function POST(request: NextRequest) {
     const typeLibelle = typeCompetition === 'regionale' ? 'Régionale' : 'Départementale'
     const formatLibelle = format === 'journee' ? 'Journée complète' : 'Demi-journée'
     const descriptionCompetition = nomCompetition?.trim()
-      ? `Compétition ${typeLibelle} : ${nomCompetition.trim()} - ${formatLibelle} (${lieu.trim()})`
-      : `Compétition ${typeLibelle} - ${formatLibelle} (${lieu.trim()})`
+      ? (typeCompetition === 'regionale'
+          ? `Compétition Régionale : ${nomCompetition.trim()} - ${formatLibelle} (${lieuFinal})`
+          : `Compétition Départementale : ${nomCompetition.trim()} - ${formatLibelle}`)
+      : (typeCompetition === 'regionale'
+          ? `Compétition Régionale - ${formatLibelle} (${lieuFinal})`
+          : `Compétition Départementale - ${formatLibelle}`)
 
     const dateParsed = new Date(date)
 
@@ -99,7 +112,7 @@ export async function POST(request: NextRequest) {
         heures: demiJournees,
         demiJournees,
         montant: montantCompetition,
-        lieu: lieu.trim(),
+        lieu: lieuFinal,
         remplacementId: compGroupId,
       },
     })
@@ -109,7 +122,7 @@ export async function POST(request: NextRequest) {
     // 2. Si compétition régionale avec distance, créer la ligne de forfait transport
     if (typeCompetition === 'regionale' && distanceKm && distanceKm > 0) {
       const montantTransport = Math.round(distanceKm * 0.30 * 100) / 100
-      const descriptionTransport = `Forfait transport (${distanceKm} km aller × 0,30 €) - Cavaillon ➔ ${lieu.trim()}`
+      const descriptionTransport = `Forfait transport (${distanceKm} km aller × 0,30 €) - Cavaillon ➔ ${lieuFinal}`
 
       ligneTransport = await prisma.ligneFactureCoach.create({
         data: {
@@ -119,7 +132,7 @@ export async function POST(request: NextRequest) {
           date: dateParsed,
           heures: distanceKm,
           montant: montantTransport,
-          lieu: lieu.trim(),
+          lieu: lieuFinal,
           remplacementId: compGroupId,
         },
       })
