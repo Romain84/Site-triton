@@ -36,6 +36,11 @@ import {
   Navigation,
   Sparkles
 } from 'lucide-react'
+import {
+  matchPiscineFrequente,
+  isVaucluseLieu,
+  getDefaultPiscinesFrequentes,
+} from '@/lib/competition-distance'
 
 interface LigneFacture {
   id?: string
@@ -156,8 +161,9 @@ function FacturationContent() {
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([])
   const [loadingEvents, setLoadingEvents] = useState(false)
   const [selectedEventChoice, setSelectedEventChoice] = useState<string>('manual')
-  const [adminPiscines, setAdminPiscines] = useState<AdminPiscineItem[]>([])
+  const [adminPiscines, setAdminPiscines] = useState<AdminPiscineItem[]>(() => getDefaultPiscinesFrequentes())
   const [selectedPiscinePreset, setSelectedPiscinePreset] = useState<string>('')
+  const [calculatingRoute, setCalculatingRoute] = useState(false)
 
   const moisNoms = [
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -386,41 +392,100 @@ function FacturationContent() {
     }
 
     // 3. Détection intelligente du niveau et bassin
-    const lowerTitle = (ev.title || '').toLowerCase()
-    const lowerLieu = (ev.lieu || '').toLowerCase()
-
-    const isRegion =
-      lowerTitle.includes('région') ||
-      lowerTitle.includes('region') ||
-      lowerTitle.includes('paca') ||
-      lowerTitle.includes('interclub')
-    const isDept =
-      lowerTitle.includes('départ') ||
-      lowerTitle.includes('depart') ||
-      lowerTitle.includes('vaucluse') ||
-      lowerTitle.includes('84')
-
-    if (isRegion && !isDept) {
-      setCompType('regionale')
-    } else if (isDept) {
-      setCompType('departementale')
-      setCompLieu('')
-      setCompDistanceKm('0')
+    const poolsToSearch = adminPiscines.length > 0 ? adminPiscines : getDefaultPiscinesFrequentes()
+    let isReg = false
+    if (ev.lieu) {
+      // Si le lieu est dans le Vaucluse (84) -> Départementale, sinon Régionale
+      isReg = !isVaucluseLieu(ev.lieu)
+    } else {
+      const lowerTitle = (ev.title || '').toLowerCase()
+      isReg =
+        lowerTitle.includes('région') ||
+        lowerTitle.includes('region') ||
+        lowerTitle.includes('paca') ||
+        lowerTitle.includes('interclub') ||
+        lowerTitle.includes('france') ||
+        lowerTitle.includes('elites') ||
+        lowerTitle.includes('national')
     }
 
-    // Si lieu présent dans l'événement, tenter de matcher avec les bassins fréquents admin
-    if (ev.lieu) {
-      const match = adminPiscines.find(
-        (p) => lowerLieu.includes(p.nom.toLowerCase()) || p.nom.toLowerCase().includes(lowerLieu)
-      )
+    if (isReg) {
+      setCompType('regionale')
+      const match = matchPiscineFrequente(ev.lieu, poolsToSearch)
       if (match) {
         setSelectedPiscinePreset(match.id)
         setCompLieu(match.nom)
         setCompDistanceKm(match.distanceKm.toString())
-      } else {
+      } else if (ev.lieu) {
         setSelectedPiscinePreset('custom')
         setCompLieu(ev.lieu)
+        const catMatch = matchPiscineFrequente(ev.lieu, getDefaultPiscinesFrequentes())
+        if (catMatch) {
+          setCompDistanceKm(catMatch.distanceKm.toString())
+        }
       }
+    } else {
+      setCompType('departementale')
+      setCompLieu('')
+      setCompDistanceKm('0')
+      setSelectedPiscinePreset('')
+    }
+  }
+
+  const handleSelectLevel = (level: 'departementale' | 'regionale') => {
+    setCompType(level)
+    const poolsToSearch = adminPiscines.length > 0 ? adminPiscines : getDefaultPiscinesFrequentes()
+    if (level === 'departementale') {
+      setCompDistanceKm('0')
+      setCompLieu('')
+      setSelectedPiscinePreset('')
+    } else {
+      // Régionale : si un lieu existe déjà, tenter de retrouver sa distance
+      if (compLieu) {
+        const match = matchPiscineFrequente(compLieu, poolsToSearch)
+        if (match) {
+          setSelectedPiscinePreset(match.id)
+          setCompLieu(match.nom)
+          setCompDistanceKm(match.distanceKm.toString())
+        }
+      } else if (poolsToSearch.length > 0 && (!compDistanceKm || compDistanceKm === '0')) {
+        // Pré-remplir avec le premier bassin fréquent pour que la distance ne soit pas 0
+        const first = poolsToSearch[0]
+        setSelectedPiscinePreset(first.id)
+        setCompLieu(first.nom)
+        setCompDistanceKm(first.distanceKm.toString())
+      }
+    }
+  }
+
+  const handleCalculateRoute = async () => {
+    const dest = compLieu.trim()
+    if (!dest) {
+      toast.error('Veuillez renseigner un nom de ville ou de piscine pour calculer le trajet.')
+      return
+    }
+
+    setCalculatingRoute(true)
+    try {
+      const res = await fetch('/api/coach/facturation/calculer-distance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ destination: dest }),
+      })
+      const d = await res.json()
+      if (res.ok && d.distanceKm > 0) {
+        setCompDistanceKm(d.distanceKm.toString())
+        if (d.resolvedLabel) {
+          setCompLieu(d.resolvedLabel)
+        }
+        toast.success(`Trajet calculé : ${d.distanceKm} km (${d.dureeTexte || ''})`)
+      } else {
+        toast.error(d.error || 'Impossible de calculer la distance automatiquement. Veuillez indiquer les km manuellement.')
+      }
+    } catch {
+      toast.error('Erreur lors du calcul de distance routière')
+    } finally {
+      setCalculatingRoute(false)
     }
   }
 
@@ -431,14 +496,21 @@ function FacturationContent() {
       return
     }
 
-    if (compType === 'regionale' && !compLieu.trim()) {
-      toast.error('Veuillez renseigner le bassin de compétition pour une compétition régionale.')
-      return
+    const distanceNum = compType === 'regionale' ? parseFloat(compDistanceKm) || 0 : 0
+
+    if (compType === 'regionale') {
+      if (!compLieu.trim()) {
+        toast.error('Veuillez renseigner le bassin de compétition pour une compétition régionale.')
+        return
+      }
+      if (distanceNum <= 0) {
+        toast.error('Veuillez indiquer la distance aller en km (ou choisir une piscine) pour que le trajet soit pris en compte.')
+        return
+      }
     }
 
     setSubmittingComp(true)
     try {
-      const distanceNum = compType === 'regionale' ? parseFloat(compDistanceKm) || 0 : 0
       const lieuFinal = compType === 'regionale' ? compLieu.trim() : 'Vaucluse (84)'
 
       const res = await fetch('/api/coach/facturation/competition', {
@@ -695,25 +767,25 @@ function FacturationContent() {
                       disabled={generatingPdf}
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-black shadow-xs transition-all disabled:opacity-50"
                     >
-                      {generatingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-cyan-400" />}
+                      {generatingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-emerald-400" />}
                       <span>Télécharger la facture PDF</span>
                     </button>
 
                     <button
                       onClick={handleSendEmail}
                       disabled={sendingEmail || !data?.totalMontant}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-cyan-900 text-xs font-bold transition-all disabled:opacity-50"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/60 text-xs font-bold transition-all disabled:opacity-50"
                     >
-                      {sendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 text-cyan-600" />}
+                      {sendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 text-primary" />}
                       <span>Transmettre au club</span>
                     </button>
 
                     <div className="flex items-center gap-2 ml-auto flex-wrap">
                       <button
                         onClick={handleOpenCompModal}
-                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-xs transition-all"
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold shadow-xs transition-all"
                       >
-                        <Trophy className="w-3.5 h-3.5 text-slate-950" />
+                        <Trophy className="w-3.5 h-3.5 text-white" />
                         <span>Déclarer une compétition</span>
                       </button>
 
@@ -750,15 +822,15 @@ function FacturationContent() {
                             <div className="space-y-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 {l.type === 'competition' && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-200">
-                                    <Trophy className="w-3 h-3" />
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-primary border border-emerald-200/80">
+                                    <Trophy className="w-3 h-3 text-primary" />
                                     Compétition
                                   </span>
                                 )}
                                 {l.type === 'forfait_transport' && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-sky-100 text-sky-900 border border-sky-200">
-                                    <Car className="w-3 h-3" />
-                                    Transport
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50/80 text-emerald-800 border border-emerald-200/80">
+                                    <Car className="w-3 h-3 text-emerald-700" />
+                                    Forfait transport
                                   </span>
                                 )}
                                 <p className="text-xs font-extrabold text-slate-900">
@@ -1037,8 +1109,8 @@ function FacturationContent() {
             <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-xl w-full shadow-2xl space-y-5 my-8 border border-slate-200">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 shrink-0">
-                    <Trophy className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-primary shrink-0">
+                    <Trophy className="w-5 h-5 text-primary" />
                   </div>
                   <div>
                     <h3 className="text-base sm:text-lg font-black text-slate-950">
@@ -1067,51 +1139,47 @@ function FacturationContent() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <button
                       type="button"
-                      onClick={() => {
-                        setCompType('departementale')
-                        setCompDistanceKm('0')
-                        setCompLieu('')
-                      }}
-                      className={`p-3 rounded-2xl border text-left transition-all ${
+                      onClick={() => handleSelectLevel('departementale')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all ${
                         compType === 'departementale'
-                          ? 'border-slate-950 bg-slate-950 text-white shadow-xs'
+                          ? 'border-primary bg-emerald-50/50 ring-1 ring-primary text-slate-950 shadow-xs'
                           : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-800'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-black">Départementale</span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                          compType === 'departementale' ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600'
+                          compType === 'departementale' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'
                         }`}>
                           Vaucluse (84)
                         </span>
                       </div>
-                      <p className={`text-[11px] mt-1 ${compType === 'departementale' ? 'text-slate-300' : 'text-slate-500'}`}>
+                      <p className="text-[11px] mt-1 text-slate-600">
                         Demi-j. 50 € · Journée 130 €<br />
-                        <span className={compType === 'departementale' ? 'text-slate-400' : 'text-slate-400'}>Sans forfait transport</span>
+                        <span className="text-slate-400 font-medium">Sans forfait transport</span>
                       </p>
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => setCompType('regionale')}
-                      className={`p-3 rounded-2xl border text-left transition-all ${
+                      onClick={() => handleSelectLevel('regionale')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all ${
                         compType === 'regionale'
-                          ? 'border-slate-950 bg-slate-950 text-white shadow-xs'
+                          ? 'border-primary bg-emerald-50/50 ring-1 ring-primary text-slate-950 shadow-xs'
                           : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-800'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-black">Régionale</span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                          compType === 'regionale' ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600'
+                          compType === 'regionale' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'
                         }`}>
                           Hors 84
                         </span>
                       </div>
-                      <p className={`text-[11px] mt-1 ${compType === 'regionale' ? 'text-slate-300' : 'text-slate-500'}`}>
+                      <p className="text-[11px] mt-1 text-slate-600">
                         Demi-j. 50 € · Journée 130 €<br />
-                        <span className={compType === 'regionale' ? 'text-cyan-300 font-semibold' : 'text-slate-500'}>
+                        <span className="text-primary font-bold">
                           + Forfait transport (0,30 €/km aller)
                         </span>
                       </p>
@@ -1130,12 +1198,12 @@ function FacturationContent() {
                       onClick={() => setCompFormat('demi_journee')}
                       className={`p-3 rounded-2xl border text-center transition-all ${
                         compFormat === 'demi_journee'
-                          ? 'border-slate-950 bg-slate-950 text-white shadow-xs'
-                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-800'
+                          ? 'border-primary bg-emerald-50/50 ring-1 ring-primary shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
                       }`}
                     >
-                      <span className="text-xs font-black block">Demi-journée</span>
-                      <span className={`text-sm font-extrabold ${compFormat === 'demi_journee' ? 'text-amber-400' : 'text-slate-900'}`}>
+                      <span className="text-xs font-black block text-slate-900">Demi-journée</span>
+                      <span className={`text-sm font-extrabold ${compFormat === 'demi_journee' ? 'text-primary' : 'text-slate-600'}`}>
                         50,00 €
                       </span>
                     </button>
@@ -1145,12 +1213,12 @@ function FacturationContent() {
                       onClick={() => setCompFormat('journee')}
                       className={`p-3 rounded-2xl border text-center transition-all ${
                         compFormat === 'journee'
-                          ? 'border-slate-950 bg-slate-950 text-white shadow-xs'
-                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-800'
+                          ? 'border-primary bg-emerald-50/50 ring-1 ring-primary shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
                       }`}
                     >
-                      <span className="text-xs font-black block">Journée complète</span>
-                      <span className={`text-sm font-extrabold ${compFormat === 'journee' ? 'text-amber-400' : 'text-slate-900'}`}>
+                      <span className="text-xs font-black block text-slate-900">Journée complète</span>
+                      <span className={`text-sm font-extrabold ${compFormat === 'journee' ? 'text-primary' : 'text-slate-600'}`}>
                         130,00 €
                       </span>
                     </button>
@@ -1172,7 +1240,7 @@ function FacturationContent() {
                   <select
                     value={selectedEventChoice}
                     onChange={(e) => handleSelectEvent(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:bg-white focus:border-slate-400 focus:outline-none transition-all"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
                   >
                     <option value="manual">✏️ Saisie manuelle</option>
                     {calendarEvents.length > 0 && (
@@ -1200,7 +1268,7 @@ function FacturationContent() {
                       placeholder="Ex: Trophée Départemental, Championnats Régionaux PACA..."
                       value={compNom}
                       onChange={(e) => setCompNom(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:border-slate-400 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                     />
                   ) : (
                     <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs">
@@ -1210,7 +1278,7 @@ function FacturationContent() {
                       <button
                         type="button"
                         onClick={() => setSelectedEventChoice('manual')}
-                        className="text-[11px] font-bold text-cyan-700 hover:underline shrink-0 ml-2"
+                        className="text-[11px] font-bold text-primary hover:underline shrink-0 ml-2"
                       >
                         Modifier le titre
                       </button>
@@ -1234,7 +1302,7 @@ function FacturationContent() {
                     required
                     value={compDate}
                     onChange={(e) => setCompDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:bg-white focus:border-slate-400 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                   />
                 </div>
 
@@ -1242,10 +1310,13 @@ function FacturationContent() {
                 {compType === 'regionale' && (
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-slate-700" />
-                        <span>Piscine / Bassin de compétition (Hors 84) *</span>
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-primary" />
+                          <span>Piscine / Bassin de compétition (Hors 84) *</span>
+                        </label>
+                        <span className="text-[10px] text-slate-500 font-medium">Départ : Cavaillon</span>
+                      </div>
 
                       {/* Sélecteur des bassins fréquents admin */}
                       {adminPiscines.length > 0 && (
@@ -1254,38 +1325,66 @@ function FacturationContent() {
                           onChange={(e) => {
                             const val = e.target.value
                             setSelectedPiscinePreset(val)
+                            const pools = adminPiscines.length > 0 ? adminPiscines : getDefaultPiscinesFrequentes()
                             if (val === 'custom') {
-                              // saisie libre
+                              setCompLieu('')
+                              setCompDistanceKm('')
                             } else {
-                              const found = adminPiscines.find((p) => p.id === val)
+                              const found = pools.find((p) => p.id === val)
                               if (found) {
                                 setCompLieu(found.nom)
                                 setCompDistanceKm(found.distanceKm.toString())
                               }
                             }
                           }}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-900 focus:border-slate-400 focus:outline-none"
+                          className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
                         >
                           <option value="">Sélectionner un bassin fréquent (paramètres admin)...</option>
                           {adminPiscines.map((p) => (
                             <option key={p.id} value={p.id}>
-                              {p.nom} ({p.distanceKm} km aller)
+                              🏊 {p.nom} ({p.distanceKm} km aller)
                             </option>
                           ))}
                           <option value="custom">✏️ Autre bassin / Saisie personnalisée</option>
                         </select>
                       )}
 
-                      {/* Champ texte pour le lieu (si custom ou si aucun preset sélectionné) */}
+                      {/* Champ texte pour le lieu avec auto-détection et calcul rapide */}
                       {(selectedPiscinePreset === 'custom' || !selectedPiscinePreset || adminPiscines.length === 0) && (
-                        <input
-                          type="text"
-                          required
-                          placeholder="Ex: Piscine Yves Blanc (Aix), Stade Nautique Jean Bouin (Antibes)..."
-                          value={compLieu}
-                          onChange={(e) => setCompLieu(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-900 focus:border-slate-400 focus:outline-none"
-                        />
+                        <div className="space-y-1.5">
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              required
+                              placeholder="Ex: Piscine Yves Blanc (Aix), Stade Nautique Jean Bouin (Antibes)..."
+                              value={compLieu}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setCompLieu(val)
+                                const pools = adminPiscines.length > 0 ? adminPiscines : getDefaultPiscinesFrequentes()
+                                const match = matchPiscineFrequente(val, pools)
+                                if (match) {
+                                  setCompDistanceKm(match.distanceKm.toString())
+                                }
+                              }}
+                              className="flex-1 px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleCalculateRoute}
+                              disabled={calculatingRoute || !compLieu.trim()}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold disabled:opacity-50 transition-all shrink-0 cursor-pointer"
+                              title="Calculer l'itinéraire routier le plus rapide depuis Cavaillon"
+                            >
+                              {calculatingRoute ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Navigation className="w-3.5 h-3.5 text-emerald-400" />
+                              )}
+                              <span>Calculer km</span>
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
 
@@ -1293,26 +1392,35 @@ function FacturationContent() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 items-end">
                       <div className="space-y-1">
                         <label className="text-[11px] font-bold text-slate-700">
-                          Distance aller depuis Cavaillon (km) :
+                          Distance aller depuis Cavaillon (km) * :
                         </label>
                         <input
                           type="number"
-                          min="0"
+                          min="1"
                           step="1"
                           required
                           value={compDistanceKm}
                           onChange={(e) => setCompDistanceKm(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-black text-slate-900 focus:border-slate-400 focus:outline-none"
+                          placeholder="Ex: 56"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-black text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                         />
                       </div>
 
-                      <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                      <div className="p-2.5 rounded-xl bg-white border border-emerald-200/80 shadow-2xs">
                         <span className="text-[10px] text-slate-500 font-bold block">Forfait transport calculé</span>
-                        <p className="text-xs font-mono font-black text-slate-900">
+                        <p className="text-xs font-mono font-black text-primary">
                           {parseFloat(compDistanceKm) || 0} km × 0,30 € = {((parseFloat(compDistanceKm) || 0) * 0.3).toFixed(2)} €
                         </p>
                       </div>
                     </div>
+
+                    {/* Alerte si la distance n'est pas encore renseignée */}
+                    {(!compDistanceKm || parseFloat(compDistanceKm) <= 0) && (
+                      <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-center gap-2">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>Indiquez la distance aller (en km) ou choisissez une piscine pour que le forfait transport soit calculé et ajouté.</span>
+                      </div>
+                    )}
 
                     {/* Lien discret de vérification Google Maps */}
                     <div className="pt-1 flex items-center justify-between text-[11px]">
@@ -1321,7 +1429,7 @@ function FacturationContent() {
                         href={`https://www.google.com/maps/dir/?api=1&origin=Piscine+Alphonse+Roudi%C3%A8re,+84300+Cavaillon&destination=${encodeURIComponent(compLieu || 'PACA')}&travelmode=driving`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-950 font-bold underline transition-colors"
+                        className="inline-flex items-center gap-1 text-slate-600 hover:text-primary font-bold underline transition-colors"
                         title="Vérifier l'itinéraire le plus rapide sur Google Maps"
                       >
                         <span>Vérifier sur Google Maps</span>
@@ -1337,7 +1445,7 @@ function FacturationContent() {
                     <span>
                       Forfait compétition ({compFormat === 'journee' ? 'Journée complète' : 'Demi-journée'})
                     </span>
-                    <span className="font-bold text-white">
+                    <span className="font-bold text-white font-mono">
                       {compFormat === 'journee' ? '130,00 €' : '50,00 €'}
                     </span>
                   </div>
@@ -1347,7 +1455,7 @@ function FacturationContent() {
                       <span>
                         Forfait transport aller ({parseFloat(compDistanceKm) || 0} km × 0,30 €)
                       </span>
-                      <span className="font-bold text-cyan-400">
+                      <span className="font-bold text-emerald-400 font-mono">
                         + {((parseFloat(compDistanceKm) || 0) * 0.3).toFixed(2)} €
                       </span>
                     </div>
@@ -1357,7 +1465,7 @@ function FacturationContent() {
                     <span className="text-xs font-black text-slate-200">
                       Total ajouté à votre facture
                     </span>
-                    <span className="text-base sm:text-lg font-black text-amber-400">
+                    <span className="text-base sm:text-lg font-black text-emerald-400 font-mono">
                       {(
                         (compFormat === 'journee' ? 130 : 50) +
                         (compType === 'regionale' ? (parseFloat(compDistanceKm) || 0) * 0.3 : 0)
@@ -1372,14 +1480,14 @@ function FacturationContent() {
                   <button
                     type="button"
                     onClick={() => setShowCompModal(false)}
-                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
                   >
                     Annuler
                   </button>
                   <button
                     type="submit"
-                    disabled={submittingComp || !compNom.trim() || !compDate}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-black disabled:opacity-50 shadow-xs transition-all"
+                    disabled={submittingComp || !compNom.trim() || !compDate || (compType === 'regionale' && (!compDistanceKm || parseFloat(compDistanceKm) <= 0))}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-black disabled:opacity-50 shadow-xs transition-all cursor-pointer"
                   >
                     {submittingComp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trophy className="w-3.5 h-3.5" />}
                     <span>Ajouter à ma facture</span>

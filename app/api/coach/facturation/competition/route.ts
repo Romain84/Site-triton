@@ -41,6 +41,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (typeCompetition === 'regionale' && (!distanceKm || distanceKm <= 0)) {
+      return NextResponse.json(
+        { error: 'La distance aller en kilomètres est obligatoire pour calculer le forfait transport d\'une compétition régionale.' },
+        { status: 400 }
+      )
+    }
+
     const lieuFinal = typeCompetition === 'regionale' ? lieu.trim() : (lieu?.trim() || 'Vaucluse (84)')
 
     // Tarifs officiels

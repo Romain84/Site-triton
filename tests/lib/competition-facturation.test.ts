@@ -67,4 +67,57 @@ describe('Rémunération des compétitions et indemnités kilométriques', () =>
       expect(p.distanceKmEstimee).toBeGreaterThan(0)
     }
   })
+
+  it('distingue correctement les lieux départementaux (84) des compétitions régionales (hors 84)', async () => {
+    const { isVaucluseLieu } = await import('@/lib/competition-distance')
+
+    // Départemental (84)
+    expect(isVaucluseLieu('Cavaillon')).toBe(true)
+    expect(isVaucluseLieu('Piscine Alphonse Roudière, Cavaillon')).toBe(true)
+    expect(isVaucluseLieu('Sorgues')).toBe(true)
+    expect(isVaucluseLieu('Vedène')).toBe(true)
+    expect(isVaucluseLieu('Avignon')).toBe(true)
+    expect(isVaucluseLieu('Apt')).toBe(true)
+    expect(isVaucluseLieu('Carpentras')).toBe(true)
+    expect(isVaucluseLieu('Pertuis')).toBe(true)
+
+    // Régional (Hors 84)
+    expect(isVaucluseLieu('Aix en Provence')).toBe(false)
+    expect(isVaucluseLieu('Martigues')).toBe(false)
+    expect(isVaucluseLieu('Gap')).toBe(false)
+    expect(isVaucluseLieu('Cannet-en-Roussillon')).toBe(false)
+    expect(isVaucluseLieu('Marseille')).toBe(false)
+    expect(isVaucluseLieu('Antibes')).toBe(false)
+    expect(isVaucluseLieu('Nice')).toBe(false)
+    expect(isVaucluseLieu('Nîmes')).toBe(false)
+    expect(isVaucluseLieu('Montpellier')).toBe(false)
+  })
+
+  it('retrouve automatiquement les bassins fréquents et distances km même avec variantes de saisie', async () => {
+    const { matchPiscineFrequente, getDefaultPiscinesFrequentes } = await import('@/lib/competition-distance')
+    const pools = getDefaultPiscinesFrequentes()
+
+    // Variantes pour Aix
+    const matchAix1 = matchPiscineFrequente('Aix en Provence', pools)
+    expect(matchAix1?.distanceKm).toBe(56)
+
+    const matchAix2 = matchPiscineFrequente('Piscine Yves Blanc', pools)
+    expect(matchAix2?.distanceKm).toBe(56)
+
+    // Martigues
+    const matchMartigues = matchPiscineFrequente('Martigues', pools)
+    expect(matchMartigues?.distanceKm).toBe(55)
+
+    // Gap
+    const matchGap = matchPiscineFrequente('Gap', pools)
+    expect(matchGap?.distanceKm).toBe(132)
+
+    // Marseille
+    const matchMarseille = matchPiscineFrequente('Marseille', pools)
+    expect(matchMarseille?.distanceKm).toBe(82)
+
+    // Antibes
+    const matchAntibes = matchPiscineFrequente('Antibes', pools)
+    expect(matchAntibes?.distanceKm).toBe(196)
+  })
 })

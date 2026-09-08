@@ -83,6 +83,8 @@ export function getDefaultPiscinesFrequentes(): PiscineFrequenteConfig[] {
     { id: 'gap', nom: 'Stade Nautique de Fontreyne, Gap', distanceKm: 132 },
     { id: 'manosque', nom: 'Centre Aqualudique de Manosque', distanceKm: 66 },
     { id: 'digne', nom: 'Complexe Aquatique des Eaux Chaudes, Digne', distanceKm: 116 },
+    { id: 'martigues', nom: 'Centre Nautique de Martigues', distanceKm: 55 },
+    { id: 'cannes', nom: 'Stade Nautique de Cannes / Le Cannet', distanceKm: 185 },
   ]
 }
 
@@ -102,3 +104,97 @@ export function parsePiscinesFrequentes(rawJson: string | null | undefined): Pis
     return getDefaultPiscinesFrequentes()
   }
 }
+
+/**
+ * Normalise une chaîne de recherche (minuscules, sans accents, sans tirets ni ponctuation)
+ */
+export function normalizeSearchText(text: string): string {
+  if (!text) return ''
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[-_',\.]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Villes et repères du Vaucluse (84) - Compétitions départementales
+ */
+export const COMMUNES_VAUCLUSE_84 = [
+  'cavaillon',
+  'avignon',
+  'apt',
+  'carpentras',
+  'pertuis',
+  'orange',
+  'sorgues',
+  'bollene',
+  'vedene',
+  'isle sur la sorgue',
+  'pontet',
+  'morieres',
+  'monteux',
+  'valreas',
+  'le thor',
+  'chateauneuf',
+  'vaucluse',
+  '84',
+]
+
+/**
+ * Détecte si un lieu appartient au département de Vaucluse (84)
+ */
+export function isVaucluseLieu(lieu: string | null | undefined): boolean {
+  if (!lieu) return false
+  const norm = normalizeSearchText(lieu)
+  return COMMUNES_VAUCLUSE_84.some((c) => norm.includes(c))
+}
+
+/**
+ * Tente de trouver une correspondance intelligente parmi les piscines configurées
+ */
+export function matchPiscineFrequente(
+  query: string | null | undefined,
+  piscines: PiscineFrequenteConfig[]
+): PiscineFrequenteConfig | null {
+  if (!query) return null
+  const qNorm = normalizeSearchText(query)
+  if (!qNorm) return null
+
+  // 1. Recherche par inclusion exacte normalisée
+  for (const p of piscines) {
+    const pNorm = normalizeSearchText(p.nom)
+    if (pNorm.includes(qNorm) || qNorm.includes(pNorm)) {
+      return p
+    }
+  }
+
+  // 2. Recherche par mots-clés de ville (ex: "aix", "marseille", "gap", "nimes", "salon")
+  const tokens = qNorm.split(' ').filter((t) => t.length >= 3)
+  for (const token of tokens) {
+    for (const p of piscines) {
+      const pNorm = normalizeSearchText(p.nom)
+      if (pNorm.includes(token)) {
+        return p
+      }
+    }
+  }
+
+  // 3. Repli sur le catalogue régional général si non présent dans la config personnalisée
+  for (const preset of PISCINES_REGIONALES) {
+    const vNorm = normalizeSearchText(preset.ville)
+    const nNorm = normalizeSearchText(preset.nom)
+    if (vNorm.includes(qNorm) || qNorm.includes(vNorm) || nNorm.includes(qNorm) || qNorm.includes(nNorm)) {
+      return {
+        id: preset.id,
+        nom: `${preset.nom}, ${preset.ville}`,
+        distanceKm: preset.distanceKmEstimee,
+      }
+    }
+  }
+
+  return null
+}
+
