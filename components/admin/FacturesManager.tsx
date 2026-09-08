@@ -445,7 +445,7 @@ export default function FacturesManager() {
                               <p className="font-medium text-slate-700 pr-4">{l.description}</p>
                               <div className="text-right shrink-0">
                                 <p className="font-bold text-slate-800">{l.heures?.toFixed(1)}h</p>
-                                <p className="text-xs text-slate-400">+{l.montant?.toFixed(0)}€</p>
+                                <p className="text-xs text-slate-400">+{l.montant?.toFixed(2)}€</p>
                               </div>
                             </div>
                           ))
@@ -475,7 +475,7 @@ export default function FacturesManager() {
                               <p className="font-medium text-emerald-800 pr-4">{l.description}</p>
                               <div className="text-right shrink-0">
                                 <p className="font-bold text-emerald-800">+{l.heures?.toFixed(1)}h</p>
-                                <p className="text-xs text-emerald-600">+{l.montant?.toFixed(0)}€</p>
+                                <p className="text-xs text-emerald-600">+{l.montant?.toFixed(2)}€</p>
                               </div>
                             </div>
                           ))
@@ -505,7 +505,7 @@ export default function FacturesManager() {
                               <p className="font-medium text-red-800 pr-4">{l.description}</p>
                               <div className="text-right shrink-0">
                                 <p className="font-bold text-red-800">-{Math.abs(l.heures ?? 0).toFixed(1)}h</p>
-                                <p className="text-xs text-red-600">-{Math.abs(l.montant ?? 0).toFixed(0)}€</p>
+                                <p className="text-xs text-red-600">-{Math.abs(l.montant ?? 0).toFixed(2)}€</p>
                               </div>
                             </div>
                           ))
@@ -516,21 +516,66 @@ export default function FacturesManager() {
                   {/* Autres Forfaits & Lignes */}
                   {previewFacture.lignes.filter((l: any) => !["planning_fixe", "remplacement", "absence"].includes(l.type)).length > 0 && (
                     <div className="space-y-3">
-                      <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5">
-                        🏆 Autres Forfaits & Activités
+                      <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
+                        <span>🏆 Autres Forfaits & Activités</span>
+                        <span className="text-xs bg-emerald-50 text-primary px-2 py-0.5 rounded-full font-bold">
+                          +{previewFacture.lignes
+                            .filter((l: any) => !["planning_fixe", "remplacement", "absence"].includes(l.type))
+                            .reduce((sum: number, l: any) => sum + (l.montant ?? 0), 0)
+                            .toFixed(2)} €
+                        </span>
                       </h4>
                       <div className="space-y-2">
                         {previewFacture.lignes
                           .filter((l: any) => !["planning_fixe", "remplacement", "absence"].includes(l.type))
-                          .map((l: any) => (
-                            <div key={l.id} className="border border-slate-100 p-3 rounded-lg flex items-center justify-between bg-white text-sm">
-                              <p className="font-medium text-slate-700 pr-4">{l.description}</p>
-                              <div className="text-right shrink-0">
-                                {l.heures && <p className="font-bold text-slate-800">{l.heures.toFixed(1)}h</p>}
-                                <p className="text-sm font-bold text-slate-800">{l.montant?.toFixed(0)}€</p>
+                          .map((l: any) => {
+                            const isComp = l.type === 'competition' || l.type === 'forfait_regional'
+                            const isTransport = l.type === 'forfait_transport'
+                            const isJournee = isComp && (l.demiJournees === 2 || l.heures === 2)
+
+                            return (
+                              <div key={l.id} className="border border-slate-100 p-3 rounded-xl flex items-center justify-between bg-white text-sm shadow-2xs">
+                                <div className="space-y-1 pr-4">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {isComp && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-primary border border-emerald-200/80">
+                                        🏆 Compétition
+                                      </span>
+                                    )}
+                                    {isTransport && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                                        🚗 Forfait Transport
+                                      </span>
+                                    )}
+                                    {l.type === 'manuel' && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                                        ✏️ Prestation
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="font-semibold text-slate-800 text-xs sm:text-sm">{l.description}</p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  {isComp ? (
+                                    <p className="font-bold text-slate-600 text-xs">
+                                      {isJournee ? '1 journée' : '1 demi-j.'}
+                                    </p>
+                                  ) : isTransport ? (
+                                    <p className="font-bold text-slate-600 text-xs">
+                                      {l.heures} km aller
+                                    </p>
+                                  ) : l.heures ? (
+                                    <p className="font-bold text-slate-600 text-xs">
+                                      {l.heures.toFixed(1)}h
+                                    </p>
+                                  ) : null}
+                                  <p className="text-sm font-black text-slate-900">
+                                    {l.montant?.toFixed(2)} €
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                       </div>
                     </div>
                   )}
@@ -546,7 +591,16 @@ export default function FacturesManager() {
                 <div className="flex justify-between items-center text-slate-700 text-sm font-medium">
                   <span>Total heures travaillées :</span>
                   <span className="font-bold text-slate-900 text-base">
-                    {previewFacture.totalHeures?.toFixed(1)}h
+                    {(
+                      previewFacture.totalHeures !== undefined && previewFacture.totalHeures !== null
+                        ? previewFacture.totalHeures
+                        : previewFacture.lignes
+                            ?.filter((l: any) => ['planning_fixe', 'planning_tournant', 'remplacement', 'absence', 'manuel'].includes(l.type))
+                            .reduce((sum: number, l: any) => {
+                              if (l.type === 'absence') return sum - Math.abs(l.heures ?? 0)
+                              return sum + (l.heures ?? 0)
+                            }, 0) ?? 0
+                    ).toFixed(1)}h
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-4 bg-sky-50 border border-sky-100 rounded-xl">

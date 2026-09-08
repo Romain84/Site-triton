@@ -61,7 +61,19 @@ export async function GET(
       )
     }
 
-    return NextResponse.json({ facture })
+    const totalHeures = facture.lignes
+      .filter((l) => ['planning_fixe', 'planning_tournant', 'remplacement', 'absence', 'manuel'].includes(l.type))
+      .reduce((sum, l) => {
+        if (l.type === 'absence') return sum - Math.abs(l.heures || 0)
+        return sum + (l.heures || 0)
+      }, 0)
+
+    return NextResponse.json({
+      facture: {
+        ...facture,
+        totalHeures,
+      },
+    })
   } catch (error) {
     logger.withContext('Admin').error('Erreur lors de la récupération des détails de la facture', error)
     return NextResponse.json(
