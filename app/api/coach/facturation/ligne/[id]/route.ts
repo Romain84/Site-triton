@@ -169,30 +169,40 @@ export async function DELETE(
       )
     }
 
-    if (ligne.remplacementId) {
-      try {
-        await prisma.remplacement.delete({
-          where: { id: ligne.remplacementId },
-        })
-      } catch (err) {
-        coachLogger.error('Erreur lors de la suppression du remplacement associé', err)
+    if (ligne.remplacementId?.startsWith('comp_')) {
+      // Supprimer toutes les lignes associées à cette compétition (forfait compétition + éventuel forfait transport)
+      await prisma.ligneFactureCoach.deleteMany({
+        where: {
+          factureId: ligne.factureId,
+          remplacementId: ligne.remplacementId,
+        },
+      })
+    } else {
+      if (ligne.remplacementId) {
+        try {
+          await prisma.remplacement.delete({
+            where: { id: ligne.remplacementId },
+          })
+        } catch (err) {
+          coachLogger.error('Erreur lors de la suppression du remplacement associé', err)
+        }
+        try {
+          await prisma.ligneFactureCoach.deleteMany({
+            where: {
+              remplacementId: ligne.remplacementId,
+              type: 'absence',
+            },
+          })
+        } catch (err) {
+          coachLogger.error('Erreur lors de la suppression des lignes absence associées', err)
+        }
       }
-      try {
-        await prisma.ligneFactureCoach.deleteMany({
-          where: {
-            remplacementId: ligne.remplacementId,
-            type: 'absence',
-          },
-        })
-      } catch (err) {
-        coachLogger.error('Erreur lors de la suppression des lignes absence associées', err)
-      }
-    }
 
-    // Supprimer la ligne
-    await prisma.ligneFactureCoach.delete({
-      where: { id },
-    })
+      // Supprimer la ligne
+      await prisma.ligneFactureCoach.delete({
+        where: { id },
+      })
+    }
 
     // Mettre à jour le montant total de la facture
     const totalLignes = await prisma.ligneFactureCoach.aggregate({

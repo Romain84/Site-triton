@@ -28,7 +28,13 @@ import {
   TrendingUp,
   Percent,
   CalendarRange,
-  ShieldCheck
+  ShieldCheck,
+  Trophy,
+  MapPin,
+  ExternalLink,
+  Car,
+  Navigation,
+  Sparkles
 } from 'lucide-react'
 
 interface LigneFacture {
@@ -41,6 +47,7 @@ interface LigneFacture {
   groupe?: string | null
   lieu?: string | null
   demiJournees?: number | null
+  remplacementId?: string | null
 }
 
 interface FacturationData {
@@ -72,6 +79,36 @@ interface PastInvoice {
   datePaiement?: string | null
   createdAt?: string
 }
+
+const PISCINES_DEPARTEMENTALES_PRESETS = [
+  'Piscine Alphonse Roudière, Cavaillon',
+  'Piscine Municipale d\'Apt',
+  'Piscine Stuart Mill, Avignon',
+  'Piscine Jean-Clément, Carpentras',
+  'Centre Aquatique de Pertuis',
+  'Piscine l\'Attente, Orange',
+  'Piscine de Sorgues',
+  'Piscine de L\'Isle-sur-la-Sorgue',
+  'Piscine Municipale de Bollène',
+]
+
+const PISCINES_REGIONALES_PRESETS = [
+  { label: 'Aix-en-Provence', nom: 'Piscine Yves Blanc, Aix-en-Provence', km: 56 },
+  { label: 'Marseille', nom: 'Piscine Pierre de Coubertin, Marseille', km: 82 },
+  { label: 'Istres', nom: "Centre Aquatique d'Istres", km: 46 },
+  { label: 'Salon', nom: 'Centre Nautique de Salon-de-Provence', km: 26 },
+  { label: 'Fos-sur-Mer', nom: 'Piscine Municipale de Fos-sur-Mer', km: 55 },
+  { label: 'Arles', nom: 'Piscine Guy Berthier, Arles', km: 45 },
+  { label: 'Toulon', nom: 'Piscine du Port Marchand, Toulon', km: 122 },
+  { label: 'Hyères', nom: "Complexe Aquatique d'Hyères", km: 139 },
+  { label: 'Saint-Raphaël', nom: 'Stade Nautique Alain Chateigner, Saint-Raphaël', km: 168 },
+  { label: 'Antibes', nom: "Stade Nautique d'Antibes Jean Bouin", km: 196 },
+  { label: 'Nice', nom: 'Piscine Jean Bouin, Nice', km: 218 },
+  { label: 'Nîmes', nom: 'Stade Nautique Nemausa, Nîmes', km: 62 },
+  { label: 'Montpellier', nom: "Piscine Olympique d'Antigone, Montpellier", km: 108 },
+  { label: 'Gap', nom: 'Stade Nautique de Fontreyne, Gap', km: 132 },
+  { label: 'Manosque', nom: 'Centre Aqualudique de Manosque', km: 66 },
+]
 
 export default function FacturationPage() {
   return (
@@ -121,6 +158,18 @@ function FacturationContent() {
   const [manualHeures, setManualHeures] = useState('1')
   const [manualDate, setManualDate] = useState('')
   const [addingLine, setAddingLine] = useState(false)
+
+  // Modal ajout compétition
+  const [showCompModal, setShowCompModal] = useState(false)
+  const [compType, setCompType] = useState<'departementale' | 'regionale'>('departementale')
+  const [compFormat, setCompFormat] = useState<'demi_journee' | 'journee'>('demi_journee')
+  const [compNom, setCompNom] = useState('')
+  const [compLieu, setCompLieu] = useState('')
+  const [compDate, setCompDate] = useState('')
+  const [compDistanceKm, setCompDistanceKm] = useState<string>('0')
+  const [calculatingDistance, setCalculatingDistance] = useState(false)
+  const [distanceInfo, setDistanceInfo] = useState<{ dureeTexte?: string; googleMapsUrl?: string; resolvedLabel?: string } | null>(null)
+  const [submittingComp, setSubmittingComp] = useState(false)
 
   const moisNoms = [
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -283,10 +332,105 @@ function FacturationContent() {
     }
   }
 
-  const handleDeleteLine = async (ligneId: string) => {
+  const handleOpenCompModal = () => {
+    setCompNom('')
+    setCompLieu('')
+    setCompType('departementale')
+    setCompFormat('demi_journee')
+    setCompDistanceKm('0')
+    setDistanceInfo(null)
+    const today = new Date()
+    const currentMonthNum = today.getMonth() + 1
+    const currentYearNum = today.getFullYear()
+    const dayStr =
+      currentMonthNum === selectedMois && currentYearNum === selectedAnnee
+        ? today.getDate().toString().padStart(2, '0')
+        : '01'
+    setCompDate(`${selectedAnnee}-${selectedMois.toString().padStart(2, '0')}-${dayStr}`)
+    setShowCompModal(true)
+  }
+
+  const handleCalculateDistance = async (destinationToCalculate?: string) => {
+    const targetDest = (destinationToCalculate ?? compLieu).trim()
+    if (!targetDest) {
+      toast.error('Veuillez renseigner un lieu ou choisir une piscine')
+      return
+    }
+
+    setCalculatingDistance(true)
+    try {
+      const res = await fetch('/api/coach/facturation/calculer-distance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ destination: targetDest }),
+      })
+
+      const d = await res.json()
+      if (res.ok && d.success) {
+        setCompDistanceKm(d.distanceKm.toString())
+        setDistanceInfo({
+          dureeTexte: d.dureeTexte,
+          googleMapsUrl: d.googleMapsUrl,
+          resolvedLabel: d.resolvedLabel,
+        })
+        toast.success(`Distance calculée : ${d.distanceKm} km (${d.dureeTexte || ''})`)
+      } else {
+        toast.error(d.error || 'Erreur lors du calcul de distance')
+      }
+    } catch {
+      toast.error('Impossible de contacter le service de calcul kilométrique')
+    } finally {
+      setCalculatingDistance(false)
+    }
+  }
+
+  const handleAddCompetition = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!compLieu.trim() || !compDate) {
+      toast.error('Veuillez renseigner le lieu et la date de la compétition.')
+      return
+    }
+
+    setSubmittingComp(true)
+    try {
+      const distanceNum = compType === 'regionale' ? parseFloat(compDistanceKm) || 0 : 0
+      const res = await fetch('/api/coach/facturation/competition', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mois: selectedMois,
+          annee: selectedAnnee,
+          typeCompetition: compType,
+          format: compFormat,
+          nomCompetition: compNom.trim(),
+          lieu: compLieu.trim(),
+          date: compDate,
+          distanceKm: distanceNum,
+        }),
+      })
+
+      const resData = await res.json()
+      if (res.ok) {
+        toast.success('Compétition ajoutée à votre facture')
+        setShowCompModal(false)
+        fetchFacturation()
+      } else {
+        toast.error(resData.error || 'Erreur lors de l\'enregistrement')
+      }
+    } catch {
+      toast.error('Erreur lors de l\'enregistrement de la compétition')
+    } finally {
+      setSubmittingComp(false)
+    }
+  }
+
+  const handleDeleteLine = async (ligneId: string, type?: string) => {
+    const isComp = type === 'competition' || type === 'forfait_transport'
     const confirmed = await confirm({
-      title: 'Supprimer cette ligne ?',
-      message: 'Voulez-vous supprimer cette prestation manuelle ?',
+      title: isComp ? 'Supprimer cette compétition ?' : 'Supprimer cette prestation ?',
+      message: isComp
+        ? 'Voulez-vous supprimer cette compétition ? La rémunération et son éventuel forfait transport associé seront retirés de votre facture.'
+        : 'Voulez-vous supprimer cette prestation manuelle ?',
       confirmText: 'Supprimer',
       variant: 'danger',
     })
@@ -298,7 +442,7 @@ function FacturationContent() {
         method: 'DELETE',
       })
       if (res.ok) {
-        toast.success('Ligne supprimée')
+        toast.success(isComp ? 'Compétition supprimée' : 'Ligne supprimée')
         fetchFacturation()
       } else {
         toast.error('Erreur lors de la suppression')
@@ -517,13 +661,23 @@ function FacturationContent() {
                       <span>Transmettre au club</span>
                     </button>
 
-                    <button
-                      onClick={() => setShowAddModal(true)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all ml-auto"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Ajouter une prestation</span>
-                    </button>
+                    <div className="flex items-center gap-2 ml-auto flex-wrap">
+                      <button
+                        onClick={handleOpenCompModal}
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-xs transition-all"
+                      >
+                        <Trophy className="w-3.5 h-3.5 text-slate-950" />
+                        <span>Déclarer une compétition</span>
+                      </button>
+
+                      <button
+                        onClick={() => setShowAddModal(true)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Ajouter une prestation</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -540,34 +694,59 @@ function FacturationContent() {
                     </div>
                   ) : (
                     <div className="divide-y divide-slate-100">
-                      {allLignes.map((l, idx) => (
-                        <div key={l.id || idx} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
-                          <div className="space-y-0.5">
-                            <p className="text-xs font-extrabold text-slate-900">
-                              {l.description}
-                            </p>
-                            <p className="text-[11px] text-slate-500">
-                              {l.date ? `Date : ${l.date} · ` : ''}
-                              {l.heures > 0 ? `${l.heures} heure${l.heures > 1 ? 's' : ''}` : ''}
-                            </p>
-                          </div>
+                      {allLignes.map((l, idx) => {
+                        const isDeletable = l.id && ['manuel', 'competition', 'forfait_transport', 'forfait_regional'].includes(l.type)
+                        const dateFormatted = l.date ? new Date(l.date).toLocaleDateString('fr-FR') : null
 
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-black text-slate-950">
-                              {l.montant.toFixed(2)} €
-                            </span>
-                            {l.id && l.type === 'manuel' && (
-                              <button
-                                onClick={() => handleDeleteLine(l.id!)}
-                                className="p-1 text-slate-400 hover:text-red-600 transition-colors"
-                                title="Supprimer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                        return (
+                          <div key={l.id || idx} className="py-3.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {l.type === 'competition' && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-200">
+                                    <Trophy className="w-3 h-3" />
+                                    Compétition
+                                  </span>
+                                )}
+                                {l.type === 'forfait_transport' && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-sky-100 text-sky-900 border border-sky-200">
+                                    <Car className="w-3 h-3" />
+                                    Transport
+                                  </span>
+                                )}
+                                <p className="text-xs font-extrabold text-slate-900">
+                                  {l.description}
+                                </p>
+                              </div>
+                              <p className="text-[11px] text-slate-500">
+                                {dateFormatted ? `Date : ${dateFormatted} · ` : ''}
+                                {l.type === 'competition'
+                                  ? (l.demiJournees === 2 || l.heures === 2 ? '1 journée complète (130 €)' : '1 demi-journée (50 €)')
+                                  : l.type === 'forfait_transport'
+                                  ? `${l.heures} km aller × 0,30 €/km`
+                                  : l.heures > 0
+                                  ? `${l.heures} heure${l.heures > 1 ? 's' : ''}`
+                                  : ''}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs font-black text-slate-950">
+                                {l.montant.toFixed(2)} €
+                              </span>
+                              {isDeletable && (
+                                <button
+                                  onClick={() => handleDeleteLine(l.id!, l.type)}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
+                                  title={l.type === 'competition' || l.type === 'forfait_transport' ? 'Supprimer la compétition' : 'Supprimer'}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -801,6 +980,354 @@ function FacturationContent() {
                   <strong>Cumul d&apos;activité :</strong> Ce récapitulatif comptabilise exclusivement vos prestations au sein du Triton Club Cavaillon. Si vous facturez d&apos;autres clients, additionnez vos recettes avant de valider votre déclaration sur <em>autoentrepreneur.urssaf.fr</em>.
                 </li>
               </ul>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL AJOUT COMPÉTITION */}
+        {showCompModal && (
+          <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-xl w-full shadow-2xl space-y-5 my-8 border border-slate-200">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-900 shrink-0">
+                    <Trophy className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-slate-950">
+                      Déclarer une compétition
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Rémunération officielle &amp; indemnité kilométrique transport
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCompModal(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleAddCompetition} className="space-y-4">
+                {/* 1. TYPE DE COMPÉTITION */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-800">
+                    Niveau de la compétition *
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCompType('departementale')
+                        setCompDistanceKm('0')
+                        setDistanceInfo(null)
+                      }}
+                      className={`p-3 rounded-2xl border text-left transition-all ${
+                        compType === 'departementale'
+                          ? 'border-amber-500 bg-amber-50/50 ring-2 ring-amber-500/20'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-slate-950">Départementale (84)</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800">Vaucluse</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Demi-j. 50 € · Journée 130 €<br />
+                        <span className="text-slate-400">Sans forfait transport</span>
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCompType('regionale')
+                        if (compLieu) {
+                          handleCalculateDistance(compLieu)
+                        }
+                      }}
+                      className={`p-3 rounded-2xl border text-left transition-all ${
+                        compType === 'regionale'
+                          ? 'border-sky-500 bg-sky-50/50 ring-2 ring-sky-500/20'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-slate-950">Régionale</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-sky-100 text-sky-800">Hors 84</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Demi-j. 50 € · Journée 130 €<br />
+                        <span className="font-semibold text-sky-700">+ Forfait transport (0,30 €/km aller)</span>
+                      </p>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. FORMAT DE PRÉSENCE */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-800">
+                    Format de la prestation *
+                  </label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setCompFormat('demi_journee')}
+                      className={`p-3 rounded-2xl border text-center transition-all ${
+                        compFormat === 'demi_journee'
+                          ? 'border-slate-950 bg-slate-950 text-white shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-800'
+                      }`}
+                    >
+                      <span className="text-xs font-black block">Demi-journée</span>
+                      <span className={`text-sm font-extrabold ${compFormat === 'demi_journee' ? 'text-amber-400' : 'text-slate-900'}`}>
+                        50,00 €
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCompFormat('journee')}
+                      className={`p-3 rounded-2xl border text-center transition-all ${
+                        compFormat === 'journee'
+                          ? 'border-slate-950 bg-slate-950 text-white shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-800'
+                      }`}
+                    >
+                      <span className="text-xs font-black block">Journée complète</span>
+                      <span className={`text-sm font-extrabold ${compFormat === 'journee' ? 'text-amber-400' : 'text-slate-900'}`}>
+                        130,00 €
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. DATE & NOM */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={compDate}
+                      onChange={(e) => setCompDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Nom de la compétition</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Championnats Régionaux PACA"
+                      value={compNom}
+                      onChange={(e) => setCompNom(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* 4. LIEU / PISCINE */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">
+                    Lieu / Piscine de compétition *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Piscine Yves Blanc, Aix-en-Provence"
+                      value={compLieu}
+                      onChange={(e) => setCompLieu(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:outline-none pr-8"
+                    />
+                    <MapPin className="w-4 h-4 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
+                  </div>
+
+                  {/* PRESETS PILLS */}
+                  <div className="pt-1">
+                    <p className="text-[10px] font-bold text-slate-400 mb-1.5 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <span>Bassins fréquents (cliquer pour remplir) :</span>
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                      {compType === 'departementale'
+                        ? PISCINES_DEPARTEMENTALES_PRESETS.map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setCompLieu(p)}
+                              className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                                compLieu === p
+                                  ? 'bg-amber-600 text-white font-bold'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                              }`}
+                            >
+                              {p.replace('Piscine ', '').replace('Centre Aquatique de ', '')}
+                            </button>
+                          ))
+                        : PISCINES_REGIONALES_PRESETS.map((p) => (
+                            <button
+                              key={p.nom}
+                              type="button"
+                              onClick={() => {
+                                setCompLieu(p.nom)
+                                setCompDistanceKm(p.km.toString())
+                                setDistanceInfo({
+                                  googleMapsUrl: `https://www.google.com/maps/dir/?api=1&origin=Piscine+Alphonse+Roudi%C3%A8re,+84300+Cavaillon&destination=${encodeURIComponent(p.nom)}&travelmode=driving`,
+                                })
+                              }}
+                              className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all flex items-center gap-1 ${
+                                compLieu === p.nom
+                                  ? 'bg-sky-600 text-white font-bold'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                              }`}
+                            >
+                              <span>{p.label}</span>
+                              <span className={compLieu === p.nom ? 'text-sky-200' : 'text-slate-400 font-mono text-[10px]'}>
+                                ({p.km} km)
+                              </span>
+                            </button>
+                          ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. CALCUL KILOMÉTRIQUE POUR RÉGIONALE */}
+                {compType === 'regionale' && (
+                  <div className="p-4 rounded-2xl bg-sky-50/70 border border-sky-200/80 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-black text-sky-950 flex items-center gap-1.5">
+                          <Car className="w-3.5 h-3.5 text-sky-700" />
+                          <span>Calcul du forfait transport (0,30 € / km aller)</span>
+                        </p>
+                        <p className="text-[11px] text-sky-700 mt-0.5">
+                          Départ : <strong>Piscine Alphonse Roudière, 84300 Cavaillon</strong>
+                        </p>
+                      </div>
+
+                      {/* LIEN GOOGLE MAPS */}
+                      <a
+                        href={
+                          distanceInfo?.googleMapsUrl ||
+                          `https://www.google.com/maps/dir/?api=1&origin=Piscine+Alphonse+Roudi%C3%A8re,+84300+Cavaillon&destination=${encodeURIComponent(compLieu || 'PACA')}&travelmode=driving`
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-sky-100 text-sky-900 border border-sky-200 text-[11px] font-bold transition-all shadow-2xs shrink-0"
+                        title="Ouvrir le trajet le plus rapide sur Google Maps"
+                      >
+                        <Navigation className="w-3 h-3 text-sky-600" />
+                        <span>Google Maps</span>
+                        <ExternalLink className="w-2.5 h-2.5 text-sky-400" />
+                      </a>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-sky-900">
+                          Distance aller (km) :
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={compDistanceKm}
+                            onChange={(e) => setCompDistanceKm(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-white border border-sky-300 text-xs font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleCalculateDistance()}
+                            disabled={calculatingDistance || !compLieu.trim()}
+                            className="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all disabled:opacity-50 shrink-0 inline-flex items-center gap-1.5"
+                            title="Calculer l'itinéraire routier le plus rapide"
+                          >
+                            {calculatingDistance ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Navigation className="w-3.5 h-3.5" />
+                            )}
+                            <span>Calculer</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-white border border-sky-200 space-y-0.5">
+                        <span className="text-[10px] text-sky-700 font-bold block">Forfait calculé</span>
+                        <p className="text-xs font-mono font-black text-sky-950">
+                          {parseFloat(compDistanceKm) || 0} km × 0,30 € = {((parseFloat(compDistanceKm) || 0) * 0.3).toFixed(2)} €
+                        </p>
+                        {distanceInfo?.dureeTexte && (
+                          <p className="text-[10px] text-slate-500">
+                            Trajet estimé : {distanceInfo.dureeTexte}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 6. RÉCAPITULATIF LIVE */}
+                <div className="p-4 rounded-2xl bg-slate-950 text-white space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-300">
+                    <span>
+                      Forfait compétition ({compFormat === 'journee' ? 'Journée complète' : 'Demi-journée'})
+                    </span>
+                    <span className="font-bold text-white">
+                      {compFormat === 'journee' ? '130,00 €' : '50,00 €'}
+                    </span>
+                  </div>
+
+                  {compType === 'regionale' && (
+                    <div className="flex items-center justify-between text-xs text-slate-300">
+                      <span>
+                        Forfait transport aller ({parseFloat(compDistanceKm) || 0} km × 0,30 €)
+                      </span>
+                      <span className="font-bold text-sky-400">
+                        + {((parseFloat(compDistanceKm) || 0) * 0.3).toFixed(2)} €
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-200">
+                      Total ajouté à votre facture
+                    </span>
+                    <span className="text-base sm:text-lg font-black text-amber-400">
+                      {(
+                        (compFormat === 'journee' ? 130 : 50) +
+                        (compType === 'regionale' ? (parseFloat(compDistanceKm) || 0) * 0.3 : 0)
+                      ).toFixed(2)}{' '}
+                      €
+                    </span>
+                  </div>
+                </div>
+
+                {/* 7. ACTIONS FOOTER */}
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCompModal(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingComp}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black disabled:opacity-50 shadow-xs transition-all"
+                  >
+                    {submittingComp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trophy className="w-3.5 h-3.5" />}
+                    <span>Ajouter à ma facture</span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

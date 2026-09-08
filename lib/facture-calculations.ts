@@ -1,11 +1,17 @@
 import { prisma } from '@/lib/prisma'
 
 export interface FactureLigneCalculated {
-  type: 'planning_fixe' | 'planning_tournant' | 'remplacement' | 'absence' | 'competition' | 'forfait_regional'
+  id?: string
+  type: 'planning_fixe' | 'planning_tournant' | 'remplacement' | 'absence' | 'competition' | 'forfait_regional' | 'forfait_transport' | 'manuel'
   description: string
   heures: number
   montant: number
   date?: Date
+  groupe?: string | null
+  lieu?: string | null
+  demiJournees?: number | null
+  coachRemplaceId?: string | null
+  remplacementId?: string | null
 }
 
 export interface FactureCoachDetails {
@@ -53,7 +59,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
   if (factureExistante && factureExistante.statut === 'payee') {
     const lignesManuelles = factureExistante.lignes
-      .filter((l) => ['remplacement', 'competition', 'forfait_regional', 'absence'].includes(l.type))
+      .filter((l) => ['remplacement', 'competition', 'forfait_regional', 'forfait_transport', 'absence', 'manuel'].includes(l.type))
       .map((l) => ({
         id: l.id,
         type: l.type as any,
@@ -65,6 +71,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
         lieu: l.lieu || null,
         demiJournees: l.demiJournees || null,
         coachRemplaceId: l.coachRemplaceId || null,
+        remplacementId: l.remplacementId || null,
       }))
 
     const totalHeures = lignesManuelles.reduce((sum, l) => sum + (l.type === 'remplacement' || l.type === 'absence' ? l.heures : 0), 0)
@@ -381,7 +388,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
   if (factureBrouillon) {
     lignesManuelles = factureBrouillon.lignes
-      .filter((l) => ['remplacement', 'competition', 'forfait_regional', 'absence'].includes(l.type))
+      .filter((l) => ['remplacement', 'competition', 'forfait_regional', 'forfait_transport', 'absence', 'manuel'].includes(l.type))
       .map((l) => ({
         id: l.id,
         type: l.type as any,
@@ -389,6 +396,11 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
         heures: l.heures ?? 0,
         montant: l.montant,
         date: l.date,
+        groupe: l.groupe || null,
+        lieu: l.lieu || null,
+        demiJournees: l.demiJournees || null,
+        coachRemplaceId: l.coachRemplaceId || null,
+        remplacementId: l.remplacementId || null,
       }))
   }
 

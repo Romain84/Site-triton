@@ -225,7 +225,11 @@ export async function genererFacturePDF(
       let montantText: string
 
       if (ligne.type === 'competition' || ligne.type === 'forfait_regional') {
-        heuresText = `${ligne.heures} demi-j.`
+        const estJournee = ligne.demiJournees === 2 || ligne.heures === 2
+        heuresText = estJournee ? '1 journée' : `${ligne.heures || 1} demi-j.`
+        montantText = `${ligne.montant.toFixed(2)} €`
+      } else if (ligne.type === 'forfait_transport') {
+        heuresText = `${ligne.heures || 0} km (aller)`
         montantText = `${ligne.montant.toFixed(2)} €`
       } else if (ligne.type === 'absence') {
         heuresText = `-${Math.abs(ligne.heures || 0).toFixed(2)} h`

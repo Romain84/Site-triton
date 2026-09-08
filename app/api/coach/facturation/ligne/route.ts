@@ -9,10 +9,10 @@ const coachLogger = logger.withContext('Coach')
 interface AddLigneRequest {
   mois: number
   annee: number
-  type: 'remplacement' | 'competition' | 'forfait_regional' | 'absence'
+  type?: 'remplacement' | 'competition' | 'forfait_regional' | 'forfait_transport' | 'absence' | 'manuel'
   description: string
-  heures: number
-  montant: number
+  heures?: number
+  montant?: number
   date?: string
   groupe?: string
   lieu?: string
@@ -34,12 +34,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body: AddLigneRequest = await request.json()
-    let { mois, annee, type, description, heures, montant, date, groupe, lieu, demiJournees, coachRemplaceId, heureDebut, heureFin } = body
+    let { mois, annee, type = 'manuel', description, heures = 0, montant, date, groupe, lieu, demiJournees, coachRemplaceId, heureDebut, heureFin } = body
 
     // Gestion spécifique pour les absences (valeurs négatives)
     if (type === 'absence') {
       heures = -Math.abs(heures)
-      montant = -Math.abs(montant)
+      if (montant !== undefined) {
+        montant = -Math.abs(montant)
+      }
     }
 
     // Vérifier si une facture brouillon existe déjà pour ce mois
@@ -85,6 +87,10 @@ export async function POST(request: NextRequest) {
           statut: 'brouillon',
         },
       })
+    }
+
+    if (montant === undefined || montant === null) {
+      montant = (heures || 0) * (facture.tauxHoraire || 35)
     }
 
     let createdRemplacementId: string | null = null
