@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { getErrorMessage } from '@/lib/utils'
 import { HelpTooltip, CalculationTooltip } from '@/components/ui/Tooltip'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, AlertTriangle, Cloud, Loader2, Save, Plus, Trash2 } from 'lucide-react'
+import { Check, AlertTriangle, Cloud, Loader2, Save, Plus, Trash2, Pencil, X } from 'lucide-react'
 import {
   PiscineFrequenteConfig,
   parsePiscinesFrequentes,
@@ -108,10 +108,13 @@ export default function ParametresManager() {
   const [piscinesFrequentes, setPiscinesFrequentes] = useState<PiscineFrequenteConfig[]>([])
   const [newPiscineNom, setNewPiscineNom] = useState('')
   const [newPiscineKm, setNewPiscineKm] = useState('')
+  const [editingPiscineIndex, setEditingPiscineIndex] = useState<number | null>(null)
+  const [editPiscineNom, setEditPiscineNom] = useState('')
+  const [editPiscineKm, setEditPiscineKm] = useState('')
 
   const handleAddPiscine = () => {
     if (!newPiscineNom.trim() || !newPiscineKm) return
-    const km = parseFloat(newPiscineKm) || 0
+    const km = Math.max(0, parseFloat(newPiscineKm) || 0)
     const id = `piscine_${Date.now()}`
     setPiscinesFrequentes((prev) => [
       ...prev,
@@ -122,7 +125,39 @@ export default function ParametresManager() {
   }
 
   const handleRemovePiscine = (index: number) => {
+    if (editingPiscineIndex === index) {
+      setEditingPiscineIndex(null)
+      setEditPiscineNom('')
+      setEditPiscineKm('')
+    } else if (editingPiscineIndex !== null && editingPiscineIndex > index) {
+      setEditingPiscineIndex(editingPiscineIndex - 1)
+    }
     setPiscinesFrequentes((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleStartEditPiscine = (index: number) => {
+    const target = piscinesFrequentes[index]
+    if (!target) return
+    setEditingPiscineIndex(index)
+    setEditPiscineNom(target.nom)
+    setEditPiscineKm(String(target.distanceKm))
+  }
+
+  const handleCancelEditPiscine = () => {
+    setEditingPiscineIndex(null)
+    setEditPiscineNom('')
+    setEditPiscineKm('')
+  }
+
+  const handleSaveEditPiscine = (index: number) => {
+    if (!editPiscineNom.trim() || !editPiscineKm) return
+    const km = Math.max(0, parseFloat(editPiscineKm) || 0)
+    setPiscinesFrequentes((prev) =>
+      prev.map((p, i) => (i === index ? { ...p, nom: editPiscineNom.trim(), distanceKm: km } : p))
+    )
+    setEditingPiscineIndex(null)
+    setEditPiscineNom('')
+    setEditPiscineKm('')
   }
 
   // Upload state
@@ -728,6 +763,7 @@ export default function ParametresManager() {
     datesTests,
     interSaisonActif,
     texteFiligrane,
+    piscinesFrequentes,
     isInitialized
   ])
 
@@ -1459,9 +1495,12 @@ export default function ParametresManager() {
                     type="button"
                     onClick={() => {
                       setPiscinesFrequentes(getDefaultPiscinesFrequentes())
+                      setEditingPiscineIndex(null)
+                      setEditPiscineNom('')
+                      setEditPiscineKm('')
                       setSuccess('Bassins réinitialisés aux valeurs standards (pensez à enregistrer).')
                     }}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors self-start sm:self-auto"
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors self-start sm:self-auto cursor-pointer"
                   >
                     Réinitialiser les bassins par défaut
                   </button>
@@ -1514,7 +1553,7 @@ export default function ParametresManager() {
                         <th className="py-2.5 px-4">Piscine / Ville</th>
                         <th className="py-2.5 px-4 text-center">Distance aller (Cavaillon)</th>
                         <th className="py-2.5 px-4 text-center">Forfait calculé (aller × 0,30 €)</th>
-                        <th className="py-2.5 px-4 text-right">Action</th>
+                        <th className="py-2.5 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1525,29 +1564,117 @@ export default function ParametresManager() {
                           </td>
                         </tr>
                       ) : (
-                        piscinesFrequentes.map((p, idx) => (
-                          <tr key={p.id || idx} className="hover:bg-slate-50/50">
-                            <td className="py-2.5 px-4 font-semibold text-slate-900">
-                              {p.nom}
-                            </td>
-                            <td className="py-2.5 px-4 text-center font-mono font-bold text-slate-800">
-                              {p.distanceKm} km
-                            </td>
-                            <td className="py-2.5 px-4 text-center font-mono text-emerald-700 font-bold">
-                              {(p.distanceKm * 0.30).toFixed(2)} €
-                            </td>
-                            <td className="py-2.5 px-4 text-right">
-                              <button
-                                type="button"
-                                onClick={() => handleRemovePiscine(idx)}
-                                className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors"
-                                title="Supprimer ce bassin"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))
+                        piscinesFrequentes.map((p, idx) => {
+                          const isEditing = editingPiscineIndex === idx
+                          return (
+                            <tr
+                              key={p.id || idx}
+                              className={isEditing ? 'bg-emerald-50/50' : 'hover:bg-slate-50/50 transition-colors'}
+                            >
+                              <td className="py-2.5 px-4 font-semibold text-slate-900">
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={editPiscineNom}
+                                    onChange={(e) => setEditPiscineNom(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault()
+                                        handleSaveEditPiscine(idx)
+                                      } else if (e.key === 'Escape') {
+                                        e.preventDefault()
+                                        handleCancelEditPiscine()
+                                      }
+                                    }}
+                                    className="w-full px-2.5 py-1.5 bg-white border border-emerald-300 rounded-lg text-xs outline-none text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                                    placeholder="Nom du bassin / Piscine & Ville"
+                                    autoFocus
+                                  />
+                                ) : (
+                                  p.nom
+                                )}
+                              </td>
+                              <td className="py-2.5 px-4 text-center font-mono font-bold text-slate-800">
+                                {isEditing ? (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="1"
+                                      value={editPiscineKm}
+                                      onChange={(e) => setEditPiscineKm(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault()
+                                          handleSaveEditPiscine(idx)
+                                        } else if (e.key === 'Escape') {
+                                          e.preventDefault()
+                                          handleCancelEditPiscine()
+                                        }
+                                      }}
+                                      className="w-20 px-2 py-1.5 bg-white border border-emerald-300 rounded-lg text-xs outline-none text-center font-mono font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                                      placeholder="0"
+                                    />
+                                    <span className="text-slate-500 text-xs font-semibold">km</span>
+                                  </div>
+                                ) : (
+                                  `${p.distanceKm} km`
+                                )}
+                              </td>
+                              <td className="py-2.5 px-4 text-center font-mono text-emerald-700 font-bold">
+                                {isEditing ? (
+                                  `${(Math.max(0, parseFloat(editPiscineKm) || 0) * 0.3).toFixed(2)} €`
+                                ) : (
+                                  `${(p.distanceKm * 0.3).toFixed(2)} €`
+                                )}
+                              </td>
+                              <td className="py-2.5 px-4 text-right">
+                                {isEditing ? (
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveEditPiscine(idx)}
+                                      disabled={!editPiscineNom.trim() || !editPiscineKm}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-bold transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+                                      title="Valider la modification (ou Entrée)"
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Valider</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleCancelEditPiscine}
+                                      className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md text-[11px] font-medium transition-colors cursor-pointer"
+                                      title="Annuler (ou Échap)"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                      <span>Annuler</span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-end gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartEditPiscine(idx)}
+                                      className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                                      title="Modifier ce bassin"
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemovePiscine(idx)}
+                                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                                      title="Supprimer ce bassin"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })
                       )}
                     </tbody>
                   </table>
