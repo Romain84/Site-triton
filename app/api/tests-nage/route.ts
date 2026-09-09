@@ -144,6 +144,7 @@ function maskEmail(email: string | null | undefined): string | null {
       dureeMinutes: session.dureeMinutes,
       capaciteParCreneau: session.capaciteParCreneau,
       consignes: session.consignes,
+      bloquee: Boolean(session.bloquee),
       creneaux: session.creneaux.map((cr) => {
         const nbInscrits = cr.inscriptions.length
         const placesRestantes = Math.max(0, cr.capacite - nbInscrits)

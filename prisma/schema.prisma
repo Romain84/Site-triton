@@ -861,6 +861,7 @@ model SessionTestNage {
   capaciteParCreneau Int                @default(2)
   consignes          String?            @default("Prévoir un maillot de bain, un bonnet de bain et des lunettes. Merci de vous présenter 5 minutes avant le début de votre créneau dans le hall d'entrée de la piscine.")
   actif              Boolean            @default(true)
+  bloquee            Boolean            @default(false)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   creneaux           CreneauTestNage[]

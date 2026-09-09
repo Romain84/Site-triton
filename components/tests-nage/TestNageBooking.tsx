@@ -51,6 +51,7 @@ interface SessionItem {
   dureeMinutes: number
   capaciteParCreneau: number
   consignes: string | null
+  bloquee?: boolean
   creneaux: CreneauItem[]
 }
 
@@ -88,6 +89,7 @@ interface ManageReservationData {
     lieu: string
     dureeMinutes: number
     consignes: string | null
+    bloquee?: boolean
     creneaux: CreneauItem[]
   }
 }
@@ -583,11 +585,17 @@ export default function TestNageBooking() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsChangingSlot(true)}
-                  className="flex-1 py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  disabled={manageData.session.bloquee}
+                  onClick={() => !manageData.session.bloquee && setIsChangingSlot(true)}
+                  className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs ${
+                    manageData.session.bloquee
+                      ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                      : 'bg-slate-900 hover:bg-slate-800 text-white cursor-pointer'
+                  }`}
+                  title={manageData.session.bloquee ? "Les modifications d'horaires sont verrouillées pour cette séance" : undefined}
                 >
-                  <RefreshCw className="w-4 h-4 text-emerald-400" />
-                  Modifier mon horaire
+                  <RefreshCw className={`w-4 h-4 ${manageData.session.bloquee ? 'text-slate-400' : 'text-emerald-400'}`} />
+                  {manageData.session.bloquee ? 'Changement d’horaire fermé' : 'Modifier mon horaire'}
                 </button>
 
                 <button
@@ -1084,7 +1092,12 @@ export default function TestNageBooking() {
                           📍 {s.lieu}
                         </span>
 
-                        {isSessionFull ? (
+                        {s.bloquee ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-900">
+                            <Lock className="w-3 h-3 text-amber-700" />
+                            Inscriptions closes
+                          </span>
+                        ) : isSessionFull ? (
                           <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded border border-red-200 bg-red-50 text-red-700">
                             Complet
                           </span>
@@ -1165,8 +1178,31 @@ export default function TestNageBooking() {
             </div>
           </div>
 
-          {/* Grille des créneaux horaires */}
-          <div className="space-y-3">
+          {currentSession.bloquee ? (
+            <div className="bg-white rounded-3xl p-8 sm:p-10 border-2 border-amber-300 shadow-xs text-center space-y-4 animate-fade-in">
+              <div className="w-14 h-14 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center mx-auto text-amber-800 shadow-inner">
+                <Lock className="w-7 h-7" />
+              </div>
+              <div className="space-y-2 max-w-lg mx-auto">
+                <h4 className="text-lg sm:text-xl font-black text-slate-900">
+                  Inscriptions closes pour cette séance
+                </h4>
+                <p className="text-xs sm:text-sm font-medium text-slate-600 leading-relaxed">
+                  Les réservations pour la séance du <strong>{formatLongDateFr(currentSession.date)}</strong> sont actuellement verrouillées par le club.
+                </p>
+                {sessions.some((s) => !s.bloquee && s.id !== currentSession.id) && (
+                  <div className="pt-2">
+                    <span className="inline-block px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
+                      💡 Des créneaux sont encore ouverts sur d&apos;autres dates ci-dessus !
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Grille des créneaux horaires */}
+              <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-primary" />
@@ -1551,8 +1587,10 @@ export default function TestNageBooking() {
               </div>
             </form>
           </div>
-        </div>
+        </>
       )}
+    </div>
+  )}
 
       {/* ─── ÉTAPE 3 : CONFIRMATION RÉUSSIE ─── */}
       {step === 3 && confirmationData && (

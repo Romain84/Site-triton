@@ -9,6 +9,7 @@ const updateSessionSchema = z.object({
   lieu: z.string().optional(),
   consignes: z.string().nullable().optional(),
   actif: z.boolean().optional(),
+  bloquee: z.boolean().optional(),
 })
 
 interface RouteParams {

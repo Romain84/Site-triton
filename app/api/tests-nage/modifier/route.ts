@@ -67,6 +67,10 @@ export async function POST(request: NextRequest) {
         throw new Error("Le nouveau créneau n'est plus disponible.")
       }
 
+      if (newCreneau.session.bloquee) {
+        throw new Error("Les inscriptions pour cette séance sont désormais closes ou verrouillées par l'organisateur.")
+      }
+
       if (newCreneau.inscriptions.length >= newCreneau.capacite) {
         throw new Error(`Ce créneau de ${newCreneau.session.dureeMinutes} minutes est complet. Veuillez en choisir un autre.`)
       }

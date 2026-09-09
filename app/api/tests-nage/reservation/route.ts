@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
           lieu: session.lieu,
           dureeMinutes: session.dureeMinutes,
           consignes: session.consignes,
+          bloquee: session.bloquee ?? false,
           creneaux: availableCreneaux,
         },
       },

@@ -16,6 +16,7 @@ const createSessionSchema = z.object({
   capaciteParCreneau: z.number().int().min(1).max(20).default(2),
   consignes: z.string().optional().nullable(),
   actif: z.boolean().default(true),
+  bloquee: z.boolean().default(false),
 })
 
 // Helper pour convertir "HH:MM" en minutes depuis minuit
@@ -176,6 +177,7 @@ export async function POST(request: NextRequest) {
         capaciteParCreneau: validated.capaciteParCreneau,
         consignes: validated.consignes || undefined,
         actif: validated.actif,
+        bloquee: validated.bloquee,
         creneaux: {
           create: creneauxData,
         },

@@ -26,7 +26,9 @@ import {
   RefreshCw,
   Mail,
   Send,
-  FileText
+  FileText,
+  Lock,
+  Unlock
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatLongDateFr, formatCompactDateFr } from '@/lib/date'
@@ -86,6 +88,7 @@ interface SessionItem {
   capaciteParCreneau: number
   consignes: string | null
   actif: boolean
+  bloquee?: boolean
   creneaux: CreneauItem[]
   stats: {
     nbCreneaux: number
@@ -800,6 +803,34 @@ export default function TestsNageManager() {
     }
   }
 
+  // Verrouiller / Déverrouiller manuellement les inscriptions d'une session
+  const handleToggleBloquerSession = async (session: SessionItem) => {
+    const nouveauStatutBloque = !session.bloquee
+    try {
+      setSessions((prev) =>
+        prev.map((s) => (s.id === session.id ? { ...s, bloquee: nouveauStatutBloque } : s))
+      )
+      const res = await fetch(`/api/admin/tests-nage/sessions/${session.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bloquee: nouveauStatutBloque }),
+      })
+      if (res.ok) {
+        toast.success(
+          nouveauStatutBloque
+            ? '🔒 Inscriptions bloquées pour cette séance'
+            : '🟢 Inscriptions rouvertes pour cette séance'
+        )
+      } else {
+        toast.error('Erreur lors de la modification de la séance')
+        await loadData()
+      }
+    } catch {
+      toast.error('Erreur de connexion')
+      await loadData()
+    }
+  }
+
   // Fusion de deux sessions sans perte de données
   const handleFusionSessions = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1198,23 +1229,58 @@ export default function TestsNageManager() {
       {/* ─── VUE 1 : FEUILLE DE PASSAGE CHRONOLOGIQUE (BORD DE BASSIN) ─── */}
       {activeSubTab === 'passages' && (
         <div className="space-y-4">
-          {/* Sélecteur de session si plusieurs */}
-          {sessions.length > 1 && (
-            <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-200 max-w-xl print:hidden">
-              <span className="text-xs font-bold text-slate-500 pl-2">Session :</span>
-              <select
-                value={selectedSessionId}
-                onChange={(e) => setSelectedSessionId(e.target.value)}
-                className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 outline-none cursor-pointer"
-              >
-                {sessions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.titre} ({formatCompactDateFr(s.date)} · {s.heureDebut}-{s.heureFin})
-                  </option>
-                ))}
-              </select>
+          {/* Sélecteur de session et état de verrouillage */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200 print:hidden">
+            <div className="flex items-center gap-2 flex-1 min-w-[280px]">
+              {sessions.length > 1 ? (
+                <>
+                  <span className="text-xs font-bold text-slate-500 pl-2">Session :</span>
+                  <select
+                    value={selectedSessionId}
+                    onChange={(e) => setSelectedSessionId(e.target.value)}
+                    className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 outline-none cursor-pointer"
+                  >
+                    {sessions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.titre} ({formatCompactDateFr(s.date)} · {s.heureDebut}-{s.heureFin}) {s.bloquee ? '🔒 [Bloquée]' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              ) : currentSession ? (
+                <div className="text-xs font-bold text-slate-800 pl-2">
+                  Session : <span className="text-primary">{currentSession.titre}</span> ({formatCompactDateFr(currentSession.date)})
+                </div>
+              ) : null}
             </div>
-          )}
+
+            {currentSession && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleToggleBloquerSession(currentSession)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-colors cursor-pointer border shadow-3xs ${
+                    currentSession.bloquee
+                      ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
+                      : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200'
+                  }`}
+                  title={currentSession.bloquee ? 'Cliquer pour rouvrir les inscriptions publiques pour cette séance' : 'Cliquer pour bloquer les inscriptions publiques (même si la séance n\'est pas complète)'}
+                >
+                  {currentSession.bloquee ? (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-amber-700" />
+                      <span>🔒 Inscriptions bloquées (Cliquer pour rouvrir)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Unlock className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>🟢 Inscriptions ouvertes (Cliquer pour bloquer)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* ─── VUE IMPRESSION DÉDIÉE (A4 / PDF PROPRE ET SIMPLE) ─── */}
           {currentSession && (
@@ -2003,13 +2069,24 @@ export default function TestsNageManager() {
             {sessions.map((s) => (
               <div key={s.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="text-sm font-bold text-slate-900">{s.titre}</h4>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                       s.actif ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-400'
                     }`}>
                       {s.actif ? 'Actif en ligne' : 'Masqué'}
                     </span>
+                    {s.bloquee ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                        <Lock className="w-3 h-3 text-amber-700" />
+                        Inscriptions bloquées
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                        <Unlock className="w-3 h-3 text-emerald-700" />
+                        Inscriptions ouvertes
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-500 font-medium">
                     📅 {formatLongDateFr(s.date)} · ⏰ {s.heureDebut} à {s.heureFin} ({s.dureeMinutes} min/test, {s.capaciteParCreneau} max/créneau) · 📍 {s.lieu}
@@ -2020,6 +2097,28 @@ export default function TestsNageManager() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleBloquerSession(s)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-colors cursor-pointer border ${
+                      s.bloquee
+                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 shadow-3xs'
+                        : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200 shadow-3xs'
+                    }`}
+                    title={s.bloquee ? 'Cliquer pour rouvrir les inscriptions' : 'Cliquer pour bloquer les inscriptions'}
+                  >
+                    {s.bloquee ? (
+                      <>
+                        <Unlock className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Débloquer</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-3.5 h-3.5 text-slate-600" />
+                        <span>Bloquer la séance</span>
+                      </>
+                    )}
+                  </button>
                   <button
                     onClick={() => {
                       setSelectedSessionId(s.id)

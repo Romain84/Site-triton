@@ -76,6 +76,10 @@ export async function POST(request: NextRequest) {
         throw new Error('Ce créneau n\'est plus disponible.')
       }
 
+      if (creneau.session.bloquee) {
+        throw new Error('Les inscriptions pour cette séance sont closes ou verrouillées par l\'organisateur.')
+      }
+
       // 2. Vérifier la capacité maximale
       if (creneau.inscriptions.length >= creneau.capacite) {
         throw new Error(`Ce créneau de ${creneau.session.dureeMinutes} minutes est désormais complet. Veuillez sélectionner un autre horaire.`)
