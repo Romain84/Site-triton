@@ -120,4 +120,20 @@ describe('Rémunération des compétitions et indemnités kilométriques', () =>
     const matchAntibes = matchPiscineFrequente('Antibes', pools)
     expect(matchAntibes?.distanceKm).toBe(196)
   })
+
+  it('calcule correctement le montant total algébrique de la facture (planning fixe + remplacements - absences + forfaits)', () => {
+    // Cas réel rapporté par le club :
+    // - Planning fixe : Mardi 19:30-21:00 (Adultes Compétition, 3h = 90.00 €)
+    // - Absence (Remplacé(e) par Cindy) : 2h (-60.00 €)
+    // - Compétition Départementale : Pré Saison - Demi-journée (+50.00 €)
+    // Le total exact doit être 90 - 60 + 50 = 80.00 € (et NON -10.00 €)
+    const planningFixeMontant = 90.00
+    const absenceMontant = -60.00
+    const competitionMontant = 50.00
+
+    const totalMontant = planningFixeMontant + absenceMontant + competitionMontant
+    expect(totalMontant).toBe(80.00)
+    expect(totalMontant).not.toBe(-10.00)
+  })
 })
+

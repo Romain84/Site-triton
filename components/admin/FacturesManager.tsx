@@ -21,6 +21,7 @@ interface Facture {
   montantTotal: number
   tauxHoraire: number
   statut: string
+  pdfPath?: string | null
   createdAt: string
   updatedAt: string
   _count?: {
@@ -42,6 +43,7 @@ const statutsLabels: { [key: string]: { label: string; color: string } } = {
 
 export default function FacturesManager() {
   const [factures, setFactures] = useState<Facture[]>([])
+  const [allCoaches, setAllCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatut, setFilterStatut] = useState<string>('all')
   const [filterCoach, setFilterCoach] = useState<string>('all')
@@ -52,9 +54,36 @@ export default function FacturesManager() {
   const [previewFacture, setPreviewFacture] = useState<any | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
 
+  // États pour la modale de génération manuelle
+  const [showGenerateModal, setShowGenerateModal] = useState(false)
+  const [selectedGenCoach, setSelectedGenCoach] = useState('')
+  const [selectedGenMois, setSelectedGenMois] = useState(() => new Date().getMonth() + 1)
+  const [selectedGenAnnee, setSelectedGenAnnee] = useState(() => new Date().getFullYear())
+  const [previewGenDetails, setPreviewGenDetails] = useState<any | null>(null)
+  const [loadingGenPreview, setLoadingGenPreview] = useState(false)
+  const [generatingAction, setGeneratingAction] = useState<string | null>(null)
+
   useEffect(() => {
     fetchFactures()
+    fetchCoaches()
   }, [])
+
+  const fetchCoaches = async () => {
+    try {
+      const res = await fetch('/api/admin/coaches')
+      const data = await res.json()
+      if (res.ok && data.coaches) {
+        setAllCoaches(data.coaches.map((c: any) => ({
+          id: c.id,
+          prenom: c.prenom,
+          nom: c.nom,
+          email: c.email,
+        })))
+      }
+    } catch {
+      // Fallback géré via factures
+    }
+  }
 
   const handleOpenPreview = async (factureId: string) => {
     setSelectedFactureId(factureId)
@@ -145,9 +174,129 @@ export default function FacturesManager() {
     }
   }
 
+  const handleOpenGenerateModal = () => {
+    const defaultCoach = allCoaches.length > 0 ? allCoaches[0].id : (uniqueCoaches.length > 0 ? uniqueCoaches[0].id : '')
+    setSelectedGenCoach(defaultCoach)
+    const m = new Date().getMonth() + 1
+    const a = new Date().getFullYear()
+    setSelectedGenMois(m)
+    setSelectedGenAnnee(a)
+    setShowGenerateModal(true)
+    if (defaultCoach) {
+      fetchGenPreview(defaultCoach, m, a)
+    }
+  }
+
+  const fetchGenPreview = async (coachId: string, mois: number, annee: number) => {
+    if (!coachId) {
+      setPreviewGenDetails(null)
+      return
+    }
+    setLoadingGenPreview(true)
+    try {
+      const res = await fetch(`/api/admin/factures/generer?coachId=${coachId}&mois=${mois}&annee=${annee}`)
+      const data = await res.json()
+      if (res.ok && data.details) {
+        setPreviewGenDetails(data.details)
+      } else {
+        setPreviewGenDetails(null)
+      }
+    } catch {
+      setPreviewGenDetails(null)
+    } finally {
+      setLoadingGenPreview(false)
+    }
+  }
+
+  const handleGenerateInvoice = async (envoyerClub: boolean) => {
+    if (!selectedGenCoach) {
+      toast.error('Veuillez sélectionner un coach')
+      return
+    }
+    setGeneratingAction(envoyerClub ? 'send' : 'generate')
+    try {
+      const res = await fetch('/api/admin/factures/generer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coachId: selectedGenCoach,
+          mois: selectedGenMois,
+          annee: selectedGenAnnee,
+          envoyerClub,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(data.message || (envoyerClub ? 'Facture générée et envoyée au club par e-mail avec succès !' : 'Facture générée avec succès !'))
+        setShowGenerateModal(false)
+        await fetchFactures()
+      } else {
+        toast.error(data.error || 'Erreur lors de la génération de la facture')
+      }
+    } catch {
+      toast.error('Erreur réseau lors de la génération')
+    } finally {
+      setGeneratingAction(null)
+    }
+  }
+
+  const handleDrawerAction = async (envoyerClub: boolean) => {
+    if (!previewFacture) return
+    setGeneratingAction(envoyerClub ? 'drawer-send' : 'drawer-generate')
+    try {
+      const res = await fetch('/api/admin/factures/generer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          factureId: previewFacture.id,
+          envoyerClub,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(data.message || (envoyerClub ? 'Facture envoyée au club avec succès !' : 'PDF généré avec succès !'))
+        await fetchFactures()
+        await handleOpenPreview(previewFacture.id)
+      } else {
+        toast.error(data.error || 'Erreur lors du traitement')
+      }
+    } catch {
+      toast.error('Erreur réseau')
+    } finally {
+      setGeneratingAction(null)
+    }
+  }
+
+  const handleQuickSendToClub = async (factureId: string) => {
+    setGeneratingAction(`quick-${factureId}`)
+    try {
+      const res = await fetch('/api/admin/factures/generer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          factureId,
+          envoyerClub: true,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(data.message || 'Facture envoyée au club par e-mail avec succès !')
+        await fetchFactures()
+      } else {
+        toast.error(data.error || 'Erreur lors de l\'envoi')
+      }
+    } catch {
+      toast.error('Erreur réseau')
+    } finally {
+      setGeneratingAction(null)
+    }
+  }
+
   const uniqueCoaches = Array.from(
     new Set(factures.map(f => f.coachId))
   ).map(id => factures.find(f => f.coachId === id)!.coach)
+
+  const displayCoaches = allCoaches.length > 0 ? allCoaches : uniqueCoaches
 
   const filteredFactures = factures.filter(f => {
     if (filterStatut !== 'all' && f.statut !== filterStatut) return false
@@ -165,7 +314,7 @@ export default function FacturesManager() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h2 className="text-2xl font-bold flex items-center gap-2">
           Gestion des Factures
           <HelpTooltip title="Factures des coaches">
@@ -177,6 +326,12 @@ export default function FacturesManager() {
             <p className="text-green-400">• Payée : règlement effectué</p>
           </HelpTooltip>
         </h2>
+        <button
+          onClick={handleOpenGenerateModal}
+          className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 text-sm shrink-0"
+        >
+          <span>✨</span> Générer une facture
+        </button>
       </div>
 
       {/* Filtres */}
@@ -260,12 +415,30 @@ export default function FacturesManager() {
                       <strong>Taux horaire:</strong> {facture.tauxHoraire.toFixed(2)}€/h
                     </p>
                   </div>
-                  <div className="mt-4 flex gap-2">
+                  <div className="mt-4 flex gap-2 flex-wrap items-center">
                     <button
                       onClick={() => handleOpenPreview(facture.id)}
                       className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 hover:text-gray-900 transition-colors flex items-center gap-1.5"
                     >
                       🔎 Consulter le détail
+                    </button>
+                    {facture.pdfPath && (
+                      <a
+                        href={facture.pdfPath}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 hover:text-sky-900 transition-colors flex items-center gap-1.5"
+                      >
+                        📄 PDF
+                      </a>
+                    )}
+                    <button
+                      onClick={() => handleQuickSendToClub(facture.id)}
+                      disabled={generatingAction === `quick-${facture.id}`}
+                      className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 hover:text-emerald-900 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                      title="Générer/mettre à jour le PDF et l'envoyer au club par e-mail"
+                    >
+                      {generatingAction === `quick-${facture.id}` ? 'Envoi...' : '✉️ Envoyer au club'}
                     </button>
                     <button
                       onClick={() => handleDeleteFacture(facture.id, facture.numero)}
@@ -615,39 +788,249 @@ export default function FacturesManager() {
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-2">
-                  {/* PDF direct */}
-                  {previewFacture.pdfPath && (
-                    <a
-                      href={previewFacture.pdfPath}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 py-3 text-center text-sm font-semibold rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center justify-center gap-1.5"
+                <div className="space-y-2 pt-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleDrawerAction(false)}
+                      disabled={generatingAction === 'drawer-generate' || generatingAction === 'drawer-send'}
+                      className="py-2.5 px-3 text-center text-xs sm:text-sm font-semibold rounded-xl border border-sky-200 text-sky-800 bg-sky-50 hover:bg-sky-100 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
                     >
-                      📄 Ouvrir le PDF
-                    </a>
-                  )}
+                      {generatingAction === 'drawer-generate' ? 'Génération...' : '⚡ Générer le PDF'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDrawerAction(true)}
+                      disabled={generatingAction === 'drawer-generate' || generatingAction === 'drawer-send'}
+                      className="py-2.5 px-3 text-center text-xs sm:text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs"
+                    >
+                      {generatingAction === 'drawer-send' ? 'Envoi...' : '✉️ Envoyer au club'}
+                    </button>
+                  </div>
 
-                  {/* Bouton de statut contextuel */}
-                  <div className="flex-1 flex flex-col gap-1">
-                    <select
-                      value={previewFacture.statut}
-                      onChange={(e) => {
-                        handleChangeStatut(previewFacture.id, e.target.value);
-                        // Mettre à jour l'état local dans le Drawer
-                        setPreviewFacture((prev: any) => ({ ...prev, statut: e.target.value }));
-                      }}
-                      className="w-full py-3 px-3 text-center text-sm font-semibold rounded-xl border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 focus:ring-2 focus:ring-primary outline-none transition-colors"
-                    >
-                      <option value="brouillon">Brouillon</option>
-                      <option value="generee">Générée</option>
-                      <option value="envoyee">Envoyée</option>
-                      <option value="payee">Payée</option>
-                    </select>
+                  <div className="flex gap-2">
+                    {/* PDF direct */}
+                    {previewFacture.pdfPath && (
+                      <a
+                        href={previewFacture.pdfPath}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 py-2.5 text-center text-xs sm:text-sm font-semibold rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        📄 Ouvrir le PDF
+                      </a>
+                    )}
+
+                    {/* Bouton de statut contextuel */}
+                    <div className="flex-1 flex flex-col gap-1">
+                      <select
+                        value={previewFacture.statut}
+                        onChange={(e) => {
+                          handleChangeStatut(previewFacture.id, e.target.value);
+                          // Mettre à jour l'état local dans le Drawer
+                          setPreviewFacture((prev: any) => ({ ...prev, statut: e.target.value }));
+                        }}
+                        className="w-full py-2.5 px-3 text-center text-xs sm:text-sm font-semibold rounded-xl border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 focus:ring-2 focus:ring-primary outline-none transition-colors"
+                      >
+                        <option value="brouillon">Brouillon</option>
+                        <option value="generee">Générée</option>
+                        <option value="envoyee">Envoyée</option>
+                        <option value="payee">Payée</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Génération Manuelle Facture */}
+      {showGenerateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 border border-slate-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <span>✨</span> Générer une facture coach
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Calcul complet et génération officielle du PDF avec envoi optionnel au club
+                </p>
+              </div>
+              <button
+                onClick={() => setShowGenerateModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Formulaire sélection */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Coach concerné
+                </label>
+                <select
+                  value={selectedGenCoach}
+                  onChange={(e) => {
+                    setSelectedGenCoach(e.target.value)
+                    fetchGenPreview(e.target.value, selectedGenMois, selectedGenAnnee)
+                  }}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white"
+                >
+                  <option value="" disabled>-- Sélectionner un coach --</option>
+                  {displayCoaches.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.prenom} {c.nom || ''} {c.email ? `(${c.email})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">
+                    Mois
+                  </label>
+                  <select
+                    value={selectedGenMois}
+                    onChange={(e) => {
+                      const m = parseInt(e.target.value)
+                      setSelectedGenMois(m)
+                      fetchGenPreview(selectedGenCoach, m, selectedGenAnnee)
+                    }}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white"
+                  >
+                    {moisNoms.map((nom, idx) => (
+                      <option key={idx} value={idx + 1}>
+                        {nom}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">
+                    Année
+                  </label>
+                  <select
+                    value={selectedGenAnnee}
+                    onChange={(e) => {
+                      const a = parseInt(e.target.value)
+                      setSelectedGenAnnee(a)
+                      fetchGenPreview(selectedGenCoach, selectedGenMois, a)
+                    }}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white"
+                  >
+                    {[2024, 2025, 2026, 2027].map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Aperçu du calcul */}
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  Aperçu du calcul automatique
+                </span>
+                {loadingGenPreview && (
+                  <span className="text-xs text-primary font-medium animate-pulse">
+                    Calcul en cours...
+                  </span>
+                )}
+              </div>
+
+              {previewGenDetails ? (
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Créneaux fixes ({previewGenDetails.lignesPlanningFixe?.length || 0}) :</span>
+                    <span className="font-semibold text-slate-800">
+                      {previewGenDetails.lignesPlanningFixe?.reduce((s: number, l: any) => s + (l.heures ?? 0), 0).toFixed(1)}h
+                      {' · '}
+                      {previewGenDetails.lignesPlanningFixe?.reduce((s: number, l: any) => s + (l.montant ?? 0), 0).toFixed(2)} €
+                    </span>
+                  </div>
+
+                  {previewGenDetails.lignesRemplacements?.length > 0 && (
+                    <div className="flex justify-between text-emerald-700">
+                      <span>Remplacements effectués (+{previewGenDetails.lignesRemplacements.length}) :</span>
+                      <span className="font-semibold">
+                        +{previewGenDetails.lignesRemplacements.reduce((s: number, l: any) => s + (l.heures ?? 0), 0).toFixed(1)}h
+                        {' · '}
+                        +{previewGenDetails.lignesRemplacements.reduce((s: number, l: any) => s + (l.montant ?? 0), 0).toFixed(2)} €
+                      </span>
+                    </div>
+                  )}
+
+                  {previewGenDetails.lignesAbsences?.length > 0 && (
+                    <div className="flex justify-between text-red-700">
+                      <span>Absences déduites (-{previewGenDetails.lignesAbsences.length}) :</span>
+                      <span className="font-semibold">
+                        -{previewGenDetails.lignesAbsences.reduce((s: number, l: any) => s + Math.abs(l.heures ?? 0), 0).toFixed(1)}h
+                        {' · '}
+                        -{previewGenDetails.lignesAbsences.reduce((s: number, l: any) => s + Math.abs(l.montant ?? 0), 0).toFixed(2)} €
+                      </span>
+                    </div>
+                  )}
+
+                  {previewGenDetails.lignesManuelles?.length > 0 && (
+                    <div className="flex justify-between text-slate-700">
+                      <span>Compétitions / Forfaits ({previewGenDetails.lignesManuelles.length}) :</span>
+                      <span className="font-semibold">
+                        +{previewGenDetails.lignesManuelles.reduce((s: number, l: any) => s + (l.montant ?? 0), 0).toFixed(2)} €
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="border-t border-slate-200 pt-3 flex justify-between items-baseline">
+                    <span className="font-bold text-slate-900">Total à facturer :</span>
+                    <span className="text-2xl font-black text-primary">
+                      {previewGenDetails.totalMontant?.toFixed(2)} €
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic text-center py-2">
+                  Sélectionnez un coach pour calculer l&apos;aperçu du mois.
+                </p>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowGenerateModal(false)}
+                className="px-4 py-2.5 text-sm font-semibold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Annuler
+              </button>
+              <div className="flex-1 flex flex-col sm:flex-row gap-2 justify-end">
+                <button
+                  type="button"
+                  disabled={!selectedGenCoach || generatingAction !== null}
+                  onClick={() => handleGenerateInvoice(false)}
+                  className="px-4 py-2.5 text-sm font-semibold rounded-xl border border-primary text-primary hover:bg-primary/5 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {generatingAction === 'generate' ? 'Génération...' : '⚡ Générer la facture'}
+                </button>
+                <button
+                  type="button"
+                  disabled={!selectedGenCoach || generatingAction !== null}
+                  onClick={() => handleGenerateInvoice(true)}
+                  className="px-4 py-2.5 text-sm font-semibold rounded-xl bg-primary hover:bg-primary/90 text-white shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {generatingAction === 'send' ? 'Génération & envoi...' : '✉️ Générer & Envoyer au club'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

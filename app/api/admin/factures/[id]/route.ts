@@ -6,6 +6,7 @@ import { notifyAdmin, notifyCoach } from '@/lib/notifications'
 import { logAdminAudit } from '@/lib/admin-audit'
 import { isValidFactureCoachStatus, canTransitionFactureCoachStatus, type StatutFactureCoach } from '@/lib/facture-utils'
 import { genererFacturePDF } from '@/lib/facture-pdf-generator'
+import { calculerFactureCoach } from '@/lib/facture-calculations'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 
@@ -61,17 +62,33 @@ export async function GET(
       )
     }
 
-    const totalHeures = facture.lignes
-      .filter((l) => ['planning_fixe', 'planning_tournant', 'remplacement', 'absence', 'manuel'].includes(l.type))
-      .reduce((sum, l) => {
-        if (l.type === 'absence') return sum - Math.abs(l.heures || 0)
-        return sum + (l.heures || 0)
-      }, 0)
+    const details = await calculerFactureCoach(facture.coachId, facture.mois, facture.annee)
+
+    // Synchroniser le montant en base s'il était partiel ou inexact (sauf si déjà payée et figée)
+    let finalMontantTotal = facture.montantTotal
+    if (Math.abs(facture.montantTotal - details.totalMontant) > 0.01 && facture.statut !== 'payee') {
+      await prisma.factureCoach.update({
+        where: { id: facture.id },
+        data: { montantTotal: details.totalMontant },
+      })
+      finalMontantTotal = details.totalMontant
+    }
+
+    // Regrouper toutes les lignes calculées (planning fixe, remplacements, absences, compétitions, manuelles)
+    const allCalculatedLignes = [
+      ...details.lignesPlanningFixe.map((l, i) => ({ id: `fixe_${i}`, ...l })),
+      ...details.lignesPlanningTournant.map((l, i) => ({ id: `tournant_${i}`, ...l })),
+      ...details.lignesRemplacements.map((l, i) => ({ id: `remp_${i}`, ...l })),
+      ...details.lignesAbsences.map((l, i) => ({ id: `abs_${i}`, ...l })),
+      ...details.lignesManuelles,
+    ]
 
     return NextResponse.json({
       facture: {
         ...facture,
-        totalHeures,
+        montantTotal: finalMontantTotal,
+        totalHeures: details.totalHeures,
+        lignes: allCalculatedLignes,
       },
     })
   } catch (error) {
@@ -149,7 +166,10 @@ export async function PATCH(
     const dateNow = new Date()
     let pdfPath: string | undefined = undefined
 
-    if (statut === 'payee') {
+    // Mettre à jour avec le vrai montant calculé
+    const details = await calculerFactureCoach(factureExistante.coachId, factureExistante.mois, factureExistante.annee)
+
+    if (statut === 'payee' || statut === 'generee' || statut === 'envoyee') {
       try {
         const { buffer } = await genererFacturePDF(
           factureExistante.coachId,
@@ -162,9 +182,9 @@ export async function PATCH(
         const filePath = path.join(uploadDir, fileName)
         await writeFile(filePath, buffer)
         pdfPath = `/uploads/factures/${fileName}`
-        logger.info(`Facture PDF archivée générée et enregistrée à : ${pdfPath}`)
+        logger.info(`Facture PDF générée et enregistrée à : ${pdfPath}`)
       } catch (err) {
-        logger.error(`Échec de la génération de l'archive PDF lors du paiement :`, err)
+        logger.error(`Échec de la génération de l'archive PDF :`, err)
       }
     }
 
@@ -172,6 +192,7 @@ export async function PATCH(
       where: { id },
       data: {
         statut,
+        montantTotal: details.totalMontant,
         dateGeneration: statut === 'generee' && !factureExistante.dateGeneration ? dateNow : undefined,
         dateEnvoi: statut === 'envoyee' && !factureExistante.dateEnvoi ? dateNow : undefined,
         datePaiement: statut === 'payee' && !factureExistante.datePaiement ? dateNow : undefined,

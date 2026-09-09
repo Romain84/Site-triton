@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma'
 import { apiSuccess } from '@/lib/api/response'
 import { handleRouteError, requireAdmin } from '@/lib/api/guards'
 
+import { calculerFactureCoach } from '@/lib/facture-calculations'
+
 export async function GET() {
   try {
     const auth = await requireAdmin()
@@ -23,6 +25,24 @@ export async function GET() {
       },
       orderBy: [{ annee: 'desc' }, { mois: 'desc' }],
     })
+
+    // Assainir et synchroniser automatiquement les montants des factures brouillons si nécessaire
+    for (const f of factures) {
+      if (f.statut === 'brouillon' && f.montantTotal <= 0) {
+        try {
+          const details = await calculerFactureCoach(f.coachId, f.mois, f.annee)
+          if (details.totalMontant !== f.montantTotal) {
+            await prisma.factureCoach.update({
+              where: { id: f.id },
+              data: { montantTotal: details.totalMontant },
+            })
+            f.montantTotal = details.totalMontant
+          }
+        } catch {
+          // Ignorer
+        }
+      }
+    }
 
     return apiSuccess({ factures })
   } catch (error) {

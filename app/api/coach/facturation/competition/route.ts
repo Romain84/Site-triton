@@ -3,6 +3,7 @@ import { getCoachSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
+import { calculerFactureCoach } from '@/lib/facture-calculations'
 
 const coachLogger = logger.withContext('CoachCompetition')
 
@@ -145,13 +146,9 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // 3. Recalculer le montant total de la facture
-    const totalLignes = await prisma.ligneFactureCoach.aggregate({
-      where: { factureId: facture.id },
-      _sum: { montant: true },
-    })
-
-    const nouveauMontantTotal = totalLignes._sum.montant || 0
+    // 3. Recalculer le montant total de la facture avec le calcul complet
+    const details = await calculerFactureCoach(session.coachId, mois, annee)
+    const nouveauMontantTotal = details.totalMontant
 
     await prisma.factureCoach.update({
       where: { id: facture.id },

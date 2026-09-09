@@ -635,6 +635,7 @@ function FacturationContent() {
     ...(data?.lignesPlanningFixe || []),
     ...(data?.lignesPlanningTournant || []),
     ...(data?.lignesRemplacements || []),
+    ...(data?.lignesAbsences || []),
     ...(data?.lignesManuelles || []),
   ]
 
@@ -821,6 +822,16 @@ function FacturationContent() {
                           <div key={l.id || idx} className="py-3.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
                             <div className="space-y-1">
                               <div className="flex items-center gap-2 flex-wrap">
+                                {l.type === 'absence' && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-red-50 text-red-700 border border-red-200/80">
+                                    Absence déduite
+                                  </span>
+                                )}
+                                {l.type === 'remplacement' && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200/80">
+                                    Remplacement effectué
+                                  </span>
+                                )}
                                 {l.type === 'competition' && (
                                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-primary border border-emerald-200/80">
                                     <Trophy className="w-3 h-3 text-primary" />
@@ -843,15 +854,15 @@ function FacturationContent() {
                                   ? (l.demiJournees === 2 || l.heures === 2 ? '1 journée complète (130 €)' : '1 demi-journée (50 €)')
                                   : l.type === 'forfait_transport'
                                   ? `${l.heures} km aller × 0,30 €/km`
-                                  : l.heures > 0
-                                  ? `${l.heures} heure${l.heures > 1 ? 's' : ''}`
+                                  : l.heures !== undefined && l.heures !== 0
+                                  ? `${Math.abs(l.heures)} heure${Math.abs(l.heures) > 1 ? 's' : ''}`
                                   : ''}
                               </p>
                             </div>
 
                             <div className="flex items-center gap-3">
-                              <span className="text-xs font-black text-slate-950">
-                                {l.montant.toFixed(2)} €
+                              <span className={`text-xs font-black ${l.montant < 0 ? 'text-red-600' : 'text-slate-950'}`}>
+                                {l.montant < 0 ? `-${Math.abs(l.montant).toFixed(2)} €` : `${l.montant.toFixed(2)} €`}
                               </span>
                               {isDeletable && (
                                 <button

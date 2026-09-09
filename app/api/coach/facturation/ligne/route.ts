@@ -3,6 +3,7 @@ import { getCoachSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
+import { calculerFactureCoach } from '@/lib/facture-calculations'
 
 const coachLogger = logger.withContext('Coach')
 
@@ -198,29 +199,21 @@ export async function POST(request: NextRequest) {
             },
           })
 
-          // Mettre à jour le montant total de la facture du coach remplacé
-          const totalLignesRemplace = await prisma.ligneFactureCoach.aggregate({
-            where: { factureId: factureCoachRemplace.id },
-            _sum: { montant: true },
-          })
-
+          // Mettre à jour le montant total de la facture du coach remplacé avec le calcul complet
+          const detailsRemplace = await calculerFactureCoach(coachRemplaceId, mois, annee)
           await prisma.factureCoach.update({
             where: { id: factureCoachRemplace.id },
-            data: { montantTotal: totalLignesRemplace._sum.montant || 0 },
+            data: { montantTotal: detailsRemplace.totalMontant },
           })
         }
       }
     }
 
-    // Mettre à jour le montant total de la facture
-    const totalLignes = await prisma.ligneFactureCoach.aggregate({
-      where: { factureId: facture.id },
-      _sum: { montant: true },
-    })
-
+    // Mettre à jour le montant total de la facture du coach avec le calcul complet
+    const details = await calculerFactureCoach(session.coachId, mois, annee)
     await prisma.factureCoach.update({
       where: { id: facture.id },
-      data: { montantTotal: totalLignes._sum.montant || 0 },
+      data: { montantTotal: details.totalMontant },
     })
 
     return NextResponse.json({

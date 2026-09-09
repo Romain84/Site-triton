@@ -14,8 +14,13 @@ function generateNumeroFacture(coachId: string, mois: number, annee: number): st
   return `FAC-${annee}${monthStr}-${shortId}`
 }
 
+import { calculerFactureCoach } from '@/lib/facture-calculations'
+
 /**
- * Synchronise automatiquement les lignes de facturation pour le coach remplacé et le coach remplaçant
+ * Synchronise les lignes de facturation lors d'un remplacement :
+ * - Supprime toute ancienne ligne LigneFactureCoach associée (le remplacement est calculé dynamiquement depuis la table Remplacement).
+ * - Ne génère JAMAIS de facture FactureCoach automatiquement (la facturation reste manuelle via le bouton 'Générer').
+ * - Si une facture existe déjà pour ce mois et ce coach, recalcule son montantTotal avec le calcul complet unifié.
  */
 export async function syncRemplacementBillingLines(remplacementId: string): Promise<void> {
   try {
@@ -32,7 +37,7 @@ export async function syncRemplacementBillingLines(remplacementId: string): Prom
       return
     }
 
-    // 1. Supprimer d'abord les anciennes lignes associées à ce remplacement
+    // 1. Supprimer les éventuelles anciennes lignes manuelles associées à ce remplacement
     const existingLignes = await prisma.ligneFactureCoach.findMany({
       where: { remplacementId },
       select: { id: true, factureId: true },
@@ -47,123 +52,52 @@ export async function syncRemplacementBillingLines(remplacementId: string): Prom
       })
     }
 
-    // 2. Si le remplacement est accepté et a un remplaçant, créer les 2 lignes
-    if (replacement.statut === 'accepte' && replacement.coachRemplacantId && replacement.coachRemplacant) {
-      const dateObj = new Date(replacement.date)
-      const mois = dateObj.getMonth() + 1
-      const annee = dateObj.getFullYear()
+    const dateObj = new Date(replacement.date)
+    const mois = dateObj.getMonth() + 1
+    const annee = dateObj.getFullYear()
 
-      const startMins = parseTimeToMinutes(replacement.heureDebut)
-      const endMins = parseTimeToMinutes(replacement.heureFin)
-      const durationHours = Math.max(0.5, (endMins - startMins) / 60)
-
-      const coachA = replacement.coachRemplace
-      const coachB = replacement.coachRemplacant
-
-      const labelDetail = replacement.motif || replacement.description || `${replacement.heureDebut} - ${replacement.heureFin}`
-      const dateStr = dateObj.toLocaleDateString('fr-FR')
-
-      const settings = await prisma.settings.findFirst()
-      const defaultTauxHoraire = settings?.tauxHoraire ?? 35
-
-      // A) Ligne pour le Coach A (Remplacé / Absent)
-      let factureA = await prisma.factureCoach.findUnique({
+    // 2. Si une facture existe déjà pour le coach remplacé ou le coach remplaçant, l'ajouter aux factures à recalculer
+    const [factureRemplace, factureRemplacant] = await Promise.all([
+      prisma.factureCoach.findUnique({
         where: {
           coachId_mois_annee: {
-            coachId: coachA.id,
+            coachId: replacement.coachRemplaceId,
             mois,
             annee,
           },
         },
-      })
+      }),
+      replacement.coachRemplacantId
+        ? prisma.factureCoach.findUnique({
+            where: {
+              coachId_mois_annee: {
+                coachId: replacement.coachRemplacantId,
+                mois,
+                annee,
+              },
+            },
+          })
+        : null,
+    ])
 
-      if (!factureA) {
-        factureA = await prisma.factureCoach.create({
-          data: {
-            numero: generateNumeroFacture(coachA.id, mois, annee),
-            coachId: coachA.id,
-            mois,
-            annee,
-            montantTotal: 0,
-            tauxHoraire: defaultTauxHoraire,
-            statut: 'brouillon',
-          },
-        })
-      }
-      factureIdsToRecalculate.add(factureA.id)
+    if (factureRemplace) factureIdsToRecalculate.add(factureRemplace.id)
+    if (factureRemplacant) factureIdsToRecalculate.add(factureRemplacant.id)
 
-      const montantDeduction = -Math.abs(durationHours * (factureA.tauxHoraire || defaultTauxHoraire))
-
-      await prisma.ligneFactureCoach.create({
-        data: {
-          factureId: factureA.id,
-          type: 'absence',
-          date: dateObj,
-          description: `Absence (Remplacé(e) par ${coachB.prenom} ${coachB.nom ?? ''}) - ${labelDetail} (${dateStr})`,
-          heures: -Math.abs(durationHours),
-          montant: montantDeduction,
-          coachRemplaceId: coachB.id,
-          remplacementId: replacement.id,
-        },
-      })
-
-      // B) Ligne pour le Coach B (Remplaçant)
-      let factureB = await prisma.factureCoach.findUnique({
-        where: {
-          coachId_mois_annee: {
-            coachId: coachB.id,
-            mois,
-            annee,
-          },
-        },
-      })
-
-      if (!factureB) {
-        factureB = await prisma.factureCoach.create({
-          data: {
-            numero: generateNumeroFacture(coachB.id, mois, annee),
-            coachId: coachB.id,
-            mois,
-            annee,
-            montantTotal: 0,
-            tauxHoraire: defaultTauxHoraire,
-            statut: 'brouillon',
-          },
-        })
-      }
-      factureIdsToRecalculate.add(factureB.id)
-
-      const montantAjout = Math.abs(durationHours * (factureB.tauxHoraire || defaultTauxHoraire))
-
-      await prisma.ligneFactureCoach.create({
-        data: {
-          factureId: factureB.id,
-          type: 'remplacement',
-          date: dateObj,
-          description: `Remplacement de ${coachA.prenom} ${coachA.nom ?? ''} - ${labelDetail} (${dateStr})`,
-          heures: Math.abs(durationHours),
-          montant: montantAjout,
-          coachRemplaceId: coachA.id,
-          remplacementId: replacement.id,
-        },
-      })
-    }
-
-    // 3. Recalculer le montant total de toutes les factures affectées
+    // 3. Recalculer le montant total de toutes les factures affectées via le moteur de calcul unifié
     for (const factureId of factureIdsToRecalculate) {
-      const agg = await prisma.ligneFactureCoach.aggregate({
-        where: { factureId },
-        _sum: { montant: true },
-      })
-      await prisma.factureCoach.update({
-        where: { id: factureId },
-        data: { montantTotal: agg._sum.montant || 0 },
-      })
+      const f = await prisma.factureCoach.findUnique({ where: { id: factureId } })
+      if (f) {
+        const details = await calculerFactureCoach(f.coachId, f.mois, f.annee)
+        await prisma.factureCoach.update({
+          where: { id: factureId },
+          data: { montantTotal: details.totalMontant },
+        })
+      }
     }
-
-    replacementLogger.info(`Billing lines synchronized for replacement: ${remplacementId}`)
+    replacementLogger.info(`Billing lines synchronized for replacement: ${remplacementId} (no auto-invoice generated)`)
   } catch (error) {
     replacementLogger.error('Error synchronizing replacement billing lines', error)
     throw error
   }
 }
+

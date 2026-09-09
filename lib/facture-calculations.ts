@@ -57,54 +57,15 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     },
   })
 
-  if (factureExistante && factureExistante.statut === 'payee') {
-    const lignesManuelles = factureExistante.lignes
-      .filter((l) => ['remplacement', 'competition', 'forfait_regional', 'forfait_transport', 'absence', 'manuel'].includes(l.type))
-      .map((l) => ({
-        id: l.id,
-        type: l.type as any,
-        description: l.description,
-        heures: l.heures ?? 0,
-        montant: l.montant,
-        date: l.date,
-        groupe: l.groupe || null,
-        lieu: l.lieu || null,
-        demiJournees: l.demiJournees || null,
-        coachRemplaceId: l.coachRemplaceId || null,
-        remplacementId: l.remplacementId || null,
-      }))
-
-    const totalHeures = lignesManuelles.reduce((sum, l) => sum + (l.type === 'remplacement' || l.type === 'absence' ? l.heures : 0), 0)
-    const totalMontant = lignesManuelles.reduce((sum, l) => sum + l.montant, 0)
-
-    return {
-      mois,
-      annee,
-      tauxHoraire,
-      forfaitDemiJournee,
-      forfaitRegionalActif,
-      montantForfaitRegional,
-      lignesPlanningFixe: [],
-      lignesPlanningTournant: [],
-      lignesRemplacements: [],
-      lignesAbsences: [],
-      lignesManuelles,
-      totalHeures,
-      totalMontant,
-      joursTravailles: [],
-      factureId: factureExistante.id,
-      isBlocked: true,
-      statut: 'payee',
-      message: 'Votre facture de ce mois a été payée et archivée. L’affichage des créneaux automatiques est suspendu pour ce mois-ci, mais vous pouvez toujours consulter ou effectuer des ajouts manuels.',
-    }
-  }
+  const dateFinMois = new Date(annee, mois, 0, 23, 59, 59)
+  const isPayee = factureExistante?.statut === 'payee'
 
   // Calculer les dates de début et fin du mois
   const now = new Date()
   const dateDebut = new Date(annee, mois - 1, 1)
   let dateFin = new Date(annee, mois, 0, 23, 59, 59)
 
-  // Si on calcule pour le mois et l'année en cours, on limite au jour actuel
+  // Si on calcule pour le mois et l'année en cours, on limite le planning fixe au jour actuel
   if (annee === now.getFullYear() && mois === now.getMonth() + 1) {
     dateFin = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
   } else if (annee > now.getFullYear() || (annee === now.getFullYear() && mois > now.getMonth() + 1)) {
@@ -265,13 +226,13 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
   const manualRempIds = (factureExistante?.lignes?.map(l => l.remplacementId).filter(Boolean) as string[]) || []
 
-  // 2. Remplacements et Absences
+  // 2. Remplacements et Absences (pour tout le mois concerné)
   const [remplacementsEffectues, remplacementsRecus] = await Promise.all([
     prisma.remplacement.findMany({
       where: {
         coachRemplacantId: coachId,
         actif: true,
-        date: { gte: dateDebut, lte: dateFin },
+        date: { gte: dateDebut, lte: dateFinMois },
         ...(manualRempIds.length > 0 && {
           id: { notIn: manualRempIds }
         })
@@ -284,7 +245,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       where: {
         coachRemplaceId: coachId,
         actif: true,
-        date: { gte: dateDebut, lte: dateFin },
+        date: { gte: dateDebut, lte: dateFinMois },
         ...(manualRempIds.length > 0 && {
           id: { notIn: manualRempIds }
         })
@@ -331,7 +292,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     const coachNom = remp.coachRemplacant ? `${remp.coachRemplacant.prenom} ${remp.coachRemplacant.nom || ''}`.trim() : 'En attente'
     lignesAbsences.push({
       type: 'absence',
-      description: `Absent(e) - remplacé(e) par ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin}${remp.motif ? ` (${remp.motif})` : ''}`,
+      description: `Absence (Remplacé(e) par ${coachNom}) - ${dateStr} ${remp.heureDebut}-${remp.heureFin}${remp.motif ? ` (${remp.motif})` : ''}`,
       heures: -dureeHeures,
       montant: -dureeHeures * tauxHoraire,
       date: remp.date,
@@ -343,7 +304,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     where: {
       coachId,
       actif: true,
-      date: { gte: dateDebut, lte: dateFin },
+      date: { gte: dateDebut, lte: dateFinMois },
     },
   })
 
@@ -409,12 +370,17 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
   const totalHeures = heuresPlanningFixe + heuresPlanningTournant + heuresRemplacements - heuresAbsences +
     lignesManuelles.reduce((sum, l) => sum + (l.type === 'remplacement' || l.type === 'absence' ? l.heures : 0), 0)
 
-  const totalMontant =
+  const calculatedTotalMontant =
     lignesPlanningFixe.reduce((sum, l) => sum + l.montant, 0) +
     lignesPlanningTournant.reduce((sum, l) => sum + l.montant, 0) +
     lignesRemplacements.reduce((sum, l) => sum + l.montant, 0) +
     lignesAbsences.reduce((sum, l) => sum + l.montant, 0) +
     lignesManuelles.reduce((sum, l) => sum + l.montant, 0)
+
+  // Si une facture payée existe déjà avec un montantTotal positif, le conserver si applicable
+  const totalMontant = isPayee && (factureExistante?.montantTotal ?? 0) > 0
+    ? factureExistante!.montantTotal
+    : calculatedTotalMontant
 
   return {
     mois,
@@ -431,7 +397,10 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     totalHeures,
     totalMontant,
     joursTravailles: Array.from(joursTravailles),
-    factureId: factureBrouillon?.id,
+    factureId: factureExistante?.id || factureBrouillon?.id,
+    isBlocked: isPayee,
+    statut: factureExistante?.statut || 'brouillon',
+    message: isPayee ? 'Votre facture de ce mois a été payée et archivée.' : undefined,
   }
 }
 
