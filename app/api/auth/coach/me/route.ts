@@ -38,6 +38,7 @@ export async function GET() {
         photo: true,
         bio: true,
         lastLogin: true,
+        mustChangePassword: true,
       },
     })
 

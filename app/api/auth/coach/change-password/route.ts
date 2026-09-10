@@ -12,7 +12,7 @@ import { getClientIp } from '@/lib/api/request'
 const log = logger.withContext('Coach')
 
 const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'Mot de passe actuel requis'),
+  currentPassword: z.string().optional(),
   newPassword: z.string().min(6, 'Le nouveau mot de passe doit contenir au moins 6 caractères'),
   confirmPassword: z.string(),
 }).refine(data => data.newPassword === data.confirmPassword, {
@@ -44,21 +44,42 @@ export async function POST(request: NextRequest) {
     // Récupérer le coach avec son mot de passe actuel
     const coach = await prisma.coach.findUnique({
       where: { id: session.coachId },
-      select: { id: true, password: true, prenom: true, nom: true },
+      select: { id: true, password: true, prenom: true, nom: true, mustChangePassword: true },
     })
 
     if (!coach || !coach.password) {
       return apiError('Coach non trouvé', 404, undefined, 'COACH_NOT_FOUND')
     }
 
-    // Vérifier le mot de passe actuel
-    const isCurrentPasswordValid = await bcrypt.compare(
-      validatedData.currentPassword,
-      coach.password
-    )
+    // Si le coach a un mot de passe classique (non temporaire), le mot de passe actuel est requis
+    if (!coach.mustChangePassword && !validatedData.currentPassword) {
+      return apiError('Le mot de passe actuel est requis', 400, undefined, 'INVALID_CURRENT_PASSWORD')
+    }
 
-    if (!isCurrentPasswordValid) {
-      return apiError('Le mot de passe actuel est incorrect', 400, undefined, 'INVALID_CURRENT_PASSWORD')
+    // Vérifier le mot de passe actuel s'il est fourni
+    if (validatedData.currentPassword) {
+      let isCurrentPasswordValid = await bcrypt.compare(
+        validatedData.currentPassword,
+        coach.password
+      )
+
+      if (!isCurrentPasswordValid && coach.mustChangePassword && validatedData.currentPassword.trim() === '1234') {
+        isCurrentPasswordValid = true
+      }
+
+      if (!isCurrentPasswordValid) {
+        return apiError('Le mot de passe actuel est incorrect', 400, undefined, 'INVALID_CURRENT_PASSWORD')
+      }
+    }
+
+    // Interdire de reprendre le mot de passe par défaut 1234
+    if (validatedData.newPassword.trim() === '1234') {
+      return apiError(
+        'Veuillez choisir un mot de passe différent du mot de passe provisoire 1234',
+        400,
+        undefined,
+        'PASSWORD_TOO_COMMON'
+      )
     }
 
     // Vérifier que le nouveau mot de passe est différent de l'ancien
@@ -76,15 +97,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Hasher et enregistrer le nouveau mot de passe
+    // Hasher et enregistrer le nouveau mot de passe + désactiver l'invitation
     const hashedPassword = await bcrypt.hash(validatedData.newPassword, 10)
 
     await prisma.coach.update({
       where: { id: session.coachId },
-      data: { password: hashedPassword },
+      data: {
+        password: hashedPassword,
+        mustChangePassword: false,
+      },
     })
 
-    log.info(`Mot de passe modifié pour ${coach.prenom} ${coach.nom || ''}`)
+    log.info(`Mot de passe modifié pour ${coach.prenom} ${coach.nom || ''} (mustChangePassword: false)`)
 
     return apiSuccess({ message: 'Mot de passe modifié avec succès' })
   } catch (error) {

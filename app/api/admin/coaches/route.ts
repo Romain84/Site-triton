@@ -86,8 +86,15 @@ export async function POST(request: NextRequest) {
     }
 
     let hashedPassword = null
-    if (password) {
-      hashedPassword = await bcrypt.hash(password, 12)
+    let mustChangePassword = true
+
+    if (password && password.trim() !== '') {
+      hashedPassword = await bcrypt.hash(password.trim(), 10)
+      mustChangePassword = password.trim() === '1234'
+    } else {
+      // Par défaut : mot de passe initial "1234"
+      hashedPassword = await bcrypt.hash('1234', 10)
+      mustChangePassword = true
     }
 
     const coach = await prisma.coach.create({
@@ -96,6 +103,8 @@ export async function POST(request: NextRequest) {
         nom: nom || null,
         email: email || null,
         password: hashedPassword,
+        mustChangePassword,
+        lastLogin: null,
         telephone: telephone || null,
         photo: photo || null,
         bio: bio || null,

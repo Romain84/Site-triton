@@ -25,7 +25,7 @@ export default function CoachLoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
       })
 
       const data = await response.json()
@@ -98,6 +98,14 @@ export default function CoachLoginPage() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
+
+            {/* Note première connexion */}
+            <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-900 leading-relaxed">
+              <span className="text-base select-none">💡</span>
+              <p>
+                <strong>Première connexion ?</strong> Utilisez le mot de passe provisoire <code className="px-1.5 py-0.5 bg-white border border-amber-200 rounded font-mono font-bold text-amber-950">1234</code>. Vous pourrez ensuite choisir votre mot de passe personnel.
+              </p>
             </div>
 
             <button

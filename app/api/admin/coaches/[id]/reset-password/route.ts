@@ -9,7 +9,7 @@ import crypto from 'crypto'
 const log = logger.withContext('Admin')
 
 interface ResetPasswordRequest {
-  method: 'email' | 'generate'
+  method: 'email' | 'generate' | 'first_login'
 }
 
 export async function POST(
@@ -112,6 +112,26 @@ export async function POST(
         success: true,
         tempPassword,
         message: 'Mot de passe temporaire généré. Communiquez-le au coach de manière sécurisée.',
+      })
+    } else if (body.method === 'first_login') {
+      // Méthode 3: Réinitialiser en état de première connexion (mot de passe 1234)
+      const hashedPassword = await bcrypt.hash('1234', 10)
+
+      await prisma.coach.update({
+        where: { id },
+        data: {
+          password: hashedPassword,
+          mustChangePassword: true,
+          lastLogin: null,
+        },
+      })
+
+      log.info(`Coach ${coach.prenom} ${coach.nom || ''} réinitialisé en première connexion (1234) par admin`)
+
+      return NextResponse.json({
+        success: true,
+        tempPassword: '1234',
+        message: `Le compte de ${coach.prenom} a été réinitialisé en première connexion. Son mot de passe est 1234.`,
       })
     }
 

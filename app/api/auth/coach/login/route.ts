@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { email, password } = loginSchema.parse(body)
+    const trimmedPassword = password.trim()
 
     // Trouver le coach
     const coach = await prisma.coach.findUnique({
@@ -37,17 +38,34 @@ export async function POST(request: NextRequest) {
       return apiError('Ce compte a été désactivé', 403)
     }
 
-    // Vérifier le mot de passe
-    const isValidPassword = await bcrypt.compare(password, coach.password)
+    // 1. Vérifier le mot de passe habituel par hash bcrypt
+    let isValidPassword = await bcrypt.compare(password, coach.password)
+    if (!isValidPassword && trimmedPassword !== password) {
+      isValidPassword = await bcrypt.compare(trimmedPassword, coach.password)
+    }
+
+    // 2. Si le mot de passe saisi est "1234", l'autoriser si c'est la 1ère connexion ou si mustChangePassword est actif
+    const isDefaultPasswordInput = trimmedPassword === '1234'
+    const isFirstLoginOrForced = coach.mustChangePassword || !coach.lastLogin
+
+    if (!isValidPassword && isDefaultPasswordInput && isFirstLoginOrForced) {
+      isValidPassword = true
+    }
 
     if (!isValidPassword) {
       return apiError('Identifiants incorrects', 401)
     }
 
+    const mustChangePassword = Boolean(coach.mustChangePassword || isDefaultPasswordInput)
+
     // Mettre à jour la date de dernière connexion
     await prisma.coach.update({
       where: { id: coach.id },
-      data: { lastLogin: new Date() },
+      data: {
+        lastLogin: new Date(),
+        // Si connecté avec 1234, s'assurer que mustChangePassword est bien true
+        ...(mustChangePassword ? { mustChangePassword: true } : {}),
+      },
     })
 
     // Créer la session
@@ -64,7 +82,9 @@ export async function POST(request: NextRequest) {
         email: coach.email,
         prenom: coach.prenom,
         nom: coach.nom,
+        mustChangePassword,
       },
+      mustChangePassword,
     })
   } catch (error) {
     logger.withContext('Auth').error('Erreur lors de la connexion', error)

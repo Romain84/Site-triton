@@ -196,7 +196,7 @@ export default function CoachesManager() {
     setGeneratedPassword(null)
   }
 
-  const handleResetPassword = async (method: 'email' | 'generate') => {
+  const handleResetPassword = async (method: 'email' | 'generate' | 'first_login') => {
     if (!resetCoach) return
 
     setResetLoading(true)
@@ -210,9 +210,10 @@ export default function CoachesManager() {
       const data = await response.json()
 
       if (response.ok) {
-        if (method === 'generate' && data.tempPassword) {
+        if ((method === 'generate' || method === 'first_login') && data.tempPassword) {
           setGeneratedPassword(data.tempPassword)
-          toast.success('Mot de passe généré avec succès')
+          toast.success(data.message || 'Mot de passe réinitialisé avec succès')
+          await fetchCoaches()
         } else {
           toast.success(data.message || 'Email de réinitialisation envoyé')
           handleCloseResetModal()
@@ -224,6 +225,32 @@ export default function CoachesManager() {
       toast.error('Erreur lors de la réinitialisation')
     } finally {
       setResetLoading(false)
+    }
+  }
+
+  const handleDirectResetFirstLogin = async (coach: Coach) => {
+    const coachNomComplet = `${coach.prenom} ${coach.nom || ''}`.trim()
+    if (!window.confirm(`Réinitialiser le compte de ${coachNomComplet} comme lors de sa 1ère connexion ?\n\n• Mot de passe réinitialisé à : 1234\n• Invitation à changer de mot de passe activée\n• Date de connexion remise à zéro`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/admin/coaches/${coach.id}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method: 'first_login' }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success(`Compte de ${coach.prenom} réinitialisé en 1ère connexion (mot de passe : 1234)`)
+        await fetchCoaches()
+      } else {
+        toast.error(data.error || 'Erreur lors de la réinitialisation')
+      }
+    } catch (error) {
+      toast.error('Erreur réseau lors de la réinitialisation')
     }
   }
 
@@ -315,6 +342,15 @@ export default function CoachesManager() {
                     </td>
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => handleDirectResetFirstLogin(coach)}
+                          className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                          title="Réinitialiser le mot de passe à 1234 comme pour une 1ère connexion"
+                          aria-label={`Réinitialiser en 1ère connexion pour ${coach.prenom} ${coach.nom || ''}`}
+                        >
+                          <span>🔄</span> 1ère connexion (1234)
+                        </button>
+                        <span className="text-gray-300">|</span>
                         <button
                           onClick={() => handleOpenModal(coach)}
                           className="text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer"
@@ -576,8 +612,30 @@ export default function CoachesManager() {
               // Choix de la méthode
               <div className="space-y-4">
                 <p className="text-sm text-gray-500 mb-4">
-                  Choisissez une méthode de réinitialisation :
+                  Choisissez une méthode de réinitialisation pour <strong>{resetCoach.prenom} {resetCoach.nom || ''}</strong> :
                 </p>
+
+                {/* Option Prioritaire: 1ère connexion (1234) */}
+                <button
+                  onClick={() => handleResetPassword('first_login')}
+                  disabled={resetLoading}
+                  className="w-full p-4 border-2 border-emerald-500 bg-emerald-50/60 hover:bg-emerald-100/70 rounded-xl text-left transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-emerald-200 text-emerald-800 rounded-full flex items-center justify-center flex-shrink-0 text-lg font-bold">
+                      🔄
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-emerald-950">Réinitialiser en 1ère connexion (mot de passe 1234)</p>
+                        <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide bg-emerald-600 text-white rounded-full">Recommandé</span>
+                      </div>
+                      <p className="text-xs text-emerald-800 mt-1">
+                        Remet le mot de passe à <strong>1234</strong>, réinitialise la date de connexion et invite le coach à définir son mot de passe dès sa prochaine connexion.
+                      </p>
+                    </div>
+                  </div>
+                </button>
 
                 {/* Option 1: Email */}
                 <button
