@@ -1,212 +1,98 @@
-# Triton Club Cavaillon - Site Web Next.js
+﻿# Triton Club Cavaillon — Site Web & Plateforme Numérique
 
-Site web moderne pour le Triton Club Cavaillon, converti d'Eleventy vers Next.js 16.
+Plateforme web officielle et système de gestion intégrée pour le **Triton Club Cavaillon** (club de natation affilié FFN, natation course, artistique, aquagym, sauvetage SSA).
+
+🌐 **Site officiel en production** : [https://tritoncavaillon.fr](https://tritoncavaillon.fr)  
+📋 **Cahier des charges complet** : Consulter [CAHIER-DES-CHARGES.md](./CAHIER-DES-CHARGES.md)  
+🤖 **Directives d'architecture & IA** : Consulter [ROBOT.md](./ROBOT.md)
+
+---
 
 ## 🚀 Technologies utilisées
 
-- **Next.js 16** - Framework React avec App Router
-- **TypeScript** - Typage statique
-- **Tailwind CSS** - Framework CSS utilitaire
-- **Prisma** - ORM pour la base de données
-- **PostgreSQL** - Base de données (tous les environnements)
-- **Zod** - Validation des données
-- **bcrypt** - Hachage des mots de passe
+- **Next.js 16** (App Router, Server Actions, Server Components)
+- **React 19** & **TypeScript**
+- **Tailwind CSS v4** & **Framer Motion** (Interface moderne, responsive)
+- **Prisma 7** avec adaptateur natif `@prisma/adapter-pg`
+- **PostgreSQL 16** (Alpine Linux en production Docker)
+- **Stripe** (Paiements sécurisés pour la boutique en ligne)
+- **jsPDF & autoTable** (Génération PDF des factures coachs et reçus de dons fiscaux CERFA)
+- **Nodemailer** (Notifications automatiques par e-mail)
+- **Genkit & Mistral AI** (Chatbot intelligent d'accueil des visiteurs)
 
-## 📦 Installation
+---
 
-### 1. Cloner le repository
+## 📦 Architecture & Déploiement en Production
 
-```bash
-git clone https://github.com/Romain84/Site_TRITON.git
-cd Site_TRITON
-```
+Le site de production ne dépend d'aucun service tiers type Vercel ou Supabase : il est hébergé en toute autonomie sur un **serveur VPS OVH dédié** (`vps-248c64f5.vps.ovh.net` / `146.59.239.75`).
 
-### 2. Installer les dépendances
+### Déploiement via Docker Compose
 
-```bash
-npm install
-```
+Le fichier de production utilisé sur le serveur est `docker-compose.vps.yml` :
+- **`triton-postgres-prod`** : Conteneur PostgreSQL 16 Alpine avec volume persistant `pgdata`.
+- **`triton-web-prod`** : Conteneur Node 20 / Next.js exécutant `npm run start`.
+- **Nginx Reverse Proxy** : Gère les certificats Let's Encrypt SSL et achemine le trafic vers le port `3000`.
+- **Maintenance automatique** : Service et timer systemd `docker-prune.timer` pour nettoyer automatiquement le cache de compilation Docker chaque semaine et préserver l'espace disque.
+- **Sauvegardes automatiques** : Script quotidien compressant la base PostgreSQL vers `/root/backups` avec rétention de 10 jours.
 
-### 3. Configurer la base de données (PostgreSQL)
+---
 
-Copiez le fichier `.env.example` vers `.env` :
+## 🛠️ Développement Local
 
-```bash
-cp .env.example .env
-```
+### 1. Prérequis
+- Node.js 20+
+- PostgreSQL local en cours d'exécution (port 5432)
 
-Puis renseignez la variable `DATABASE_URL` avec votre instance PostgreSQL :
-
+### 2. Configuration locale (`.env`)
 ```env
-DATABASE_URL="postgresql://username:password@localhost:5432/triton_club"
+DATABASE_URL="postgresql://postgres:TritonNewSite84@localhost:5432/postgres"
+NEXT_PUBLIC_URL="http://localhost:3000"
 ```
 
-> ℹ️ Le runtime Prisma du projet utilise PostgreSQL via `pg` + `@prisma/adapter-pg` en développement comme en production.
-
-### 4. Initialiser la base de données
+### 3. Commandes courantes
 
 ```bash
-# Créer la structure de la base de données
-npm run db:push
-
-# Remplir avec les données de démonstration
-npm run db:seed
-```
-
-### 5. Lancer le serveur de développement
-
-```bash
-npm run dev
-```
-
-Le site sera accessible sur [http://localhost:3000](http://localhost:3000)
-
-## 📁 Structure du projet
-
-```
-├── app/                    # Pages Next.js (App Router)
-│   ├── actualites/        # Page et détails des actualités
-│   ├── evenements/        # Page et détails des événements
-│   ├── calendrier/        # Calendrier des événements
-│   ├── planning/          # Planning des cours
-│   ├── inscription/       # Formulaire d'inscription
-│   ├── admin/             # Interface d'administration
-│   └── api/               # API Routes
-├── components/            # Composants React réutilisables
-├── lib/                   # Utilitaires (Prisma, etc.)
-├── prisma/                # Schéma et migrations de la base de données
-├── public/                # Fichiers statiques (images, PDF)
-└── old/                   # Ancien site Eleventy (archive)
-```
-
-## 🔐 Accès admin
-
-Par défaut, un compte admin est créé avec le seed :
-
-- **Email** : `admin@triton-club.fr`
-- **Mot de passe** : `admin123`
-
-⚠️ **IMPORTANT** : Changez ce mot de passe en production !
-
-## 🛠️ Scripts disponibles
-
-```bash
-npm run dev          # Lancer le serveur de développement
-npm run build        # Build pour la production
-npm run start        # Lancer le serveur de production
-npm run lint         # Linter le code
-npm run db:push      # Synchroniser le schéma Prisma avec la DB
-npm run db:studio    # Ouvrir Prisma Studio (interface visuelle)
-npm run db:seed      # Remplir la DB avec des données de test
-```
-
-## 📧 Configuration des emails
-
-Pour activer l'envoi d'emails (confirmations d'inscription, etc.), configurez les variables d'environnement dans `.env` :
-
-```env
-SMTP_HOST="smtp.gmail.com"
-SMTP_PORT="587"
-SMTP_SECURE="false"
-SMTP_USER="votre-email@gmail.com"
-SMTP_PASSWORD="votre-mot-de-passe-app"
-SMTP_FROM="Triton Club Cavaillon <noreply@triton-club.fr>"
-```
-
-### Configuration Gmail
-
-1. Activez la validation en 2 étapes sur votre compte Gmail
-2. Générez un "Mot de passe d'application" : https://myaccount.google.com/apppasswords
-3. Utilisez ce mot de passe dans `SMTP_PASSWORD`
-
-## 🚀 Déploiement sur VPS OVH
-
-### 1. Installer les dépendances sur le serveur
-
-```bash
-# Installer Node.js (version 18+)
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# Installer PostgreSQL
-sudo apt-get install postgresql postgresql-contrib
-
-# Installer PM2 pour gérer le processus
-sudo npm install -g pm2
-```
-
-### 2. Configurer PostgreSQL
-
-```bash
-# Se connecter à PostgreSQL
-sudo -u postgres psql
-
-# Créer la base de données et l'utilisateur
-CREATE DATABASE triton_club;
-CREATE USER triton_user WITH ENCRYPTED PASSWORD 'votre_mot_de_passe';
-GRANT ALL PRIVILEGES ON DATABASE triton_club TO triton_user;
-\q
-```
-
-### 3. Déployer l'application
-
-```bash
-# Cloner le repository
-git clone https://github.com/Romain84/Site_TRITON.git
-cd Site_TRITON
-
 # Installer les dépendances
 npm install
 
-# Configurer .env avec PostgreSQL
-nano .env  # Ajustez DATABASE_URL et autres variables
+# Synchroniser le schéma Prisma avec PostgreSQL
+npx prisma db push
 
-# Initialiser la base de données
-npm run db:push
-npm run db:seed
+# Lancer l'interface Prisma Studio
+npx prisma studio
 
-# Build l'application
+# Lancer le serveur de développement Next.js
+npm run dev
+
+# Tester et compiler pour la production
 npm run build
-
-# Lancer avec PM2
-pm2 start npm --name "triton-club" -- start
-pm2 save
-pm2 startup
 ```
 
-### 4. Configurer Nginx (reverse proxy)
+---
 
-```nginx
-server {
-    listen 80;
-    server_name votre-domaine.fr;
+## 🌟 Fonctionnalités Principales Déployées
 
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
+1. **Espace Public** :
+   - Présentation du club, historique, équipe et contacts.
+   - Planning hebdomadaire des cours avec filtre par niveau, âge et bassin.
+   - Calendrier dynamique des compétitions FFN et événements club.
+   - Galerie photos & vidéos.
+   - Chatbot d'orientation propulsé par Mistral AI.
+2. **Inscriptions & Tests de Nage** :
+   - Prise de rendez-vous en ligne pour les tests de niveau.
+   - Contrôle des quotas et blocage manuel d'un créneau côté admin.
+3. **Espace Coachs (`/coach`)** :
+   - Connexion initiale avec le code temporaire `1234` et personnalisation obligatoire dès l'accueil.
+   - Interface en 2 colonnes pour la gestion des créneaux tournants et des remplacements.
+   - Facturation mensuelle transparente (calcul précis des heures, déductions de remplacements subis, ajouts de remplacements effectués, forfaits compétitions).
+4. **Administration Intégrale (`/admin`)** :
+   - Gestion des plannings, des groupes et des bassins fréquents.
+   - Gestion des coachs avec réinitialisation de mot de passe en 1 clic.
+   - Boutique du club, gestion des stocks par variante, commandes Stripe.
+   - Module de Trésorerie et génération de reçus fiscaux de dons (CERFA 11580*05).
 
-## 📝 TODO - Fonctionnalités à venir
-
-- [ ] Interface d'administration complète
-- [ ] Système d'authentification avec NextAuth
-- [ ] Génération de factures PDF
-- [ ] Envoi automatique d'emails
-- [ ] Upload d'images pour les actualités/événements
-- [ ] Gestion des paiements en ligne
-
-## 🆘 Support
-
-Pour toute question ou problème :
-- Email : admin@triton-club.fr
-- GitHub Issues : https://github.com/Romain84/Site_TRITON/issues
+---
 
 ## 📄 Licence
 
-© 2025 Triton Club Cavaillon. Tous droits réservés.
+© 2026 Triton Club Cavaillon. Tous droits réservés.
