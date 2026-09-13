@@ -55,6 +55,7 @@ Ce document constitue la référence absolue pour tout agent IA (Antigravity, Cu
     - La facture mensuelle reste en **Brouillon** tant qu'elle n'est pas officialisée.
     - Le coach clique sur le bouton **"Générer la facture"** pour officialiser le document (attribution du numéro `F-TCC-AAAA-XXXX`, calcul officiel et génération du PDF).
     - Le bouton **"Envoyer au club"** permet ensuite de transmettre la facture par e-mail au secrétariat du club (`emailClub`).
+    - **Notification e-mail au club (`emailClub`)** : Le secrétariat du club reçoit un e-mail **UNIQUEMENT** lorsque la facture passe au statut **"Envoyée" (`envoyee`)**. **AUCUN e-mail** n'est envoyé au club tant que la facture est au statut **"Brouillon" (`brouillon`)** ou simplement **"Générée" (`generee`)**.
   - **Règles de modification & verrouillage strict** :
     - Tant que la facture est générée mais **non envoyée**, elle **peut être modifiée** (ajout/suppression de prestations ou compétitions), avec un bouton **"Régénérer"** pour actualiser le PDF officiel avant transmission.
     - Dès que la facture est **envoyée au club (`envoyee`)**, **TOUT EST STRICTEMENT BLOQUÉ** : aucun ajout, aucune suppression ni modification n'est permise. Seul le téléchargement du PDF officiel transmis reste accessible.

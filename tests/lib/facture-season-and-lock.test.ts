@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseDateDebutSaison } from '@/lib/facture-calculations'
+import { doitEnvoyerEmailAuClub, canTransitionFactureCoachStatus } from '@/lib/facture-utils'
 
 describe('Analyse de la date de rentrée et début de saison', () => {
   it('analyse correctement le format textuel français avec jour de semaine ("Lundi 14 Septembre 2026")', () => {
@@ -49,5 +50,36 @@ describe('Analyse de la date de rentrée et début de saison', () => {
     expect(parseDateDebutSaison(null)).toBeNull()
     expect(parseDateDebutSaison(undefined)).toBeNull()
     expect(parseDateDebutSaison('date non valide')).toBeNull()
+  })
+})
+
+describe('Règles de notification e-mail et de cycle de vie de facture', () => {
+  it('interdit formellement l\'envoi d\'e-mail au club si la facture est en brouillon ("brouillon")', () => {
+    expect(doitEnvoyerEmailAuClub('brouillon')).toBe(false)
+  })
+
+  it('interdit l\'envoi d\'e-mail au club si la facture est simplement générée non transmise ("generee")', () => {
+    expect(doitEnvoyerEmailAuClub('generee')).toBe(false)
+  })
+
+  it('interdit l\'envoi d\'e-mail au club si la facture est null ou undefined', () => {
+    expect(doitEnvoyerEmailAuClub(null)).toBe(false)
+    expect(doitEnvoyerEmailAuClub(undefined)).toBe(false)
+    expect(doitEnvoyerEmailAuClub('')).toBe(false)
+  })
+
+  it('autorise l\'envoi d\'e-mail au club UNIQUEMENT au statut "envoyee"', () => {
+    expect(doitEnvoyerEmailAuClub('envoyee')).toBe(true)
+  })
+
+  it('interdit un nouvel envoi d\'e-mail au club lorsque la facture est déjà "payee"', () => {
+    expect(doitEnvoyerEmailAuClub('payee')).toBe(false)
+  })
+
+  it('permet les transitions autorisées et le déverrouillage vers brouillon', () => {
+    expect(canTransitionFactureCoachStatus('brouillon', 'generee')).toBe(true)
+    expect(canTransitionFactureCoachStatus('generee', 'envoyee')).toBe(true)
+    expect(canTransitionFactureCoachStatus('envoyee', 'brouillon')).toBe(true) // Déverrouillage admin
+    expect(canTransitionFactureCoachStatus('payee', 'brouillon')).toBe(true) // Déverrouillage exceptionnel
   })
 })

@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { notifyAdmin, notifyCoach } from '@/lib/notifications'
 import { logAdminAudit } from '@/lib/admin-audit'
-import { isValidFactureCoachStatus, canTransitionFactureCoachStatus, type StatutFactureCoach } from '@/lib/facture-utils'
+import { isValidFactureCoachStatus, canTransitionFactureCoachStatus, doitEnvoyerEmailAuClub, type StatutFactureCoach } from '@/lib/facture-utils'
 import { genererFacturePDF } from '@/lib/facture-pdf-generator'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import { writeFile, mkdir } from 'fs/promises'
@@ -210,11 +210,14 @@ export async function PATCH(
       },
     })
 
-    await notifyAdmin({
-      sujet: `Facture coach ${facture.numero} mise à jour`,
-      messageHtml: `<p>La facture <strong>${facture.numero}</strong> est passée au statut <strong>${statut}</strong>.</p>`,
-      messageTexte: `La facture ${facture.numero} est passée au statut ${statut}.`,
-    })
+    // RÈGLE MÉTIER STRICTE : Le club ne reçoit d'email que lorsque la facture est "envoyée", JAMAIS en brouillon
+    if (doitEnvoyerEmailAuClub(statut)) {
+      await notifyAdmin({
+        sujet: `[Facturation] Facture coach ${facture.numero} transmise au club`,
+        messageHtml: `<p>La facture <strong>${facture.numero}</strong> de <strong>${facture.coach.prenom} ${facture.coach.nom || ''}</strong> a été transmise au secrétariat du club pour traitement.</p>`,
+        messageTexte: `La facture ${facture.numero} de ${facture.coach.prenom} ${facture.coach.nom || ''} a été transmise au club pour traitement.`,
+      })
+    }
 
     const moisNoms = [
       'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',

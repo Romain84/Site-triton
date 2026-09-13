@@ -58,3 +58,12 @@ export function canTransitionFactureCoachStatus(
 ): boolean {
   return TRANSITIONS_STATUT_FACTURE[from].includes(to)
 }
+
+/**
+ * Règle métier stricte :
+ * Le secrétariat du club reçoit un e-mail UNIQUEMENT lorsque la facture est au statut "envoyee".
+ * AUCUN e-mail n'est envoyé au club si la facture est en "brouillon" ou simplement "generee".
+ */
+export function doitEnvoyerEmailAuClub(statut: string | null | undefined): boolean {
+  return statut === 'envoyee'
+}

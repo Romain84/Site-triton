@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { requireAdmin } from '@/lib/api/guards'
-import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
+import { genererNumeroFactureSequentiel, doitEnvoyerEmailAuClub } from '@/lib/facture-utils'
 import { sanitizeEmailHeader, queueEmail } from '@/lib/email'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import { genererFacturePDF } from '@/lib/facture-pdf-generator'
@@ -144,8 +144,8 @@ export async function POST(request: NextRequest) {
 
     const moisNom = moisNoms[mois - 1] || `${mois}`
 
-    // 4. Si demande d'envoi par e-mail au club
-    if (envoyerClub) {
+    // 4. Si demande d'envoi par e-mail au club (strictement quand statut === 'envoyee', JAMAIS en brouillon)
+    if (envoyerClub && doitEnvoyerEmailAuClub(facture.statut)) {
       const settings = await prisma.settings.findFirst()
       const emailClub = settings?.emailClub || 'tritoncavaillon@gmail.com'
 

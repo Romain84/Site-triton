@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCoachSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
+import { genererNumeroFactureSequentiel, doitEnvoyerEmailAuClub } from '@/lib/facture-utils'
 import { sanitizeEmailHeader, queueEmail } from '@/lib/email'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import { genererFacturePDF } from '@/lib/facture-pdf-generator'
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     // Calculer les détails unifiés via le helper partagé
     const details = await calculerFactureCoach(session.coachId, mois, annee)
 
-    // Récupérer ou créer la facture
+    // Récupérer la facture existante
     let facture = await prisma.factureCoach.findUnique({
       where: {
         coachId_mois_annee: {
@@ -73,27 +73,19 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    if (!facture) {
-      // Générer un numéro unique séquentiel continu
-      const numero = await genererNumeroFactureSequentiel(session.coachId, annee)
+    // RÈGLE MÉTIER STRICTE : Le club ne doit recevoir un mail que lorsque la facture est "envoyée", JAMAIS en brouillon
+    if (!facture || facture.statut === 'brouillon') {
+      return NextResponse.json(
+        { error: 'La facture est encore en brouillon. Vous devez d\'abord cliquer sur "Générer la facture" avant de pouvoir l\'envoyer au club.' },
+        { status: 400 }
+      )
+    }
 
-      facture = await prisma.factureCoach.create({
-        data: {
-          numero,
-          coachId: session.coachId,
-          mois,
-          annee,
-          montantTotal: details.totalMontant,
-          tauxHoraire: details.tauxHoraire,
-          statut: 'brouillon',
-        },
-      })
-    } else {
-      // Mettre à jour le montant avant envoi
-      await prisma.factureCoach.update({
-        where: { id: facture.id },
-        data: { montantTotal: details.totalMontant },
-      })
+    if (facture.statut === 'payee') {
+      return NextResponse.json(
+        { error: 'Cette facture a déjà été réglée par le club et ne peut plus être renvoyée.' },
+        { status: 400 }
+      )
     }
 
     // Générer le PDF unifié de manière professionnelle
@@ -107,30 +99,45 @@ export async function POST(request: NextRequest) {
     await writeFile(filePath, pdfBuffer)
     const pdfPath = `/uploads/factures/${fileName}`
 
+    const dateNow = new Date()
+
+    // 1. Mettre à jour la facture au statut officiel 'envoyee' avec la date d'envoi et le montant actualisé
+    facture = await prisma.factureCoach.update({
+      where: { id: facture.id },
+      data: {
+        statut: 'envoyee',
+        dateEnvoi: dateNow,
+        montantTotal: details.totalMontant,
+        pdfPath,
+      },
+    })
+
     const moisNoms = [
       'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
       'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
     ]
 
-    // Envoyer l'email au secrétariat du club avec Reply-To coach
-    await queueEmail({
-      to: sanitizeEmailHeader(settings.emailClub),
-      replyTo: coach.email ? sanitizeEmailHeader(coach.email) : undefined,
-      subject: sanitizeEmailHeader(`[Facturation] Facture de ${coach.prenom} ${coach.nom || ''} - ${moisNoms[mois - 1]} ${annee}`),
-      text: `Bonjour,\n\nVeuillez trouver ci-joint la facture de ${coach.prenom} ${coach.nom || ''} pour le mois de ${moisNoms[mois - 1]} ${annee}.\n\nCordialement,\n${coach.prenom} ${coach.nom || ''}`,
-      html: `
-        <p>Bonjour,</p>
-        <p>Veuillez trouver ci-joint la facture de <strong>${coach.prenom} ${coach.nom || ''}</strong> pour le mois de <strong>${moisNoms[mois - 1]} ${annee}</strong>.</p>
-        <p>Cordialement,<br>${coach.prenom} ${coach.nom || ''}</p>
-      `,
-      attachments: [
-        {
-          filename: `facture-${facture.numero}.pdf`,
-          content: pdfBuffer,
-          contentType: 'application/pdf',
-        },
-      ],
-    })
+    // 2. Le secrétariat du club reçoit l'e-mail STRICTEMENT si la facture est "envoyee", JAMAIS en brouillon
+    if (doitEnvoyerEmailAuClub(facture.statut)) {
+      await queueEmail({
+        to: sanitizeEmailHeader(settings.emailClub),
+        replyTo: coach.email ? sanitizeEmailHeader(coach.email) : undefined,
+        subject: sanitizeEmailHeader(`[Facturation] Facture de ${coach.prenom} ${coach.nom || ''} - ${moisNoms[mois - 1]} ${annee}`),
+        text: `Bonjour,\n\nVeuillez trouver ci-joint la facture de ${coach.prenom} ${coach.nom || ''} pour le mois de ${moisNoms[mois - 1]} ${annee}.\n\nCordialement,\n${coach.prenom} ${coach.nom || ''}`,
+        html: `
+          <p>Bonjour,</p>
+          <p>Veuillez trouver ci-joint la facture de <strong>${coach.prenom} ${coach.nom || ''}</strong> pour le mois de <strong>${moisNoms[mois - 1]} ${annee}</strong>.</p>
+          <p>Cordialement,<br>${coach.prenom} ${coach.nom || ''}</p>
+        `,
+        attachments: [
+          {
+            filename: `facture-${facture.numero}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          },
+        ],
+      })
+    }
 
     // Envoyer un accusé de réception / copie au coach pour ses archives
     if (coach.email) {
@@ -154,18 +161,6 @@ export async function POST(request: NextRequest) {
         ],
       })
     }
-
-    const dateNow = new Date()
-
-    // Mettre à jour le statut et la date d'envoi
-    facture = await prisma.factureCoach.update({
-      where: { id: facture.id },
-      data: {
-        statut: 'envoyee',
-        dateEnvoi: dateNow,
-        pdfPath,
-      },
-    })
 
     return NextResponse.json({
       success: true,
