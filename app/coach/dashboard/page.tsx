@@ -12,6 +12,7 @@ import {
   Euro,
   AlertCircle,
   ChevronRight,
+  FileText,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -208,16 +209,29 @@ export default async function CoachDashboard() {
               </p>
             </div>
 
-            {(!coach.siret || !coach.adresse) && (
-              <Link
-                href="/coach/profil"
-                className="inline-flex items-center gap-2 p-2.5 sm:px-3.5 sm:py-2 bg-amber-50 hover:bg-amber-100/80 border border-amber-200 text-amber-900 rounded-xl text-xs font-bold transition-colors"
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href="/api/guide-coach"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 p-2.5 sm:px-3.5 sm:py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 rounded-xl text-xs font-bold transition-all shadow-2xs"
+                title="Consulter le guide pratique officiel en PDF"
               >
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Compléter profil</span>
-                <ChevronRight className="w-3.5 h-3.5 text-amber-600" />
-              </Link>
-            )}
+                <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Guide Coach (PDF)</span>
+              </a>
+
+              {(!coach.siret || !coach.adresse) && (
+                <Link
+                  href="/coach/profil"
+                  className="inline-flex items-center gap-2 p-2.5 sm:px-3.5 sm:py-2 bg-amber-50 hover:bg-amber-100/80 border border-amber-200 text-amber-900 rounded-xl text-xs font-bold transition-colors"
+                >
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Compléter profil</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-amber-600" />
+                </Link>
+              )}
+            </div>
           </div>
 
           {/* 2 MAIN STAT METRICS */}

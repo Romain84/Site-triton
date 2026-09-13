@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { HelpTooltip } from '@/components/ui/Tooltip'
+import { FileText } from 'lucide-react'
 
 interface Coach {
   id: string
@@ -276,12 +277,24 @@ export default function CoachesManager() {
             <p className="text-gray-300">• Déclarer ses absences/remplacements</p>
           </HelpTooltip>
         </h2>
-        <button
-          onClick={() => handleOpenModal()}
-          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-        >
-          + Nouveau Coach
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href="/api/guide-coach"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 shadow-xs"
+            title="Consulter ou télécharger le Guide Pratique Entraîneur (PDF)"
+          >
+            <FileText className="w-4 h-4 text-emerald-600" />
+            <span>Guide Entraîneur (PDF)</span>
+          </a>
+          <button
+            onClick={() => handleOpenModal()}
+            className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm"
+          >
+            + Nouveau Coach
+          </button>
+        </div>
       </div>
 
       {/* Liste des coaches */}

@@ -9,6 +9,7 @@ import {
   Receipt,
   User,
   LogOut,
+  FileText,
 } from 'lucide-react'
 
 export default function CoachNav() {
@@ -103,15 +104,28 @@ export default function CoachNav() {
           })}
         </div>
 
-        <button
-          onClick={handleLogout}
-          disabled={loading}
-          className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all disabled:opacity-50"
-          title="Se déconnecter"
-        >
-          <LogOut className="w-4 h-4" />
-          <span className="hidden md:inline">{loading ? 'Sortie...' : 'Déconnexion'}</span>
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <a
+            href="/api/guide-coach"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-xl transition-all shadow-2xs"
+            title="Consulter le Guide d'utilisation Espace Coach (PDF)"
+          >
+            <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="hidden md:inline">Guide Coach (PDF)</span>
+          </a>
+
+          <button
+            onClick={handleLogout}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all disabled:opacity-50"
+            title="Se déconnecter"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden md:inline">{loading ? 'Sortie...' : 'Déconnexion'}</span>
+          </button>
+        </div>
       </div>
 
       {/* MOBILE TOP BAR */}
@@ -126,14 +140,25 @@ export default function CoachNav() {
           </div>
         </div>
 
-        <button
-          onClick={handleLogout}
-          disabled={loading}
-          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-          aria-label="Déconnexion"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <a
+            href="/api/guide-coach"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-xl transition-colors"
+            title="Guide Coach (PDF)"
+          >
+            <FileText className="w-4 h-4" />
+          </a>
+          <button
+            onClick={handleLogout}
+            disabled={loading}
+            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+            aria-label="Déconnexion"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* MOBILE BOTTOM NAVIGATION */}

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getErrorMessage } from '@/lib/utils'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, FileText } from 'lucide-react'
 
 export default function CoachLoginPage() {
   const router = useRouter()
@@ -118,8 +118,20 @@ export default function CoachLoginPage() {
             </Link>
           </div>
 
-          <div className="mt-6 text-center">
-            <Link href="/" className="text-primary hover:underline">
+          <div className="mt-6 pt-5 border-t border-gray-150 text-center">
+            <a
+              href="/api/guide-coach"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3.5 py-2 rounded-xl transition-all shadow-xs"
+            >
+              <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Nouveau coach ? Télécharger le Guide Pratique (PDF)</span>
+            </a>
+          </div>
+
+          <div className="mt-4 text-center">
+            <Link href="/" className="text-sm text-gray-500 hover:text-primary hover:underline">
               Retour à l&apos;accueil
             </Link>
           </div>
