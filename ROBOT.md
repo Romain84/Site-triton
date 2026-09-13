@@ -1,4 +1,4 @@
-﻿# 🤖 Directives & Règles pour Agents IA (ROBOT.md)
+# 🤖 Directives & Règles pour Agents IA (ROBOT.md)
 # Projet : Triton Club Cavaillon (Site Web & Plateforme)
 
 Ce document constitue la référence absolue pour tout agent IA (Antigravity, Cursor, Claude, etc.) intervenant sur le projet `Site_New_TRITON-`.
@@ -49,10 +49,15 @@ Ce document constitue la référence absolue pour tout agent IA (Antigravity, Cu
 - **Planning & Remplacements** :
   - L'interface coach intègre en 2 colonnes les créneaux tournants et la déclaration/acceptation de remplaçant.
   - Le chatbot Mistral est masqué dans l'espace coach pour laisser l'interface claire.
-- **Facturation Coachs** :
-  - Déclarer un remplacement n'auto-génère **PAS** de facture.
-  - La facture mensuelle se génère et s'envoie **uniquement manuellement** depuis l'administration lors de l'appui sur "Générer".
-  - Le club reçoit la facture générée par email.
+- **Facturation Coachs (`/coach/facturation`, `/admin`)** :
+  - **Date de début de saison** : Les séances récurrentes hebdomadaires (`planningsFixe`) et les heures administratives antérieures à la date de début de saison (`settings.debutCoursNormal`, ex: 14 Septembre 2026) ne sont **JAMAIS** comptabilisées dans la facture.
+  - **Workflow de facturation manuelle** :
+    - La facture mensuelle reste en **Brouillon** tant qu'elle n'est pas officialisée.
+    - Le coach clique sur le bouton **"Générer la facture"** pour officialiser le document (attribution du numéro `F-TCC-AAAA-XXXX`, calcul officiel et génération du PDF).
+    - Le bouton **"Envoyer au club"** permet ensuite de transmettre la facture par e-mail au secrétariat du club (`emailClub`).
+  - **Règles de modification & verrouillage strict** :
+    - Tant que la facture est générée mais **non envoyée**, elle **peut être modifiée** (ajout/suppression de prestations ou compétitions), avec un bouton **"Régénérer"** pour actualiser le PDF officiel avant transmission.
+    - Dès que la facture est **envoyée au club (`envoyee`)**, **TOUT EST STRICTEMENT BLOQUÉ** : aucun ajout, aucune suppression ni modification n'est permise. Seul le téléchargement du PDF officiel transmis reste accessible.
 
 ### 2. Inscriptions & Tests de Nage (`/inscription`, `/admin/tests-nage`)
 - Le public peut réserver un créneau de test de nage.

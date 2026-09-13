@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Vérifier si une facture brouillon existe déjà pour ce mois
+    // Vérifier si une facture existe déjà pour ce mois
     let facture = await prisma.factureCoach.findUnique({
       where: {
         coachId_mois_annee: {
@@ -55,6 +55,13 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+
+    if (facture && ['envoyee', 'payee'].includes(facture.statut)) {
+      return NextResponse.json(
+        { error: 'Cette facture a déjà été transmise au club et ne peut plus être modifiée.' },
+        { status: 403 }
+      )
+    }
 
     // Si pas de facture, la créer
     if (!facture) {

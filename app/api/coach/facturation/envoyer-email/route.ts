@@ -6,6 +6,8 @@ import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
 import { sanitizeEmailHeader, queueEmail } from '@/lib/email'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import { genererFacturePDF } from '@/lib/facture-pdf-generator'
+import { writeFile, mkdir } from 'fs/promises'
+import path from 'path'
 
 const coachLogger = logger.withContext('Coach')
 
@@ -97,6 +99,14 @@ export async function POST(request: NextRequest) {
     // Générer le PDF unifié de manière professionnelle
     const { buffer: pdfBuffer } = await genererFacturePDF(session.coachId, mois, annee)
 
+    // Sauvegarder le PDF sur le serveur pour téléchargement ultérieur
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'factures')
+    await mkdir(uploadDir, { recursive: true })
+    const fileName = `facture-${facture.id}.pdf`
+    const filePath = path.join(uploadDir, fileName)
+    await writeFile(filePath, pdfBuffer)
+    const pdfPath = `/uploads/factures/${fileName}`
+
     const moisNoms = [
       'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
       'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
@@ -121,15 +131,22 @@ export async function POST(request: NextRequest) {
       ],
     })
 
-    // Mettre à jour le statut immédiatement après la mise en queue (traitée en tâche de fond)
-    await prisma.factureCoach.update({
+    const dateNow = new Date()
+
+    // Mettre à jour le statut et la date d'envoi
+    facture = await prisma.factureCoach.update({
       where: { id: facture.id },
-      data: { statut: 'envoyee' },
+      data: {
+        statut: 'envoyee',
+        dateEnvoi: dateNow,
+        pdfPath,
+      },
     })
 
     return NextResponse.json({
       success: true,
-      message: 'Facture envoyée par email avec succès',
+      message: 'Facture envoyée au secrétariat du club avec succès !',
+      facture,
     })
   } catch (error) {
     coachLogger.error('Erreur lors de l\'envoi de l\'email', error)

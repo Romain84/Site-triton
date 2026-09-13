@@ -34,7 +34,9 @@ import {
   ExternalLink,
   Car,
   Navigation,
-  Sparkles
+  Sparkles,
+  Lock,
+  RotateCcw
 } from 'lucide-react'
 import {
   matchPiscineFrequente,
@@ -137,6 +139,7 @@ function FacturationContent() {
   const [hasVersementLiberatoire, setHasVersementLiberatoire] = useState(false)
 
   const [loading, setLoading] = useState(true)
+  const [generatingInvoice, setGeneratingInvoice] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [data, setData] = useState<FacturationData | null>(null)
@@ -259,11 +262,50 @@ function FacturationContent() {
     }
   }
 
-  const handleSendEmail = async () => {
+  const handleGenerateInvoice = async () => {
+    const isRegen = data?.statut === 'generee'
     const confirmed = await confirm({
-      title: 'Transmettre la facture au club ?',
-      message: `Voulez-vous envoyer votre facture de ${moisNoms[selectedMois - 1]} ${selectedAnnee} (${data?.totalMontant.toFixed(2)} €) par e-mail au secrétariat du club ?`,
-      confirmText: 'Oui, transmettre',
+      title: isRegen ? 'Régénérer la facture ?' : 'Générer la facture ?',
+      message: isRegen
+        ? `Voulez-vous actualiser votre facture de ${moisNoms[selectedMois - 1]} ${selectedAnnee} (${data?.totalMontant.toFixed(2)} €) avec vos récentes modifications ?`
+        : `Voulez-vous générer officiellement votre facture pour ${moisNoms[selectedMois - 1]} ${selectedAnnee} d'un montant de ${data?.totalMontant.toFixed(2)} € ? Vous pourrez encore la modifier tant qu'elle n'est pas envoyée au club.`,
+      confirmText: isRegen ? 'Oui, régénérer' : 'Oui, générer la facture',
+    })
+
+    if (!confirmed) return
+
+    setGeneratingInvoice(true)
+    try {
+      const res = await fetch('/api/coach/facturation/generer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mois: selectedMois, annee: selectedAnnee }),
+      })
+
+      const resData = await res.json()
+      if (res.ok) {
+        toast.success(resData.message || 'Facture générée avec succès !')
+        fetchFacturation()
+      } else {
+        toast.error(resData.error || 'Erreur lors de la génération de la facture')
+      }
+    } catch {
+      toast.error('Erreur lors de la génération de la facture')
+    } finally {
+      setGeneratingInvoice(false)
+    }
+  }
+
+  const handleSendEmail = async () => {
+    if (!data?.statut || data.statut === 'brouillon') {
+      toast.error('Veuillez d\'abord cliquer sur "Générer la facture" avant de l\'envoyer au club.')
+      return
+    }
+
+    const confirmed = await confirm({
+      title: 'Envoyer la facture au club ?',
+      message: `Voulez-vous envoyer votre facture de ${moisNoms[selectedMois - 1]} ${selectedAnnee} (${data?.totalMontant.toFixed(2)} €) par e-mail au secrétariat du club ? Attention : une fois envoyée, la facture sera entièrement verrouillée et ne pourra plus être modifiée.`,
+      confirmText: 'Oui, envoyer au club',
     })
 
     if (!confirmed) return
@@ -278,7 +320,7 @@ function FacturationContent() {
 
       const resData = await res.json()
       if (res.ok) {
-        toast.success(resData.message || 'Facture transmise avec succès au club')
+        toast.success(resData.message || 'Facture envoyée avec succès au club !')
         fetchFacturation()
       } else {
         toast.error(resData.error || 'Erreur lors de l\'envoi')
@@ -293,6 +335,10 @@ function FacturationContent() {
   const handleAddManualLine = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!manualDescription || !manualHeures) return
+    if (data?.isBlocked) {
+      toast.error('Cette facture est transmise au club et ne peut plus être modifiée.')
+      return
+    }
 
     setAddingLine(true)
     try {
@@ -327,6 +373,11 @@ function FacturationContent() {
   }
 
   const handleOpenCompModal = async () => {
+    if (data?.isBlocked) {
+      toast.error('Cette facture est transmise au club et ne peut plus être modifiée.')
+      return
+    }
+
     setCompNom('')
     setCompLieu('')
     setCompType('departementale')
@@ -544,6 +595,11 @@ function FacturationContent() {
   }
 
   const handleDeleteLine = async (ligneId: string, type?: string) => {
+    if (data?.isBlocked) {
+      toast.error('Cette facture a été transmise au club et ne peut plus être modifiée.')
+      return
+    }
+
     const isComp = type === 'competition' || type === 'forfait_transport'
     const confirmed = await confirm({
       title: isComp ? 'Supprimer cette compétition ?' : 'Supprimer cette prestation ?',
@@ -641,11 +697,21 @@ function FacturationContent() {
 
   const getStatutBadge = (statut?: string) => {
     switch (statut) {
-      case 'brouillon': return 'bg-slate-100 text-slate-700'
-      case 'generee': return 'bg-blue-50 text-blue-700 border border-blue-200'
-      case 'envoyee': return 'bg-amber-50 text-amber-700 border border-amber-200'
-      case 'payee': return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-      default: return 'bg-slate-100 text-slate-700'
+      case 'brouillon': return 'bg-amber-50 text-amber-800 border border-amber-200/80'
+      case 'generee': return 'bg-sky-50 text-sky-800 border border-sky-200/80'
+      case 'envoyee': return 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
+      case 'payee': return 'bg-purple-50 text-purple-800 border border-purple-200/80'
+      default: return 'bg-amber-50 text-amber-800 border border-amber-200/80'
+    }
+  }
+
+  const getStatutLabel = (statut?: string) => {
+    switch (statut) {
+      case 'brouillon': return 'Brouillon'
+      case 'generee': return 'Générée'
+      case 'envoyee': return 'Envoyée au club'
+      case 'payee': return 'Payée'
+      default: return 'Brouillon'
     }
   }
 
@@ -755,48 +821,189 @@ function FacturationContent() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Statut</span>
                       <p className="pt-0.5">
                         <span className={`inline-block px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider ${getStatutBadge(data?.statut)}`}>
-                          {data?.statut || 'Brouillon'}
+                          {getStatutLabel(data?.statut)}
                         </span>
                       </p>
                     </div>
                   </div>
 
+                  {/* BANNIÈRE CONTEXTUELLE D'ÉTAT */}
+                  {(!data?.statut || data.statut === 'brouillon') && (
+                    <div className="p-4 bg-amber-50/90 border border-amber-200/80 rounded-2xl flex items-start gap-3 text-amber-900 text-xs font-semibold leading-relaxed">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p>Cette facture est en <strong>brouillon</strong>. Vérifiez vos séances et prestations ci-dessous.</p>
+                        <p className="text-[11px] text-amber-700 font-normal mt-0.5">
+                          Cliquez sur <strong>&quot;Générer la facture&quot;</strong> pour officialiser le document avec son numéro officiel et pouvoir ensuite l&apos;envoyer au club.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {data?.statut === 'generee' && (
+                    <div className="p-4 bg-sky-50/90 border border-sky-200/80 rounded-2xl flex items-start gap-3 text-sky-900 text-xs font-semibold leading-relaxed">
+                      <FileText className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p>Facture générée avec succès ! <strong>Elle n&apos;est pas encore transmise au club.</strong></p>
+                        <p className="text-[11px] text-sky-700 font-normal mt-0.5">
+                          Vous pouvez encore ajouter ou supprimer des prestations si besoin (pensez à cliquer sur <em>&quot;Régénérer&quot;</em>). Dès que vous êtes prêt, cliquez sur <strong>&quot;Envoyer au club&quot;</strong>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {data?.statut === 'envoyee' && (
+                    <div className="p-4 bg-emerald-50/90 border border-emerald-200/80 rounded-2xl flex items-start gap-3 text-emerald-900 text-xs font-semibold leading-relaxed">
+                      <Lock className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                      <div>
+                        <p>🔒 <strong>Facture envoyée au club.</strong> Tout est désormais verrouillé.</p>
+                        <p className="text-[11px] text-emerald-700 font-normal mt-0.5">
+                          Cette facture a été transmise par e-mail au secrétariat du club. Aucune modification (ajout ou suppression) n&apos;est plus permise.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {data?.statut === 'payee' && (
+                    <div className="p-4 bg-purple-50/90 border border-purple-200/80 rounded-2xl flex items-start gap-3 text-purple-900 text-xs font-semibold leading-relaxed">
+                      <CheckCircle2 className="w-4 h-4 text-purple-700 shrink-0 mt-0.5" />
+                      <div>
+                        <p>✅ <strong>Facture payée et archivée.</strong></p>
+                        <p className="text-[11px] text-purple-700 font-normal mt-0.5">
+                          Le règlement a été effectué par le club pour ce mois.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* ACTION BUTTONS */}
                   <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100">
-                    <button
-                      onClick={() => handleDownloadPDF()}
-                      disabled={generatingPdf}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-black shadow-xs transition-all disabled:opacity-50"
-                    >
-                      {generatingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-emerald-400" />}
-                      <span>Télécharger la facture PDF</span>
-                    </button>
+                    {/* CAS 1 : BROUILLON */}
+                    {(!data?.statut || data.statut === 'brouillon') && (
+                      <>
+                        <button
+                          onClick={handleGenerateInvoice}
+                          disabled={generatingInvoice || !data?.totalMontant}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-black shadow-xs transition-all disabled:opacity-50"
+                        >
+                          {generatingInvoice ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-white" />}
+                          <span>Générer la facture</span>
+                        </button>
 
-                    <button
-                      onClick={handleSendEmail}
-                      disabled={sendingEmail || !data?.totalMontant}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/60 text-xs font-bold transition-all disabled:opacity-50"
-                    >
-                      {sendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 text-primary" />}
-                      <span>Transmettre au club</span>
-                    </button>
+                        <button
+                          disabled={true}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs font-bold cursor-not-allowed"
+                          title="Générez d'abord la facture avant de l'envoyer au club"
+                        >
+                          <Send className="w-4 h-4 text-slate-400" />
+                          <span>Envoyer au club</span>
+                        </button>
 
+                        <button
+                          onClick={() => handleDownloadPDF()}
+                          disabled={generatingPdf}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all disabled:opacity-50"
+                        >
+                          {generatingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-slate-600" />}
+                          <span>Prévisualiser PDF</span>
+                        </button>
+                      </>
+                    )}
+
+                    {/* CAS 2 : GÉNÉRÉE NON ENVOYÉE */}
+                    {data?.statut === 'generee' && (
+                      <>
+                        <button
+                          onClick={handleSendEmail}
+                          disabled={sendingEmail}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition-all disabled:opacity-50"
+                        >
+                          {sendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 text-white" />}
+                          <span>Envoyer au club</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleDownloadPDF()}
+                          disabled={generatingPdf}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-black shadow-xs transition-all disabled:opacity-50"
+                        >
+                          {generatingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-emerald-400" />}
+                          <span>Télécharger la facture PDF</span>
+                        </button>
+
+                        <button
+                          onClick={handleGenerateInvoice}
+                          disabled={generatingInvoice}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold transition-all disabled:opacity-50"
+                          title="Régénérer la facture avec vos nouvelles modifications avant l'envoi"
+                        >
+                          {generatingInvoice ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5 text-sky-600" />}
+                          <span>Régénérer</span>
+                        </button>
+                      </>
+                    )}
+
+                    {/* CAS 3 : DÉJÀ ENVOYÉE */}
+                    {data?.statut === 'envoyee' && (
+                      <>
+                        <button
+                          onClick={() => handleDownloadPDF()}
+                          disabled={generatingPdf}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-black shadow-xs transition-all disabled:opacity-50"
+                        >
+                          {generatingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-emerald-400" />}
+                          <span>Télécharger la facture PDF</span>
+                        </button>
+
+                        <button
+                          onClick={handleSendEmail}
+                          disabled={sendingEmail}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold transition-all disabled:opacity-50"
+                        >
+                          {sendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 text-emerald-700" />}
+                          <span>Renvoyer au club</span>
+                        </button>
+                      </>
+                    )}
+
+                    {/* CAS 4 : PAYÉE */}
+                    {data?.statut === 'payee' && (
+                      <button
+                        onClick={() => handleDownloadPDF()}
+                        disabled={generatingPdf}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-black shadow-xs transition-all disabled:opacity-50"
+                      >
+                        {generatingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-emerald-400" />}
+                        <span>Télécharger PDF archivé</span>
+                      </button>
+                    )}
+
+                    {/* ACTIONS D'AJOUT : ACTIVES SEULEMENT SI NON BLOQUÉE */}
                     <div className="flex items-center gap-2 ml-auto flex-wrap">
-                      <button
-                        onClick={handleOpenCompModal}
-                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold shadow-xs transition-all"
-                      >
-                        <Trophy className="w-3.5 h-3.5 text-white" />
-                        <span>Déclarer une compétition</span>
-                      </button>
+                      {!data?.isBlocked ? (
+                        <>
+                          <button
+                            onClick={handleOpenCompModal}
+                            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold shadow-xs transition-all"
+                          >
+                            <Trophy className="w-3.5 h-3.5 text-white" />
+                            <span>Déclarer une compétition</span>
+                          </button>
 
-                      <button
-                        onClick={() => setShowAddModal(true)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Ajouter une prestation</span>
-                      </button>
+                          <button
+                            onClick={() => setShowAddModal(true)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Ajouter une prestation</span>
+                          </button>
+                        </>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 text-xs font-bold">
+                          <Lock className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Modifications verrouillées</span>
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

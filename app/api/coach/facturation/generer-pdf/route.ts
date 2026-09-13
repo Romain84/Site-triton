@@ -65,25 +65,9 @@ export async function POST(request: NextRequest) {
     // 3. Sinon, générer le PDF de manière dynamique
     const { buffer, numero } = await genererFacturePDF(session.coachId, mois, annee)
 
-    // 4. Mettre à jour ou créer l'enregistrement FactureCoach
-    if (!facture) {
-      await prisma.factureCoach.create({
-        data: {
-          numero,
-          coachId: session.coachId,
-          mois,
-          annee,
-          montantTotal: 0, // Sera recalculé par les lignes ou restera dynamique
-          tauxHoraire: 35, // Taux par défaut
-          statut: 'generee',
-        },
-      })
-    } else if (facture.statut === 'brouillon') {
-      await prisma.factureCoach.update({
-        where: { id: facture.id },
-        data: { statut: 'generee' },
-      })
-    }
+    // 4. Si la facture n'existe pas ou est un brouillon, on ne force PAS le statut à 'generee'.
+    // La génération officielle de la facture se fait via l'endpoint dédié /api/coach/facturation/generer.
+
 
     // 5. Retourner le PDF dynamique
     return new NextResponse(new Uint8Array(buffer), {

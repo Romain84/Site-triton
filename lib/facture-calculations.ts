@@ -35,15 +35,61 @@ export interface FactureCoachDetails {
   message?: string
 }
 
+/**
+ * Analyse et extrait une Date valide à partir d'une chaîne représentant le début de saison / rentrée.
+ * Supporte les formats :
+ * - Textuel français : "Lundi 14 Septembre 2026", "14 Septembre 2026", "Jeudi 1er Octobre 2026"
+ * - Numérique : "14/09/2026", "14-09-2026", "2026-09-14"
+ */
+export function parseDateDebutSaison(dateStr?: string | null): Date | null {
+  if (!dateStr || !dateStr.trim()) return null
+  const cleaned = dateStr.trim()
+
+  // 1. Format ISO : YYYY-MM-DD
+  const isoMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (isoMatch) {
+    return new Date(parseInt(isoMatch[1], 10), parseInt(isoMatch[2], 10) - 1, parseInt(isoMatch[3], 10), 0, 0, 0, 0)
+  }
+
+  // 2. Format numérique français : DD/MM/YYYY ou DD-MM-YYYY
+  const frNumericMatch = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/)
+  if (frNumericMatch) {
+    return new Date(parseInt(frNumericMatch[3], 10), parseInt(frNumericMatch[2], 10) - 1, parseInt(frNumericMatch[1], 10), 0, 0, 0, 0)
+  }
+
+  // 3. Format textuel français : (Jour) DD (Mois) YYYY
+  const textMatch = cleaned.match(/(\d{1,2})(?:er)?\s+([a-zA-ZÀ-ÿ]+)\s+(\d{4})/i)
+  if (textMatch) {
+    const day = parseInt(textMatch[1], 10)
+    const rawMonth = textMatch[2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    const year = parseInt(textMatch[3], 10)
+
+    const moisMap: { [key: string]: number } = {
+      janvier: 0, fevrier: 1, mars: 2, avril: 3, mai: 4, juin: 5,
+      juillet: 6, aout: 7, septembre: 8, octobre: 9, novembre: 10, decembre: 11
+    }
+
+    if (moisMap[rawMonth] !== undefined) {
+      return new Date(year, moisMap[rawMonth], day, 0, 0, 0, 0)
+    }
+  }
+
+  return null
+}
+
 export async function calculerFactureCoach(coachId: string, mois: number, annee: number): Promise<FactureCoachDetails> {
-  // Récupérer les paramètres (taux horaire)
+  // Récupérer les paramètres (taux horaire, débuts de cours)
   const settings = await prisma.settings.findFirst()
   const tauxHoraire = settings?.tauxHoraire || 35
   const forfaitDemiJournee = settings?.forfaitCompetition || 150
   const forfaitRegionalActif = settings?.forfaitRegionalActif || false
   const montantForfaitRegional = settings?.montantForfaitRegional || 50
 
-  // Vérifier si la facture existe déjà et est payée
+  // Récupérer la date de début officiel de saison (ex: 14 Septembre 2026)
+  const dateDebutSaison = parseDateDebutSaison(settings?.debutCoursNormal)
+  const dateDebutBnssa = parseDateDebutSaison(settings?.debutCoursBnssa)
+
+  // Vérifier si la facture existe déjà
   const factureExistante = await prisma.factureCoach.findUnique({
     where: {
       coachId_mois_annee: {
@@ -59,11 +105,12 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
   const dateFinMois = new Date(annee, mois, 0, 23, 59, 59)
   const isPayee = factureExistante?.statut === 'payee'
+  const isEnvoyee = factureExistante?.statut === 'envoyee'
 
   // Calculer les dates de début et fin du mois
   const now = new Date()
-  const dateDebut = new Date(annee, mois - 1, 1)
-  let dateFin = new Date(annee, mois, 0, 23, 59, 59)
+  const dateDebut = new Date(annee, mois - 1, 1, 0, 0, 0, 0)
+  let dateFin = new Date(annee, mois, 0, 23, 59, 59, 999)
 
   // Si on calcule pour le mois et l'année en cours, on limite le planning fixe au jour actuel
   if (annee === now.getFullYear() && mois === now.getMonth() + 1) {
@@ -143,6 +190,8 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     groupeIds: string[]
     tempsFacture?: number | null
     semaineImpaire?: boolean
+    groupeDateDebut?: Date | null
+    isBnssa?: boolean
   }>()
 
   for (const planning of planningsFixe) {
@@ -152,6 +201,8 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     if (joursMapRef[jourSemaine] !== undefined) {
       joursTravailles.add(joursMapRef[jourSemaine])
     }
+
+    const isBnssa = (planning.groupe?.nom || '').toLowerCase().includes('bnssa')
 
     if (!creneauxMap.has(key)) {
       creneauxMap.set(key, {
@@ -163,6 +214,8 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
         groupeIds: [],
         tempsFacture: planning.groupe?.tempsFacture,
         semaineImpaire: planning.semaineImpaire,
+        groupeDateDebut: planning.groupe?.dateDebut,
+        isBnssa,
       })
     }
     creneauxMap.get(key)!.groupes.push(planning.groupe?.nom || 'Groupe')
@@ -170,12 +223,36 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     if (planning.groupeId) {
       creneauxMap.get(key)!.groupeIds.push(planning.groupeId)
     }
+    if (planning.groupe?.dateDebut && !creneauxMap.get(key)!.groupeDateDebut) {
+      creneauxMap.get(key)!.groupeDateDebut = planning.groupe.dateDebut
+    }
   }
 
   for (const [, creneau] of creneauxMap) {
+    // Calcul de la date de début effective pour ce créneau en fonction de la rentrée
+    let creneauDateDebut = new Date(dateDebut)
+
+    // Déterminer la date de rentrée applicable (BNSSA ou classique)
+    let rentreeApplicable = creneau.isBnssa && dateDebutBnssa ? dateDebutBnssa : dateDebutSaison
+    if (creneau.groupeDateDebut) {
+      rentreeApplicable = creneau.groupeDateDebut
+    }
+
+    if (rentreeApplicable) {
+      if (creneauDateDebut < rentreeApplicable) {
+        if (dateFin < rentreeApplicable) {
+          // Le mois analysé est intégralement antérieur à la rentrée (ex: été avant début saison)
+          continue
+        } else {
+          // La rentrée a lieu pendant le mois (ex: 14 septembre 2026) -> on démarre à la rentrée
+          creneauDateDebut = new Date(rentreeApplicable)
+        }
+      }
+    }
+
     const dates = obtenirDatesJour(
       creneau.jourSemaine,
-      dateDebut,
+      creneauDateDebut,
       dateFin,
       periodesVacances,
       seancesAnnulees,
@@ -210,7 +287,17 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
   })
 
   if (coachInfo?.heuresAdminHebdo && coachInfo.heuresAdminHebdo > 0) {
-    const { nbSemaines } = compterSemainesHorsVacances(dateDebut, dateFin, periodesVacances)
+    let adminDateDebut = new Date(dateDebut)
+    if (dateDebutSaison && adminDateDebut < dateDebutSaison) {
+      if (dateFin >= dateDebutSaison) {
+        adminDateDebut = new Date(dateDebutSaison)
+      } else {
+        // Mois entièrement antérieur à la rentrée
+        adminDateDebut = new Date(dateFin)
+      }
+    }
+
+    const { nbSemaines } = compterSemainesHorsVacances(adminDateDebut, dateFin, periodesVacances)
     if (nbSemaines > 0) {
       const totalHrsAdmin = nbSemaines * coachInfo.heuresAdminHebdo
       const montantAdmin = totalHrsAdmin * tauxHoraire
@@ -377,10 +464,18 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     lignesAbsences.reduce((sum, l) => sum + l.montant, 0) +
     lignesManuelles.reduce((sum, l) => sum + l.montant, 0)
 
-  // Si une facture payée existe déjà avec un montantTotal positif, le conserver si applicable
-  const totalMontant = isPayee && (factureExistante?.montantTotal ?? 0) > 0
+  // Si une facture est envoyée ou payée avec un montantTotal enregistré, le conserver
+  const isLocked = isPayee || isEnvoyee
+  const totalMontant = isLocked && (factureExistante?.montantTotal ?? 0) > 0
     ? factureExistante!.montantTotal
     : calculatedTotalMontant
+
+  let message: string | undefined = undefined
+  if (isPayee) {
+    message = 'Votre facture de ce mois a été payée et archivée.'
+  } else if (isEnvoyee) {
+    message = 'Cette facture a été transmise au club. Elle est désormais verrouillée et ne peut plus être modifiée.'
+  }
 
   return {
     mois,
@@ -398,9 +493,9 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     totalMontant,
     joursTravailles: Array.from(joursTravailles),
     factureId: factureExistante?.id || factureBrouillon?.id,
-    isBlocked: isPayee,
+    isBlocked: isLocked,
     statut: factureExistante?.statut || 'brouillon',
-    message: isPayee ? 'Votre facture de ce mois a été payée et archivée.' : undefined,
+    message,
   }
 }
 

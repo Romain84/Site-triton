@@ -46,6 +46,13 @@ export async function PUT(
       )
     }
 
+    if (['envoyee', 'payee'].includes(ligne.facture.statut)) {
+      return NextResponse.json(
+        { error: 'Cette facture a déjà été transmise au club et ne peut plus être modifiée.' },
+        { status: 403 }
+      )
+    }
+
     // Mettre à jour la ligne
     let finalHeures = heures
     let finalMontant = montant
@@ -162,6 +169,13 @@ export async function DELETE(
     if (ligne.facture.coachId !== session.coachId) {
       return NextResponse.json(
         { error: 'Non autorisé' },
+        { status: 403 }
+      )
+    }
+
+    if (['envoyee', 'payee'].includes(ligne.facture.statut)) {
+      return NextResponse.json(
+        { error: 'Cette facture a déjà été transmise au club et ne peut plus être modifiée.' },
         { status: 403 }
       )
     }

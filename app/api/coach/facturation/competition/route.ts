@@ -68,6 +68,13 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    if (facture && ['envoyee', 'payee'].includes(facture.statut)) {
+      return NextResponse.json(
+        { error: 'Cette facture a déjà été transmise au club et ne peut plus être modifiée.' },
+        { status: 403 }
+      )
+    }
+
     if (!facture) {
       const coach = await prisma.coach.findUnique({
         where: { id: session.coachId },
