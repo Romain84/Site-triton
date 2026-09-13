@@ -112,9 +112,10 @@ export async function POST(request: NextRequest) {
       'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
     ]
 
-    // Envoyer l'email de manière asynchrone via la file d'attente
+    // Envoyer l'email au secrétariat du club avec Reply-To coach
     await queueEmail({
       to: sanitizeEmailHeader(settings.emailClub),
+      replyTo: coach.email ? sanitizeEmailHeader(coach.email) : undefined,
       subject: sanitizeEmailHeader(`[Facturation] Facture de ${coach.prenom} ${coach.nom || ''} - ${moisNoms[mois - 1]} ${annee}`),
       text: `Bonjour,\n\nVeuillez trouver ci-joint la facture de ${coach.prenom} ${coach.nom || ''} pour le mois de ${moisNoms[mois - 1]} ${annee}.\n\nCordialement,\n${coach.prenom} ${coach.nom || ''}`,
       html: `
@@ -130,6 +131,29 @@ export async function POST(request: NextRequest) {
         },
       ],
     })
+
+    // Envoyer un accusé de réception / copie au coach pour ses archives
+    if (coach.email) {
+      await queueEmail({
+        to: sanitizeEmailHeader(coach.email),
+        subject: sanitizeEmailHeader(`[Triton Club] Confirmation d'envoi de votre facture - ${moisNoms[mois - 1]} ${annee}`),
+        text: `Bonjour ${coach.prenom},\n\nVotre facture N° ${facture.numero} pour le mois de ${moisNoms[mois - 1]} ${annee} d'un montant de ${details.totalMontant.toFixed(2)} € a bien été transmise au secrétariat du club.\n\nVous trouverez votre facture au format PDF en pièce jointe pour vos archives.\n\nCordialement,\nTriton Club Cavaillon`,
+        html: `
+          <p>Bonjour ${coach.prenom},</p>
+          <p>Votre facture <strong>N° ${facture.numero}</strong> pour le mois de <strong>${moisNoms[mois - 1]} ${annee}</strong> d'un montant de <strong>${details.totalMontant.toFixed(2)} €</strong> a bien été transmise au secrétariat du club.</p>
+          <p>Vous trouverez votre facture au format PDF en pièce jointe pour vos archives personnelles.</p>
+          <br>
+          <p>Cordialement,<br><em>Triton Club Cavaillon</em></p>
+        `,
+        attachments: [
+          {
+            filename: `facture-${facture.numero}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          },
+        ],
+      })
+    }
 
     const dateNow = new Date()
 

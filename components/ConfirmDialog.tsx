@@ -7,7 +7,8 @@ interface ConfirmDialogOptions {
   message: string
   confirmText?: string
   cancelText?: string
-  variant?: 'danger' | 'warning' | 'info'
+  variant?: 'danger' | 'warning' | 'info' | 'success' | 'primary'
+  icon?: string
 }
 
 interface ConfirmDialogContextType {
@@ -64,10 +65,18 @@ export function ConfirmDialogProvider({ children }: ConfirmDialogProviderProps) 
       icon: 'ℹ️',
       buttonClass: 'bg-primary hover:bg-primary-dark',
     },
+    primary: {
+      icon: '📄',
+      buttonClass: 'bg-primary hover:bg-primary-dark',
+    },
+    success: {
+      icon: '✨',
+      buttonClass: 'bg-emerald-600 hover:bg-emerald-700',
+    },
   }
 
   const variant = options?.variant || 'danger'
-  const styles = variantStyles[variant]
+  const styles = variantStyles[variant] || variantStyles.info
 
   return (
     <ConfirmDialogContext.Provider value={{ confirm }}>
@@ -78,7 +87,7 @@ export function ConfirmDialogProvider({ children }: ConfirmDialogProviderProps) 
           <div className="bg-white rounded-lg max-w-md w-full shadow-xl">
             <div className="p-6">
               <div className="flex items-start gap-4">
-                <div className="text-3xl">{styles.icon}</div>
+                <div className="text-3xl">{options.icon || styles.icon}</div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-gray-900 mb-2">
                     {options.title || 'Confirmation'}

@@ -152,6 +152,38 @@ export default function FacturesManager() {
     }
   }
 
+  const handleUnlockFacture = async (factureId: string, numero: string) => {
+    if (!window.confirm(`Voulez-vous déverrouiller la facture ${numero} ?\nElle repassera en statut Brouillon et le coach pourra à nouveau modifier ses séances et prestations.`)) {
+      return
+    }
+
+    try {
+      setUpdatingId(factureId)
+      const response = await fetch(`/api/admin/factures/${factureId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ statut: 'brouillon' }),
+      })
+
+      if (response.ok) {
+        toast.success(`Facture ${numero} déverrouillée (repassée en brouillon)`)
+        await fetchFactures()
+        if (selectedFactureId === factureId) {
+          await handleOpenPreview(factureId)
+        }
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Erreur lors du déverrouillage')
+      }
+    } catch {
+      toast.error('Erreur réseau lors du déverrouillage de la facture')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
   const handleDeleteFacture = async (factureId: string, numero: string) => {
     if (!window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement la facture ${numero} ?`)) {
       return
@@ -440,6 +472,16 @@ export default function FacturesManager() {
                     >
                       {generatingAction === `quick-${facture.id}` ? 'Envoi...' : '✉️ Envoyer au club'}
                     </button>
+                    {(facture.statut === 'envoyee' || facture.statut === 'payee') && (
+                      <button
+                        onClick={() => handleUnlockFacture(facture.id, facture.numero)}
+                        disabled={updatingId === facture.id}
+                        className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                        title="Repasser en brouillon pour permettre au coach de modifier ses séances"
+                      >
+                        🔓 Déverrouiller
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDeleteFacture(facture.id, facture.numero)}
                       className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 hover:text-red-900 transition-colors flex items-center gap-1.5"

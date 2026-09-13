@@ -270,6 +270,8 @@ function FacturationContent() {
         ? `Voulez-vous actualiser votre facture de ${moisNoms[selectedMois - 1]} ${selectedAnnee} (${data?.totalMontant.toFixed(2)} €) avec vos récentes modifications ?`
         : `Voulez-vous générer officiellement votre facture pour ${moisNoms[selectedMois - 1]} ${selectedAnnee} d'un montant de ${data?.totalMontant.toFixed(2)} € ? Vous pourrez encore la modifier tant qu'elle n'est pas envoyée au club.`,
       confirmText: isRegen ? 'Oui, régénérer' : 'Oui, générer la facture',
+      variant: isRegen ? 'primary' : 'success',
+      icon: isRegen ? '🔄' : '📄',
     })
 
     if (!confirmed) return
@@ -306,6 +308,8 @@ function FacturationContent() {
       title: 'Envoyer la facture au club ?',
       message: `Voulez-vous envoyer votre facture de ${moisNoms[selectedMois - 1]} ${selectedAnnee} (${data?.totalMontant.toFixed(2)} €) par e-mail au secrétariat du club ? Attention : une fois envoyée, la facture sera entièrement verrouillée et ne pourra plus être modifiée.`,
       confirmText: 'Oui, envoyer au club',
+      variant: 'success',
+      icon: '✉️',
     })
 
     if (!confirmed) return
@@ -826,6 +830,24 @@ function FacturationContent() {
                       </p>
                     </div>
                   </div>
+
+                  {/* NOTE PÉDAGOGIQUE POUR LE MOIS EN COURS */}
+                  {selectedMois === (new Date().getMonth() + 1) && selectedAnnee === new Date().getFullYear() && (
+                    <div className="p-3.5 bg-blue-50/80 border border-blue-200/70 rounded-2xl flex items-start gap-3 text-blue-900 text-xs font-medium">
+                      <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <p className="font-bold text-blue-950">Mois en cours : cumul progressif des séances</p>
+                        <p className="text-[11px] text-blue-700 font-normal leading-relaxed">
+                          Les créneaux hebdomadaires récurrents de votre planning s&apos;accumulent au fur et à mesure des jours écoulés jusqu&apos;à la fin du mois.
+                          {data && data.totalMontant <= 0 && (
+                            <span className="block mt-1 text-blue-800 font-semibold">
+                              ℹ️ Vos séances régulières ne sont comptabilisées qu&apos;à leur date effective. C&apos;est pourquoi votre solde actuel ne reflète pour l&apos;instant que les éventuelles déductions ou forfaits.
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* BANNIÈRE CONTEXTUELLE D'ÉTAT */}
                   {(!data?.statut || data.statut === 'brouillon') && (
