@@ -167,12 +167,13 @@ export function genererDevisPDF(data: DevisPDFData): Buffer {
   currentY = doc.lastAutoTable.finalY + 8
 
   // 6. Cadre Récapitulatif Total & TVA (à droite)
-  const totalBoxWidth = 75
+  const totalBoxWidth = 80
   const totalBoxX = pageWidth - marginX - totalBoxWidth
+  const totalBoxHeight = 24
 
   doc.setFillColor(248, 250, 252)
   doc.setDrawColor(226, 232, 240)
-  doc.roundedRect(totalBoxX, currentY, totalBoxWidth, 22, 2, 2, 'FD')
+  doc.roundedRect(totalBoxX, currentY, totalBoxWidth, totalBoxHeight, 2, 2, 'FD')
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
@@ -180,30 +181,57 @@ export function genererDevisPDF(data: DevisPDFData): Buffer {
   doc.text('Total HT :', totalBoxX + 4, currentY + 6)
   doc.text(`${data.totalHT.toFixed(2)} €`, pageWidth - marginX - 4, currentY + 6, { align: 'right' })
 
-  doc.text('TVA (exonérée - art. 293 B CGI) :', totalBoxX + 4, currentY + 11.5)
-  doc.text('0.00 €', pageWidth - marginX - 4, currentY + 11.5, { align: 'right' })
+  doc.text('TVA (exonérée - art. 293 B CGI) :', totalBoxX + 4, currentY + 12)
+  doc.text('0.00 €', pageWidth - marginX - 4, currentY + 12, { align: 'right' })
 
   // Total TTC mis en avant
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
+  doc.setFontSize(10.5)
   doc.setTextColor(112, 193, 92) // Vert Club
-  doc.text('TOTAL NET À PAYER :', totalBoxX + 4, currentY + 18)
-  doc.text(`${data.totalTTC.toFixed(2)} €`, pageWidth - marginX - 4, currentY + 18, { align: 'right' })
+  doc.text('TOTAL NET À PAYER :', totalBoxX + 4, currentY + 19)
+  doc.text(`${data.totalTTC.toFixed(2)} €`, pageWidth - marginX - 4, currentY + 19, { align: 'right' })
 
-  // Mention TVA sous le total
+  // Bloc mentions & informations à gauche (largeur max = 90 mm pour ne jamais déborder sur le cadre total)
   doc.setFont('helvetica', 'italic')
   doc.setFontSize(7.5)
   doc.setTextColor(148, 163, 184)
-  doc.text('TVA non applicable, art. 293 B du Code Général des Impôts (statut associatif).', marginX, currentY + 10)
+  doc.text(
+    'TVA non applicable, art. 293 B du Code Général des Impôts (statut associatif).',
+    marginX,
+    currentY + 6,
+    { maxWidth: 90 }
+  )
 
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7.5)
+  doc.setTextColor(100, 116, 139)
+  doc.text(
+    'Règlement par virement bancaire ou chèque à l\'ordre du Triton Club Cavaillon.',
+    marginX,
+    currentY + 14,
+    { maxWidth: 90 }
+  )
+
+  currentY += totalBoxHeight + 6
+
+  // Si notes / conditions particulières, les afficher proprement sous le cadre
   if (data.notes) {
+    doc.setFillColor(248, 250, 252)
+    doc.setDrawColor(226, 232, 240)
+    const notesText = `Conditions : ${data.notes}`
+    const splitNotes = doc.splitTextToSize(notesText, contentWidth - 8)
+    const notesBoxHeight = Math.max(10, splitNotes.length * 4 + 5)
+
+    doc.roundedRect(marginX, currentY, contentWidth, notesBoxHeight, 2, 2, 'FD')
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     doc.setTextColor(71, 85, 105)
-    doc.text(`Conditions : ${data.notes}`, marginX, currentY + 17)
-  }
+    doc.text(splitNotes, marginX + 4, currentY + 5)
 
-  currentY += 32
+    currentY += notesBoxHeight + 6
+  } else {
+    currentY += 4
+  }
 
   // 7. Bon pour Accord & Signature (Bas de page)
   const signBoxHeight = 36
