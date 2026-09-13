@@ -7,6 +7,7 @@ import { formatCompactDateFr } from '@/lib/date'
 
 const ProfilsManager = lazy(() => import('@/components/admin/ProfilsManager'))
 const FacturesManager = lazy(() => import('@/components/admin/FacturesManager'))
+const DevisManager = lazy(() => import('@/components/admin/DevisManager'))
 const FinancesManager = lazy(() => import('@/components/admin/FinancesManager'))
 const GroupesManager = lazy(() => import('@/components/admin/GroupesManager'))
 const ParametresManager = lazy(() => import('@/components/admin/ParametresManager'))
@@ -40,7 +41,7 @@ const TabLoading = () => (
   </div>
 )
 
-type Tab = 'dashboard' | 'visiteurs' | 'profils' | 'podiums' | 'tests-nage' | 'factures' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
+type Tab = 'dashboard' | 'visiteurs' | 'profils' | 'podiums' | 'tests-nage' | 'factures' | 'devis' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
 
 const CATEGORIES = [
   {
@@ -49,6 +50,7 @@ const CATEGORIES = [
       { id: 'dashboard', label: 'Dashboard', icon: '📊' },
       { id: 'visiteurs', label: 'Statistiques visiteurs', icon: '🌍' },
       { id: 'factures', label: 'Factures', icon: '💰' },
+      { id: 'devis', label: 'Devis & Formations', icon: '📝' },
       { id: 'finances', label: 'Finances', icon: '📈' },
       { id: 'dons', label: 'Dons & Reçus', icon: '🎗️' },
       { id: 'database', label: 'Sauvegarde BDD', icon: '💾' },
@@ -108,7 +110,7 @@ const CATEGORIES = [
       const tabParam = urlParams.get('tab') as Tab
 
       // Sécurité client : si superviseur, rediriger si tab finances manuellement ciblé
-      if (currentUser?.role === 'superviseur' && ['finances', 'factures', 'cout-groupes'].includes(tabParam)) {
+      if (currentUser?.role === 'superviseur' && ['finances', 'factures', 'devis', 'cout-groupes'].includes(tabParam)) {
         setActiveTab('dashboard')
         localStorage.setItem('admin.activeTab', 'dashboard')
         return
@@ -327,6 +329,7 @@ const CATEGORIES = [
             {activeTab === 'tests-nage' && <TestsNageTab />}
             {activeTab === 'podiums' && <PodiumsTab />}
             {activeTab === 'factures' && <FacturesTab />}
+            {activeTab === 'devis' && <DevisTab currentUser={currentUser} />}
             {activeTab === 'finances' && <FinancesTab />}
             {activeTab === 'dons' && <DonsTab currentUser={currentUser} />}
             {activeTab === 'groupes' && <GroupesTab />}
@@ -684,6 +687,11 @@ function ProfilsTab({ currentUser }: { currentUser: { id: string; email: string;
 // Factures Tab
 function FacturesTab() {
   return <FacturesManager />
+}
+
+// Devis Tab
+function DevisTab({ currentUser }: { currentUser: { id: string; email: string; role: string } | null }) {
+  return <DevisManager currentUser={currentUser} />
 }
 
 // Finances Tab

@@ -943,3 +943,44 @@ model InscriptionTestNage {
   @@index([statut])
   @@map("inscriptions_tests_nage")
 }
+
+model Devis {
+  id              String       @id @default(cuid())
+  numero          String       @unique // Format: DEV-AAAA-XXXX
+  titre           String
+  clientNom       String
+  clientEmail     String?
+  clientTelephone String?
+  clientAdresse   String?
+  dateEmission    DateTime     @default(now())
+  dateValidite    DateTime
+  statut          String       @default("brouillon") // brouillon, envoye, accepte, refuse
+  totalHT         Float        @default(0)
+  totalTVA        Float        @default(0)
+  totalTTC        Float        @default(0)
+  notes           String?
+  pdfPath         String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  lignes          LigneDevis[]
+
+  @@index([numero])
+  @@index([statut])
+  @@map("devis")
+}
+
+model LigneDevis {
+  id           String   @id @default(cuid())
+  devisId      String
+  description  String
+  quantite     Float    @default(1)
+  prixUnitaire Float    @default(0)
+  total        Float    @default(0)
+  ordre        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  devis        Devis    @relation(fields: [devisId], references: [id], onDelete: Cascade)
+
+  @@index([devisId])
+  @@map("lignes_devis")
+}
