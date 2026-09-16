@@ -52,7 +52,10 @@ export async function POST(request: NextRequest) {
         throw new Error('Vous êtes déjà inscrit sur ce créneau.')
       }
 
-      // 2. Vérifier la capacité du nouveau créneau
+      // 2. Verrouillage pessimiste de la ligne pour éviter toute sur-réservation simultanée
+      await tx.$executeRaw`SELECT id FROM creneaux_tests_nage WHERE id = ${newCreneauId} FOR UPDATE`
+
+      // Vérifier la capacité du nouveau créneau
       const newCreneau = await tx.creneauTestNage.findUnique({
         where: { id: newCreneauId },
         include: {

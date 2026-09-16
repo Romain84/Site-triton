@@ -176,6 +176,7 @@ export default function TestNageBooking() {
       if (cid) url.searchParams.set('c', cid)
 
       const res = await fetch(url.toString(), {
+        cache: 'no-store',
         headers: code ? { 'x-tests-code': code } : {},
       })
       const data = await res.json()
@@ -255,7 +256,9 @@ export default function TestNageBooking() {
   const fetchReservationByToken = async (token: string) => {
     setManageLoading(true)
     try {
-      const res = await fetch(`/api/tests-nage/reservation?token=${token}`)
+      const res = await fetch(`/api/tests-nage/reservation?token=${token}`, {
+        cache: 'no-store',
+      })
       const data = await res.json()
       if (res.ok && data.success && data.data) {
         setManageData(data.data)
@@ -459,8 +462,10 @@ export default function TestNageBooking() {
         toast.success('Votre créneau a bien été modifié !')
         setIsChangingSlot(false)
         fetchReservationByToken(tokenParam)
+        fetchPublicData()
       } else {
         toast.error(data.error || 'Impossible de modifier le créneau')
+        fetchPublicData()
       }
     } catch {
       toast.error('Erreur de connexion au serveur')
@@ -603,11 +608,13 @@ export default function TestNageBooking() {
                 <button
                   type="button"
                   onClick={() => {
-                    const availableSessions = sessions.filter((s) => s.actif && !s.bloquee)
-                    const firstTarget = availableSessions.some((s) => s.id === manageData.session.id)
+                    const available = sessions.filter((s) => !s.bloquee && s.actif !== false)
+                    const target = available.some((s) => s.id === changeTargetSessionId)
+                      ? changeTargetSessionId
+                      : !manageData.session.bloquee && available.some((s) => s.id === manageData.session.id)
                       ? manageData.session.id
-                      : availableSessions[0]?.id || manageData.session.id
-                    setChangeTargetSessionId(firstTarget)
+                      : available[0]?.id || manageData.session.id
+                    setChangeTargetSessionId(target)
                     setIsChangingSlot(true)
                   }}
                   className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs ${
@@ -659,10 +666,10 @@ export default function TestNageBooking() {
 
           {/* SÉLECTEUR DE NOUVEAU CRÉNEAU POUR MODIFICATION MULTI-SESSIONS */}
           {isChangingSlot && (() => {
-            const availableSessions = sessions.filter((s) => s.actif && !s.bloquee)
+            const availableSessions = sessions.filter((s) => !s.bloquee && s.actif !== false)
             const activeSessionId =
               changeTargetSessionId ||
-              (availableSessions.some((s) => s.id === manageData.session.id)
+              (!manageData.session.bloquee && availableSessions.some((s) => s.id === manageData.session.id)
                 ? manageData.session.id
                 : availableSessions[0]?.id || manageData.session.id)
             const targetSession = sessions.find((s) => s.id === activeSessionId) || manageData.session
@@ -683,11 +690,13 @@ export default function TestNageBooking() {
                   </button>
                 </div>
 
-                {/* Sélecteur de date / séance si plusieurs séances ouvertes */}
-                {availableSessions.length > 1 && (
+                {/* Sélecteur de date / séance si des séances sont ouvertes */}
+                {availableSessions.length > 0 && (
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-600 block">
-                      Sélectionnez la séance souhaitée :
+                      {availableSessions.length > 1
+                        ? 'Sélectionnez la séance souhaitée :'
+                        : 'Séance de rattrapage ouverte :'}
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {availableSessions.map((s) => {
@@ -697,9 +706,9 @@ export default function TestNageBooking() {
                             key={s.id}
                             type="button"
                             onClick={() => setChangeTargetSessionId(s.id)}
-                            className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                            className={`px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 cursor-pointer ${
                               isCurrentSess
-                                ? 'bg-primary text-white border-primary shadow-xs'
+                                ? 'bg-primary text-white border-primary shadow-sm ring-2 ring-primary/30'
                                 : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                             }`}
                           >

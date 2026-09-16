@@ -61,7 +61,10 @@ export async function POST(request: NextRequest) {
 
     // Transaction atomique pour éviter toute sur-réservation
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Récupérer le créneau et verrouiller la session
+      // Verrouillage pessimiste de la ligne pour éviter toute sur-réservation simultanée
+      await tx.$executeRaw`SELECT id FROM creneaux_tests_nage WHERE id = ${validated.creneauId} FOR UPDATE`
+
+      // 1. Récupérer le créneau et vérifier la session
       const creneau = await tx.creneauTestNage.findUnique({
         where: { id: validated.creneauId },
         include: {

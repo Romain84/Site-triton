@@ -144,6 +144,7 @@ function maskEmail(email: string | null | undefined): string | null {
       dureeMinutes: session.dureeMinutes,
       capaciteParCreneau: session.capaciteParCreneau,
       consignes: session.consignes,
+      actif: Boolean(session.actif),
       bloquee: Boolean(session.bloquee),
       creneaux: session.creneaux.map((cr) => {
         const nbInscrits = cr.inscriptions.length
