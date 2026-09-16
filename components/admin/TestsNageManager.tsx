@@ -248,6 +248,14 @@ export default function TestsNageManager() {
   const [relanceCustomMessage, setRelanceCustomMessage] = useState('')
   const [relancing, setRelancing] = useState(false)
 
+  // Modale de notification de report / incident technique pour une session
+  const [showNotifierAnnulationModal, setShowNotifierAnnulationModal] = useState(false)
+  const [sessionToNotify, setSessionToNotify] = useState<SessionItem | null>(null)
+  const [notifierLoading, setNotifierLoading] = useState(false)
+  const [notifierCustomSubject, setNotifierCustomSubject] = useState('')
+  const [notifierCustomMessage, setNotifierCustomMessage] = useState('')
+  const [notifierBloquerSession, setNotifierBloquerSession] = useState(true)
+
   const [afficherBoutonTest, setAfficherBoutonTest] = useState<boolean>(true)
   const [codeAccesTestsNage, setCodeAccesTestsNage] = useState<string>('')
   const [togglingBoutonTest, setTogglingBoutonTest] = useState(false)
@@ -831,6 +839,49 @@ export default function TestsNageManager() {
     }
   }
 
+  // Ouvrir la modale d'avertissement de report / incident technique
+  const handleOpenNotifierModal = (session: SessionItem) => {
+    setSessionToNotify(session)
+    setNotifierCustomSubject(
+      `⚠️ Incident technique piscine : Report de votre test de nage du ${formatCompactDateFr(session.date)}`
+    )
+    setNotifierCustomMessage(
+      `En raison d'un problème technique imprévu survenu à la piscine couverte Alphonse Roudière ayant contraint la fermeture du bassin, la séance de tests de ce mercredi 16 septembre a dû être annulée.\n\nNous vous prions d'accepter toutes nos excuses pour ce désagrément indépendant de notre volonté.\n\nDe nouveaux créneaux ont été ouverts pour votre enfant. Merci de cliquer sur le bouton ci-dessous pour choisir votre nouvelle date et votre horaire en 1 clic (toutes vos données sont conservées).`
+    )
+    setNotifierBloquerSession(true)
+    setShowNotifierAnnulationModal(true)
+  }
+
+  // Envoi effectif des e-mails d'annulation et de reprogrammation
+  const handleSendNotificationAnnulation = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!sessionToNotify) return
+    setNotifierLoading(true)
+    try {
+      const res = await fetch(`/api/admin/tests-nage/sessions/${sessionToNotify.id}/notifier-annulation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customSubject: notifierCustomSubject.trim() || undefined,
+          customMessage: notifierCustomMessage.trim() || undefined,
+          bloquerSession: notifierBloquerSession,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success(data.message || `${data.count} email(s) envoyés avec succès !`)
+        setShowNotifierAnnulationModal(false)
+        await loadData()
+      } else {
+        toast.error(data.error || 'Erreur lors de l’envoi des notifications')
+      }
+    } catch {
+      toast.error('Erreur réseau lors de la notification')
+    } finally {
+      setNotifierLoading(false)
+    }
+  }
+
   // Fusion de deux sessions sans perte de données
   const handleFusionSessions = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1255,7 +1306,17 @@ export default function TestsNageManager() {
             </div>
 
             {currentSession && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenNotifierModal(currentSession)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-red-50 hover:bg-red-100 text-red-800 border border-red-200 transition-colors cursor-pointer shadow-3xs"
+                  title="Envoyer un email d'explication et de reprogrammation aux familles inscrites à cette séance suite à l'incident technique"
+                >
+                  <Mail className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                  <span>Notifier report / Incident ({currentSession.stats.totalInscrits})</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => handleToggleBloquerSession(currentSession)}
@@ -1269,12 +1330,12 @@ export default function TestsNageManager() {
                   {currentSession.bloquee ? (
                     <>
                       <Lock className="w-3.5 h-3.5 text-amber-700" />
-                      <span>🔒 Inscriptions bloquées (Cliquer pour rouvrir)</span>
+                      <span>🔒 Inscriptions bloquées</span>
                     </>
                   ) : (
                     <>
                       <Unlock className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>🟢 Inscriptions ouvertes (Cliquer pour bloquer)</span>
+                      <span>🟢 Inscriptions ouvertes</span>
                     </>
                   )}
                 </button>
@@ -2096,7 +2157,17 @@ export default function TestsNageManager() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenNotifierModal(s)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-red-50 hover:bg-red-100 text-red-800 border border-red-200 transition-colors cursor-pointer shadow-3xs"
+                    title="Notifier les familles de cette séance en cas de report ou incident technique"
+                  >
+                    <Mail className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                    <span>Notifier report ({s.stats.totalInscrits})</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => handleToggleBloquerSession(s)}
@@ -2652,6 +2723,123 @@ export default function TestsNageManager() {
                     <>
                       <Send className="w-3.5 h-3.5" />
                       <span>Envoyer la relance</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODALE D'ENVOI DE NOTIFICATION REPORT / INCIDENT TECHNIQUE ─── */}
+      {showNotifierAnnulationModal && sessionToNotify && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full border border-slate-200 shadow-xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-red-100 text-red-700 flex items-center justify-center font-bold">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 leading-tight">
+                    Notifier report / Incident technique
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                    {sessionToNotify.titre} — {formatLongDateFr(sessionToNotify.date)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNotifierAnnulationModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSendNotificationAnnulation} className="space-y-4 text-xs">
+              <div className="bg-red-50 border border-red-200/80 rounded-2xl p-4 space-y-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-red-800">Destinataires concernés :</span>
+                <p className="text-sm font-black text-red-950">
+                  {sessionToNotify.stats.totalInscrits} familles inscrites à cette séance
+                </p>
+                <p className="text-[11px] text-red-900/90 leading-relaxed">
+                  Chaque famille recevra un e-mail officiel individuel contenant son <strong>lien direct personnalisé</strong> pour choisir un nouveau créneau sans avoir à ressaisir ses coordonnées.
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  Objet de l&apos;e-mail
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={notifierCustomSubject}
+                  onChange={(e) => setNotifierCustomSubject(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary outline-none font-semibold text-xs text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  Message explicatif aux parents
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  value={notifierCustomMessage}
+                  onChange={(e) => setNotifierCustomMessage(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary outline-none text-xs text-slate-800 leading-relaxed font-normal"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <input
+                  type="checkbox"
+                  id="bloquerSessionCheckbox"
+                  checked={notifierBloquerSession}
+                  onChange={(e) => setNotifierBloquerSession(e.target.checked)}
+                  className="w-4 h-4 text-primary rounded cursor-pointer"
+                />
+                <label htmlFor="bloquerSessionCheckbox" className="text-[11px] text-slate-700 cursor-pointer font-bold">
+                  Verrouiller cette séance (aucun parent ne pourra réserver sur cette date annulée)
+                </label>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-emerald-900 text-[11px] space-y-1">
+                <p className="font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                  Inclus automatiquement dans chaque e-mail :
+                </p>
+                <ul className="list-disc pl-4 space-y-0.5 text-emerald-800">
+                  <li>Bouton direct personnalisé vers l&apos;espace de reprogrammation</li>
+                  <li>Nom, prénom de l&apos;enfant et horaire d&apos;origine</li>
+                  <li>Coordonnées de contact du club en cas de question</li>
+                </ul>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNotifierAnnulationModal(false)}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={notifierLoading}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
+                >
+                  {notifierLoading ? (
+                    <span>Envoi en cours...</span>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Envoyer les e-mails ({sessionToNotify.stats.totalInscrits})</span>
                     </>
                   )}
                 </button>

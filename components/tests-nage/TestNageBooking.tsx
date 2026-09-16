@@ -52,6 +52,7 @@ interface SessionItem {
   capaciteParCreneau: number
   consignes: string | null
   bloquee?: boolean
+  actif?: boolean
   creneaux: CreneauItem[]
 }
 
@@ -90,6 +91,8 @@ interface ManageReservationData {
     dureeMinutes: number
     consignes: string | null
     bloquee?: boolean
+    heureDebut?: string
+    heureFin?: string
     creneaux: CreneauItem[]
   }
 }
@@ -110,6 +113,7 @@ export default function TestNageBooking() {
   const [isCancelling, setIsCancelling] = useState(false)
   const [cancelMotif, setCancelMotif] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
+  const [changeTargetSessionId, setChangeTargetSessionId] = useState<string>('')
 
   // Navigation steps: 1 = Choix créneau, 2 = Formulaire, 3 = Confirmation
   const [step, setStep] = useState<1 | 2 | 3>(1)
@@ -579,23 +583,45 @@ export default function TestNageBooking() {
             </div>
           </div>
 
+          {/* Alerte si la session courante est bloquée ou annulée */}
+          {manageData.session.bloquee && !isCancelled && (
+            <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3 mt-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-950 space-y-1">
+                <p className="font-bold text-amber-900">Information importante : Séance reportée ou fermée</p>
+                <p>
+                  Cette séance ne peut pas avoir lieu (fermeture ou incident technique). Veuillez cliquer sur le bouton <strong>« Reprogrammer sur une autre séance »</strong> ci-dessous pour choisir une nouvelle date de test.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Boutons d'actions si réservation active */}
           {!isCancelled && !isChangingSlot && !isCancelling && (
             <div className="space-y-4 pt-2">
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   type="button"
-                  disabled={manageData.session.bloquee}
-                  onClick={() => !manageData.session.bloquee && setIsChangingSlot(true)}
+                  onClick={() => {
+                    const availableSessions = sessions.filter((s) => s.actif && !s.bloquee)
+                    const firstTarget = availableSessions.some((s) => s.id === manageData.session.id)
+                      ? manageData.session.id
+                      : availableSessions[0]?.id || manageData.session.id
+                    setChangeTargetSessionId(firstTarget)
+                    setIsChangingSlot(true)
+                  }}
                   className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs ${
                     manageData.session.bloquee
-                      ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white cursor-pointer ring-2 ring-amber-400 ring-offset-2'
                       : 'bg-slate-900 hover:bg-slate-800 text-white cursor-pointer'
                   }`}
-                  title={manageData.session.bloquee ? "Les modifications d'horaires sont verrouillées pour cette séance" : undefined}
                 >
-                  <RefreshCw className={`w-4 h-4 ${manageData.session.bloquee ? 'text-slate-400' : 'text-emerald-400'}`} />
-                  {manageData.session.bloquee ? 'Changement d’horaire fermé' : 'Modifier mon horaire'}
+                  <RefreshCw className="w-4 h-4 text-white" />
+                  <span>
+                    {manageData.session.bloquee
+                      ? 'Reprogrammer sur une autre séance'
+                      : 'Modifier mon horaire'}
+                  </span>
                 </button>
 
                 <button
@@ -631,73 +657,140 @@ export default function TestNageBooking() {
             </div>
           )}
 
-          {/* SÉLECTEUR DE NOUVEAU CRÉNEAU POUR MODIFICATION */}
-          {isChangingSlot && (
-            <div className="space-y-4 pt-2 border-t border-slate-100 animate-fade-in">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Edit3 className="w-4 h-4 text-primary" />
-                  <span>Choisissez un nouvel horaire :</span>
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsChangingSlot(false)}
-                  className="text-xs text-slate-500 hover:text-slate-800 font-bold cursor-pointer"
-                >
-                  Fermer
-                </button>
-              </div>
+          {/* SÉLECTEUR DE NOUVEAU CRÉNEAU POUR MODIFICATION MULTI-SESSIONS */}
+          {isChangingSlot && (() => {
+            const availableSessions = sessions.filter((s) => s.actif && !s.bloquee)
+            const activeSessionId =
+              changeTargetSessionId ||
+              (availableSessions.some((s) => s.id === manageData.session.id)
+                ? manageData.session.id
+                : availableSessions[0]?.id || manageData.session.id)
+            const targetSession = sessions.find((s) => s.id === activeSessionId) || manageData.session
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-                {manageData.session.creneaux.map((cr) => {
-                  const isSelected = cr.id === manageData.creneau.id
-                  return (
-                    <button
-                      key={cr.id}
-                      disabled={cr.estComplet && !isSelected || actionLoading}
-                      onClick={() => !isSelected && handleChangeSlot(cr.id)}
-                      className={`p-3 rounded-2xl border-2 transition-all text-center flex flex-col items-center justify-center space-y-1 relative overflow-hidden select-none ${
-                        isSelected
-                          ? 'bg-primary text-white border-primary cursor-default shadow-xs'
-                          : cr.estComplet
-                          ? 'bg-slate-100/90 border-slate-200 text-slate-400 cursor-not-allowed'
-                          : 'bg-white border-slate-200 hover:border-primary hover:shadow-xs cursor-pointer group'
-                      }`}
-                    >
-                      <span className={`text-sm font-black font-mono ${
-                        isSelected ? 'text-white' : cr.estComplet ? 'text-slate-400/80' : 'text-slate-900 group-hover:text-primary'
-                      }`}>
-                        {cr.heureDebut}
-                      </span>
-                      {cr.estComplet && !isSelected ? (
-                        <>
-                          <span className="text-[9px] font-semibold text-slate-400">
-                            0 place
-                          </span>
-                          {/* Tampon COMPLET officiel */}
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span className="transform -rotate-12 px-2.5 py-0.5 border-2 border-red-600 bg-red-50/95 text-red-600 font-black text-[11px] tracking-widest uppercase rounded shadow-xs">
-                              COMPLET
+            return (
+              <div className="space-y-4 pt-3 border-t border-slate-100 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Edit3 className="w-4 h-4 text-primary" />
+                    <span>Choisir une nouvelle date ou un nouvel horaire :</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsChangingSlot(false)}
+                    className="text-xs text-slate-500 hover:text-slate-800 font-bold cursor-pointer"
+                  >
+                    Fermer
+                  </button>
+                </div>
+
+                {/* Sélecteur de date / séance si plusieurs séances ouvertes */}
+                {availableSessions.length > 1 && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600 block">
+                      Sélectionnez la séance souhaitée :
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {availableSessions.map((s) => {
+                        const isCurrentSess = s.id === activeSessionId
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => setChangeTargetSessionId(s.id)}
+                            className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                              isCurrentSess
+                                ? 'bg-primary text-white border-primary shadow-xs'
+                                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span>
+                              {s.titre} · {formatWeekdayLongDateFr(s.date)} ({s.heureDebut}-{s.heureFin})
                             </span>
-                          </div>
-                        </>
-                      ) : (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                          isSelected
-                            ? 'bg-white/20 text-white border-white/30'
-                            : cr.placesRestantes === 1
-                            ? 'bg-amber-50 text-amber-800 border-amber-200'
-                            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                        }`}>
-                          {isSelected ? 'Actuel' : `${cr.placesRestantes} place(s)`}
-                        </span>
-                      )}
-                    </button>
-                  )
-                })}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Si aucune séance disponible */}
+                {availableSessions.length === 0 ? (
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-xs text-amber-900 space-y-2">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Aucune autre séance n'est actuellement ouverte à la réservation</span>
+                    </p>
+                    <p>
+                      Le club est en train de planifier de nouvelles dates de test suite à la fermeture de la piscine. Nous vous invitons à réessayer un peu plus tard ou à contacter le secrétariat par email à <a href="mailto:tritoncavaillon@gmail.com" className="underline font-bold">tritoncavaillon@gmail.com</a>.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Séance sélectionnée : <strong>{targetSession.titre}</strong> — {formatLongDateFr(targetSession.date)} ({targetSession.heureDebut || manageData.creneau.heureDebut} à {targetSession.heureFin || manageData.creneau.heureFin})
+                    </p>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                      {targetSession.creneaux.map((cr) => {
+                        const isSelected = cr.id === manageData.creneau.id
+                        return (
+                          <button
+                            key={cr.id}
+                            disabled={(cr.estComplet && !isSelected) || actionLoading}
+                            onClick={() => !isSelected && handleChangeSlot(cr.id)}
+                            className={`p-3 rounded-2xl border-2 transition-all text-center flex flex-col items-center justify-center space-y-1 relative overflow-hidden select-none ${
+                              isSelected
+                                ? 'bg-primary text-white border-primary cursor-default shadow-xs'
+                                : cr.estComplet
+                                ? 'bg-slate-100/90 border-slate-200 text-slate-400 cursor-not-allowed'
+                                : 'bg-white border-slate-200 hover:border-primary hover:shadow-xs cursor-pointer group'
+                            }`}
+                          >
+                            <span
+                              className={`text-sm font-black font-mono ${
+                                isSelected
+                                  ? 'text-white'
+                                  : cr.estComplet
+                                  ? 'text-slate-400/80'
+                                  : 'text-slate-900 group-hover:text-primary'
+                              }`}
+                            >
+                              {cr.heureDebut}
+                            </span>
+                            {cr.estComplet && !isSelected ? (
+                              <>
+                                <span className="text-[9px] font-semibold text-slate-400">
+                                  0 place
+                                </span>
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <span className="transform -rotate-12 px-2.5 py-0.5 border-2 border-red-600 bg-red-50/95 text-red-600 font-black text-[11px] tracking-widest uppercase rounded shadow-xs">
+                                    COMPLET
+                                  </span>
+                                </div>
+                              </>
+                            ) : (
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  isSelected
+                                    ? 'bg-white/20 text-white border-white/30'
+                                    : cr.placesRestantes === 1
+                                    ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                    : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                }`}
+                              >
+                                {isSelected ? 'Actuel' : `${cr.placesRestantes} place(s)`}
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* CONFIRMATION D'ANNULATION */}
           {isCancelling && (
