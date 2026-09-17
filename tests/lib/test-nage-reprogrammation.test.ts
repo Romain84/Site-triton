@@ -71,4 +71,28 @@ describe('Tests de Nage - Reprogrammation & Notification Suite Incident Piscine'
     expect(subject).toContain('Incident technique piscine')
     expect(subject).toContain('Report de votre test de nage')
   })
+
+  it('permet de filtrer et exclure des enfants ciblés pour l’envoi de notification', () => {
+    const inscriptions = [
+      { id: 'ins-1', nomEnfant: 'DUPONT', prenomEnfant: 'Lucas', emailParent: 'parent1@test.fr' },
+      { id: 'ins-2', nomEnfant: 'BARROSO', prenomEnfant: 'Maria', emailParent: 'parent2@test.fr' },
+      { id: 'ins-3', nomEnfant: 'MARTIN', prenomEnfant: 'Léa', emailParent: 'parent3@test.fr' },
+    ]
+
+    // 1. Cas : exclusion d'un enfant au clic (ex: BARROSO Maria)
+    const excludedIds = ['ins-2']
+    const filteredByExclusion = inscriptions.filter((ins) => !excludedIds.includes(ins.id))
+
+    expect(filteredByExclusion.length).toBe(2)
+    expect(filteredByExclusion.map((i) => i.id)).toEqual(['ins-1', 'ins-3'])
+    expect(filteredByExclusion.some((i) => i.id === 'ins-2')).toBe(false)
+
+    // 2. Cas : ciblage explicite (targetInscriptionIds)
+    const targetIds = ['ins-2']
+    const allowedSet = new Set(targetIds)
+    const filteredByTarget = inscriptions.filter((ins) => allowedSet.has(ins.id))
+
+    expect(filteredByTarget.length).toBe(1)
+    expect(filteredByTarget[0].nomEnfant).toBe('BARROSO')
+  })
 })

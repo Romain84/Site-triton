@@ -12,6 +12,8 @@ const notifierAnnulationSchema = z.object({
   customSubject: z.string().optional(),
   customMessage: z.string().optional(),
   bloquerSession: z.boolean().default(true),
+  targetInscriptionIds: z.array(z.string()).optional(),
+  excludedInscriptionIds: z.array(z.string()).optional(),
 })
 
 interface RouteParams {
@@ -48,16 +50,33 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Récupérer toutes les inscriptions valides
-    const inscriptions = session.creneaux.flatMap((c) =>
+    const allInscriptions = session.creneaux.flatMap((c) =>
       c.inscriptions.map((ins) => ({
         ...ins,
         creneauHoraire: `${c.heureDebut} à ${c.heureFin}`,
       }))
     )
 
-    if (inscriptions.length === 0) {
+    if (allInscriptions.length === 0) {
       return NextResponse.json(
         { error: 'Aucun nageur inscrit sur cette séance.' },
+        { status: 400 }
+      )
+    }
+
+    // Filtrage sélectif selon la demande de l'administrateur
+    let inscriptions = allInscriptions
+    if (validated.targetInscriptionIds && Array.isArray(validated.targetInscriptionIds)) {
+      const allowedSet = new Set(validated.targetInscriptionIds)
+      inscriptions = inscriptions.filter((ins) => allowedSet.has(ins.id))
+    } else if (validated.excludedInscriptionIds && Array.isArray(validated.excludedInscriptionIds)) {
+      const excludedSet = new Set(validated.excludedInscriptionIds)
+      inscriptions = inscriptions.filter((ins) => !excludedSet.has(ins.id))
+    }
+
+    if (inscriptions.length === 0) {
+      return NextResponse.json(
+        { error: 'Aucun destinataire sélectionné pour l’envoi.' },
         { status: 400 }
       )
     }

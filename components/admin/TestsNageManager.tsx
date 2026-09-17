@@ -101,6 +101,16 @@ interface SessionItem {
   }
 }
 
+interface NotifierRecipientItem {
+  id: string
+  nomEnfant: string
+  prenomEnfant: string
+  nomParent: string | null
+  emailParent: string
+  telephoneParent: string
+  creneauHoraire: string
+}
+
 interface CandidatItem {
   id: string
   sessionId: string | null
@@ -255,6 +265,9 @@ export default function TestsNageManager() {
   const [notifierCustomSubject, setNotifierCustomSubject] = useState('')
   const [notifierCustomMessage, setNotifierCustomMessage] = useState('')
   const [notifierBloquerSession, setNotifierBloquerSession] = useState(true)
+  const [notifierRecipients, setNotifierRecipients] = useState<NotifierRecipientItem[]>([])
+  const [notifierExcludedIds, setNotifierExcludedIds] = useState<string[]>([])
+  const [notifierSearchFilter, setNotifierSearchFilter] = useState('')
 
   const [afficherBoutonTest, setAfficherBoutonTest] = useState<boolean>(true)
   const [codeAccesTestsNage, setCodeAccesTestsNage] = useState<string>('')
@@ -849,13 +862,63 @@ export default function TestsNageManager() {
       `En raison d'un problème technique imprévu survenu à la piscine couverte Alphonse Roudière ayant contraint la fermeture du bassin, la séance de tests de ce mercredi 16 septembre a dû être annulée.\n\nNous vous prions d'accepter toutes nos excuses pour ce désagrément indépendant de notre volonté.\n\nDe nouveaux créneaux ont été ouverts pour votre enfant. Merci de cliquer sur le bouton ci-dessous pour choisir votre nouvelle date et votre horaire en 1 clic (toutes vos données sont conservées).`
     )
     setNotifierBloquerSession(true)
+
+    // Extraire tous les inscrits actifs de la séance
+    const list: NotifierRecipientItem[] = session.creneaux.flatMap((c) =>
+      c.inscriptions
+        .filter((ins) => ins.statut !== 'annule')
+        .map((ins) => ({
+          id: ins.id,
+          nomEnfant: ins.nomEnfant,
+          prenomEnfant: ins.prenomEnfant,
+          nomParent: ins.nomParent,
+          emailParent: ins.emailParent,
+          telephoneParent: ins.telephoneParent,
+          creneauHoraire: `${c.heureDebut} à ${c.heureFin}`,
+        }))
+    )
+    list.sort((a, b) => a.nomEnfant.localeCompare(b.nomEnfant))
+    setNotifierRecipients(list)
+    setNotifierExcludedIds([])
+    setNotifierSearchFilter('')
+
     setShowNotifierAnnulationModal(true)
+  }
+
+  // Retirer un enfant du listing de notification
+  const handleRemoveNotifierRecipient = (id: string) => {
+    setNotifierExcludedIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
+  }
+
+  // Réintégrer un enfant dans le listing de notification
+  const handleRestoreNotifierRecipient = (id: string) => {
+    setNotifierExcludedIds((prev) => prev.filter((item) => item !== id))
+  }
+
+  // Réintégrer tous les enfants
+  const handleRestoreAllNotifierRecipients = () => {
+    setNotifierExcludedIds([])
+  }
+
+  // Exclure tous les enfants
+  const handleExcludeAllNotifierRecipients = () => {
+    setNotifierExcludedIds(notifierRecipients.map((r) => r.id))
   }
 
   // Envoi effectif des e-mails d'annulation et de reprogrammation
   const handleSendNotificationAnnulation = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!sessionToNotify) return
+
+    const targetInscriptionIds = notifierRecipients
+      .filter((r) => !notifierExcludedIds.includes(r.id))
+      .map((r) => r.id)
+
+    if (targetInscriptionIds.length === 0) {
+      toast.error('Veuillez sélectionner au moins un enfant destinataire.')
+      return
+    }
+
     setNotifierLoading(true)
     try {
       const res = await fetch(`/api/admin/tests-nage/sessions/${sessionToNotify.id}/notifier-annulation`, {
@@ -865,6 +928,7 @@ export default function TestsNageManager() {
           customSubject: notifierCustomSubject.trim() || undefined,
           customMessage: notifierCustomMessage.trim() || undefined,
           bloquerSession: notifierBloquerSession,
+          targetInscriptionIds,
         }),
       })
       const data = await res.json()
@@ -2733,121 +2797,255 @@ export default function TestsNageManager() {
       )}
 
       {/* ─── MODALE D'ENVOI DE NOTIFICATION REPORT / INCIDENT TECHNIQUE ─── */}
-      {showNotifierAnnulationModal && sessionToNotify && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full border border-slate-200 shadow-xl space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-red-100 text-red-700 flex items-center justify-center font-bold">
-                  <AlertCircle className="w-5 h-5" />
+      {showNotifierAnnulationModal && sessionToNotify && (() => {
+        const activeRecipients = notifierRecipients.filter(
+          (r) => !notifierExcludedIds.includes(r.id)
+        )
+        const q = notifierSearchFilter.trim().toLowerCase()
+        const filteredActiveRecipients = activeRecipients.filter((r) => {
+          if (!q) return true
+          return (
+            r.nomEnfant.toLowerCase().includes(q) ||
+            r.prenomEnfant.toLowerCase().includes(q) ||
+            (r.nomParent && r.nomParent.toLowerCase().includes(q)) ||
+            r.emailParent.toLowerCase().includes(q)
+          )
+        })
+        const excludedRecipients = notifierRecipients.filter((r) =>
+          notifierExcludedIds.includes(r.id)
+        )
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+            <div className="bg-white rounded-3xl p-6 md:p-8 max-w-2xl w-full border border-slate-200 shadow-xl space-y-5 max-h-[92vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-red-100 text-red-700 flex items-center justify-center font-bold">
+                    <AlertCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 leading-tight">
+                      Notifier report / Incident technique
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                      {sessionToNotify.titre} — {formatLongDateFr(sessionToNotify.date)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900 leading-tight">
-                    Notifier report / Incident technique
-                  </h3>
-                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                    {sessionToNotify.titre} — {formatLongDateFr(sessionToNotify.date)}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowNotifierAnnulationModal(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer p-1"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSendNotificationAnnulation} className="space-y-4 text-xs">
-              <div className="bg-red-50 border border-red-200/80 rounded-2xl p-4 space-y-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-red-800">Destinataires concernés :</span>
-                <p className="text-sm font-black text-red-950">
-                  {sessionToNotify.stats.totalInscrits} familles inscrites à cette séance
-                </p>
-                <p className="text-[11px] text-red-900/90 leading-relaxed">
-                  Chaque famille recevra un e-mail officiel individuel contenant son <strong>lien direct personnalisé</strong> pour choisir un nouveau créneau sans avoir à ressaisir ses coordonnées.
-                </p>
-              </div>
-
-              <div>
-                <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Objet de l&apos;e-mail
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={notifierCustomSubject}
-                  onChange={(e) => setNotifierCustomSubject(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary outline-none font-semibold text-xs text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Message explicatif aux parents
-                </label>
-                <textarea
-                  rows={4}
-                  required
-                  value={notifierCustomMessage}
-                  onChange={(e) => setNotifierCustomMessage(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary outline-none text-xs text-slate-800 leading-relaxed font-normal"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <input
-                  type="checkbox"
-                  id="bloquerSessionCheckbox"
-                  checked={notifierBloquerSession}
-                  onChange={(e) => setNotifierBloquerSession(e.target.checked)}
-                  className="w-4 h-4 text-primary rounded cursor-pointer"
-                />
-                <label htmlFor="bloquerSessionCheckbox" className="text-[11px] text-slate-700 cursor-pointer font-bold">
-                  Verrouiller cette séance (aucun parent ne pourra réserver sur cette date annulée)
-                </label>
-              </div>
-
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-emerald-900 text-[11px] space-y-1">
-                <p className="font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
-                  Inclus automatiquement dans chaque e-mail :
-                </p>
-                <ul className="list-disc pl-4 space-y-0.5 text-emerald-800">
-                  <li>Bouton direct personnalisé vers l&apos;espace de reprogrammation</li>
-                  <li>Nom, prénom de l&apos;enfant et horaire d&apos;origine</li>
-                  <li>Coordonnées de contact du club en cas de question</li>
-                </ul>
-              </div>
-
-              <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowNotifierAnnulationModal(false)}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors cursor-pointer"
+                  className="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer p-1"
                 >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={notifierLoading}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
-                >
-                  {notifierLoading ? (
-                    <span>Envoi en cours...</span>
-                  ) : (
-                    <>
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Envoyer les e-mails ({sessionToNotify.stats.totalInscrits})</span>
-                    </>
-                  )}
+                  ✕
                 </button>
               </div>
-            </form>
+
+              <form onSubmit={handleSendNotificationAnnulation} className="space-y-4 text-xs">
+                {/* SECTION GESTION SÉLECTIVE DES DESTINATAIRES */}
+                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-700">
+                          Destinataires ciblés :
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-black text-[11px]">
+                          {activeRecipients.length} / {notifierRecipients.length}
+                        </span>
+                        {excludedRecipients.length > 0 && (
+                          <span className="text-[11px] font-bold text-amber-700">
+                            ({excludedRecipients.length} exclu{excludedRecipients.length > 1 ? 's' : ''})
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Cliquez sur un enfant pour le <strong>retirer</strong> du listing d&apos;envoi.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                      {excludedRecipients.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleRestoreAllNotifierRecipients}
+                          className="px-2.5 py-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg cursor-pointer transition-colors"
+                        >
+                          Tout réintégrer ({excludedRecipients.length})
+                        </button>
+                      )}
+                      {activeRecipients.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleExcludeAllNotifierRecipients}
+                          className="px-2.5 py-1 text-[10px] font-bold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition-colors"
+                        >
+                          Tout retirer
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Recherche rapide si plus de 6 inscrits */}
+                  {notifierRecipients.length > 6 && (
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                      <input
+                        type="text"
+                        value={notifierSearchFilter}
+                        onChange={(e) => setNotifierSearchFilter(e.target.value)}
+                        placeholder="Rechercher un enfant dans la liste..."
+                        className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-primary"
+                      />
+                    </div>
+                  )}
+
+                  {/* Badges cliquables des enfants retenus */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Enfants qui recevront l&apos;e-mail ({filteredActiveRecipients.length}) :
+                    </span>
+
+                    {filteredActiveRecipients.length === 0 ? (
+                      <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-center text-xs font-bold">
+                        {notifierRecipients.length === 0
+                          ? 'Aucun enfant inscrit sur cette séance.'
+                          : activeRecipients.length === 0
+                          ? 'Tous les enfants ont été retirés. Aucun e-mail ne sera envoyé.'
+                          : 'Aucun enfant ne correspond à votre recherche.'}
+                      </div>
+                    ) : (
+                      <div className="max-h-44 overflow-y-auto p-2 bg-white border border-slate-200 rounded-xl flex flex-wrap gap-1.5">
+                        {filteredActiveRecipients.map((r) => (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => handleRemoveNotifierRecipient(r.id)}
+                            title="Cliquer pour retirer cet enfant de l'envoi"
+                            className="group inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-red-50 text-slate-800 hover:text-red-700 border border-slate-200 hover:border-red-300 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                          >
+                            <span>
+                              {r.nomEnfant} {r.prenomEnfant}
+                            </span>
+                            <span className="text-[10px] text-slate-400 group-hover:text-red-500 font-mono font-normal">
+                              ({r.creneauHoraire})
+                            </span>
+                            <span className="text-slate-400 group-hover:text-red-600 font-bold ml-0.5 text-xs">
+                              ✕
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Enfants retirés (possibilité de réintégrer en 1 clic) */}
+                  {excludedRecipients.length > 0 && (
+                    <div className="space-y-1 pt-2 border-t border-slate-200/60">
+                      <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider block">
+                        Enfants exclus de cet envoi ({excludedRecipients.length}) — Cliquer pour réintégrer :
+                      </span>
+                      <div className="max-h-24 overflow-y-auto p-2 bg-red-50/40 border border-red-200/60 rounded-xl flex flex-wrap gap-1.5">
+                        {excludedRecipients.map((r) => (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => handleRestoreNotifierRecipient(r.id)}
+                            title="Cliquer pour réintégrer cet enfant"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white hover:bg-emerald-50 text-slate-400 line-through hover:no-underline hover:text-emerald-700 border border-dashed border-red-200 hover:border-emerald-300 rounded-lg text-[11px] font-medium transition-all cursor-pointer"
+                          >
+                            <span>
+                              {r.nomEnfant} {r.prenomEnfant}
+                            </span>
+                            <span className="text-emerald-600 font-bold no-underline text-xs">+</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Objet de l&apos;e-mail
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={notifierCustomSubject}
+                    onChange={(e) => setNotifierCustomSubject(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary outline-none font-semibold text-xs text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Message explicatif aux parents
+                  </label>
+                  <textarea
+                    rows={4}
+                    required
+                    value={notifierCustomMessage}
+                    onChange={(e) => setNotifierCustomMessage(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary outline-none text-xs text-slate-800 leading-relaxed font-normal"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <input
+                    type="checkbox"
+                    id="bloquerSessionCheckbox"
+                    checked={notifierBloquerSession}
+                    onChange={(e) => setNotifierBloquerSession(e.target.checked)}
+                    className="w-4 h-4 text-primary rounded cursor-pointer"
+                  />
+                  <label htmlFor="bloquerSessionCheckbox" className="text-[11px] text-slate-700 cursor-pointer font-bold">
+                    Verrouiller cette séance (aucun parent ne pourra réserver sur cette date annulée)
+                  </label>
+                </div>
+
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-emerald-900 text-[11px] space-y-1">
+                  <p className="font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                    Inclus automatiquement dans chaque e-mail :
+                  </p>
+                  <ul className="list-disc pl-4 space-y-0.5 text-emerald-800">
+                    <li>Bouton direct personnalisé vers l&apos;espace de reprogrammation</li>
+                    <li>Nom, prénom de l&apos;enfant et horaire d&apos;origine</li>
+                    <li>Coordonnées de contact du club en cas de question</li>
+                  </ul>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNotifierAnnulationModal(false)}
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors cursor-pointer"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={notifierLoading || activeRecipients.length === 0}
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    {notifierLoading ? (
+                      <span>Envoi en cours...</span>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>
+                          Envoyer les e-mails ({activeRecipients.length} destinataire{activeRecipients.length > 1 ? 's' : ''})
+                        </span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ─── MODALE : ASSOCIER UNE INSCRIPTION HORS LISTING AU LISTING INITIAL ─── */}
       {showAssocierModal && associerInscription && (
