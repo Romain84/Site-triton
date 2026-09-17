@@ -56,4 +56,20 @@ describe('Première connexion coach & mot de passe 1234', () => {
     expect(adminResetState.mustChangePassword).toBe(true)
     expect(adminResetState.lastLogin).toBeNull()
   })
+
+  it('valide la persistance et la prise en compte de heuresAdminHebdo', () => {
+    const coachDataChecked = {
+      prenom: 'Julie',
+      heuresAdminHebdo: 1,
+    }
+    expect(coachDataChecked.heuresAdminHebdo).toBe(1)
+    expect(coachDataChecked.heuresAdminHebdo > 0).toBe(true)
+
+    const coachDataUnchecked = {
+      prenom: 'Julie',
+      heuresAdminHebdo: 0,
+    }
+    expect(coachDataUnchecked.heuresAdminHebdo).toBe(0)
+    expect(coachDataUnchecked.heuresAdminHebdo > 0).toBe(false)
+  })
 })

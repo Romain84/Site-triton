@@ -3,6 +3,7 @@ import { getAdminSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { clearChatbotKnowledgeCache } from '@/lib/chatbot-knowledge'
+import { syncTournantBilling } from '@/lib/services/tournant-service'
 
 const planningLogger = logger.withContext('PlanningTournant')
 
@@ -20,6 +21,11 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
     const { titre, date, heureDebut, heureFin, description, lieu, actif, coachId, groupeId, groupeIds } = body
+
+    const existingEvent = await prisma.evenementTournant.findUnique({
+      where: { id },
+      select: { coachId: true, date: true },
+    })
 
     const targetGroupIds = Array.isArray(groupeIds) 
       ? groupeIds 
@@ -54,6 +60,11 @@ export async function PUT(
       },
     })
 
+    const coachesToSync = [existingEvent?.coachId, coachId].filter(Boolean)
+    if (coachesToSync.length > 0) {
+      await syncTournantBilling(coachesToSync, date || existingEvent?.date)
+    }
+
     clearChatbotKnowledgeCache()
 
     return NextResponse.json({ evenement })
@@ -76,9 +87,18 @@ export async function DELETE(
 
     const { id } = await params
 
+    const existingEvent = await prisma.evenementTournant.findUnique({
+      where: { id },
+      select: { coachId: true, date: true },
+    })
+
     await prisma.evenementTournant.delete({
       where: { id },
     })
+
+    if (existingEvent?.coachId) {
+      await syncTournantBilling([existingEvent.coachId], existingEvent.date)
+    }
 
     clearChatbotKnowledgeCache()
 

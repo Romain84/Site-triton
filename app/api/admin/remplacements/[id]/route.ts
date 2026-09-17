@@ -9,7 +9,7 @@ const planningLogger = logger.withContext('Remplacements')
 
 const updateRemplacementSchema = z.object({
   coachRemplaceId: z.string().min(1).optional(),
-  coachRemplacantId: z.string().min(1).optional(),
+  coachRemplacantId: z.string().nullable().optional(),
   date: z.string().min(1).optional(),
   heureDebut: z.string().min(1).optional(),
   heureFin: z.string().min(1).optional(),
@@ -17,6 +17,7 @@ const updateRemplacementSchema = z.object({
   motif: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   actif: z.boolean().optional(),
+  statut: z.string().optional(),
 })
 
 // GET: Obtenir un remplacement
@@ -96,9 +97,12 @@ export async function PUT(
 
     // Vérifier que les deux coachs sont différents si on les modifie
     const newCoachRemplaceId = data.coachRemplaceId || existing.coachRemplaceId
-    const newCoachRemplacantId = data.coachRemplacantId || existing.coachRemplacantId
+    const hasNewRemplacantId = data.coachRemplacantId !== undefined
+    const newCoachRemplacantId = hasNewRemplacantId
+      ? (data.coachRemplacantId && data.coachRemplacantId.trim() !== '' ? data.coachRemplacantId : null)
+      : existing.coachRemplacantId
 
-    if (newCoachRemplaceId === newCoachRemplacantId) {
+    if (newCoachRemplacantId && newCoachRemplaceId === newCoachRemplacantId) {
       return NextResponse.json(
         { error: 'Le coach remplaçant doit être différent du coach remplacé' },
         { status: 400 }
@@ -107,7 +111,7 @@ export async function PUT(
 
     const updateData: {
       coachRemplaceId?: string
-      coachRemplacantId?: string
+      coachRemplacantId?: string | null
       date?: Date
       heureDebut?: string
       heureFin?: string
@@ -115,10 +119,16 @@ export async function PUT(
       motif?: string | null
       description?: string | null
       actif?: boolean
+      statut?: string
     } = {}
 
     if (data.coachRemplaceId) updateData.coachRemplaceId = data.coachRemplaceId
-    if (data.coachRemplacantId) updateData.coachRemplacantId = data.coachRemplacantId
+    if (hasNewRemplacantId) {
+      updateData.coachRemplacantId = newCoachRemplacantId
+      updateData.statut = data.statut || (newCoachRemplacantId ? 'accepte' : 'sans_remplacant')
+    } else if (data.statut) {
+      updateData.statut = data.statut
+    }
     if (data.date) updateData.date = new Date(data.date)
     if (data.heureDebut) updateData.heureDebut = data.heureDebut
     if (data.heureFin) updateData.heureFin = data.heureFin
@@ -173,6 +183,11 @@ export async function DELETE(
       )
     }
 
+    const dateObj = new Date(existing.date)
+    const mois = dateObj.getMonth() + 1
+    const annee = dateObj.getFullYear()
+    const coachesToRecalc = [existing.coachRemplaceId, existing.coachRemplacantId].filter(Boolean) as string[]
+
     await prisma.ligneFactureCoach.deleteMany({
       where: { remplacementId: id },
     })
@@ -180,6 +195,24 @@ export async function DELETE(
     await prisma.remplacement.delete({
       where: { id },
     })
+
+    for (const cId of coachesToRecalc) {
+      try {
+        const f = await prisma.factureCoach.findUnique({
+          where: { coachId_mois_annee: { coachId: cId, mois, annee } }
+        })
+        if (f && ['brouillon', 'generee'].includes(f.statut)) {
+          const { calculerFactureCoach } = await import('@/lib/facture-calculations')
+          const details = await calculerFactureCoach(cId, mois, annee)
+          await prisma.factureCoach.update({
+            where: { id: f.id },
+            data: { montantTotal: details.totalMontant }
+          })
+        }
+      } catch (err) {
+        planningLogger.warn(`Erreur recalcul facture après suppression remplacement pour coach ${cId}`, err)
+      }
+    }
 
     return NextResponse.json({ message: 'Remplacement supprimé avec succès' })
   } catch (error) {

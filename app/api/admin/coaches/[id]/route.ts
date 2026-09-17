@@ -127,6 +127,7 @@ export async function PUT(
     if (data.siret !== undefined) updateData.siret = data.siret
     if (data.adresse !== undefined) updateData.adresse = data.adresse
     if (data.actif !== undefined) updateData.actif = data.actif
+    if (data.heuresAdminHebdo !== undefined) updateData.heuresAdminHebdo = data.heuresAdminHebdo
 
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 10)
@@ -147,11 +148,33 @@ export async function PUT(
         siret: true,
         adresse: true,
         actif: true,
+        heuresAdminHebdo: true,
         lastLogin: true,
         createdAt: true,
         updatedAt: true,
       },
     })
+
+    if (data.heuresAdminHebdo !== undefined) {
+      try {
+        const now = new Date()
+        const mois = now.getMonth() + 1
+        const annee = now.getFullYear()
+        const f = await prisma.factureCoach.findUnique({
+          where: { coachId_mois_annee: { coachId: id, mois, annee } }
+        })
+        if (f && ['brouillon', 'generee'].includes(f.statut)) {
+          const { calculerFactureCoach } = await import('@/lib/facture-calculations')
+          const details = await calculerFactureCoach(id, mois, annee)
+          await prisma.factureCoach.update({
+            where: { id: f.id },
+            data: { montantTotal: details.totalMontant }
+          })
+        }
+      } catch (err) {
+        logger.withContext('Admin').warn('Erreur recalcul facture après màj heuresAdminHebdo', err)
+      }
+    }
 
     return apiSuccess({ coach })
   } catch (error) {

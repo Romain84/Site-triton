@@ -47,8 +47,8 @@ interface Remplacement {
   heureDebut: string
   heureFin: string
   motif: string | null
-  description: string | null
-  statut: 'en_attente' | 'accepte' | 'annule'
+  description?: string | null
+  statut: 'en_attente' | 'accepte' | 'annule' | 'sans_remplacant'
 }
 
 export default function PlanningTournantPage() {
@@ -643,10 +643,12 @@ export default function PlanningTournantPage() {
                           className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
                             abs.statut === 'accepte'
                               ? 'bg-emerald-100 text-emerald-800'
+                              : abs.statut === 'sans_remplacant'
+                              ? 'bg-red-100 text-red-800'
                               : 'bg-amber-100 text-amber-800'
                           }`}
                         >
-                          {abs.statut === 'accepte' ? 'Remplacé' : 'En attente'}
+                          {abs.statut === 'accepte' ? 'Remplacé' : abs.statut === 'sans_remplacant' ? 'Sans remplacement' : 'En attente'}
                         </span>
                       </div>
 
@@ -654,6 +656,10 @@ export default function PlanningTournantPage() {
                         <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                           <span>Remplacé par {abs.coachRemplacant.prenom} {abs.coachRemplacant.nom || ''}</span>
+                        </p>
+                      ) : abs.statut === 'sans_remplacant' ? (
+                        <p className="text-[11px] text-red-600 font-medium">
+                          Absence non remplacée (déduite de votre facturation)
                         </p>
                       ) : (
                         <p className="text-[11px] text-slate-500 italic">

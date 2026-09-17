@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, Fragment } from 'react'
+import toast from 'react-hot-toast'
 import { getErrorMessage } from '@/lib/utils'
 import { HelpTooltip } from '@/components/ui/Tooltip'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
@@ -36,6 +37,7 @@ export default function PlanningTournantManager() {
   const { confirm } = useConfirmDialog()
   const [evenements, setEvenements] = useState<EvenementTournant[]>([])
   const [groupes, setGroupes] = useState<Groupe[]>([])
+  const [coaches, setCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -49,6 +51,7 @@ export default function PlanningTournantManager() {
   const [description, setDescription] = useState('')
   const [lieu, setLieu] = useState('Piscine de Cavaillon')
   const [groupeIds, setGroupeIds] = useState<string[]>([])
+  const [coachId, setCoachId] = useState('')
   const [actif, setActif] = useState(true)
 
   useEffect(() => {
@@ -62,6 +65,7 @@ export default function PlanningTournantManager() {
         const data = await response.json()
         setEvenements(data.evenements)
         setGroupes(data.groupes || [])
+        setCoaches(data.coaches || [])
       }
     } catch (err) {
       setError('Erreur lors du chargement des événements')
@@ -78,6 +82,7 @@ export default function PlanningTournantManager() {
     setDescription('')
     setLieu('Piscine de Cavaillon')
     setGroupeIds([])
+    setCoachId('')
     setActif(true)
     setEditingEvent(null)
     setShowForm(false)
@@ -94,6 +99,7 @@ export default function PlanningTournantManager() {
     setGroupeIds(event.groupes && event.groupes.length > 0
       ? event.groupes.map(g => g.id)
       : (event.groupeId ? [event.groupeId] : []))
+    setCoachId(event.coachId || '')
     setActif(event.actif)
     setShowForm(false)
   }
@@ -118,6 +124,7 @@ export default function PlanningTournantManager() {
           description: description || null,
           lieu: lieu || null,
           groupeIds,
+          coachId: coachId || null,
           actif,
         }),
       })
@@ -127,11 +134,58 @@ export default function PlanningTournantManager() {
         throw new Error(data.error || 'Erreur lors de l\'enregistrement')
       }
 
+      toast.success(editingEvent ? 'Créneau mis à jour (facture synchronisée)' : 'Créneau créé')
       await fetchEvenements()
       resetForm()
     } catch (err) {
       setError(getErrorMessage(err))
+      toast.error(getErrorMessage(err))
     }
+  }
+
+  const handleAssignCoachQuick = async (eventId: string, newCoachId: string | null) => {
+    try {
+      const event = evenements.find(e => e.id === eventId)
+      if (!event) return
+
+      const response = await fetch(`/api/admin/planning-tournant/${eventId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...event,
+          coachId: newCoachId,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Erreur lors de l\'affectation du coach')
+      }
+
+      const assignedCoach = coaches.find(c => c.id === newCoachId)
+      if (assignedCoach) {
+        toast.success(`Créneau assigné à ${assignedCoach.prenom} ${assignedCoach.nom || ''} (facture synchronisée)`)
+      } else {
+        toast.success('Créneau libéré (facture synchronisée)')
+      }
+
+      await fetchEvenements()
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    }
+  }
+
+  const handleLibererCoach = async (id: string) => {
+    const confirmed = await confirm({
+      title: 'Libérer le créneau',
+      message: 'Voulez-vous vraiment libérer ce créneau en retirant le coach assigné ? Ses heures seront retirées de sa facture mensuelle.',
+      confirmText: 'Libérer',
+      cancelText: 'Annuler',
+      variant: 'danger',
+    })
+    if (!confirmed) return
+
+    await handleAssignCoachQuick(id, null)
   }
 
   const handleDelete = async (id: string) => {
@@ -159,38 +213,6 @@ export default function PlanningTournantManager() {
     }
   }
 
-  const handleLibererCoach = async (id: string) => {
-    const confirmed = await confirm({
-      title: 'Libérer le créneau',
-      message: 'Voulez-vous vraiment libérer ce créneau en retirant le coach assigné ?',
-      confirmText: 'Libérer',
-      cancelText: 'Annuler',
-      variant: 'danger',
-    })
-    if (!confirmed) return
-
-    try {
-      const event = evenements.find(e => e.id === id)
-      if (!event) return
-
-      const response = await fetch(`/api/admin/planning-tournant/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...event,
-          coachId: null,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la libération du créneau')
-      }
-
-      await fetchEvenements()
-    } catch (err) {
-      setError(getErrorMessage(err))
-    }
-  }
 
   if (loading) {
     return <p className="text-gray-600">Chargement...</p>
@@ -307,6 +329,34 @@ export default function PlanningTournantManager() {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
             placeholder="Piscine de Cavaillon"
           />
+        </div>
+
+        <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2">
+          <label className="block text-sm font-bold text-slate-800 flex items-center justify-between">
+            <span>👨‍🏫 Coach assigné à ce créneau</span>
+            {coachId && (
+              <span className="text-xs font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                S&apos;ajoute à sa facture mensuelle
+              </span>
+            )}
+          </label>
+          <select
+            value={coachId}
+            onChange={(e) => setCoachId(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+          >
+            <option value="">-- Aucun coach (créneau ouvert / disponible aux coaches) --</option>
+            {coaches.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.prenom} {c.nom || ''}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-slate-500">
+            {coachId
+              ? 'Ce créneau et ses heures seront directement ajoutés à la facture du coach sélectionné.'
+              : 'Le créneau sera disponible dans l\'espace coach : le premier coach à le prendre le verra ajouté à sa facture.'}
+          </p>
         </div>
 
         <div>
@@ -443,19 +493,53 @@ export default function PlanningTournantManager() {
                         </td>
                         <td className="py-3 px-4 text-center">
                           {event.coach ? (
-                            <div className="flex flex-col items-center">
-                              <span className="text-sm font-medium">
-                                {event.coach.prenom} {event.coach.nom}
+                            <div className="flex flex-col items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                👨‍🏫 {event.coach.prenom} {event.coach.nom || ''}
                               </span>
-                              <button
-                                onClick={() => handleLibererCoach(event.id)}
-                                className="text-xs text-red-600 hover:text-red-800 mt-1"
-                              >
-                                Libérer
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={event.coachId || ''}
+                                  onChange={(e) => handleAssignCoachQuick(event.id, e.target.value || null)}
+                                  className="text-[11px] border border-gray-300 rounded px-1.5 py-0.5 bg-white text-gray-700 hover:border-primary cursor-pointer"
+                                  title="Changer de coach"
+                                >
+                                  <option value="">Changer...</option>
+                                  {coaches.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.prenom} {c.nom || ''}
+                                    </option>
+                                  ))}
+                                </select>
+                                <button
+                                  onClick={() => handleLibererCoach(event.id)}
+                                  className="text-xs text-red-600 hover:text-red-800 hover:underline cursor-pointer"
+                                  title="Retirer le coach de ce créneau"
+                                >
+                                  Libérer
+                                </button>
+                              </div>
                             </div>
                           ) : (
-                            <span className="text-gray-400 text-sm">Disponible</span>
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                Disponible
+                              </span>
+                              <select
+                                value=""
+                                onChange={(e) => {
+                                  if (e.target.value) handleAssignCoachQuick(event.id, e.target.value)
+                                }}
+                                className="text-xs border border-primary/40 bg-emerald-50 text-primary font-bold rounded-lg px-2 py-1 mt-1 cursor-pointer hover:bg-emerald-100 transition-colors"
+                              >
+                                <option value="">+ Assigner un coach</option>
+                                {coaches.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.prenom} {c.nom || ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                           )}
                         </td>
                         <td className="py-3 px-4 text-center">
@@ -539,11 +623,42 @@ export default function PlanningTournantManager() {
                       </td>
                       <td className="py-3 px-4 text-center text-sm">
                         {event.coach ? (
-                          <span className="text-gray-700">
-                            {event.coach.prenom} {event.coach.nom}
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="font-semibold text-slate-800">
+                              {event.coach.prenom} {event.coach.nom || ''}
+                            </span>
+                            <select
+                              value={event.coachId || ''}
+                              onChange={(e) => handleAssignCoachQuick(event.id, e.target.value || null)}
+                              className="text-[11px] border border-gray-300 rounded px-1.5 py-0.5 bg-white text-gray-700 hover:border-primary cursor-pointer"
+                              title="Modifier l'assignation"
+                            >
+                              <option value="">Modifier...</option>
+                              {coaches.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.prenom} {c.nom || ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         ) : (
-                          <span className="text-gray-400">Non assigné</span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-gray-400 text-xs">Non assigné</span>
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                if (e.target.value) handleAssignCoachQuick(event.id, e.target.value)
+                              }}
+                              className="text-xs border border-gray-300 rounded px-2 py-0.5 bg-white text-gray-700 hover:border-primary cursor-pointer"
+                            >
+                              <option value="">+ Assigner un coach</option>
+                              {coaches.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.prenom} {c.nom || ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         )}
                       </td>
                       <td className="py-3 px-4 text-center">

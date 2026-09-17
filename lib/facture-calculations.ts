@@ -376,10 +376,14 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     const dureeHeures = calculerDuree(remp.heureDebut, remp.heureFin)
     heuresAbsences += dureeHeures
     const dateStr = new Date(remp.date).toLocaleDateString('fr-FR')
-    const coachNom = remp.coachRemplacant ? `${remp.coachRemplacant.prenom} ${remp.coachRemplacant.nom || ''}`.trim() : 'En attente'
+    const coachNom = remp.coachRemplacant ? `${remp.coachRemplacant.prenom} ${remp.coachRemplacant.nom || ''}`.trim() : null
+    const description = coachNom
+      ? `Absence (Remplacé(e) par ${coachNom}) - ${dateStr} ${remp.heureDebut}-${remp.heureFin}${remp.motif ? ` (${remp.motif})` : ''}`
+      : `Absence sans remplacement - ${dateStr} ${remp.heureDebut}-${remp.heureFin}${remp.motif ? ` (${remp.motif})` : ''}`
+
     lignesAbsences.push({
       type: 'absence',
-      description: `Absence (Remplacé(e) par ${coachNom}) - ${dateStr} ${remp.heureDebut}-${remp.heureFin}${remp.motif ? ` (${remp.motif})` : ''}`,
+      description,
       heures: -dureeHeures,
       montant: -dureeHeures * tauxHoraire,
       date: remp.date,
@@ -579,7 +583,7 @@ function obtenirDatesJour(
   return dates
 }
 
-function calculerDuree(heureDebut: string, heureFin: string): number {
+export function calculerDuree(heureDebut: string, heureFin: string): number {
   const [hD, mD] = heureDebut.split(':').map(Number)
   const [hF, mF] = heureFin.split(':').map(Number)
   return (hF * 60 + mF - (hD * 60 + mD)) / 60

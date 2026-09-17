@@ -3,6 +3,7 @@ import { getAdminSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { clearChatbotKnowledgeCache } from '@/lib/chatbot-knowledge'
+import { syncTournantBilling } from '@/lib/services/tournant-service'
 
 const planningLogger = logger.withContext('PlanningTournant')
 
@@ -39,14 +40,21 @@ export async function GET() {
       orderBy: { date: 'desc' },
     })
 
-    // Also get groups for dropdowns
-    const groupes = await prisma.groupe.findMany({
-      where: { actif: true },
-      select: { id: true, nom: true },
-      orderBy: { nom: 'asc' },
-    })
+    // Also get groups and active coaches for dropdowns
+    const [groupes, coaches] = await Promise.all([
+      prisma.groupe.findMany({
+        where: { actif: true },
+        select: { id: true, nom: true },
+        orderBy: { nom: 'asc' },
+      }),
+      prisma.coach.findMany({
+        where: { actif: true },
+        select: { id: true, prenom: true, nom: true },
+        orderBy: [{ prenom: 'asc' }, { nom: 'asc' }],
+      }),
+    ])
 
-    return NextResponse.json({ evenements, groupes })
+    return NextResponse.json({ evenements, groupes, coaches })
   } catch (error) {
     planningLogger.error('Erreur lors de la récupération des événements tournants', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
@@ -62,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { titre, date, heureDebut, heureFin, description, lieu, groupeId, groupeIds } = body
+    const { titre, date, heureDebut, heureFin, description, lieu, groupeId, groupeIds, coachId } = body
 
     if (!titre || !date || !heureDebut || !heureFin) {
       return NextResponse.json(
@@ -85,6 +93,7 @@ export async function POST(request: NextRequest) {
         description,
         lieu,
         actif: true,
+        coachId: coachId || null,
         // Set the primary groupeId for database compatibility
         groupeId: targetGroupIds[0] || null,
         // Connect many-to-many groups
@@ -104,6 +113,10 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+
+    if (coachId) {
+      await syncTournantBilling([coachId], date)
+    }
 
     clearChatbotKnowledgeCache()
 

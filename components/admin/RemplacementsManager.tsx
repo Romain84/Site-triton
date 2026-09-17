@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import toast from 'react-hot-toast'
 import { HelpTooltip } from '@/components/ui/Tooltip'
 import { formatCompactDateFr } from '@/lib/date'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
@@ -24,6 +25,7 @@ interface Remplacement {
   motif: string | null
   description: string | null
   actif: boolean
+  statut?: string
 }
 
 interface RemplacementFormData {
@@ -44,6 +46,7 @@ export default function RemplacementsManager() {
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [sansRemplacement, setSansRemplacement] = useState(false)
   const [filterMois, setFilterMois] = useState(new Date().getMonth() + 1)
   const [filterAnnee, setFilterAnnee] = useState(new Date().getFullYear())
 
@@ -102,6 +105,7 @@ export default function RemplacementsManager() {
       motif: '',
       description: '',
     })
+    setSansRemplacement(false)
     setEditingId(null)
     setShowForm(false)
   }
@@ -116,26 +120,41 @@ export default function RemplacementsManager() {
         : '/api/admin/remplacements'
       const method = editingId ? 'PUT' : 'POST'
 
+      const payload = {
+        ...formData,
+        coachRemplacantId: sansRemplacement ? null : (formData.coachRemplacantId || null),
+        statut: sansRemplacement ? 'sans_remplacant' : (formData.coachRemplacantId ? 'accepte' : 'en_attente'),
+      }
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       })
 
       if (res.ok) {
+        toast.success(
+          sansRemplacement
+            ? 'Absence sans remplacement enregistrée (déduite de la facture)'
+            : 'Remplacement enregistré avec succès'
+        )
         resetForm()
         fetchRemplacements()
       } else {
         const data = await res.json()
         setError(data.error || 'Erreur lors de la sauvegarde')
+        toast.error(data.error || 'Erreur lors de la sauvegarde')
       }
     } catch (err) {
       setError('Erreur de connexion')
+      toast.error('Erreur de connexion')
       console.error(err)
     }
   }
 
   const handleEdit = (remplacement: Remplacement) => {
+    const isSans = !remplacement.coachRemplacantId || remplacement.statut === 'sans_remplacant'
+    setSansRemplacement(isSans)
     setFormData({
       coachRemplaceId: remplacement.coachRemplaceId,
       coachRemplacantId: remplacement.coachRemplacantId || '',
@@ -151,8 +170,8 @@ export default function RemplacementsManager() {
 
   const handleDelete = async (id: string) => {
     const confirmed = await confirm({
-      title: 'Supprimer le remplacement',
-      message: 'Voulez-vous vraiment supprimer ce remplacement ?',
+      title: 'Supprimer l\'enregistrement',
+      message: 'Voulez-vous vraiment supprimer cet enregistrement d\'absence / remplacement ? Les factures concernées seront automatiquement actualisées.',
       confirmText: 'Supprimer',
       cancelText: 'Annuler',
       variant: 'danger',
@@ -165,13 +184,16 @@ export default function RemplacementsManager() {
       })
 
       if (res.ok) {
+        toast.success('Supprimé avec succès (factures actualisées)')
         fetchRemplacements()
       } else {
         const data = await res.json()
         setError(data.error || 'Erreur lors de la suppression')
+        toast.error(data.error || 'Erreur lors de la suppression')
       }
     } catch (err) {
       setError('Erreur de connexion')
+      toast.error('Erreur de connexion')
       console.error(err)
     }
   }
@@ -199,19 +221,22 @@ export default function RemplacementsManager() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          Gestion des Remplacements
-          <HelpTooltip title="Remplacements">
-            <p>Déclarez les remplacements entre coaches.</p>
-            <p className="mt-1">Le coach remplaçant reçoit les heures en plus.</p>
-            <p className="mt-1">Le coach remplacé voit les heures déduites.</p>
-            <p className="mt-1">Ces modifications sont automatiquement reportées sur les factures mensuelles.</p>
+          Gestion des Remplacements & Absences
+          <HelpTooltip title="Remplacements & Absences">
+            <p>Déclarez les remplacements entre coaches ou les absences non remplacées.</p>
+            <p className="mt-1">Le coach remplaçant reçoit les heures en plus sur sa facture.</p>
+            <p className="mt-1">Le coach absent voit systématiquement ses heures déduites de sa facture.</p>
+            <p className="mt-1">Toutes les modifications sont immédiatement reportées sur les factures mensuelles.</p>
           </HelpTooltip>
         </h2>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            resetForm()
+            setShowForm(true)
+          }}
           className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
         >
-          + Nouveau remplacement
+          + Nouveau remplacement / Absence
         </button>
       </div>
 
@@ -250,9 +275,35 @@ export default function RemplacementsManager() {
       {showForm && (
         <div className="bg-white p-6 rounded-lg shadow-lg">
           <h3 className="text-lg font-semibold mb-4">
-            {editingId ? 'Modifier le remplacement' : 'Nouveau remplacement'}
+            {editingId ? 'Modifier le remplacement / l\'absence' : 'Nouveau remplacement ou déclaration d\'absence'}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Toggle Absence sans remplacement */}
+            <div className="p-3.5 bg-red-50/70 border border-red-200 rounded-xl">
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sansRemplacement}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    setSansRemplacement(checked)
+                    if (checked) {
+                      setFormData({ ...formData, coachRemplacantId: '' })
+                    }
+                  }}
+                  className="w-4 h-4 text-red-600 focus:ring-red-500 border-gray-300 rounded cursor-pointer"
+                />
+                <span className="text-sm font-bold text-red-900">
+                  🔴 Déclarer une absence sans remplacement (déduite de la facture)
+                </span>
+              </label>
+              <p className="text-xs text-red-700/80 ml-6.5 mt-1 font-medium">
+                {sansRemplacement
+                  ? 'Aucun coach remplaçant ne sera assigné. Les heures de ce créneau seront automatiquement déduites de la facture du coach absent.'
+                  : 'Cochez cette case si le coach est absent et que la séance n\'est pas reprise par un collègue.'}
+              </p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -276,25 +327,38 @@ export default function RemplacementsManager() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Coach remplaçant *
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
+                  <span>Coach remplaçant {sansRemplacement ? '(Non applicable)' : '*'}</span>
+                  {sansRemplacement && (
+                    <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                      Sans remplaçant
+                    </span>
+                  )}
                 </label>
                 <select
                   value={formData.coachRemplacantId}
                   onChange={(e) =>
                     setFormData({ ...formData, coachRemplacantId: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  required
+                  disabled={sansRemplacement}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    sansRemplacement
+                      ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                      : 'border-gray-300 bg-white'
+                  }`}
+                  required={!sansRemplacement}
                 >
-                  <option value="">Sélectionner le remplaçant</option>
-                  {coachs
-                    .filter((c) => c.id !== formData.coachRemplaceId)
-                    .map((coach) => (
-                      <option key={coach.id} value={coach.id}>
-                        {getCoachName(coach)}
-                      </option>
-                    ))}
+                  <option value="">
+                    {sansRemplacement ? '-- Aucun remplaçant (absence non remplacée) --' : 'Sélectionner le remplaçant'}
+                  </option>
+                  {!sansRemplacement &&
+                    coachs
+                      .filter((c) => c.id !== formData.coachRemplaceId)
+                      .map((coach) => (
+                        <option key={coach.id} value={coach.id}>
+                          {getCoachName(coach)}
+                        </option>
+                      ))}
                 </select>
               </div>
 
@@ -439,11 +503,15 @@ export default function RemplacementsManager() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {remp.coachRemplacant ? (
-                      <span className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">
+                      <span className="px-2.5 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">
                         {getCoachName(remp.coachRemplacant)}
                       </span>
+                    ) : remp.statut === 'sans_remplacant' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-red-50 text-red-700 border border-red-200 rounded-full">
+                        🔴 Sans remplacement (déduite)
+                      </span>
                     ) : (
-                      <span className="px-2 py-1 text-xs font-semibold bg-amber-100 text-amber-800 rounded-full">
+                      <span className="px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-800 rounded-full">
                         En attente d&apos;un remplaçant
                       </span>
                     )}
@@ -476,12 +544,14 @@ export default function RemplacementsManager() {
       )}
 
       {/* Info */}
-      <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-700">
-        <strong>Impact sur la facturation :</strong>
-        <ul className="mt-2 list-disc list-inside space-y-1">
-          <li>Le coach absent verra ses heures diminuées du temps du remplacement</li>
-          <li>Le coach remplaçant verra ses heures augmentées du temps du remplacement</li>
-          <li>Les modifications sont automatiquement prises en compte dans le calcul de facturation</li>
+      <div className="bg-blue-50/80 border border-blue-200 p-4 rounded-xl text-sm text-blue-900">
+        <strong className="flex items-center gap-2 font-bold text-blue-950">
+          ℹ️ Impact direct sur la facturation des entraîneurs :
+        </strong>
+        <ul className="mt-2 list-disc list-inside space-y-1 text-xs text-blue-800">
+          <li><strong>Absence sans remplacement :</strong> Les heures sont automatiquement <u>déduites</u> de la facture du coach absent.</li>
+          <li><strong>Remplacement validé :</strong> Les heures sont déduites du coach absent et <u>ajoutées</u> à la facture du coach remplaçant.</li>
+          <li><strong>Synchronisation en direct :</strong> Le montant total des factures ouvertes (brouillons ou générées) est instantanément recalculé et mis à jour.</li>
         </ul>
       </div>
     </div>

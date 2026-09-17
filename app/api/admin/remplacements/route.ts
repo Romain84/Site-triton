@@ -96,7 +96,9 @@ export async function POST(request: NextRequest) {
 
     const data = validation.data
 
-    if (data.coachRemplacantId && data.coachRemplaceId === data.coachRemplacantId) {
+    const coachRemplacantId = data.coachRemplacantId && data.coachRemplacantId.trim() !== '' ? data.coachRemplacantId : null
+
+    if (coachRemplacantId && data.coachRemplaceId === coachRemplacantId) {
       return NextResponse.json(
         { error: 'Le coach remplaçant doit être différent du coach remplacé' },
         { status: 400 }
@@ -111,8 +113,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (data.coachRemplacantId) {
-      const coachRemplacant = await prisma.coach.findUnique({ where: { id: data.coachRemplacantId } })
+    if (coachRemplacantId) {
+      const coachRemplacant = await prisma.coach.findUnique({ where: { id: coachRemplacantId } })
       if (!coachRemplacant) {
         return NextResponse.json(
           { error: 'Coach remplaçant non trouvé' },
@@ -121,12 +123,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const statutFinal = data.statut || (data.coachRemplacantId ? 'accepte' : 'en_attente')
+    const statutFinal = data.statut || (coachRemplacantId ? 'accepte' : 'sans_remplacant')
 
     const remplacement = await prisma.remplacement.create({
       data: {
         coachRemplaceId: data.coachRemplaceId,
-        coachRemplacantId: data.coachRemplacantId || null,
+        coachRemplacantId: coachRemplacantId,
         date: new Date(data.date),
         heureDebut: data.heureDebut,
         heureFin: data.heureFin,
@@ -145,7 +147,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    if (statutFinal === 'accepte') {
+    if (['accepte', 'sans_remplacant'].includes(statutFinal)) {
       await syncRemplacementBillingLines(remplacement.id)
     }
 

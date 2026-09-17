@@ -86,7 +86,7 @@ export async function syncRemplacementBillingLines(remplacementId: string): Prom
     // 3. Recalculer le montant total de toutes les factures affectées via le moteur de calcul unifié
     for (const factureId of factureIdsToRecalculate) {
       const f = await prisma.factureCoach.findUnique({ where: { id: factureId } })
-      if (f) {
+      if (f && ['brouillon', 'generee'].includes(f.statut)) {
         const details = await calculerFactureCoach(f.coachId, f.mois, f.annee)
         await prisma.factureCoach.update({
           where: { id: factureId },
