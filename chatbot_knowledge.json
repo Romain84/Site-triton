@@ -66,7 +66,7 @@
   {
     "categorie": "Groupes & Tarifs",
     "question": "Quels sont les tarifs pour la saison ?",
-    "reponse": "Voici les tarifs annuels par groupe (licence FFN comprise) :\n- **École de Natation (ENF 1 & 2)** : 200 € (1 cours/sem) ou 270 € (2 cours/sem)\n- **Avenirs (1, 2, 3)** : 280 € / an\n- **Avenirs Loisirs** : 200 € / an\n- **Jeunes / Juniors Loisirs** : 250 € / an\n- **Adultes Loisirs** : 250 € / an\n- **Compétition (Benjamins, Juniors, Adultes)** : 280 € / an (+ caution)\n- **Natation Artistique** : 245 € / an\n- **AquaFitness** : 220 € (1 cours/sem) ou 370 € (2 cours/sem)\n- **SSA (Sauvetage Aquatique)** : Tarif communiqué dès publication du référentiel officiel.",
+    "reponse": "Voici les tarifs annuels officiels du Triton Club Cavaillon (adhésion et licence FFN comprises) :\n- **École de Natation Française (ENF 1 & 2)** : 168 € / an (1 cours/semaine) ou 238 € / an (2 cours/semaine)\n- **Avenirs (1, 2, 3)** : 248 € / an\n- **Avenirs Loisirs** : 168 € / an\n- **Jeunes / Juniors Loisirs** : 218 € / an\n- **Adultes Loisirs (1 & 2)** : 230 € / an\n- **Compétition (Benjamins 1 & 2, Juniors, Adultes)** : 220 € / an (+ caution compétition de 50 € à 100 €)\n- **Natation Artistique** : 218 € / an\n- **AquaFitness** : 200 € / an (1 cours/semaine) ou 350 € / an (2 cours/semaine)\n- **Formation SSA (ex-BNSSA)** : 750 € (formation complète, entraînements, PSE1 + PSE2 inclus) ou 500 € net avec formule engagement de 4 journées de surveillance pour le club.\n\nTous les détails sont consultables sur notre **[page des groupes](/groupes)** et l'inscription s'effectue sur notre **[page d'inscription](/inscription)**.",
     "motsCles": "tarif, prix, cout, cotisation, annee, licence, tarif annuel, prix par groupe",
     "priorite": 3,
     "actif": true

@@ -60,6 +60,62 @@ export default function ChatbotKnowledgeManager() {
   const [priorite, setPriorite] = useState('0')
   const [actif, setActif] = useState(true)
 
+  // Simulator state
+  const [showTester, setShowTester] = useState(true)
+  const [testQuestion, setTestQuestion] = useState('')
+  const [testResponse, setTestResponse] = useState<string | null>(null)
+  const [testingLoading, setTestingLoading] = useState(false)
+  const [testDurationMs, setTestDurationMs] = useState<number | null>(null)
+  const [testModel, setTestModel] = useState<string | null>(null)
+  const [clearingCache, setClearingCache] = useState(false)
+
+  const handleRunTest = async (questionToTest?: string) => {
+    const q = (questionToTest !== undefined ? questionToTest : testQuestion).trim()
+    if (!q) {
+      toast.error('Veuillez saisir une question à tester')
+      return
+    }
+    if (questionToTest !== undefined) {
+      setTestQuestion(q)
+    }
+
+    try {
+      setTestingLoading(true)
+      setTestResponse(null)
+      const res = await fetch('/api/admin/chatbot-knowledge/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur lors du test')
+      }
+
+      setTestResponse(data.response)
+      setTestDurationMs(data.durationMs)
+      setTestModel(data.model)
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    } finally {
+      setTestingLoading(false)
+    }
+  }
+
+  const handleClearCache = async () => {
+    try {
+      setClearingCache(true)
+      const res = await fetch('/api/admin/chatbot-knowledge/test', { method: 'DELETE' })
+      if (!res.ok) throw new Error('Erreur lors de la purge du cache')
+      toast.success('Cache IA invalidé ! Les données fraîches sont rechargées.')
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    } finally {
+      setClearingCache(false)
+    }
+  }
+
   const fetchEntries = useCallback(async () => {
     try {
       setLoading(true)
@@ -467,6 +523,123 @@ export default function ChatbotKnowledgeManager() {
           </p>
           <p className="text-[10px] text-slate-400 mt-1">Majoritaire en base</p>
         </div>
+      </div>
+
+      {/* Simulator Test Panel */}
+      <div className="bg-gradient-to-r from-primary/5 via-sky-50 to-indigo-50 border border-primary/20 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg font-bold">🧪</span>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                Simulateur en Direct : Vérifier la Vérité Terrain
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold uppercase">
+                  Température 0.1
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Testez en direct les réponses de l&apos;I.A. avec les plannings, séances annulées, SSA et tarifs temps réel.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleClearCache}
+              disabled={clearingCache}
+              className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+              title="Purger le cache en mémoire (5 min) pour recharger immédiatement les données fraîches de la base"
+            >
+              <span>{clearingCache ? '⏳' : '🔄'}</span> Purger le Cache IA
+            </button>
+            <button
+              onClick={() => setShowTester(!showTester)}
+              className="px-3 py-1.5 bg-primary hover:bg-primary-dark text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <span>{showTester ? 'Masquer le testeur' : 'Ouvrir le testeur'}</span>
+            </button>
+          </div>
+        </div>
+
+        {showTester && (
+          <div className="space-y-4 pt-2 border-t border-primary/10">
+            {/* Quick questions chips */}
+            <div>
+              <span className="text-[11px] font-bold text-slate-600 block mb-1.5">Questions rapides pour vérifier les cas sensibles :</span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  "Combien coûte l'école de natation pour 1 cours ?",
+                  "La séance du 16 septembre a-t-elle lieu ?",
+                  "Quels sont les tarifs et horaires du SSA / BNSSA ?",
+                  "Puis-je venir payer par chèque au bureau de la piscine ?",
+                  "Comment annuler une inscription ou changer de groupe ?",
+                ].map((quickQ, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleRunTest(quickQ)}
+                    className="text-[11px] px-2.5 py-1 bg-white hover:bg-primary/10 border border-slate-200 hover:border-primary/40 rounded-full text-slate-700 transition-colors cursor-pointer"
+                  >
+                    💬 {quickQ}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Input */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                value={testQuestion}
+                onChange={(e) => setTestQuestion(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleRunTest()}
+                placeholder="Posez n'importe quelle question que pourrait poser un parent ou un adhérent..."
+                className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-slate-900"
+              />
+              <button
+                type="button"
+                onClick={() => handleRunTest()}
+                disabled={testingLoading || !testQuestion.trim()}
+                className="px-5 py-2.5 bg-primary hover:bg-primary-dark disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {testingLoading ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Génération en cours...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>⚡</span>
+                    <span>Tester la réponse</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Response Box */}
+            {testResponse && (
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900">🤖 Réponse officielle générée</span>
+                    {testModel && (
+                      <span className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md font-mono">
+                        Modèle: {testModel}
+                      </span>
+                    )}
+                  </div>
+                  {testDurationMs !== null && (
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Temps: {(testDurationMs / 1000).toFixed(2)}s
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap font-sans">
+                  {testResponse}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Quotas & Information */}
