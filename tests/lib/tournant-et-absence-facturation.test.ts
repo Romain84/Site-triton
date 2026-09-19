@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calculerDuree } from '@/lib/facture-calculations'
+import { calculerDuree, arrondirDemiHeureSuperieure } from '@/lib/facture-calculations'
 
 describe('Calculs de facturation : Planning Tournant et Absences', () => {
   const tauxHoraire = 35
@@ -8,7 +8,7 @@ describe('Calculs de facturation : Planning Tournant et Absences', () => {
     it('calcule correctement la durée et le montant positif d\'un créneau tournant assigné', () => {
       const heureDebut = '14:00'
       const heureFin = '16:00'
-      const duree = calculerDuree(heureDebut, heureFin)
+      const duree = arrondirDemiHeureSuperieure(calculerDuree(heureDebut, heureFin))
       expect(duree).toBe(2)
 
       const montant = duree * tauxHoraire
@@ -26,9 +26,17 @@ describe('Calculs de facturation : Planning Tournant et Absences', () => {
     })
 
     it('gère les créneaux avec des demi-heures ou durées fractionnées', () => {
-      const duree = calculerDuree('18:00', '19:30')
+      const duree = arrondirDemiHeureSuperieure(calculerDuree('18:00', '19:30'))
       expect(duree).toBe(1.5)
       expect(duree * tauxHoraire).toBe(52.5)
+    })
+
+    it('arrondit à la demi-heure supérieure pour un créneau de 1h15 (ex: 18:00 - 19:15 -> 1h30)', () => {
+      const dureeReelle = calculerDuree('18:00', '19:15')
+      expect(dureeReelle).toBe(1.25) // 1h15 réelles
+      const dureeFacturee = arrondirDemiHeureSuperieure(dureeReelle)
+      expect(dureeFacturee).toBe(1.5) // 1h30 facturées
+      expect(dureeFacturee * tauxHoraire).toBe(52.5)
     })
   })
 
@@ -110,6 +118,50 @@ describe('Calculs de facturation : Planning Tournant et Absences', () => {
       // Vérification que les montants des lignes correspondent exactement
       const montantLignes = (heuresFixe * tauxHoraire) + (heuresTournant * tauxHoraire) + (-heuresAbsence * tauxHoraire)
       expect(montantLignes).toBe(montantTotal)
+    })
+    it('facture bien 1h30 (1.5h) pour le remplacement 18:00 - 19:15 (ex: Hanne remplacée par William)', () => {
+      const remp = {
+        date: new Date('2026-09-18'),
+        heureDebut: '18:00',
+        heureFin: '19:15',
+        motif: 'RDV',
+        statut: 'accepte',
+        coachRemplace: { prenom: 'Hanne', nom: 'ROSENOW' },
+        coachRemplacant: { prenom: 'William', nom: 'THEODET' },
+      }
+
+      // Calcul pour le coach remplaçant (William)
+      const dureeHeuresRemplacant = arrondirDemiHeureSuperieure(calculerDuree(remp.heureDebut, remp.heureFin))
+      expect(dureeHeuresRemplacant).toBe(1.5) // C'est bien 1h30 qui est payée !
+
+      const ligneWilliam = {
+        type: 'remplacement' as const,
+        description: `Remplacement de Hanne ROSENOW - 18/09/2026 ${remp.heureDebut}-${remp.heureFin} (${remp.motif})`,
+        heures: dureeHeuresRemplacant,
+        montant: dureeHeuresRemplacant * tauxHoraire,
+      }
+      expect(ligneWilliam.heures).toBe(1.5)
+      expect(ligneWilliam.montant).toBe(52.5)
+
+      // Calcul pour la coach remplacée (Hanne)
+      const dureeHeuresRemplacee = arrondirDemiHeureSuperieure(calculerDuree(remp.heureDebut, remp.heureFin))
+      const ligneHanneAbsence = {
+        type: 'absence' as const,
+        description: `Absence (Remplacé(e) par William THEODET) - 18/09/2026 ${remp.heureDebut}-${remp.heureFin} (${remp.motif})`,
+        heures: -dureeHeuresRemplacee,
+        montant: -dureeHeuresRemplacee * tauxHoraire,
+      }
+      expect(ligneHanneAbsence.heures).toBe(-1.5) // 1h30 est bien déduite
+      expect(ligneHanneAbsence.montant).toBe(-52.5)
+
+      // Neutralisation avec le planning fixe de Hanne (le vendredi 18:00-19:15 compte +1.5h en planning fixe)
+      const ligneHanneFixe = {
+        type: 'planning_fixe' as const,
+        heures: 1.5,
+        montant: 1.5 * tauxHoraire,
+      }
+      const netHanneJournee = ligneHanneFixe.heures + ligneHanneAbsence.heures
+      expect(netHanneJournee).toBe(0) // Neutralisation parfaite à 0h
     })
   })
 })

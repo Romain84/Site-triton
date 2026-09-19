@@ -265,7 +265,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
     if (occurences > 0) {
       const dureeReelle = calculerDuree(creneau.heureDebut, creneau.heureFin)
-      const dureeHeures = Math.ceil(dureeReelle * 2) / 2
+      const dureeHeures = arrondirDemiHeureSuperieure(dureeReelle)
       const totalHrs = dureeHeures * occurences
       heuresPlanningFixe += totalHrs
       const groupesStr = creneau.groupes.join(', ')
@@ -346,7 +346,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
   let heuresRemplacements = 0
   const lignesRemplacements: FactureLigneCalculated[] = []
   for (const remp of remplacementsEffectues) {
-    const dureeHeures = calculerDuree(remp.heureDebut, remp.heureFin)
+    const dureeHeures = arrondirDemiHeureSuperieure(calculerDuree(remp.heureDebut, remp.heureFin))
     heuresRemplacements += dureeHeures
     const dateStr = new Date(remp.date).toLocaleDateString('fr-FR')
     const coachNom = `${remp.coachRemplace.prenom} ${remp.coachRemplace.nom || ''}`.trim()
@@ -373,7 +373,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       continue
     }
 
-    const dureeHeures = calculerDuree(remp.heureDebut, remp.heureFin)
+    const dureeHeures = arrondirDemiHeureSuperieure(calculerDuree(remp.heureDebut, remp.heureFin))
     heuresAbsences += dureeHeures
     const dateStr = new Date(remp.date).toLocaleDateString('fr-FR')
     const coachNom = remp.coachRemplacant ? `${remp.coachRemplacant.prenom} ${remp.coachRemplacant.nom || ''}`.trim() : null
@@ -410,7 +410,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     })
 
     if (!estEnVacances) {
-      const dureeHeures = calculerDuree(evt.heureDebut, evt.heureFin)
+      const dureeHeures = arrondirDemiHeureSuperieure(calculerDuree(evt.heureDebut, evt.heureFin))
       heuresPlanningTournant += dureeHeures
       const dateStr = new Date(evt.date).toLocaleDateString('fr-FR')
       lignesPlanningTournant.push({
@@ -587,6 +587,10 @@ export function calculerDuree(heureDebut: string, heureFin: string): number {
   const [hD, mD] = heureDebut.split(':').map(Number)
   const [hF, mF] = heureFin.split(':').map(Number)
   return (hF * 60 + mF - (hD * 60 + mD)) / 60
+}
+
+export function arrondirDemiHeureSuperieure(dureeHeures: number): number {
+  return Math.ceil(dureeHeures * 2) / 2
 }
 
 function compterSemainesHorsVacances(
