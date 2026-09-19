@@ -1,5 +1,8 @@
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
+const { Pool } = require('pg')
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+})
 
 async function main() {
   const contenu = {
@@ -47,15 +50,17 @@ async function main() {
     avertissement: "Conformément au Code du sport, le titulaire du SSA/BNSSA a pour mission exclusive la surveillance, la prévention et le sauvetage. L'enseignement de la natation contre rémunération relève de la prérogative exclusive des Maîtres-Nageurs Sauveteurs (BPJEPS AAN)."
   }
 
-  const updated = await prisma.inscriptionBlock.update({
-    where: { id: 'cmqqrybvb0009y838lq5orh1o' },
-    data: {
-      titre: 'Formation SSA – Surveillant Sauveteur Aquatique (ex-BNSSA)',
-      contenu: contenu
-    }
-  })
+  const titre = 'Formation SSA – Surveillant Sauveteur Aquatique (ex-BNSSA)'
 
-  console.log('Bloc mis à jour avec succès :', updated.id, updated.titre)
+  const res = await pool.query(
+    `UPDATE inscription_blocks 
+     SET titre = $1, contenu = $2, "updatedAt" = NOW() 
+     WHERE id = $3 
+     RETURNING id, titre`,
+    [titre, JSON.stringify(contenu), 'cmqqrybvb0009y838lq5orh1o']
+  )
+
+  console.log('Bloc mis à jour avec succès :', res.rows[0])
 }
 
 main()
@@ -64,5 +69,5 @@ main()
     process.exit(1)
   })
   .finally(async () => {
-    await prisma.$disconnect()
+    await pool.end()
   })
