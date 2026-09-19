@@ -204,57 +204,70 @@ RÈGLES D'OR ABSOLUES ET CONSIGNES MÉTIER (INVIOLABLES) :
     content: userMessage,
   })
 
-  // Appel avec température très basse (0.1) pour un déterminisme maximal et éliminer les hallucinations
-  let res = await fetch('https://api.mistral.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: modelToUse,
-      messages: messagesPayload,
-      temperature: 0.1,
-    }),
-  })
-
-  if (!res.ok) {
-    chatLogger.warn(`Repli modèle sur mistral-small-latest après HTTP ${res.status}`)
-    res = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'mistral-small-latest',
-        messages: messagesPayload,
-        temperature: 0.1,
-      }),
-    })
+  // Modèles avec chaîne de repli intelligente en cas de quota ou rate-limit (429 / 403)
+  const candidateModels = [modelToUse]
+  if (!candidateModels.includes('ministral-8b-latest')) {
+    candidateModels.push('ministral-8b-latest')
+  }
+  if (!candidateModels.includes('open-mistral-7b')) {
+    candidateModels.push('open-mistral-7b')
   }
 
-  const data = await res.json()
-  const textResponse =
-    data.choices?.[0]?.message?.content ||
-    "Désolé, je n'ai pas pu obtenir de réponse. Veuillez contacter le club via notre formulaire de contact (/contact)."
+  let textResponse = ''
 
-  // Enregistrer la consommation de tokens
-  try {
-    const promptTokens = data.usage?.prompt_tokens || 0
-    const completionTokens = data.usage?.completion_tokens || 0
-    const totalTokens = data.usage?.total_tokens || 0
+  for (const candidate of candidateModels) {
+    try {
+      const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: candidate,
+          messages: messagesPayload,
+          temperature: 0.1,
+        }),
+      })
 
-    await prisma.chatbotTokenLog.create({
-      data: {
-        modelName: activeModelName,
-        promptTokens,
-        completionTokens,
-        totalTokens,
-      },
-    })
-  } catch (error) {
-    chatLogger.error("Erreur lors de l'enregistrement des tokens chatbot:", error)
+      if (res.ok) {
+        const data = await res.json()
+        const content = data.choices?.[0]?.message?.content
+        if (content) {
+          textResponse = content
+
+          // Enregistrer la consommation de tokens
+          try {
+            const promptTokens = data.usage?.prompt_tokens || 0
+            const completionTokens = data.usage?.completion_tokens || 0
+            const totalTokens = data.usage?.total_tokens || 0
+
+            await prisma.chatbotTokenLog.create({
+              data: {
+                modelName: candidate,
+                promptTokens,
+                completionTokens,
+                totalTokens,
+              },
+            })
+          } catch (error) {
+            chatLogger.error("Erreur lors de l'enregistrement des tokens chatbot:", error)
+          }
+          break
+        }
+      } else {
+        chatLogger.warn(`Modèle ${candidate} indisponible (HTTP ${res.status}), tentative avec le modèle suivant...`)
+      }
+    } catch (err) {
+      chatLogger.error(`Erreur réseau lors de l'appel au modèle ${candidate}:`, err)
+    }
+  }
+
+  if (!textResponse) {
+    textResponse =
+      "Désolé, je n'ai pas pu obtenir de réponse pour le moment. Veuillez contacter le club via notre [formulaire de contact](/contact) ou par e-mail à " +
+      clubEmail +
+      '.'
   }
 
   return textResponse

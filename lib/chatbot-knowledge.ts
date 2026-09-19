@@ -640,7 +640,7 @@ export async function getSiteDatesKnowledgeBase(): Promise<string> {
         debutCoursBnssa: true,
         datesTests: true,
         reductionEnfantBureau: true,
-        interSaison: true,
+        interSaisonActif: true,
         statutsUrl: true,
         reglementPiscineUrl: true,
         reglementClubUrl: true,
@@ -670,7 +670,7 @@ export async function getSiteDatesKnowledgeBase(): Promise<string> {
     if (settings.dateLivraisonBoutique) {
       texte += `• Période estimée de livraison boutique : ${settings.dateLivraisonBoutique}\n`
     }
-    if (settings.interSaison) {
+    if (settings.interSaisonActif) {
       texte += `• Période actuelle : Intersaison sportive\n`
     }
     if (settings.statutsUrl) {
