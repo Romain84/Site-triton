@@ -250,7 +250,7 @@ export default function InscriptionClient({
     if (b.type === 'rules') return 'Licence FFN, Règlement & Questionnaire de santé'
     if (b.type === 'tests') return 'Dates des tests & Réservation en ligne'
     if (b.type === 'access') return 'Distribution des badges et cartes d\'entrée'
-    if (b.type === 'bnssa') return 'Formation diplômante, PSE1-2 & Tarifs 2026'
+    if (b.type === 'bnssa') return 'Diplôme d\'État, SSA & Secourisme PSE1/PSE2'
     return 'Détails et informations complémentaires'
   }
 
@@ -927,28 +927,48 @@ function AccessBlock({ block, hideCardBorder }: { block: BlockData; hideCardBord
 
 // ─── BNSSA / SSA Block ──────────────────────────────────
 function BnssaBlock({ block, hideCardBorder }: { block: BlockData; hideCardBorder?: boolean }) {
+  const c = (block.contenu || {}) as Record<string, any>
+
+  const label = (c.label as string) || "Évolution de la filière Sauvetage"
+  const changement = (c.changement as string) || "Le dispositif national de formation au sauvetage aquatique intègre désormais le SSA (Surveillant Sauveteur Aquatique), certificat de compétences opérationnelles de Sécurité Civile qui succède et complète la pratique du BNSSA. De plus, conformément au décret n° 2023-437 du 2 juin 2023, les sauveteurs diplômés peuvent assurer la surveillance en pleine autonomie de toutes les baignades et piscines d'accès payant ou gratuit pendant toute leur période d'ouverture."
+  const introClub = (c.introClub as string) || "Le Triton Club Cavaillon, en partenariat officiel avec l'association de sécurité civile Croix-Blanche, propose une formation diplômante d'excellence associant préparation intensive en bassin, techniques de sauvetage opérationnel SSA et secourisme d'équipe complet PSE1/PSE2."
+
+  const conditionsAcces = (c.conditionsAcces as { texte?: string; points?: string[]; effectif?: string }) || {}
+  const points = (conditionsAcces.points && conditionsAcces.points.length > 0) ? conditionsAcces.points : [
+    "Avoir au moins 17 ans révolus au moment de l'examen (années 2010 et antérieures) ;",
+    "Être apte médicalement à la pratique de la natation et du sauvetage aquatique ;",
+    "Réussir le test natatoire préalable validé par un Maître-Nageur Sauveteur (MNS) du club ;",
+    "Être en mesure de suivre avec assiduité les entraînements en bassin et les sessions de secourisme prévues."
+  ]
+
+  const formationComplete = (c.formationComplete as { intro?: string; formationSsa?: string; secourisme?: { titre?: string; texte?: string } }) || {}
+  const secourisme = formationComplete.secourisme || {}
+
+  const tarifComplet = (c.tarifComplet as string) || "750"
+  const formuleReduction = (c.formuleReduction as { texte?: string; note?: string }) || {}
+  const testNatatoire = (c.testNatatoire as { intro?: string; explication?: string; modalites?: string }) || {}
+  const debutFormation = (c.debutFormation as { date?: string; horaires?: string; effectif?: string }) || {}
+  const dejaTitulaireBnssa = (c.dejaTitulaireBnssa as { texte?: string; action?: string }) || {}
+  const avertissement = (c.avertissement as string) || "Conformément au Code du sport, le titulaire du SSA/BNSSA a pour mission exclusive la surveillance, la prévention et le sauvetage. L'enseignement de la natation contre rémunération relève de la prérogative exclusive des Maîtres-Nageurs Sauveteurs (BPJEPS AAN)."
+
   return (
     <section className={`${hideCardBorder ? 'space-y-8' : 'card p-6 md:p-10 space-y-8 bg-white border border-slate-200/90 shadow-sm rounded-2xl'}`}>
       {/* 1. Header & Introduction */}
       <div className="border-b border-slate-100 pb-5 space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-bold uppercase tracking-wider bg-sky-50 text-sky-800 border border-sky-200 px-3 py-1 rounded-full">
-            Le BNSSA évolue vers le SSA
+            {label}
           </span>
-          <span className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-            Entrée en vigueur : 1er octobre 2026
+          <span className="text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+            Surveillance en autonomie (Décret 2023)
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black font-display tracking-tight text-slate-900 flex items-center gap-2.5">
-          <span>🛟</span> Formation SSA – Surveillant Sauveteur Aquatique
+          <span>🛟</span> {block.titre || 'Formation SSA – Surveillant Sauveteur Aquatique (ex-BNSSA)'}
         </h2>
-        <div className="text-sm md:text-base text-slate-700 font-normal leading-relaxed pt-1 space-y-1">
-          <p>
-            À compter du <strong>1er octobre 2026</strong>, le dispositif de formation évolue : le BNSSA est remplacé par le <strong>SSA</strong> pour les nouveaux candidats.
-          </p>
-          <p className="text-slate-600">
-            Le Triton Club Cavaillon propose une formation complète permettant de préparer les candidats au nouveau diplôme <strong>SSA (Surveillant Sauveteur Aquatique)</strong>.
-          </p>
+        <div className="text-sm md:text-base text-slate-700 font-normal leading-relaxed pt-1 space-y-2">
+          <p>{changement}</p>
+          <p className="text-slate-600 font-medium">{introClub}</p>
         </div>
       </div>
 
@@ -958,31 +978,21 @@ function BnssaBlock({ block, hideCardBorder }: { block: BlockData; hideCardBorde
           <span>👤</span> Conditions d&apos;accès
         </h3>
         <p className="text-sm text-slate-700 font-normal">
-          La formation est ouverte aux personnes souhaitant se former au métier de surveillant sauveteur aquatique.
+          {conditionsAcces.texte || "La formation est ouverte aux personnes motivées souhaitant se former au métier de surveillant sauveteur aquatique en piscine, plan d'eau ou plage."}
         </p>
         <div className="space-y-1.5 pt-1">
           <p className="text-xs font-bold text-slate-900 uppercase tracking-wide">Pour intégrer la formation, il faut notamment :</p>
           <ul className="space-y-1.5 text-sm text-slate-700 font-normal">
-            <li className="flex items-start gap-2">
-              <span className="text-primary font-bold">•</span>
-              <span>avoir <strong>17 ans révolus</strong> au moment de l&apos;examen (mars/avril) ;</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary font-bold">•</span>
-              <span>être <strong>apte</strong> à la pratique de la natation et du sauvetage aquatique ;</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary font-bold">•</span>
-              <span><strong>réussir le test natatoire</strong> préalable ;</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary font-bold">•</span>
-              <span>être en mesure de suivre l&apos;ensemble des formations prévues.</span>
-            </li>
+            {points.map((p, idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <span className="text-primary font-bold">•</span>
+                <span>{p}</span>
+              </li>
+            ))}
           </ul>
         </div>
         <div className="pt-2 text-xs font-semibold text-slate-600 border-t border-slate-200/60">
-          La session sera ouverte à partir de <strong>6 candidats minimum</strong>.
+          {conditionsAcces.effectif || "La session sera ouverte à partir de 6 candidats minimum."}
         </div>
       </div>
 
@@ -992,26 +1002,23 @@ function BnssaBlock({ block, hideCardBorder }: { block: BlockData; hideCardBorde
           <span>🏊</span> Une formation complète
         </h3>
         <p className="text-sm text-slate-700 font-normal">
-          Le tarif de la formation SSA comprend l&apos;ensemble du parcours de formation, notamment :
+          {formationComplete.intro || "Le tarif de la formation SSA comprend l'ensemble du parcours de formation, notamment :"}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-5 rounded-2xl bg-sky-50/60 border border-sky-200 space-y-2">
             <span className="font-extrabold text-xs uppercase tracking-wider text-sky-900 block">
-              Formation SSA
+              Formation Aquatique & Sauvetage SSA
             </span>
             <p className="text-sm text-slate-800 font-normal leading-relaxed">
-              Formation théorique et pratique au sauvetage et à la surveillance aquatique.
+              {formationComplete.formationSsa || "Formation théorique et pratique en bassin (sauvetage mannequin 100m, 250m PMT, secours à victime en détresse, réglementation et POSS) et techniques opérationnelles SSA (bouée tube, filin, planche de sauvetage / rescue board, prise en charge de traumatisé aquatique)."}
             </p>
           </div>
           <div className="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-2">
             <span className="font-extrabold text-xs uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
-              <span>🚑</span> PSE1 + PSE2
+              <span>🚑</span> {secourisme.titre || "PSE1 + PSE2"}
             </span>
             <p className="text-sm text-slate-800 font-normal leading-relaxed">
-              Les formations Premiers Secours en Équipe de niveau 1 et de niveau 2 sont <strong>comprises dans le tarif</strong> de la formation SSA.
-            </p>
-            <p className="text-xs text-slate-600 font-medium">
-              Elles sont réalisées avec notre partenaire <strong>Croix-Blanche</strong>. Vous n&apos;avez donc pas à vous inscrire séparément au PSE1 et au PSE2.
+              {secourisme.texte || "Les formations Premiers Secours en Équipe de niveau 1 et de niveau 2 sont comprises dans le tarif de la formation SSA. Elles sont réalisées avec notre partenaire officiel Croix-Blanche. Vous n'avez donc pas à vous inscrire séparément au PSE1 et au PSE2."}
             </p>
           </div>
         </div>
@@ -1031,7 +1038,7 @@ function BnssaBlock({ block, hideCardBorder }: { block: BlockData; hideCardBorde
           </div>
           <div className="py-2">
             <div className="text-4xl md:text-5xl font-black font-mono text-white">
-              750 €
+              {tarifComplet} €
             </div>
           </div>
           <p className="text-[11px] text-slate-400 border-t border-slate-800 pt-2">
@@ -1046,14 +1053,14 @@ function BnssaBlock({ block, hideCardBorder }: { block: BlockData; hideCardBorde
               <span>🤝</span> Possibilité de réduire le coût de la formation
             </h3>
             <p className="text-xs text-emerald-100 font-light leading-relaxed">
-              Une formule permettant de bénéficier d&apos;un <strong>remboursement de 250 €</strong> est proposée aux candidats qui s&apos;engagent à effectuer <strong>4 journées de surveillance avec la Croix-Blanche</strong> pendant la saison.
+              {formuleReduction.texte || "Une formule permettant de bénéficier d'un remboursement de 250 € est proposée aux candidats qui s'engagent à effectuer 4 journées de surveillance avec la Croix-Blanche pendant la saison."}
             </p>
           </div>
 
           <div className="bg-emerald-900/50 p-3.5 rounded-xl border border-emerald-800 text-xs space-y-1 font-mono">
             <div className="flex justify-between text-slate-300">
               <span>Tarif initial de la formation :</span>
-              <span className="font-bold text-white">750 €</span>
+              <span className="font-bold text-white">{tarifComplet} €</span>
             </div>
             <div className="flex justify-between text-emerald-300">
               <span>Engagement surveillance (4 j) :</span>
@@ -1066,7 +1073,7 @@ function BnssaBlock({ block, hideCardBorder }: { block: BlockData; hideCardBorde
           </div>
 
           <p className="text-[11px] text-emerald-200/80 italic leading-snug">
-            * Cette possibilité est soumise à l&apos;acceptation de l&apos;engagement et aux modalités définies avec la Croix-Blanche.
+            {formuleReduction.note || "* Cette possibilité est soumise à l'acceptation de l'engagement et aux modalités définies avec la Croix-Blanche."}
           </p>
         </div>
       </div>
@@ -1078,13 +1085,13 @@ function BnssaBlock({ block, hideCardBorder }: { block: BlockData; hideCardBorde
             <span>🏊</span> Test natatoire
           </h3>
           <p className="text-sm text-slate-700 font-normal leading-relaxed">
-            Avant le début de la formation, un test natatoire devra être <strong>validé par un MNS</strong>.
+            {testNatatoire.intro || "Avant le début de la formation, un test natatoire devra être validé par un MNS."}
           </p>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Ce test permet de vérifier que le candidat possède les capacités aquatiques nécessaires pour suivre la formation.
+            {testNatatoire.explication || "Ce test permet de vérifier que le candidat possède les capacités aquatiques nécessaires pour suivre la formation."}
           </p>
           <p className="text-xs text-slate-500 italic pt-1">
-            Les modalités du test seront communiquées aux candidats inscrits ultérieurement.
+            {testNatatoire.modalites || "Les modalités du test seront communiquées aux candidats inscrits ultérieurement."}
           </p>
         </div>
 
@@ -1094,13 +1101,13 @@ function BnssaBlock({ block, hideCardBorder }: { block: BlockData; hideCardBorde
           </h3>
           <p className="text-xs text-slate-600">La formation débutera à partir du :</p>
           <div className="text-base font-black text-slate-900 bg-white border border-slate-200 px-3.5 py-2 rounded-xl inline-block">
-            Jeudi 1er octobre 2026
+            {debutFormation.date || "Jeudi 1er octobre 2026"}
           </div>
           <p className="text-xs text-slate-600 leading-relaxed pt-1">
-            Les dates et horaires précis des séances seront communiqués aux candidats après constitution du groupe.
+            {debutFormation.horaires || "Les entraînements ont lieu le jeudi soir de 19h30 à 21h30 à la Piscine Alphonse Roudière de Cavaillon."}
           </p>
           <p className="text-xs font-bold text-slate-800">
-            Effectif minimum : 6 candidats.
+            {debutFormation.effectif || "Effectif minimum : 6 candidats."}
           </p>
         </div>
       </div>
@@ -1111,12 +1118,11 @@ function BnssaBlock({ block, hideCardBorder }: { block: BlockData; hideCardBorde
           <span>⚠️</span> Vous êtes déjà titulaire du BNSSA ?
         </h3>
         <p className="text-sm text-amber-900 font-normal leading-relaxed">
-          Si vous êtes déjà titulaire du BNSSA, vous n&apos;avez pas à suivre l&apos;intégralité de la formation initiale SSA.
-          Des dispositions spécifiques peuvent s&apos;appliquer selon votre situation et la validité de vos qualifications de secourisme.
+          {dejaTitulaireBnssa.texte || "Si vous êtes déjà titulaire du BNSSA, votre diplôme reste pleinement valide. Pour votre recyclage quinquennal (maintien des acquis) ou pour compléter vos qualifications avec le certificat opérationnel SSA et le PSE2, contactez le club pour un parcours adapté."}
         </p>
         <div className="pt-1 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <span className="text-xs font-semibold text-amber-800">
-            Contactez le club afin que nous puissions vous indiquer la démarche adaptée :
+            {dejaTitulaireBnssa.action || "Contactez le club afin que nous puissions vous indiquer la démarche adaptée :"}
           </span>
           <Link
             href="/contact"
@@ -1138,7 +1144,7 @@ function BnssaBlock({ block, hideCardBorder }: { block: BlockData; hideCardBorde
               Formation complète :
             </span>
             <div className="font-black text-amber-300 font-mono text-base">
-              SSA + PSE1 + PSE2 = 750 €
+              SSA + PSE1 + PSE2 = {tarifComplet} €
             </div>
             <p className="text-slate-300 text-xs leading-relaxed font-light">
               Le PSE1 et le PSE2 sont inclus dans le prix et ne nécessitent donc pas d&apos;inscription ou de paiement supplémentaire.
@@ -1150,7 +1156,7 @@ function BnssaBlock({ block, hideCardBorder }: { block: BlockData; hideCardBorde
               Formule avec engagement Croix-Blanche :
             </span>
             <div className="font-black text-emerald-400 font-mono text-base">
-              750 € – 250 € remboursés = 500 €
+              {tarifComplet} € – 250 € remboursés = 500 €
             </div>
             <p className="text-slate-300 text-xs leading-relaxed font-light">
               Remise remboursée après la réalisation des 4 journées de surveillance avec la Croix-Blanche → coût final 500 €.
@@ -1161,7 +1167,7 @@ function BnssaBlock({ block, hideCardBorder }: { block: BlockData; hideCardBorde
 
       {/* 8. Avertissement officiel */}
       <div className="text-xs text-slate-500 italic bg-slate-50 p-4 rounded-xl border border-slate-200/70 text-center leading-relaxed">
-        ⚠️ Les modalités définitives de la formation SSA pourront être ajustées en fonction de la publication des textes réglementaires et de la circulaire d&apos;application.
+        {avertissement}
       </div>
     </section>
   )
