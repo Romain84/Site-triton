@@ -46,7 +46,15 @@ export class AbbyApiError extends Error {
  * Exporte une facture coach vers la plateforme Abby
  */
 export async function exportInvoiceToAbby(params: AbbyExportParams): Promise<AbbyExportResult> {
-  const { apiKey, clubName = 'Triton Club Cavaillon', clubSiret, clubEmail, mois, annee, lines } = params
+  const {
+    apiKey,
+    clubName = 'TRITON CLUB CAVAILLONNAIS',
+    clubSiret = '44866606500017',
+    clubEmail = 'tritoncavaillon@gmail.com',
+    mois,
+    annee,
+    lines,
+  } = params
 
   if (!apiKey || apiKey.trim() === '') {
     throw new AbbyApiError(
@@ -64,7 +72,7 @@ export async function exportInvoiceToAbby(params: AbbyExportParams): Promise<Abb
   }
 
   try {
-    // 1. Rechercher ou créer l'organisation "Triton Club Cavaillon" sur Abby
+    // 1. Rechercher ou créer l'organisation "TRITON CLUB CAVAILLONNAIS" sur Abby
     let customerId: string | null = null
 
     try {
@@ -90,7 +98,7 @@ export async function exportInvoiceToAbby(params: AbbyExportParams): Promise<Abb
         body: JSON.stringify({
           name: clubName,
           siret: clubSiret || undefined,
-          emails: clubEmail ? [clubEmail] : ['admin@triton-club.fr'],
+          emails: clubEmail ? [clubEmail] : ['tritoncavaillon@gmail.com'],
           billingAddress: {
             address: 'Piscine couverte Alphonse Roudière, Avenue Jean Moulin, quartier La Clède',
             city: 'Cavaillon',

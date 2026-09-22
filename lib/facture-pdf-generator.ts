@@ -137,18 +137,19 @@ export async function genererFacturePDF(
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.setTextColor(15, 23, 42)
-  doc.text('TRITON CLUB CAVAILLON', 120, 43)
+  doc.text('TRITON CLUB CAVAILLONNAIS', 120, 43)
 
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8.5)
+  doc.setFontSize(8)
   doc.setTextColor(71, 85, 105)
   doc.text('Piscine couverte Alphonse Roudière', 120, 48)
-  doc.text('Avenue Jean Moulin, quartier La Clède', 120, 53)
-  doc.text('84300 Cavaillon', 120, 58)
-  doc.text('Email : tritoncavaillon@gmail.com', 120, 63)
+  doc.text('Avenue Jean Moulin, quartier La Clède', 120, 52.5)
+  doc.text('84300 Cavaillon', 120, 57)
+  doc.text('SIRET : 448 666 065 00017', 120, 61.5)
+  doc.text('Email : tritoncavaillon@gmail.com', 120, 66)
 
   // Ligne séparatrice horizontale avant la période
-  const sepY = Math.max(coachY, 63) + 4
+  const sepY = Math.max(coachY, 66) + 4
   doc.line(20, sepY, 190, sepY)
 
   // Période de facturation

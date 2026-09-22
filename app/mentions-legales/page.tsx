@@ -19,15 +19,22 @@ export default function MentionsLegalesPage() {
 
           <section className="space-y-2">
             <h2 className="text-xl font-semibold text-slate-900">Éditeur du site</h2>
-            <p className="text-gray-700">Triton Club Cavaillon</p>
-            <p className="text-gray-700">Siège social : Piscine Alphonse Roudière, Bd Jean Moulin, Quartier La Clède, 84300 Cavaillon</p>
-            <p className="text-gray-700">RNA : W841000669 · SIREN : 448 666 065 · SIRET : 448 666 065 00017</p>
-            <p className="text-gray-700">Email : tritoncavaillon@gmail.com</p>
+            <p className="text-gray-700"><strong>Dénomination officielle :</strong> TRITON CLUB CAVAILLONNAIS (nom usuel : Triton Club Cavaillon)</p>
+            <p className="text-gray-700"><strong>Forme juridique :</strong> Association déclarée régie par la loi du 1er juillet 1901 (créée le 29 mars 1966)</p>
+            <p className="text-gray-700"><strong>Siège social légal :</strong> Piscine de la Clède, Route de Pertuis, 84300 Cavaillon</p>
+            <p className="text-gray-700"><strong>Bassin d&apos;activité & Correspondance :</strong> Piscine Municipale Alphonse Roudière, Avenue Jean Moulin, Quartier La Clède, 84300 Cavaillon</p>
+            <p className="text-gray-700 font-mono text-sm"><strong>Identifiants légaux :</strong> SIRET : 448 666 065 00017 · SIREN : 448 666 065 · RNA : W841000669 · Code NAF/APE : 93.12Z (Activités de clubs de sports)</p>
+            <p className="text-gray-700"><strong>Affiliation :</strong> Fédération Française de Natation (FFN)</p>
+            <p className="text-gray-700"><strong>Email :</strong> <a href="mailto:tritoncavaillon@gmail.com" className="text-primary hover:underline">tritoncavaillon@gmail.com</a></p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-xl font-semibold text-slate-900">Hébergement</h2>
-            <p className="text-gray-700">Le site est hébergé par un prestataire d&apos;hébergement web.</p>
+            <p className="text-gray-700">
+              Le site est hébergé en France sur infrastructure dédiée par :<br />
+              <strong>OVH SAS</strong> — 2 rue Kellermann, 59100 Roubaix, France.<br />
+              Site web : <a href="https://www.ovhcloud.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">www.ovhcloud.com</a>
+            </p>
           </section>
 
           <section className="space-y-2">

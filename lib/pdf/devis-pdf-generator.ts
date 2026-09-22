@@ -46,17 +46,17 @@ export function genererDevisPDF(data: DevisPDFData): Buffer {
 
   // 2. En-tête : Informations du Club (Gauche) & Titre Devis (Droite)
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(16)
+  doc.setFontSize(15)
   doc.setTextColor(15, 23, 42) // Slate 900
-  doc.text('TRITON CLUB CAVAILLON', marginX, currentY)
+  doc.text('TRITON CLUB CAVAILLONNAIS', marginX, currentY)
 
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8.5)
+  doc.setFontSize(8)
   doc.setTextColor(100, 116, 139) // Slate 500
-  doc.text('Association sportive Loi 1901 · Affiliée FFN', marginX, currentY + 5)
-  doc.text('Piscine Alphonse Roudière · 84300 Cavaillon', marginX, currentY + 9.5)
-  doc.text('SIRET : 442 811 756 00018 · tritoncavaillon@gmail.com', marginX, currentY + 14)
-  doc.text('Site web : https://tritoncavaillon.fr', marginX, currentY + 18.5)
+  doc.text('Association sportive Loi 1901 (Triton Club Cavaillon) · Affiliée FFN', marginX, currentY + 4.5)
+  doc.text('Piscine Alphonse Roudière · Avenue Jean Moulin, Quartier La Clède · 84300 Cavaillon', marginX, currentY + 8.5)
+  doc.text('SIRET : 448 666 065 00017 · SIREN : 448 666 065 · RNA : W841000669 · APE : 93.12Z', marginX, currentY + 12.5)
+  doc.text('Email : tritoncavaillon@gmail.com · Site web : https://tritoncavaillon.fr', marginX, currentY + 16.5)
 
   // Bloc DEVIS à droite
   doc.setFont('helvetica', 'bold')
@@ -252,24 +252,24 @@ export function genererDevisPDF(data: DevisPDFData): Buffer {
   doc.text('Date :', marginX + 4, currentY + 18)
   doc.text('Nom et Signature du signataire :', marginX + 4, currentY + 25)
 
-  // Coordonnées bancaires pour règlement à droite
+  // Coordonnées et modalités de règlement à droite
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(8)
   doc.setTextColor(15, 23, 42)
-  doc.text('Règlement par virement :', pageWidth - marginX - 70, currentY + 6)
+  doc.text('Modalités de règlement :', pageWidth - marginX - 70, currentY + 6)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7.5)
   doc.setTextColor(71, 85, 105)
-  doc.text('Ordre : Triton Club Cavaillon', pageWidth - marginX - 70, currentY + 11)
-  doc.text('IBAN : FR76 1380 5000 1234 5678 9018 456', pageWidth - marginX - 70, currentY + 16)
-  doc.text('BIC : CMCIFR2A', pageWidth - marginX - 70, currentY + 21)
+  doc.text('Virement bancaire ou chèque', pageWidth - marginX - 70, currentY + 11)
+  doc.text('À l\'ordre : TRITON CLUB CAVAILLONNAIS', pageWidth - marginX - 70, currentY + 16)
+  doc.text('RIB transmis à la validation du devis', pageWidth - marginX - 70, currentY + 21)
 
   // 8. Pied de page discret
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
   doc.setTextColor(148, 163, 184)
-  doc.text('Triton Club Cavaillon · Association Loi 1901 · Document généré informatiquement', pageWidth / 2, 290, { align: 'center' })
+  doc.text('TRITON CLUB CAVAILLONNAIS · Association sportive Loi 1901 · SIRET : 448 666 065 00017 · RNA : W841000669 · Cavaillon', pageWidth / 2, 290, { align: 'center' })
 
   return Buffer.from(doc.output('arraybuffer'))
 }

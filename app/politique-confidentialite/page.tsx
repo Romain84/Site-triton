@@ -26,7 +26,7 @@ export default function PolitiqueConfidentialitePage() {
             <h2 className="text-2xl font-bold mb-4 text-primary">1. Responsable du traitement des données</h2>
             <div className="text-gray-700 space-y-2">
               <p><strong>Responsable :</strong> Triton Club Cavaillon</p>
-              <p><strong>Adresse :</strong> Piscine Municipale, Avenue Pierre de Coubertin, 84300 Cavaillon</p>
+              <p><strong>Adresse :</strong> Piscine Alphonse Roudière, Avenue Jean Moulin, Quartier La Clède, 84300 Cavaillon</p>
               <p><strong>Email :</strong> <a href="mailto:tritoncavaillon@gmail.com" className="text-primary hover:underline">tritoncavaillon@gmail.com</a></p>
             </div>
           </section>
@@ -157,7 +157,7 @@ export default function PolitiqueConfidentialitePage() {
               </p>
               <ul className="list-disc list-inside space-y-1 ml-4">
                 <li>Par email : <a href="mailto:tritoncavaillon@gmail.com" className="text-primary hover:underline">tritoncavaillon@gmail.com</a></li>
-                <li>Par courrier : Triton Club Cavaillon, Piscine Municipale, Avenue Pierre de Coubertin, 84300 Cavaillon</li>
+                <li>Par courrier : Triton Club Cavaillon, Piscine Alphonse Roudière, Avenue Jean Moulin, Quartier La Clède, 84300 Cavaillon</li>
               </ul>
 
               <p className="mt-4">
@@ -218,7 +218,7 @@ export default function PolitiqueConfidentialitePage() {
               </p>
               <ul className="list-disc list-inside space-y-1 ml-4">
                 <li>Email : <a href="mailto:tritoncavaillon@gmail.com" className="text-primary hover:underline">tritoncavaillon@gmail.com</a></li>
-                <li>Adresse : Piscine Municipale, Avenue Pierre de Coubertin, 84300 Cavaillon</li>
+                <li>Adresse : Piscine Alphonse Roudière, Avenue Jean Moulin, Quartier La Clède, 84300 Cavaillon</li>
               </ul>
             </div>
           </section>

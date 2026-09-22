@@ -106,7 +106,9 @@ export async function POST(request: NextRequest) {
     // Appeler l'API Abby
     const result = await exportInvoiceToAbby({
       apiKey,
-      clubName: 'Triton Club Cavaillon',
+      clubName: 'TRITON CLUB CAVAILLONNAIS',
+      clubSiret: '44866606500017',
+      clubEmail: 'tritoncavaillon@gmail.com',
       mois,
       annee,
       lines: abbyLines,
