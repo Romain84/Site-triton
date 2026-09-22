@@ -76,8 +76,8 @@ export async function POST(request: NextRequest, { params }: Params) {
         <p style="font-size: 16px; font-weight: bold; color: #166534;">${devis.titre}</p>
         <p>Montant total : <strong>${devis.totalTTC.toFixed(2)} €</strong> (TVA non applicable, art. 293 B du CGI)</p>
         <p>Ce devis est valable jusqu'au : <strong>${dateValiditeStr}</strong>.</p>
-        <br>
         <p>Pour le valider, merci de nous retourner un exemplaire signé avec la mention manuscrite <em>« Bon pour accord et acceptation du devis »</em>.</p>
+        <p>Le règlement peut être effectué par <strong>virement bancaire</strong> (nos coordonnées bancaires RIB Crédit Mutuel sont apposées sur le devis) ou par chèque à l&apos;ordre du <em>Triton Club Cavaillon</em>.</p>
         <br>
         <p>Bien cordialement,<br><strong>Triton Club Cavaillon</strong><br>Piscine Alphonse Roudière, 84300 Cavaillon</p>
       `,

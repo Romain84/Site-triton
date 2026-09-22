@@ -252,18 +252,33 @@ export function genererDevisPDF(data: DevisPDFData): Buffer {
   doc.text('Date :', marginX + 4, currentY + 18)
   doc.text('Nom et Signature du signataire :', marginX + 4, currentY + 25)
 
-  // Coordonnées et modalités de règlement à droite
+  // Ligne de séparation verticale entre signature et coordonnées bancaires
+  doc.setLineWidth(0.2)
+  doc.setDrawColor(226, 232, 240)
+  doc.line(pageWidth - marginX - 82, currentY + 3, pageWidth - marginX - 82, currentY + signBoxHeight - 3)
+
+  // Coordonnées et modalités de règlement à droite (Crédit Mutuel)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(8)
   doc.setTextColor(15, 23, 42)
-  doc.text('Modalités de règlement :', pageWidth - marginX - 70, currentY + 6)
+  doc.text('Règlement par virement bancaire :', pageWidth - marginX - 78, currentY + 5.5)
 
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7.5)
+  doc.setFontSize(7)
   doc.setTextColor(71, 85, 105)
-  doc.text('Virement bancaire ou chèque', pageWidth - marginX - 70, currentY + 11)
-  doc.text('À l\'ordre : TRITON CLUB CAVAILLONNAIS', pageWidth - marginX - 70, currentY + 16)
-  doc.text('RIB transmis à la validation du devis', pageWidth - marginX - 70, currentY + 21)
+  doc.text('Banque : Crédit Mutuel (CCM Cavaillon)', pageWidth - marginX - 78, currentY + 10)
+  doc.text('Titulaire : TRITON CLUB CAVAILLON', pageWidth - marginX - 78, currentY + 14)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7.5)
+  doc.setTextColor(15, 23, 42)
+  doc.text('IBAN : FR76 1027 8065 1400 0210 4070 102', pageWidth - marginX - 78, currentY + 18.5)
+  doc.text('BIC : CMCIFR2A', pageWidth - marginX - 78, currentY + 23)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(6.5)
+  doc.setTextColor(100, 116, 139)
+  doc.text('Ou par chèque à l\'ordre du club', pageWidth - marginX - 78, currentY + 28)
 
   // 8. Pied de page discret
   doc.setFont('helvetica', 'normal')
