@@ -66,7 +66,7 @@ const CATEGORIES = [
       { id: 'tests-nage', label: 'Tests de Nage & Niveau', icon: '⏱️' },
       { id: 'podiums', label: 'Podiums & Bilan Saison', icon: '🏅' },
       { id: 'groupes', label: 'Groupes / Jauges', icon: '👥' },
-      { id: 'remplacements', label: 'Remplacements', icon: '🔄' },
+      { id: 'remplacements', label: 'Remplacements & Prestations', icon: '🔄' },
       { id: 'cout-groupes', label: 'Coût Groupes', icon: '💶' }
     ]
   },

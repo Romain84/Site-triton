@@ -459,7 +459,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
   // Totaux
   const totalHeures = heuresPlanningFixe + heuresPlanningTournant + heuresRemplacements - heuresAbsences +
-    lignesManuelles.reduce((sum, l) => sum + (l.type === 'remplacement' || l.type === 'absence' ? l.heures : 0), 0)
+    lignesManuelles.reduce((sum, l) => sum + (['remplacement', 'absence', 'manuel'].includes(l.type) ? (l.heures || 0) : 0), 0)
 
   const calculatedTotalMontant =
     lignesPlanningFixe.reduce((sum, l) => sum + l.montant, 0) +
