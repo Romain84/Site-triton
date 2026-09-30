@@ -280,6 +280,14 @@ export async function genererFacturePDF(
   // Synthèse et totaux
   let currentY = (doc as any).lastAutoTable.finalY || (periodY + 10)
 
+  // Si le tableau occupe presque toute la page, passer proprement à la page suivante
+  if (currentY > 230) {
+    doc.addPage()
+    doc.setFillColor(112, 193, 92)
+    doc.rect(0, 0, 210, 4, 'F')
+    currentY = 20
+  }
+
   const rightAlignX = 190
   const totalBoxWidth = 80
   const totalBoxStartX = rightAlignX - totalBoxWidth
@@ -324,8 +332,11 @@ export async function genererFacturePDF(
 
   // Vacances
   if (vacances.length > 0) {
-    if (currentY > 260) {
-      currentY = 255
+    if (currentY > 255) {
+      doc.addPage()
+      doc.setFillColor(112, 193, 92)
+      doc.rect(0, 0, 210, 4, 'F')
+      currentY = 20
     }
 
     const vacanceInlineStr = vacances

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCoachSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
+import { genererNumeroFactureSequentiel, creerFactureCoachSecurisee } from '@/lib/facture-utils'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 
 const coachLogger = logger.withContext('CoachCompetition')
@@ -85,20 +85,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Coach introuvable' }, { status: 404 })
       }
 
-      const numero = await genererNumeroFactureSequentiel(session.coachId, annee)
       const settings = await prisma.settings.findFirst()
       const tauxHoraire = settings?.tauxHoraire || 35
 
-      facture = await prisma.factureCoach.create({
-        data: {
-          numero,
-          coachId: session.coachId,
-          mois,
-          annee,
-          montantTotal: 0,
-          tauxHoraire,
-          statut: 'brouillon',
-        },
+      facture = await creerFactureCoachSecurisee({
+        coachId: session.coachId,
+        mois,
+        annee,
+        montantTotal: 0,
+        tauxHoraire,
+        statut: 'brouillon',
       })
     }
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCoachSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
+import { genererNumeroFactureSequentiel, creerFactureCoachSecurisee } from '@/lib/facture-utils'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import { genererFacturePDF } from '@/lib/facture-pdf-generator'
 import { writeFile, mkdir } from 'fs/promises'
@@ -61,23 +61,26 @@ export async function POST(request: NextRequest) {
 
     // 3. Créer ou mettre à jour la facture
     if (!facture) {
-      const numero = await genererNumeroFactureSequentiel(session.coachId, annee)
-      facture = await prisma.factureCoach.create({
-        data: {
-          numero,
-          coachId: session.coachId,
-          mois,
-          annee,
-          montantTotal: details.totalMontant,
-          tauxHoraire: details.tauxHoraire,
-          statut: 'generee',
-          dateGeneration: dateNow,
-        },
+      facture = await creerFactureCoachSecurisee({
+        coachId: session.coachId,
+        mois,
+        annee,
+        montantTotal: details.totalMontant,
+        tauxHoraire: details.tauxHoraire,
+        statut: 'generee',
+        dateGeneration: dateNow,
       })
     } else {
+      let numero = facture.numero
+      // Si la facture en brouillon n'avait pas encore de numéro officiel au format F-TCC-AAAA-XXXX, lui en attribuer un garanti
+      if (!numero || !numero.startsWith(`F-TCC-${annee}-`)) {
+        numero = await genererNumeroFactureSequentiel(session.coachId, annee)
+      }
+
       facture = await prisma.factureCoach.update({
         where: { id: facture.id },
         data: {
+          numero,
           montantTotal: details.totalMontant,
           tauxHoraire: details.tauxHoraire,
           statut: 'generee',

@@ -6,22 +6,90 @@ export type StatutFactureCoach = typeof STATUTS_FACTURE_COACH[number]
 
 /**
  * Génère un numéro de facture unique, séquentiel et chronologique continu (conforme art. 242 nonies A du CGI)
- * Format : F-AAAA-0001, F-AAAA-0002, etc. pour chaque coach et année
+ * Format : F-TCC-AAAA-0001, F-TCC-AAAA-0002, etc. (série officielle distincte du club)
  */
 export async function genererNumeroFactureSequentiel(
   coachId: string,
   annee: number
 ): Promise<string> {
-  // Compter le nombre de factures existantes pour ce coach cette année-là
-  const count = await prisma.factureCoach.count({
+  const prefix = `F-TCC-${annee}-`
+
+  // 1. Récupérer toutes les factures existantes de l'année pour trouver le numéro maximum utilisé
+  const existingFactures = await prisma.factureCoach.findMany({
     where: {
-      coachId,
       annee,
+    },
+    select: {
+      numero: true,
     },
   })
 
-  const index = String(count + 1).padStart(4, '0')
-  return `F-TCC-${annee}-${index}`
+  let maxIndex = 0
+  for (const f of existingFactures) {
+    if (f.numero && f.numero.startsWith(prefix)) {
+      const suffix = f.numero.substring(prefix.length)
+      const num = parseInt(suffix, 10)
+      if (!isNaN(num) && num > maxIndex) {
+        maxIndex = num
+      }
+    }
+  }
+
+  // 2. Déterminer le prochain candidat disponible et vérifier qu'aucune facture n'utilise ce numéro
+  let candidateIndex = maxIndex + 1
+  let candidateNumero = `${prefix}${String(candidateIndex).padStart(4, '0')}`
+
+  while (await prisma.factureCoach.findUnique({ where: { numero: candidateNumero } })) {
+    candidateIndex++
+    candidateNumero = `${prefix}${String(candidateIndex).padStart(4, '0')}`
+  }
+
+  return candidateNumero
+}
+
+/**
+ * Crée une FactureCoach avec garantie d'attribution d'un numéro séquentiel unique et gestion des accès concurrents
+ */
+export async function creerFactureCoachSecurisee(params: {
+  coachId: string
+  mois: number
+  annee: number
+  montantTotal: number
+  tauxHoraire: number
+  statut?: StatutFactureCoach
+  dateGeneration?: Date | null
+  dateEnvoi?: Date | null
+}) {
+  let attempts = 0
+  const maxAttempts = 5
+
+  while (attempts < maxAttempts) {
+    attempts++
+    const numero = await genererNumeroFactureSequentiel(params.coachId, params.annee)
+    try {
+      return await prisma.factureCoach.create({
+        data: {
+          numero,
+          coachId: params.coachId,
+          mois: params.mois,
+          annee: params.annee,
+          montantTotal: params.montantTotal,
+          tauxHoraire: params.tauxHoraire,
+          statut: params.statut || 'brouillon',
+          dateGeneration: params.dateGeneration,
+          dateEnvoi: params.dateEnvoi,
+        },
+      })
+    } catch (err: any) {
+      if (err?.code === 'P2002' && attempts < maxAttempts) {
+        // En cas de collision concurrente sur le champ numero, on retente avec l'index suivant
+        continue
+      }
+      throw err
+    }
+  }
+
+  throw new Error("Impossible d'attribuer un numéro de facture unique après plusieurs tentatives.")
 }
 
 /**

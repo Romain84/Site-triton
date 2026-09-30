@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
 import { requireAdmin, handleRouteError } from '@/lib/api/guards'
-import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
+import { genererNumeroFactureSequentiel, creerFactureCoachSecurisee } from '@/lib/facture-utils'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import { logAdminAudit } from '@/lib/admin-audit'
 
@@ -163,17 +163,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (!facture) {
-      const numero = await genererNumeroFactureSequentiel(coachId, annee)
-      facture = await prisma.factureCoach.create({
-        data: {
-          numero,
-          coachId,
-          mois,
-          annee,
-          montantTotal: 0,
-          tauxHoraire: baseTaux,
-          statut: 'brouillon',
-        },
+      facture = await creerFactureCoachSecurisee({
+        coachId,
+        mois,
+        annee,
+        montantTotal: 0,
+        tauxHoraire: baseTaux,
+        statut: 'brouillon',
       })
     }
 

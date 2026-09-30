@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCoachSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
+import { genererNumeroFactureSequentiel, creerFactureCoachSecurisee } from '@/lib/facture-utils'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 
 const coachLogger = logger.withContext('Coach')
@@ -78,22 +78,16 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Générer un numéro de facture séquentiel continu
-      const numero = await genererNumeroFactureSequentiel(session.coachId, annee)
-
       const settings = await prisma.settings.findFirst()
       const tauxHoraire = settings?.tauxHoraire || 35
 
-      facture = await prisma.factureCoach.create({
-        data: {
-          numero,
-          coachId: session.coachId,
-          mois,
-          annee,
-          montantTotal: 0,
-          tauxHoraire,
-          statut: 'brouillon',
-        },
+      facture = await creerFactureCoachSecurisee({
+        coachId: session.coachId,
+        mois,
+        annee,
+        montantTotal: 0,
+        tauxHoraire,
+        statut: 'brouillon',
       })
     }
 
@@ -170,21 +164,16 @@ export async function POST(request: NextRequest) {
           })
 
           if (coachRemplace) {
-            const numeroRemplace = await genererNumeroFactureSequentiel(coachRemplaceId, annee)
-
             const settings = await prisma.settings.findFirst()
             const tauxHoraireRemplace = settings?.tauxHoraire || 35
 
-            factureCoachRemplace = await prisma.factureCoach.create({
-              data: {
-                numero: numeroRemplace,
-                coachId: coachRemplaceId,
-                mois,
-                annee,
-                montantTotal: 0,
-                tauxHoraire: tauxHoraireRemplace,
-                statut: 'brouillon',
-              },
+            factureCoachRemplace = await creerFactureCoachSecurisee({
+              coachId: coachRemplaceId,
+              mois,
+              annee,
+              montantTotal: 0,
+              tauxHoraire: tauxHoraireRemplace,
+              statut: 'brouillon',
             })
           }
         }

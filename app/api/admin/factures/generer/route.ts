@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { requireAdmin } from '@/lib/api/guards'
-import { genererNumeroFactureSequentiel, doitEnvoyerEmailAuClub } from '@/lib/facture-utils'
+import { genererNumeroFactureSequentiel, creerFactureCoachSecurisee, doitEnvoyerEmailAuClub } from '@/lib/facture-utils'
 import { sanitizeEmailHeader, queueEmail } from '@/lib/email'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import { genererFacturePDF } from '@/lib/facture-pdf-generator'
@@ -101,24 +101,25 @@ export async function POST(request: NextRequest) {
     const statutCible = envoyerClub ? 'envoyee' : 'generee'
 
     if (!facture) {
-      const numero = await genererNumeroFactureSequentiel(coachId, annee)
-      facture = await prisma.factureCoach.create({
-        data: {
-          numero,
-          coachId,
-          mois,
-          annee,
-          montantTotal: details.totalMontant,
-          tauxHoraire: details.tauxHoraire,
-          statut: statutCible,
-          dateGeneration: dateNow,
-          dateEnvoi: envoyerClub ? dateNow : undefined,
-        },
+      facture = await creerFactureCoachSecurisee({
+        coachId,
+        mois,
+        annee,
+        montantTotal: details.totalMontant,
+        tauxHoraire: details.tauxHoraire,
+        statut: statutCible,
+        dateGeneration: dateNow,
+        dateEnvoi: envoyerClub ? dateNow : undefined,
       })
     } else {
+      let numero = facture.numero
+      if (!numero || !numero.startsWith(`F-TCC-${annee}-`)) {
+        numero = await genererNumeroFactureSequentiel(coachId, annee)
+      }
       facture = await prisma.factureCoach.update({
         where: { id: facture.id },
         data: {
+          numero,
           montantTotal: details.totalMontant,
           tauxHoraire: details.tauxHoraire,
           statut: statutCible,
