@@ -113,7 +113,13 @@ export async function POST(request: NextRequest) {
       })
     } else {
       let numero = facture.numero
-      if (!numero || !numero.startsWith(`F-TCC-${annee}-`)) {
+      const isAlreadyFinalized = facture.statut === 'generee' || facture.statut === 'envoyee' || facture.statut === 'payee'
+      
+      // Si la facture est encore un brouillon, lui attribuer le numéro officiel avec initiales
+      // Si la facture a déjà été générée/envoyée/payée, préserver STRICTEMENT son numéro historique
+      if (!isAlreadyFinalized) {
+        numero = await genererNumeroFactureSequentiel(coachId, annee)
+      } else if (!numero || !numero.startsWith(`F-TCC-${annee}-`)) {
         numero = await genererNumeroFactureSequentiel(coachId, annee)
       }
       facture = await prisma.factureCoach.update({

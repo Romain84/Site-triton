@@ -600,7 +600,7 @@ export function genererGuideCoachPDF(): Buffer {
   doc.setFontSize(8)
   doc.setTextColor(COLOR_SLATE_700[0], COLOR_SLATE_700[1], COLOR_SLATE_700[2])
   doc.text('• Lorsque le mois est terminé, cliquez sur le bouton bleu « Générer la facture ».', marginX + 4, currentY + 11)
-  doc.text('• Le système lui attribue un numéro officiel séquentiel et chronologique continu (ex. F-TCC-2026-0001).', marginX + 4, currentY + 16)
+  doc.text('• Le système lui attribue un numéro officiel séquentiel personnalisé avec vos initiales (ex. F-TCC-2026-JP-0001).', marginX + 4, currentY + 16)
   doc.text('• Un fichier PDF officiel haute définition conforme aux normes fiscales est généré sur le serveur.', marginX + 4, currentY + 21)
 
   currentY += stepH + 4

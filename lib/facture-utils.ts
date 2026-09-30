@@ -5,18 +5,62 @@ export const STATUTS_FACTURE_COACH = ['brouillon', 'generee', 'envoyee', 'payee'
 export type StatutFactureCoach = typeof STATUTS_FACTURE_COACH[number]
 
 /**
- * Génère un numéro de facture unique, séquentiel et chronologique continu (conforme art. 242 nonies A du CGI)
- * Format : F-TCC-AAAA-0001, F-TCC-AAAA-0002, etc. (série officielle distincte du club)
+ * Extrait les 2 initiales majuscules d'un coach (ex: Julie Petrella -> "JP", Florian Di-Giusto -> "FD", Gaël Bernard -> "GB")
+ * Nettoie les accents, espaces, tirets et caractères non alphabétiques.
+ */
+export function extraireInitialesCoach(prenom?: string | null, nom?: string | null): string {
+  const cleanPrenom = (prenom || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/[^a-zA-Z]/g, '')
+
+  const cleanNom = (nom || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/[^a-zA-Z]/g, '')
+
+  const pInitial = cleanPrenom.charAt(0).toUpperCase()
+  const nInitial = cleanNom.charAt(0).toUpperCase()
+
+  if (pInitial && nInitial) {
+    return `${pInitial}${nInitial}`
+  }
+
+  if (pInitial) {
+    return cleanPrenom.length >= 2 ? cleanPrenom.substring(0, 2).toUpperCase() : `${pInitial}X`
+  }
+
+  return 'XX'
+}
+
+/**
+ * Génère un numéro de facture unique, séquentiel et propre à chaque coach pour l'année donnée
+ * Format : F-TCC-AAAA-{INITIALES}-0001, F-TCC-AAAA-{INITIALES}-0002, etc.
+ * Exemple : F-TCC-2026-JP-0001, F-TCC-2026-JP-0002
+ * Règle séquentielle :
+ * - Si le coach possède déjà au moins une facture pour l'année (ex: 0001 existante), sa prochaine démarre à 0002 (ou index suivant).
+ * - Si le coach n'a encore aucune facture pour cette année, elle démarre à 0001.
  */
 export async function genererNumeroFactureSequentiel(
   coachId: string,
   annee: number
 ): Promise<string> {
-  const prefix = `F-TCC-${annee}-`
+  // 1. Récupérer le coach pour déduire ses initiales
+  const coach = await prisma.coach.findUnique({
+    where: { id: coachId },
+    select: { prenom: true, nom: true },
+  })
 
-  // 1. Récupérer toutes les factures existantes de l'année pour trouver le numéro maximum utilisé
+  const initiales = extraireInitialesCoach(coach?.prenom, coach?.nom)
+  const coachPrefix = `F-TCC-${annee}-${initiales}-`
+  const legacyPrefix = `F-TCC-${annee}-`
+
+  // 2. Récupérer toutes les factures déjà existantes en base pour ce coach et cette année
   const existingFactures = await prisma.factureCoach.findMany({
     where: {
+      coachId,
       annee,
     },
     select: {
@@ -26,22 +70,38 @@ export async function genererNumeroFactureSequentiel(
 
   let maxIndex = 0
   for (const f of existingFactures) {
-    if (f.numero && f.numero.startsWith(prefix)) {
-      const suffix = f.numero.substring(prefix.length)
+    if (!f.numero) continue
+
+    // Format avec initiales : F-TCC-2026-JP-0001
+    if (f.numero.startsWith(coachPrefix)) {
+      const suffix = f.numero.substring(coachPrefix.length)
       const num = parseInt(suffix, 10)
       if (!isNaN(num) && num > maxIndex) {
         maxIndex = num
       }
     }
+    // Format historique sans initiales : F-TCC-2026-0001 ou F-TCC-2026-0002
+    else if (f.numero.startsWith(legacyPrefix)) {
+      const match = f.numero.match(/(\d+)$/)
+      if (match) {
+        const num = parseInt(match[1], 10)
+        if (!isNaN(num) && num > maxIndex) {
+          maxIndex = num
+        }
+      }
+    }
   }
 
-  // 2. Déterminer le prochain candidat disponible et vérifier qu'aucune facture n'utilise ce numéro
+  // 3. Proposer maxIndex + 1 :
+  // Si le coach a déjà une facture 0001 (ancienne ou nouvelle), maxIndex >= 1 -> candidate = 0002
+  // Si le coach n'a aucune facture pour cette année -> maxIndex = 0 -> candidate = 0001
   let candidateIndex = maxIndex + 1
-  let candidateNumero = `${prefix}${String(candidateIndex).padStart(4, '0')}`
+  let candidateNumero = `${coachPrefix}${String(candidateIndex).padStart(4, '0')}`
 
+  // 4. Sécurité anti-collision globale absolue dans toute la base
   while (await prisma.factureCoach.findUnique({ where: { numero: candidateNumero } })) {
     candidateIndex++
-    candidateNumero = `${prefix}${String(candidateIndex).padStart(4, '0')}`
+    candidateNumero = `${coachPrefix}${String(candidateIndex).padStart(4, '0')}`
   }
 
   return candidateNumero
@@ -102,8 +162,8 @@ export function genererNumeroFacture(
   annee: number,
   coachId?: string
 ): string {
-  const mm = String(mois).padStart(2, '0')
-  return `F-${annee}${mm}-0001`
+  const initiales = extraireInitialesCoach(prenom, nom)
+  return `F-TCC-${annee}-${initiales}-0001`
 }
 
 // Vérifie qu'un statut de facture coach est valide.

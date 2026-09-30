@@ -72,8 +72,13 @@ export async function POST(request: NextRequest) {
       })
     } else {
       let numero = facture.numero
-      // Si la facture en brouillon n'avait pas encore de numéro officiel au format F-TCC-AAAA-XXXX, lui en attribuer un garanti
-      if (!numero || !numero.startsWith(`F-TCC-${annee}-`)) {
+      const isAlreadyFinalized = facture.statut === 'generee' || facture.statut === 'envoyee' || facture.statut === 'payee'
+
+      // Si la facture est encore un brouillon, lui attribuer le numéro officiel avec initiales
+      // Si la facture a déjà été générée/envoyée/payée, préserver STRICTEMENT son numéro historique
+      if (!isAlreadyFinalized) {
+        numero = await genererNumeroFactureSequentiel(session.coachId, annee)
+      } else if (!numero || !numero.startsWith(`F-TCC-${annee}-`)) {
         numero = await genererNumeroFactureSequentiel(session.coachId, annee)
       }
 
