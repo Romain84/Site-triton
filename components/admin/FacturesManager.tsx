@@ -324,6 +324,7 @@ export default function FacturesManager() {
         toast.success(data.message || (envoyerClub ? 'Facture générée et envoyée au club par e-mail avec succès !' : 'Facture générée avec succès !'))
         setShowGenerateModal(false)
         await fetchFactures()
+        await fetchEnCours(selectedMoisEnCours, selectedAnneeEnCours)
       } else {
         toast.error(data.error || 'Erreur lors de la génération de la facture')
       }
@@ -350,6 +351,7 @@ export default function FacturesManager() {
       if (res.ok) {
         toast.success(data.message || (envoyerClub ? 'Facture envoyée au club avec succès !' : 'PDF généré avec succès !'))
         await fetchFactures()
+        await fetchEnCours(selectedMoisEnCours, selectedAnneeEnCours)
         await handleOpenPreview(previewFacture.id)
       } else {
         toast.error(data.error || 'Erreur lors du traitement')
@@ -376,11 +378,96 @@ export default function FacturesManager() {
       if (res.ok) {
         toast.success(data.message || 'Facture envoyée au club par e-mail avec succès !')
         await fetchFactures()
+        await fetchEnCours(selectedMoisEnCours, selectedAnneeEnCours)
       } else {
         toast.error(data.error || 'Erreur lors de l\'envoi')
       }
     } catch {
       toast.error('Erreur réseau')
+    } finally {
+      setGeneratingAction(null)
+    }
+  }
+
+  const handleQuickGenerate = async (factureId: string) => {
+    setGeneratingAction(`quick-gen-${factureId}`)
+    try {
+      const res = await fetch('/api/admin/factures/generer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          factureId,
+          envoyerClub: false,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(data.message || 'Facture générée avec succès !')
+        await fetchFactures()
+        await fetchEnCours(selectedMoisEnCours, selectedAnneeEnCours)
+      } else {
+        toast.error(data.error || 'Erreur lors de la génération')
+      }
+    } catch {
+      toast.error('Erreur réseau')
+    } finally {
+      setGeneratingAction(null)
+    }
+  }
+
+  const handleGenerateCoachInvoice = async (
+    coachId: string,
+    coachNom: string,
+    mois: number,
+    annee: number,
+    envoyerClub = false
+  ) => {
+    const actionLabel = envoyerClub ? 'générer et envoyer au club par e-mail' : 'générer officiellement'
+    if (!window.confirm(`Voulez-vous ${actionLabel} la facture de ${coachNom} pour ${moisNoms[mois - 1]} ${annee} à la place du coach ?`)) {
+      return
+    }
+
+    const actionKey = envoyerClub ? `coach-send-${coachId}` : `coach-${coachId}`
+    setGeneratingAction(actionKey)
+    try {
+      const res = await fetch('/api/admin/factures/generer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coachId,
+          mois,
+          annee,
+          envoyerClub,
+        }),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(
+          data.message ||
+            (envoyerClub
+              ? `Facture de ${coachNom} générée et transmise au club !`
+              : `Facture de ${coachNom} générée avec succès !`)
+        )
+        await fetchFactures()
+        await fetchEnCours(selectedMoisEnCours, selectedAnneeEnCours)
+        if (readOnlyCoachPreview && readOnlyCoachPreview.coach.id === coachId) {
+          setReadOnlyCoachPreview((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  statut: data.facture?.statut || (envoyerClub ? 'envoyee' : 'generee'),
+                  numero: data.facture?.numero || prev.numero,
+                  pdfPath: data.pdfUrl || prev.pdfPath,
+                }
+              : null
+          )
+        }
+      } else {
+        toast.error(data.error || 'Erreur lors de la génération de la facture')
+      }
+    } catch {
+      toast.error('Erreur réseau lors de la génération de la facture')
     } finally {
       setGeneratingAction(null)
     }
@@ -458,8 +545,8 @@ export default function FacturesManager() {
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <span>👁️</span>
-          <span>Factures en cours (Lecture seule)</span>
+          <span>⚡</span>
+          <span>Factures en cours & Génération</span>
           <span className="ml-1 px-2 py-0.5 rounded-full text-[11px] bg-sky-50 text-sky-700 border border-sky-200 font-bold">
             Temps réel
           </span>
@@ -556,6 +643,17 @@ export default function FacturesManager() {
                     >
                       🔎 Consulter le détail
                     </button>
+                    {facture.statut === 'brouillon' && (
+                      <button
+                        onClick={() => handleQuickGenerate(facture.id)}
+                        disabled={generatingAction === `quick-gen-${facture.id}`}
+                        className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-2xs"
+                        title="Générer la facture et créer le PDF officiel"
+                      >
+                        <span>⚡</span>
+                        <span>{generatingAction === `quick-gen-${facture.id}` ? 'Génération...' : 'Générer la facture'}</span>
+                      </button>
+                    )}
                     {facture.pdfPath && (
                       <a
                         href={facture.pdfPath}
@@ -661,19 +759,19 @@ export default function FacturesManager() {
         </>
       )}
 
-      {/* ── Onglet 2 : Factures en cours (Lecture seule) ── */}
+      {/* ── Onglet 2 : Factures en cours & Génération coachs ── */}
       {activeTab === 'en_cours' && (
         <div className="space-y-6">
           {/* Bannière explicative & rassurance */}
           <div className="bg-sky-50/80 border border-sky-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <span className="text-2xl mt-0.5">💡</span>
+              <span className="text-2xl mt-0.5">⚡</span>
               <div>
                 <h4 className="font-bold text-slate-800 text-sm sm:text-base">
-                  Mode consultation en temps réel (Strictement en lecture seule)
+                  Génération & consultation des factures coachs en temps réel
                 </h4>
                 <p className="text-xs sm:text-sm text-slate-600 mt-0.5 leading-relaxed">
-                  Ce tableau calcule dynamiquement les heures (créneaux fixes, tournants, remplacements, déductions d&apos;absences, compétitions) pour chaque coach actif. <strong>Aucune facture n&apos;est créée ou modifiée en base de données.</strong>
+                  Ce tableau calcule dynamiquement les heures (créneaux fixes, tournants, remplacements, déductions d&apos;absences, compétitions) pour chaque coach actif. Vous pouvez consulter le détail ou <strong>générer et envoyer la facture officielle à la place du coach</strong> en un clic.
                 </p>
               </div>
             </div>
@@ -883,16 +981,118 @@ export default function FacturesManager() {
                           </td>
 
                           <td className="py-3.5 px-4 text-center">
-                            <div className="flex items-center justify-center gap-2">
+                            <div className="flex items-center justify-center gap-1.5 flex-wrap">
                               <button
                                 type="button"
                                 onClick={() => handleOpenReadOnlyPreview(c)}
-                                className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                                className="px-2.5 py-1.5 text-xs font-semibold bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
                                 title="Voir le détail du calcul"
                               >
                                 <span>🔍</span>
                                 <span>Détail</span>
                               </button>
+
+                              {(c.statut === 'non_generee' || c.statut === 'brouillon') && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleGenerateCoachInvoice(
+                                        c.coach.id,
+                                        `${c.coach.prenom} ${c.coach.nom || ''}`.trim(),
+                                        selectedMoisEnCours,
+                                        selectedAnneeEnCours,
+                                        false
+                                      )
+                                    }
+                                    disabled={generatingAction === `coach-${c.coach.id}`}
+                                    className="px-2.5 py-1.5 text-xs font-semibold bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors flex items-center gap-1 shadow-2xs disabled:opacity-50 cursor-pointer"
+                                    title="Générer officiellement la facture pour ce coach"
+                                  >
+                                    <span>⚡</span>
+                                    <span>{generatingAction === `coach-${c.coach.id}` ? '...' : 'Générer'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleGenerateCoachInvoice(
+                                        c.coach.id,
+                                        `${c.coach.prenom} ${c.coach.nom || ''}`.trim(),
+                                        selectedMoisEnCours,
+                                        selectedAnneeEnCours,
+                                        true
+                                      )
+                                    }
+                                    disabled={generatingAction === `coach-send-${c.coach.id}`}
+                                    className="px-2.5 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-1 shadow-2xs disabled:opacity-50 cursor-pointer"
+                                    title="Générer et envoyer la facture au club par e-mail"
+                                  >
+                                    <span>✉️</span>
+                                    <span>{generatingAction === `coach-send-${c.coach.id}` ? '...' : 'Envoyer'}</span>
+                                  </button>
+                                </>
+                              )}
+
+                              {c.statut === 'generee' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleGenerateCoachInvoice(
+                                        c.coach.id,
+                                        `${c.coach.prenom} ${c.coach.nom || ''}`.trim(),
+                                        selectedMoisEnCours,
+                                        selectedAnneeEnCours,
+                                        false
+                                      )
+                                    }
+                                    disabled={generatingAction === `coach-${c.coach.id}`}
+                                    className="px-2.5 py-1.5 text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-lg transition-colors flex items-center gap-1 shadow-2xs disabled:opacity-50 cursor-pointer"
+                                    title="Régénérer le PDF de la facture"
+                                  >
+                                    <span>🔄</span>
+                                    <span>{generatingAction === `coach-${c.coach.id}` ? '...' : 'Régénérer'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleGenerateCoachInvoice(
+                                        c.coach.id,
+                                        `${c.coach.prenom} ${c.coach.nom || ''}`.trim(),
+                                        selectedMoisEnCours,
+                                        selectedAnneeEnCours,
+                                        true
+                                      )
+                                    }
+                                    disabled={generatingAction === `coach-send-${c.coach.id}`}
+                                    className="px-2.5 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-1 shadow-2xs disabled:opacity-50 cursor-pointer"
+                                    title="Envoyer la facture générée au club par e-mail"
+                                  >
+                                    <span>✉️</span>
+                                    <span>{generatingAction === `coach-send-${c.coach.id}` ? '...' : 'Envoyer'}</span>
+                                  </button>
+                                </>
+                              )}
+
+                              {(c.statut === 'envoyee' || c.statut === 'payee') && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleGenerateCoachInvoice(
+                                      c.coach.id,
+                                      `${c.coach.prenom} ${c.coach.nom || ''}`.trim(),
+                                      selectedMoisEnCours,
+                                      selectedAnneeEnCours,
+                                      false
+                                    )
+                                  }
+                                  disabled={generatingAction === `coach-${c.coach.id}`}
+                                  className="px-2 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1"
+                                  title="Régénérer le PDF de la facture"
+                                >
+                                  <span>🔄</span>
+                                </button>
+                              )}
 
                               {c.pdfPath && (
                                 <a
@@ -1266,7 +1466,7 @@ export default function FacturesManager() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold text-sky-800 bg-sky-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    Lecture seule · Temps réel
+                    Prévisionnel · Génération admin
                   </span>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statutsLabels[readOnlyCoachPreview.statut]?.color || 'bg-slate-100 text-slate-700'}`}>
                     {statutsLabels[readOnlyCoachPreview.statut]?.label || readOnlyCoachPreview.statut}
@@ -1290,11 +1490,11 @@ export default function FacturesManager() {
 
             {/* Corps */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Message rassurance */}
-              <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 text-xs text-amber-900 flex items-center gap-2">
-                <span className="text-base">🔒</span>
+              {/* Message d'action admin */}
+              <div className="bg-sky-50/80 border border-sky-200/80 rounded-xl p-3 text-xs text-sky-900 flex items-center gap-2">
+                <span className="text-base">⚡</span>
                 <span>
-                  <strong>Consultation uniquement :</strong> Ce calcul prévisionnel est affiché en lecture seule. Aucune facture n&apos;est enregistrée ou modifiée ici.
+                  <strong>Génération directe à la place du coach :</strong> Vous pouvez vérifier le détail des séances ci-dessous et générer la facture officielle (avec ou sans envoi immédiat par e-mail).
                 </span>
               </div>
 
@@ -1530,24 +1730,75 @@ export default function FacturesManager() {
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-2">
-                {readOnlyCoachPreview.pdfPath && (
-                  <a
-                    href={readOnlyCoachPreview.pdfPath}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 py-2.5 text-center text-xs sm:text-sm font-semibold rounded-xl border border-sky-200 text-sky-800 bg-sky-50 hover:bg-sky-100 transition-colors flex items-center justify-center gap-1.5"
+              {/* Actions de génération pour l'admin */}
+              <div className="space-y-2 pt-2">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleGenerateCoachInvoice(
+                        readOnlyCoachPreview.coach.id,
+                        `${readOnlyCoachPreview.coach.prenom} ${readOnlyCoachPreview.coach.nom || ''}`.trim(),
+                        selectedMoisEnCours,
+                        selectedAnneeEnCours,
+                        false
+                      )
+                    }
+                    disabled={generatingAction === `coach-${readOnlyCoachPreview.coach.id}`}
+                    className="flex-1 py-2.5 px-3 text-center text-xs sm:text-sm font-bold rounded-xl bg-primary hover:bg-primary/90 text-white transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
-                    📄 Ouvrir le PDF officiel
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setReadOnlyCoachPreview(null)}
-                  className="flex-1 py-2.5 text-center text-xs sm:text-sm font-semibold rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  Fermer
-                </button>
+                    <span>⚡</span>
+                    <span>
+                      {generatingAction === `coach-${readOnlyCoachPreview.coach.id}`
+                        ? 'Génération...'
+                        : readOnlyCoachPreview.statut === 'generee'
+                        ? 'Régénérer la facture'
+                        : 'Générer la facture'}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleGenerateCoachInvoice(
+                        readOnlyCoachPreview.coach.id,
+                        `${readOnlyCoachPreview.coach.prenom} ${readOnlyCoachPreview.coach.nom || ''}`.trim(),
+                        selectedMoisEnCours,
+                        selectedAnneeEnCours,
+                        true
+                      )
+                    }
+                    disabled={generatingAction === `coach-send-${readOnlyCoachPreview.coach.id}`}
+                    className="flex-1 py-2.5 px-3 text-center text-xs sm:text-sm font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>✉️</span>
+                    <span>
+                      {generatingAction === `coach-send-${readOnlyCoachPreview.coach.id}`
+                        ? 'Envoi...'
+                        : 'Générer & Envoyer au club'}
+                    </span>
+                  </button>
+                </div>
+
+                <div className="flex gap-2">
+                  {readOnlyCoachPreview.pdfPath && (
+                    <a
+                      href={readOnlyCoachPreview.pdfPath}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2 text-center text-xs font-semibold rounded-xl border border-sky-200 text-sky-800 bg-sky-50 hover:bg-sky-100 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      📄 Consulter le PDF
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setReadOnlyCoachPreview(null)}
+                    className="flex-1 py-2 text-center text-xs font-semibold rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    Fermer
+                  </button>
+                </div>
               </div>
             </div>
           </div>
