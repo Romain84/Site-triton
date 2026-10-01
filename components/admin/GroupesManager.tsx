@@ -28,7 +28,6 @@ interface Groupe {
   complet: boolean
   dateDebut: string | null
   dateFin: string | null
-  tempsFacture: number | null
   isCompetition: boolean
   nbCompetitions: number | null
   nbCompetitionsCaution: number | null
@@ -66,7 +65,6 @@ export default function GroupesManager() {
   const [complet, setComplet] = useState(false)
   const [dateDebut, setDateDebut] = useState('')
   const [dateFin, setDateFin] = useState('')
-  const [tempsFacture, setTempsFacture] = useState('')
   const [isCompetition, setIsCompetition] = useState(false)
   const [nbCompetitions, setNbCompetitions] = useState('')
   const [nbCompetitionsCaution, setNbCompetitionsCaution] = useState('')
@@ -113,7 +111,6 @@ export default function GroupesManager() {
     setComplet(false)
     setDateDebut('')
     setDateFin('')
-    setTempsFacture('')
     setIsCompetition(false)
     setNbCompetitions('')
     setNbCompetitionsCaution('')
@@ -146,7 +143,6 @@ export default function GroupesManager() {
     setComplet(groupe.complet || false)
     setDateDebut(groupe.dateDebut ? groupe.dateDebut.split('T')[0] : '')
     setDateFin(groupe.dateFin ? groupe.dateFin.split('T')[0] : '')
-    setTempsFacture(groupe.tempsFacture?.toString() || '')
     setIsCompetition(groupe.isCompetition || false)
     setNbCompetitions(groupe.nbCompetitions?.toString() || '')
     setNbCompetitionsCaution(groupe.nbCompetitionsCaution?.toString() || '')
@@ -200,7 +196,6 @@ export default function GroupesManager() {
           couleur: couleur || null,
           dateDebut: dateDebut || null,
           dateFin: dateFin || null,
-          tempsFacture: tempsFacture || null,
           isCompetition,
           nbCompetitions: nbCompetitions || null,
           nbCompetitionsCaution: nbCompetitionsCaution || null,

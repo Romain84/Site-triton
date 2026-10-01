@@ -155,7 +155,6 @@ export const groupeSchema = z.object({
   niveau: z.string().optional().nullable(),
   dateDebut: z.string().optional().nullable(),
   dateFin: z.string().optional().nullable(),
-  tempsFacture: z.coerce.number().int().min(0).optional().nullable(),
   isCompetition: z.boolean().default(false),
   nbCompetitions: z.coerce.number().int().min(0).optional().nullable(),
   nbCompetitionsCaution: z.coerce.number().int().min(0).optional().nullable(),

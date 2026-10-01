@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
               coach: { select: { id: true, prenom: true, nom: true } },
             },
           },
-          groupe: { select: { id: true, nom: true, niveau: true, tempsFacture: true } },
+          groupe: { select: { id: true, nom: true, niveau: true } },
         },
       }),
       minDate && maxDate
@@ -925,7 +925,12 @@ function getPlanningDuree(planning: {
   heureDebut: string
   heureFin: string
   semaineImpaire?: boolean | null
+  tempsFacture?: number | null
 }): number {
+  if (planning.tempsFacture && planning.tempsFacture > 0) {
+    const dureeBase = planning.tempsFacture / 60
+    return planning.semaineImpaire ? dureeBase / 2 : dureeBase
+  }
   const start = parseTimeToMinutes(planning.heureDebut)
   const end = parseTimeToMinutes(planning.heureFin)
   const dureeReelle = Math.max(0, (end - start) / 60)

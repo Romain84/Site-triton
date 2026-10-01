@@ -33,7 +33,15 @@ interface Planning {
   couleur: string | null
   nomSession: string | null
   semaineImpaire?: boolean
+  tempsFacture?: number | null
   actif: boolean
+}
+
+export const formatMinutesEnHM = (minutes?: number | null): string => {
+  if (minutes === undefined || minutes === null || minutes <= 0) return '0h00'
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return `${h}h${m < 10 ? '0' + m : m}`
 }
 
 const JOURS_SEMAINE = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
@@ -390,6 +398,12 @@ export default function PlanningFixeManager() {
   const [groupeId, setGroupeId] = useState('')
   const [coachIds, setCoachIds] = useState<string[]>([])
   const [nomSession, setNomSession] = useState('')
+  const [tempsFacture, setTempsFacture] = useState('')
+  
+  // Quick edit modal state
+  const [quickEditPlanning, setQuickEditPlanning] = useState<Planning | null>(null)
+  const [quickTempsFacture, setQuickTempsFacture] = useState('')
+  const [isSavingQuick, setIsSavingQuick] = useState(false)
   
   // Custom lieu selector state
   const [lieuType, setLieuType] = useState('Grand Bassin - Ligne 1')
@@ -426,6 +440,7 @@ export default function PlanningFixeManager() {
     setGroupeId('')
     setCoachIds([])
     setNomSession('')
+    setTempsFacture('')
     setLieuType('Grand Bassin - Ligne 1')
     setLieuCustom('')
     setCouleur('#00bcd4')
@@ -433,6 +448,48 @@ export default function PlanningFixeManager() {
     setActif(true)
     setEditingPlanning(null)
     setShowForm(false)
+  }
+
+  const handleOpenQuickEdit = (planning: Planning) => {
+    setQuickEditPlanning(planning)
+    setQuickTempsFacture(planning.tempsFacture ? planning.tempsFacture.toString() : '')
+  }
+
+  const handleSaveQuickEdit = async () => {
+    if (!quickEditPlanning) return
+    setIsSavingQuick(true)
+    try {
+      const parsed = quickTempsFacture ? parseInt(quickTempsFacture, 10) : null
+      const response = await fetch(`/api/admin/planning-fixe/${quickEditPlanning.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jourSemaine: quickEditPlanning.jourSemaine,
+          heureDebut: quickEditPlanning.heureDebut,
+          heureFin: quickEditPlanning.heureFin,
+          groupeId: quickEditPlanning.groupeId,
+          coachIds: quickEditPlanning.coachs.map(c => c.coach.id),
+          lieu: quickEditPlanning.lieu,
+          couleur: quickEditPlanning.couleur,
+          nomSession: quickEditPlanning.nomSession,
+          semaineImpaire: quickEditPlanning.semaineImpaire,
+          tempsFacture: parsed,
+          actif: quickEditPlanning.actif,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la mise à jour')
+      }
+
+      toast.success('Temps facturé mis à jour pour toute la saison !')
+      setQuickEditPlanning(null)
+      await fetchData()
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    } finally {
+      setIsSavingQuick(false)
+    }
   }
 
   const handleEdit = (planning: Planning) => {
@@ -443,6 +500,7 @@ export default function PlanningFixeManager() {
     setGroupeId(planning.groupeId)
     setCoachIds(planning.coachs.map(c => c.coach.id))
     setNomSession(planning.nomSession || '')
+    setTempsFacture(planning.tempsFacture ? planning.tempsFacture.toString() : '')
     
     const currentLieu = planning.lieu || 'Grand Bassin - Ligne 1'
     if (PRESET_LIEUX.includes(currentLieu)) {
@@ -483,6 +541,7 @@ export default function PlanningFixeManager() {
           couleur,
           nomSession: nomSession || null,
           semaineImpaire,
+          tempsFacture: tempsFacture ? parseInt(tempsFacture, 10) : null,
           actif,
         }),
       })
@@ -524,6 +583,9 @@ export default function PlanningFixeManager() {
           coachIds: planning.coachs.map(c => c.coach.id),
           lieu: targetLane,
           couleur: planning.couleur,
+          nomSession: planning.nomSession,
+          semaineImpaire: planning.semaineImpaire,
+          tempsFacture: planning.tempsFacture,
           actif: planning.actif,
         }),
       })
@@ -655,6 +717,78 @@ export default function PlanningFixeManager() {
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
             />
+          </div>
+        </div>
+
+        {/* Bloc Temps à facturer par coach */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <label className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+              💳 Temps à facturer (par séance pour chaque coach)
+              <HelpTooltip title="Temps à facturer">
+                <p>Ce temps sera facturé pour chaque coach assigné à ce créneau sur toutes les semaines de la saison.</p>
+                <p className="mt-1">Si vous laissez vide ou &quot;Auto&quot;, la durée calculée entre {heureDebut || 'début'} et {heureFin || 'fin'} avec arrondi à la demi-heure sera utilisée.</p>
+              </HelpTooltip>
+            </label>
+            {tempsFacture && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                Facturé : {formatMinutesEnHM(parseInt(tempsFacture, 10))} ({parseInt(tempsFacture, 10)} min)
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[
+              { label: '45 min', mins: 45 },
+              { label: '1h00', mins: 60 },
+              { label: '1h15', mins: 75 },
+              { label: '1h30', mins: 90 },
+              { label: '1h45', mins: 105 },
+              { label: '2h00', mins: 120 },
+            ].map(preset => (
+              <button
+                key={preset.mins}
+                type="button"
+                onClick={() => setTempsFacture(preset.mins.toString())}
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  tempsFacture === preset.mins.toString()
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                {preset.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setTempsFacture('')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+                !tempsFacture
+                  ? 'bg-slate-700 text-white shadow-xs'
+                  : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              ⏱️ Auto ({heureDebut && heureFin ? formatMinutesEnHM(Math.ceil((timeToMinutes(heureFin) - timeToMinutes(heureDebut)) / 30) * 30) : 'calculé'})
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="w-48">
+              <input
+                type="number"
+                min="0"
+                step="5"
+                value={tempsFacture}
+                onChange={(e) => setTempsFacture(e.target.value)}
+                placeholder="Ex: 75 pour 1h15"
+                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white"
+              />
+            </div>
+            <p className="text-xs text-slate-500">
+              {tempsFacture
+                ? `→ Applique ${formatMinutesEnHM(parseInt(tempsFacture, 10))} (${(parseInt(tempsFacture, 10) / 60).toFixed(2)}h) sur toute la saison.`
+                : '→ Durée réelle arrondie à la demi-heure supérieure appliquée automatiquement.'}
+            </p>
           </div>
         </div>
 
@@ -861,14 +995,34 @@ export default function PlanningFixeManager() {
       {/* View Switcher and Content */}
       {viewMode === 'liste' ? (
         <div className="space-y-6">
-          {JOURS_SEMAINE.map(jour => (
+          {JOURS_SEMAINE.map(jour => {
+            const dayList = planningsByDay[jour] || []
+            let minutesBassin = 0
+            let minutesFacturees = 0
+            dayList.forEach(p => {
+              const dur = Math.max(0, timeToMinutes(p.heureFin) - timeToMinutes(p.heureDebut))
+              minutesBassin += dur
+              const factDur = p.tempsFacture && p.tempsFacture > 0 
+                ? p.tempsFacture 
+                : Math.ceil(dur / 30) * 30
+              minutesFacturees += factDur * (p.coachs.length || 1)
+            })
+
+            return (
             <div key={jour} className="card overflow-hidden">
-              <div className="bg-gradient-to-r from-primary to-primary-dark text-white px-6 py-3">
+              <div className="bg-gradient-to-r from-primary to-primary-dark text-white px-6 py-3 flex items-center justify-between flex-wrap gap-2">
                 <h3 className="font-bold text-lg">
-                  {jour} ({planningsByDay[jour].length} créneaux)
+                  {jour} ({dayList.length} créneaux)
                 </h3>
+                {dayList.length > 0 && (
+                  <div className="flex items-center gap-3 text-xs bg-white/20 backdrop-blur-xs px-3 py-1 rounded-full border border-white/20">
+                    <span>🏊 Bassin : <strong>{formatMinutesEnHM(minutesBassin)}</strong></span>
+                    <span>•</span>
+                    <span>💳 Total facturé : <strong className="text-emerald-200">{formatMinutesEnHM(minutesFacturees)}</strong></span>
+                  </div>
+                )}
               </div>
-              {planningsByDay[jour].length === 0 ? (
+              {dayList.length === 0 ? (
                 <div className="p-8 text-center text-gray-500">
                   Aucun créneau pour ce jour
                 </div>
@@ -878,6 +1032,7 @@ export default function PlanningFixeManager() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="text-left py-3 px-4 font-semibold text-gray-700">Horaire</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Temps facturé</th>
                         <th className="text-left py-3 px-4 font-semibold text-gray-700">Groupe</th>
                         <th className="text-left py-3 px-4 font-semibold text-gray-700">Coach</th>
                         <th className="text-left py-3 px-4 font-semibold text-gray-700">Lieu</th>
@@ -886,7 +1041,7 @@ export default function PlanningFixeManager() {
                       </tr>
                     </thead>
                     <tbody>
-                      {planningsByDay[jour].map((planning) => (
+                      {dayList.map((planning) => (
                         <Fragment key={planning.id}>
                           <tr className="border-t border-gray-200 hover:bg-gray-50">
                             <td className="py-3 px-4">
@@ -898,6 +1053,27 @@ export default function PlanningFixeManager() {
                                 <span className="font-medium">
                                   {planning.heureDebut} - {planning.heureFin}
                                 </span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {planning.tempsFacture && planning.tempsFacture > 0 ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    💳 {formatMinutesEnHM(planning.tempsFacture)}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                                    ⏱️ {formatMinutesEnHM(Math.ceil((timeToMinutes(planning.heureFin) - timeToMinutes(planning.heureDebut)) / 30) * 30)} (auto)
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenQuickEdit(planning)}
+                                  title="Ajuster le temps à facturer pour toute la saison"
+                                  className="px-2 py-0.5 text-xs text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md font-semibold transition-colors cursor-pointer"
+                                >
+                                  ✏️ Ajuster
+                                </button>
                               </div>
                             </td>
                             <td className="py-3 px-4">
@@ -962,7 +1138,7 @@ export default function PlanningFixeManager() {
                           </tr>
                           {editingPlanning?.id === planning.id && (
                             <tr className="bg-gray-50 border-t border-b border-gray-200">
-                              <td colSpan={6} className="p-6">
+                              <td colSpan={7} className="p-6">
                                 <div className="card p-6 bg-white border border-gray-200 rounded-lg shadow-sm text-left">
                                   {renderForm()}
                                 </div>
@@ -976,7 +1152,8 @@ export default function PlanningFixeManager() {
                 </div>
               )}
             </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <div className="space-y-6">
@@ -1139,11 +1316,32 @@ export default function PlanningFixeManager() {
                 </div>
 
                 {/* Swimming Pool Grid */}
+                {(() => {
+                  let minutesBassin = 0
+                  let minutesFacturees = 0
+                  dayPlannings.forEach(p => {
+                    const dur = Math.max(0, timeToMinutes(p.heureFin) - timeToMinutes(p.heureDebut))
+                    minutesBassin += dur
+                    const factDur = p.tempsFacture && p.tempsFacture > 0 
+                      ? p.tempsFacture 
+                      : Math.ceil(dur / 30) * 30
+                    minutesFacturees += factDur * (p.coachs.length || 1)
+                  })
+
+                  return (
                 <div className="bg-slate-100 rounded-2xl p-4 shadow-inner border border-slate-200 mb-6">
-                  <div className="flex items-center justify-between mb-4 px-2">
-                    <span className="text-sm font-bold text-slate-700 flex items-center gap-1.5 select-none">
-                      🏊 Bassin de Cavaillon • {selectedDayBassin}
-                    </span>
+                  <div className="flex items-center justify-between mb-4 px-2 flex-wrap gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-slate-700 flex items-center gap-1.5 select-none">
+                        🏊 Bassin de Cavaillon • {selectedDayBassin}
+                      </span>
+                      <span className="text-xs bg-white px-2.5 py-0.5 rounded-full border border-slate-300 text-slate-700 font-semibold shadow-2xs">
+                        Bassin : <strong>{formatMinutesEnHM(minutesBassin)}</strong>
+                      </span>
+                      <span className="text-xs bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-300 text-emerald-800 font-bold shadow-2xs">
+                        💳 Total facturé : <strong>{formatMinutesEnHM(minutesFacturees)}</strong>
+                      </span>
+                    </div>
                     <span className="text-xs text-slate-500 italic select-none">
                       Axe vertical : 08:00 - 22:00 • Glisser un créneau pour changer de couloir • Cliquer pour modifier
                     </span>
@@ -1350,11 +1548,22 @@ export default function PlanningFixeManager() {
                                             🗓️ Sem. impaire
                                           </span>
                                         )}
-                                        <p className={`font-bold opacity-90 drop-shadow-sm mt-0.5 ${
-                                           isShort ? 'text-[7.5px] sm:text-[8px] md:text-[9px]' : 'text-[8.5px] sm:text-[9px] md:text-[10px]'
-                                         }`}>
-                                          {planning.heureDebut} - {planning.heureFin}
-                                        </p>
+                                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                                          <p className={`font-bold opacity-90 drop-shadow-sm ${
+                                             isShort ? 'text-[7.5px] sm:text-[8px] md:text-[9px]' : 'text-[8.5px] sm:text-[9px] md:text-[10px]'
+                                           }`}>
+                                            {planning.heureDebut} - {planning.heureFin}
+                                          </p>
+                                          {planning.tempsFacture && planning.tempsFacture > 0 ? (
+                                            <span className="px-1 py-0.2 rounded bg-emerald-950/80 text-emerald-300 font-extrabold text-[7.5px] sm:text-[8px] border border-emerald-500/40" title="Temps facturé personnalisé (toute la saison)">
+                                              💳 {formatMinutesEnHM(planning.tempsFacture)}
+                                            </span>
+                                          ) : (
+                                            <span className="px-1 py-0.2 rounded bg-black/25 text-white/90 font-medium text-[7.5px] sm:text-[8px]" title="Temps facturé calculé automatiquement">
+                                              ⏱️ {formatMinutesEnHM(Math.ceil((timeToMinutes(planning.heureFin) - timeToMinutes(planning.heureDebut)) / 30) * 30)}
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
                                       
                                       {!isShort && (
@@ -1384,6 +1593,14 @@ export default function PlanningFixeManager() {
                                           )}
                                           <div className="space-y-1 text-slate-300 text-[10px]">
                                             <p><span className="text-slate-400">⏰ Horaire:</span> {planning.heureDebut} - {planning.heureFin}</p>
+                                            <p>
+                                              <span className="text-slate-400">💳 Facturé:</span>{' '}
+                                              {planning.tempsFacture && planning.tempsFacture > 0 ? (
+                                                <span className="text-emerald-400 font-bold">{formatMinutesEnHM(planning.tempsFacture)} (Personnalisé)</span>
+                                              ) : (
+                                                <span className="text-slate-300">{formatMinutesEnHM(Math.ceil((timeToMinutes(planning.heureFin) - timeToMinutes(planning.heureDebut)) / 30) * 30)} (Auto)</span>
+                                              )}
+                                            </p>
                                             <p><span className="text-slate-400">📍 Lieu original:</span> {planning.lieu || 'Non spécifié'}</p>
                                             {isDynamicallyAssigned && (
                                               <p className="text-cyan-300 font-bold"><span className="text-slate-400">📍 Placé dans:</span> {lane.label} (auto)</p>
@@ -1412,10 +1629,120 @@ export default function PlanningFixeManager() {
                     </div>
                   </div>
                 </div>
+                )
+              })()}
 
               </>
             )
           })()}
+        </div>
+      )}
+
+      {/* Quick Edit Modal */}
+      {quickEditPlanning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                  💳 Temps à facturer pour toute la saison
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {quickEditPlanning.nomSession || quickEditPlanning.groupe?.nom} • {quickEditPlanning.jourSemaine} {quickEditPlanning.heureDebut}-{quickEditPlanning.heureFin}
+                </p>
+              </div>
+              <button
+                onClick={() => setQuickEditPlanning(null)}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Présélections rapides :
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: '45 min', mins: 45 },
+                    { label: '1h00', mins: 60 },
+                    { label: '1h15', mins: 75 },
+                    { label: '1h30', mins: 90 },
+                    { label: '1h45', mins: 105 },
+                    { label: '2h00', mins: 120 },
+                  ].map(preset => (
+                    <button
+                      key={preset.mins}
+                      type="button"
+                      onClick={() => setQuickTempsFacture(preset.mins.toString())}
+                      className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                        quickTempsFacture === preset.mins.toString()
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setQuickTempsFacture('')}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+                      !quickTempsFacture
+                        ? 'bg-slate-800 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    ⏱️ Auto
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Ou saisie en minutes (vide = auto) :
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="5"
+                  value={quickTempsFacture}
+                  onChange={(e) => setQuickTempsFacture(e.target.value)}
+                  placeholder="Ex: 75 pour 1h15"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  {quickTempsFacture
+                    ? `→ Facturation : ${formatMinutesEnHM(parseInt(quickTempsFacture, 10))} (${(parseInt(quickTempsFacture, 10) / 60).toFixed(2)}h) par séance pour chaque coach assigné.`
+                    : '→ Mode automatique (durée réelle arrondie à la demi-heure supérieure).'}
+                </p>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+                ℹ️ Cette modification sera appliquée immédiatement à <strong>toutes les semaines de la saison</strong> (factures mensuelles en cours et futures). Les factures déjà générées/payées restent protégées.
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setQuickEditPlanning(null)}
+                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveQuickEdit}
+                  disabled={isSavingQuick}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  {isSavingQuick ? 'Enregistrement...' : 'Appliquer à la saison'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

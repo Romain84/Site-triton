@@ -38,7 +38,6 @@ export async function PUT(
         niveau: validatedData.niveau,
         dateDebut: validatedData.dateDebut ? new Date(validatedData.dateDebut) : null,
         dateFin: validatedData.dateFin ? new Date(validatedData.dateFin) : null,
-        tempsFacture: validatedData.tempsFacture,
         isCompetition: validatedData.isCompetition,
         nbCompetitions: validatedData.nbCompetitions,
         nbCompetitionsCaution: validatedData.nbCompetitionsCaution,

@@ -64,9 +64,11 @@ export async function GET(
 
     const details = await calculerFactureCoach(facture.coachId, facture.mois, facture.annee)
 
-    // Synchroniser le montant en base s'il était partiel ou inexact (sauf si déjà payée et figée)
+    // Synchroniser le montant en base s'il était partiel ou inexact (UNIQUEMENT pour les brouillons)
+    // Règle absolue : ne JAMAIS modifier une facture déjà générée, envoyée ou payée
     let finalMontantTotal = facture.montantTotal
-    if (Math.abs(facture.montantTotal - details.totalMontant) > 0.01 && facture.statut !== 'payee') {
+    const isBrouillon = facture.statut === 'brouillon'
+    if (isBrouillon && Math.abs(facture.montantTotal - details.totalMontant) > 0.01) {
       await prisma.factureCoach.update({
         where: { id: facture.id },
         data: { montantTotal: details.totalMontant },

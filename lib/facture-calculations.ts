@@ -106,6 +106,8 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
   const dateFinMois = new Date(annee, mois, 0, 23, 59, 59)
   const isPayee = factureExistante?.statut === 'payee'
   const isEnvoyee = factureExistante?.statut === 'envoyee'
+  const isGeneree = factureExistante?.statut === 'generee'
+  const isLocked = isPayee || isEnvoyee || isGeneree
 
   // Calculer les dates de début et fin du mois
   const now = new Date()
@@ -196,7 +198,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
   for (const planning of planningsFixe) {
     const jourSemaine = planning.jourSemaine
-    const key = `${jourSemaine}-${planning.heureDebut}-${planning.heureFin}-${planning.semaineImpaire ? 'impaire' : 'toutes'}`
+    const key = `${jourSemaine}-${planning.heureDebut}-${planning.heureFin}-${planning.tempsFacture ?? 'auto'}-${planning.semaineImpaire ? 'impaire' : 'toutes'}`
 
     if (joursMapRef[jourSemaine] !== undefined) {
       joursTravailles.add(joursMapRef[jourSemaine])
@@ -212,7 +214,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
         groupes: [],
         planningIds: [],
         groupeIds: [],
-        tempsFacture: planning.groupe?.tempsFacture,
+        tempsFacture: planning.tempsFacture,
         semaineImpaire: planning.semaineImpaire,
         groupeDateDebut: planning.groupe?.dateDebut,
         isBnssa,
@@ -264,8 +266,20 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     const occurences = dates.length
 
     if (occurences > 0) {
-      const dureeReelle = calculerDuree(creneau.heureDebut, creneau.heureFin)
-      const dureeHeures = arrondirDemiHeureSuperieure(dureeReelle)
+      let dureeHeures: number
+      let detailFacture = ''
+
+      if (creneau.tempsFacture && creneau.tempsFacture > 0) {
+        dureeHeures = creneau.tempsFacture / 60
+        const h = Math.floor(creneau.tempsFacture / 60)
+        const m = creneau.tempsFacture % 60
+        const mStr = m > 0 ? (m < 10 ? '0' + m : String(m)) : '00'
+        detailFacture = ` (Facturé ${h}h${mStr})`
+      } else {
+        const dureeReelle = calculerDuree(creneau.heureDebut, creneau.heureFin)
+        dureeHeures = arrondirDemiHeureSuperieure(dureeReelle)
+      }
+
       const totalHrs = dureeHeures * occurences
       heuresPlanningFixe += totalHrs
       const groupesStr = creneau.groupes.join(', ')
@@ -273,7 +287,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
       lignesPlanningFixe.push({
         type: 'planning_fixe',
-        description: `${creneau.jourSemaine} ${creneau.heureDebut}-${creneau.heureFin} - ${groupesStr} (${datesStr})`,
+        description: `${creneau.jourSemaine} ${creneau.heureDebut}-${creneau.heureFin} - ${groupesStr}${detailFacture} (${datesStr})`,
         heures: totalHrs,
         montant: totalHrs * tauxHoraire,
       })
@@ -468,8 +482,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     lignesAbsences.reduce((sum, l) => sum + l.montant, 0) +
     lignesManuelles.reduce((sum, l) => sum + l.montant, 0)
 
-  // Si une facture est envoyée ou payée avec un montantTotal enregistré, le conserver
-  const isLocked = isPayee || isEnvoyee
+  // Si une facture est déjà générée, envoyée ou payée avec un montantTotal enregistré, le conserver strictement
   const totalMontant = isLocked && (factureExistante?.montantTotal ?? 0) > 0
     ? factureExistante!.montantTotal
     : calculatedTotalMontant
@@ -479,6 +492,8 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     message = 'Votre facture de ce mois a été payée et archivée.'
   } else if (isEnvoyee) {
     message = 'Cette facture a été transmise au club. Elle est désormais verrouillée et ne peut plus être modifiée.'
+  } else if (isGeneree) {
+    message = 'Cette facture a déjà été générée. Elle est verrouillée et ne peut plus être modifiée.'
   }
 
   return {

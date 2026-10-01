@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { jourSemaine, heureDebut, heureFin, groupeId, coachIds = [], lieu, couleur, nomSession, semaineImpaire } = body
+    const { jourSemaine, heureDebut, heureFin, groupeId, coachIds = [], lieu, couleur, nomSession, semaineImpaire, tempsFacture } = body
 
     if (!jourSemaine || !heureDebut || !heureFin || !groupeId) {
       return NextResponse.json(
@@ -79,6 +79,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const parsedTempsFacture = tempsFacture !== undefined && tempsFacture !== null && tempsFacture !== '' 
+      ? parseInt(String(tempsFacture), 10) 
+      : null
 
     const planning = await prisma.planning.create({
       data: {
@@ -90,6 +94,7 @@ export async function POST(request: NextRequest) {
         couleur: couleur || '#00bcd4',
         nomSession: nomSession || null,
         semaineImpaire: Boolean(semaineImpaire),
+        tempsFacture: Number.isFinite(parsedTempsFacture) ? parsedTempsFacture : null,
         actif: true,
         coachs: {
           create: coachIds.map((coachId: string) => ({ coachId })),
