@@ -281,6 +281,9 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     creneauxFusionnes.push(...mergedJour)
   }
 
+  // Plages horaires physiques effectuées par le coach sur chaque date (pour neutralisation des doublons avec les remplacements - Option B)
+  const creneauxEffectuesParDate = new Map<string, Array<{ debutMin: number; finMin: number; description: string }>>()
+
   for (const creneau of creneauxFusionnes) {
     // Calcul de la date de début effective pour ce créneau en fonction de la rentrée
     let creneauDateDebut = new Date(dateDebut)
@@ -317,6 +320,18 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     const occurences = dates.length
 
     if (occurences > 0) {
+      // Enregistrer les créneaux réguliers effectués par date (Option B : détection de chevauchement avec remplacements)
+      for (const d of dates) {
+        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        const list = creneauxEffectuesParDate.get(dateKey) || []
+        list.push({
+          debutMin: creneau.debutMin,
+          finMin: creneau.finMin,
+          description: creneau.groupes.join(', '),
+        })
+        creneauxEffectuesParDate.set(dateKey, list)
+      }
+
       let dureeHeures: number
       let detailFacture = ''
 
@@ -411,17 +426,63 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
   let heuresRemplacements = 0
   const lignesRemplacements: FactureLigneCalculated[] = []
   for (const remp of remplacementsEffectues) {
-    const dureeHeures = arrondirDemiHeureSuperieure(calculerDuree(remp.heureDebut, remp.heureFin))
-    heuresRemplacements += dureeHeures
-    const dateStr = new Date(remp.date).toLocaleDateString('fr-FR')
+    const rempDateObj = new Date(remp.date)
+    const dateKey = `${rempDateObj.getFullYear()}-${String(rempDateObj.getMonth() + 1).padStart(2, '0')}-${String(rempDateObj.getDate()).padStart(2, '0')}`
+    const dateStr = rempDateObj.toLocaleDateString('fr-FR')
     const coachNom = `${remp.coachRemplace.prenom} ${remp.coachRemplace.nom || ''}`.trim()
-    lignesRemplacements.push({
-      type: 'remplacement',
-      description: `Remplacement de ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin}${remp.motif ? ` (${remp.motif})` : ''}`,
-      heures: dureeHeures,
-      montant: dureeHeures * tauxHoraire,
-      date: remp.date,
-    })
+
+    const rempDebutMin = timeToMinutes(remp.heureDebut)
+    const rempFinMin = timeToMinutes(remp.heureFin)
+
+    // Option B : Vérifier si le coach remplaçant avait déjà un cours régulier sur cette date à la même heure
+    const seancesMemeJour = creneauxEffectuesParDate.get(dateKey) || []
+    const seancesChevauchantes = seancesMemeJour.filter(s => rempDebutMin < s.finMin && s.debutMin < rempFinMin)
+
+    if (seancesChevauchantes.length > 0) {
+      // Calculer les minutes supplémentaires non déjà couvertes par le cours régulier payé
+      let minutesNonCouvertes = 0
+      for (let m = rempDebutMin; m < rempFinMin; m++) {
+        const estCouverte = seancesChevauchantes.some(s => m >= s.debutMin && m < s.finMin)
+        if (!estCouverte) {
+          minutesNonCouvertes++
+        }
+      }
+
+      const descGroupes = seancesChevauchantes.map(s => s.description).join(', ')
+
+      if (minutesNonCouvertes <= 0) {
+        // Le remplacement a eu lieu 100% en même temps que son cours régulier déjà rémunéré
+        lignesRemplacements.push({
+          type: 'remplacement',
+          description: `Remplacement de ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin} (Simultané avec ${descGroupes} : déjà rémunéré dans planning fixe)`,
+          heures: 0,
+          montant: 0,
+          date: remp.date,
+        })
+      } else {
+        // Le remplacement déborde partiellement du cours régulier
+        const heuresSup = arrondirDemiHeureSuperieure(minutesNonCouvertes / 60)
+        heuresRemplacements += heuresSup
+        lignesRemplacements.push({
+          type: 'remplacement',
+          description: `Remplacement de ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin} (Simultané avec ${descGroupes} : prolongation de ${heuresSup}h facturée)`,
+          heures: heuresSup,
+          montant: heuresSup * tauxHoraire,
+          date: remp.date,
+        })
+      }
+    } else {
+      // Aucun chevauchement : remplacement standard entièrement rémunéré
+      const dureeHeures = arrondirDemiHeureSuperieure(calculerDuree(remp.heureDebut, remp.heureFin))
+      heuresRemplacements += dureeHeures
+      lignesRemplacements.push({
+        type: 'remplacement',
+        description: `Remplacement de ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin}${remp.motif ? ` (${remp.motif})` : ''}`,
+        heures: dureeHeures,
+        montant: dureeHeures * tauxHoraire,
+        date: remp.date,
+      })
+    }
   }
 
   let heuresAbsences = 0

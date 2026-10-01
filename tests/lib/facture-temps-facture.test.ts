@@ -278,4 +278,97 @@ describe('Calcul de facture avec tempsFacture sur le planning', () => {
     // Les deux cours se suivent et ne se chevauchent pas : 2 lignes séparées payées
     expect(res.lignesPlanningFixe).toHaveLength(2)
   })
+
+  it('neutralise le doublon quand un remplacement a lieu en même temps qu\'un cours régulier (Option B)', async () => {
+    vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
+    // Coach a cours tous les lundis de 17:15 à 18:00
+    vi.mocked(prisma.planning.findMany).mockResolvedValue([
+      {
+        id: 'plan-regulier',
+        jourSemaine: 'Lundi',
+        heureDebut: '17:15',
+        heureFin: '18:00',
+        tempsFacture: null,
+        semaineImpaire: false,
+        groupeId: 'grp-avenirs',
+        groupe: { nom: 'Avenirs 1' },
+      } as any,
+    ])
+
+    // Le lundi 14/09/2026 de 17:15 à 18:00, le coach effectue un remplacement pour un collègue
+    vi.mocked(prisma.remplacement.findMany).mockResolvedValueOnce([
+      {
+        id: 'remp-simultane',
+        coachRemplaceId: 'coach-2',
+        coachRemplacantId: 'coach-1',
+        date: new Date('2026-09-14T12:00:00Z'),
+        heureDebut: '17:15',
+        heureFin: '18:00',
+        motif: 'Absence maladie',
+        coachRemplace: { prenom: 'Paul', nom: 'Dupont' },
+      } as any,
+    ]).mockResolvedValueOnce([]) // Aucun remplacement reçu (pas d'absence)
+
+    const res = await calculerFactureCoach('coach-1', 9, 2026)
+
+    // Le planning fixe compte les 4 lundis de 1.0h = 4.0h
+    expect(res.lignesPlanningFixe).toHaveLength(1)
+    expect(res.lignesPlanningFixe[0].heures).toBe(4)
+
+    // La ligne de remplacement est affichée mais neutralisée à 0h et 0€ car déjà payée
+    expect(res.lignesRemplacements).toHaveLength(1)
+    const ligneRemp = res.lignesRemplacements[0]
+    expect(ligneRemp.heures).toBe(0)
+    expect(ligneRemp.montant).toBe(0)
+    expect(ligneRemp.description).toContain('déjà rémunéré dans planning fixe')
+
+    // Total d'heures du coach : 4.0h (et non 4.0h + 1.0h = 5.0h)
+    expect(res.totalHeures).toBe(4)
+    expect(res.totalMontant).toBe(4 * 30)
+  })
+
+  it('rémunère normalement un remplacement effectué sur une plage horaire différente sans chevauchement', async () => {
+    vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
+    // Coach a cours les lundis de 17:15 à 18:00
+    vi.mocked(prisma.planning.findMany).mockResolvedValue([
+      {
+        id: 'plan-regulier',
+        jourSemaine: 'Lundi',
+        heureDebut: '17:15',
+        heureFin: '18:00',
+        tempsFacture: null,
+        semaineImpaire: false,
+        groupeId: 'grp-avenirs',
+        groupe: { nom: 'Avenirs 1' },
+      } as any,
+    ])
+
+    // Le lundi 14/09/2026, remplacement le soir de 19:30 à 21:00 (pas de cours régulier à cette heure)
+    vi.mocked(prisma.remplacement.findMany).mockResolvedValueOnce([
+      {
+        id: 'remp-soir',
+        coachRemplaceId: 'coach-2',
+        coachRemplacantId: 'coach-1',
+        date: new Date('2026-09-14T12:00:00Z'),
+        heureDebut: '19:30',
+        heureFin: '21:00',
+        motif: 'Remplacement',
+        coachRemplace: { prenom: 'Paul', nom: 'Dupont' },
+      } as any,
+    ]).mockResolvedValueOnce([])
+
+    const res = await calculerFactureCoach('coach-1', 9, 2026)
+
+    // Planning fixe = 4.0h
+    expect(res.lignesPlanningFixe[0].heures).toBe(4)
+
+    // Remplacement du soir rémunéré normalement (+1.5h)
+    expect(res.lignesRemplacements).toHaveLength(1)
+    expect(res.lignesRemplacements[0].heures).toBe(1.5)
+    expect(res.lignesRemplacements[0].montant).toBe(1.5 * 30)
+
+    // Total heures = 5.5h
+    expect(res.totalHeures).toBe(5.5)
+    expect(res.totalMontant).toBe(5.5 * 30)
+  })
 })
