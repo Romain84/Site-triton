@@ -71,6 +71,57 @@ const timeToMinutes = (timeStr: string | null | undefined): number => {
   return h * 60 + m
 }
 
+const calculerTotauxJour = (dayList: Planning[]): { minutesBassin: number; minutesFacturees: number } => {
+  let minutesBassin = 0
+  dayList.forEach(p => {
+    const dur = Math.max(0, timeToMinutes(p.heureFin) - timeToMinutes(p.heureDebut))
+    minutesBassin += dur
+  })
+
+  // Dédoublonner par coach pour éviter de facturer 2 fois un coach qui a 2 groupes en même temps
+  const coachMap = new Map<string, Planning[]>()
+  dayList.forEach(p => {
+    p.coachs.forEach(c => {
+      const list = coachMap.get(c.coach.id) || []
+      list.push(p)
+      coachMap.set(c.coach.id, list)
+    })
+  })
+
+  let minutesFacturees = 0
+
+  coachMap.forEach((coachPlannings) => {
+    const sorted = [...coachPlannings].sort((a, b) => timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut))
+    const merged: { start: number; end: number; tempsFacture?: number | null }[] = []
+
+    sorted.forEach(p => {
+      const s = timeToMinutes(p.heureDebut)
+      const e = timeToMinutes(p.heureFin)
+      const last = merged.length > 0 ? merged[merged.length - 1] : null
+
+      if (last && s < last.end) {
+        last.end = Math.max(last.end, e)
+        if (p.tempsFacture && p.tempsFacture > 0) {
+          last.tempsFacture = Math.max(last.tempsFacture || 0, p.tempsFacture)
+        }
+      } else {
+        merged.push({ start: s, end: e, tempsFacture: p.tempsFacture })
+      }
+    })
+
+    merged.forEach(m => {
+      if (m.tempsFacture && m.tempsFacture > 0) {
+        minutesFacturees += m.tempsFacture
+      } else {
+        const dur = Math.max(0, m.end - m.start)
+        minutesFacturees += Math.ceil(dur / 30) * 30
+      }
+    })
+  })
+
+  return { minutesBassin, minutesFacturees }
+}
+
 const isLightColor = (hexColor: string | null | undefined): boolean => {
   if (!hexColor) return false
   const color = hexColor.startsWith('#') ? hexColor.slice(1) : hexColor
@@ -482,7 +533,45 @@ export default function PlanningFixeManager() {
         throw new Error('Erreur lors de la mise à jour')
       }
 
-      toast.success('Temps facturé mis à jour pour toute la saison !')
+      // Recherche de créneaux simultanés pour le ou les mêmes coachs afin de synchroniser le temps facturé
+      const coachIdsTarget = new Set(quickEditPlanning.coachs.map(c => c.coach.id))
+      const targetStart = timeToMinutes(quickEditPlanning.heureDebut)
+      const targetEnd = timeToMinutes(quickEditPlanning.heureFin)
+
+      const overlappingPlannings = plannings.filter(p => 
+        p.id !== quickEditPlanning.id &&
+        p.jourSemaine === quickEditPlanning.jourSemaine &&
+        p.coachs.some(c => coachIdsTarget.has(c.coach.id)) &&
+        timeToMinutes(p.heureDebut) < targetEnd &&
+        targetStart < timeToMinutes(p.heureFin)
+      )
+
+      for (const op of overlappingPlannings) {
+        await fetch(`/api/admin/planning-fixe/${op.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jourSemaine: op.jourSemaine,
+            heureDebut: op.heureDebut,
+            heureFin: op.heureFin,
+            groupeId: op.groupeId,
+            coachIds: op.coachs.map(c => c.coach.id),
+            lieu: op.lieu,
+            couleur: op.couleur,
+            nomSession: op.nomSession,
+            semaineImpaire: op.semaineImpaire,
+            tempsFacture: parsed,
+            actif: op.actif,
+          }),
+        })
+      }
+
+      if (overlappingPlannings.length > 0) {
+        toast.success(`Temps facturé mis à jour (${1 + overlappingPlannings.length} groupes simultanés synchronisés) !`)
+      } else {
+        toast.success('Temps facturé mis à jour pour toute la saison !')
+      }
+
       setQuickEditPlanning(null)
       await fetchData()
     } catch (err) {
@@ -997,16 +1086,7 @@ export default function PlanningFixeManager() {
         <div className="space-y-6">
           {JOURS_SEMAINE.map(jour => {
             const dayList = planningsByDay[jour] || []
-            let minutesBassin = 0
-            let minutesFacturees = 0
-            dayList.forEach(p => {
-              const dur = Math.max(0, timeToMinutes(p.heureFin) - timeToMinutes(p.heureDebut))
-              minutesBassin += dur
-              const factDur = p.tempsFacture && p.tempsFacture > 0 
-                ? p.tempsFacture 
-                : Math.ceil(dur / 30) * 30
-              minutesFacturees += factDur * (p.coachs.length || 1)
-            })
+            const { minutesBassin, minutesFacturees } = calculerTotauxJour(dayList)
 
             return (
             <div key={jour} className="card overflow-hidden">
@@ -1317,16 +1397,7 @@ export default function PlanningFixeManager() {
 
                 {/* Swimming Pool Grid */}
                 {(() => {
-                  let minutesBassin = 0
-                  let minutesFacturees = 0
-                  dayPlannings.forEach(p => {
-                    const dur = Math.max(0, timeToMinutes(p.heureFin) - timeToMinutes(p.heureDebut))
-                    minutesBassin += dur
-                    const factDur = p.tempsFacture && p.tempsFacture > 0 
-                      ? p.tempsFacture 
-                      : Math.ceil(dur / 30) * 30
-                    minutesFacturees += factDur * (p.coachs.length || 1)
-                  })
+                  const { minutesBassin, minutesFacturees } = calculerTotauxJour(dayPlannings)
 
                   return (
                 <div className="bg-slate-100 rounded-2xl p-4 shadow-inner border border-slate-200 mb-6">
@@ -1660,6 +1731,26 @@ export default function PlanningFixeManager() {
             </div>
 
             <div className="space-y-4">
+              {(() => {
+                const coachIdsTarget = new Set(quickEditPlanning.coachs.map(c => c.coach.id))
+                const targetStart = timeToMinutes(quickEditPlanning.heureDebut)
+                const targetEnd = timeToMinutes(quickEditPlanning.heureFin)
+                const overlappingPlannings = plannings.filter(p => 
+                  p.id !== quickEditPlanning.id &&
+                  p.jourSemaine === quickEditPlanning.jourSemaine &&
+                  p.coachs.some(c => coachIdsTarget.has(c.coach.id)) &&
+                  timeToMinutes(p.heureDebut) < targetEnd &&
+                  targetStart < timeToMinutes(p.heureFin)
+                )
+                if (overlappingPlannings.length === 0) return null
+                const otherGroupNames = overlappingPlannings.map(p => p.nomSession || p.groupe?.nom || 'Autre groupe').join(', ')
+                return (
+                  <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 text-xs text-sky-800">
+                    👥 <strong>Créneau multi-groupes :</strong> ce coach encadre aussi <em>{otherGroupNames}</em> en même temps. Le temps facturé sera automatiquement synchronisé pour ce créneau (payé 1 seule fois pour les deux).
+                  </div>
+                )
+              })()}
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Présélections rapides :

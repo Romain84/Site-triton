@@ -183,10 +183,24 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     'Jeudi': 4, 'Vendredi': 5, 'Samedi': 6
   }
 
-  const creneauxMap = new Map<string, {
+  // Regrouper les plannings fixes par jour et périodicité
+  const planningsParJour = new Map<string, typeof planningsFixe>()
+  for (const planning of planningsFixe) {
+    if (joursMapRef[planning.jourSemaine] !== undefined) {
+      joursTravailles.add(joursMapRef[planning.jourSemaine])
+    }
+    const key = `${planning.jourSemaine}-${planning.semaineImpaire ? 'impaire' : 'toutes'}`
+    const list = planningsParJour.get(key) || []
+    list.push(planning)
+    planningsParJour.set(key, list)
+  }
+
+  interface CreneauFusionne {
     jourSemaine: string
     heureDebut: string
     heureFin: string
+    debutMin: number
+    finMin: number
     groupes: string[]
     planningIds: string[]
     groupeIds: string[]
@@ -194,43 +208,80 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     semaineImpaire?: boolean
     groupeDateDebut?: Date | null
     isBnssa?: boolean
-  }>()
-
-  for (const planning of planningsFixe) {
-    const jourSemaine = planning.jourSemaine
-    const key = `${jourSemaine}-${planning.heureDebut}-${planning.heureFin}-${planning.tempsFacture ?? 'auto'}-${planning.semaineImpaire ? 'impaire' : 'toutes'}`
-
-    if (joursMapRef[jourSemaine] !== undefined) {
-      joursTravailles.add(joursMapRef[jourSemaine])
-    }
-
-    const isBnssa = (planning.groupe?.nom || '').toLowerCase().includes('bnssa')
-
-    if (!creneauxMap.has(key)) {
-      creneauxMap.set(key, {
-        jourSemaine,
-        heureDebut: planning.heureDebut,
-        heureFin: planning.heureFin,
-        groupes: [],
-        planningIds: [],
-        groupeIds: [],
-        tempsFacture: planning.tempsFacture,
-        semaineImpaire: planning.semaineImpaire,
-        groupeDateDebut: planning.groupe?.dateDebut,
-        isBnssa,
-      })
-    }
-    creneauxMap.get(key)!.groupes.push(planning.groupe?.nom || 'Groupe')
-    creneauxMap.get(key)!.planningIds.push(planning.id)
-    if (planning.groupeId) {
-      creneauxMap.get(key)!.groupeIds.push(planning.groupeId)
-    }
-    if (planning.groupe?.dateDebut && !creneauxMap.get(key)!.groupeDateDebut) {
-      creneauxMap.get(key)!.groupeDateDebut = planning.groupe.dateDebut
-    }
   }
 
-  for (const [, creneau] of creneauxMap) {
+  const creneauxFusionnes: CreneauFusionne[] = []
+
+  // Pour chaque jour/périodicité, fusionner les créneaux qui se chevauchent pour ce coach
+  // (Règle métier : un coach qui gère 2 groupes en même temps n'est facturé qu'une seule fois)
+  for (const [, planningsDuJour] of planningsParJour) {
+    // Trier par heure de début croissante, puis heure de fin décroissante
+    planningsDuJour.sort((a, b) => {
+      const diff = timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut)
+      if (diff !== 0) return diff
+      return timeToMinutes(b.heureFin) - timeToMinutes(a.heureFin)
+    })
+
+    const mergedJour: CreneauFusionne[] = []
+
+    for (const planning of planningsDuJour) {
+      const debutMin = timeToMinutes(planning.heureDebut)
+      const finMin = timeToMinutes(planning.heureFin)
+      const isBnssa = (planning.groupe?.nom || '').toLowerCase().includes('bnssa')
+      const nomGroupe = planning.groupe?.nom || 'Groupe'
+      const last = mergedJour.length > 0 ? mergedJour[mergedJour.length - 1] : null
+
+      // Chevauchement strict : le créneau commence strictement avant la fin du créneau précédent
+      if (last && debutMin < last.finMin) {
+        if (finMin > last.finMin) {
+          last.finMin = finMin
+          last.heureFin = minutesToTime(finMin)
+        }
+        if (!last.groupes.includes(nomGroupe)) {
+          last.groupes.push(nomGroupe)
+        }
+        last.planningIds.push(planning.id)
+        if (planning.groupeId && !last.groupeIds.includes(planning.groupeId)) {
+          last.groupeIds.push(planning.groupeId)
+        }
+        if (isBnssa) {
+          last.isBnssa = true
+        }
+        if (planning.groupe?.dateDebut) {
+          if (!last.groupeDateDebut || planning.groupe.dateDebut < last.groupeDateDebut) {
+            last.groupeDateDebut = planning.groupe.dateDebut
+          }
+        }
+        // Si un temps facturé explicite est défini sur un des créneaux en simultané, on retient le plus grand
+        if (planning.tempsFacture && planning.tempsFacture > 0) {
+          if (last.tempsFacture && last.tempsFacture > 0) {
+            last.tempsFacture = Math.max(last.tempsFacture, planning.tempsFacture)
+          } else {
+            last.tempsFacture = planning.tempsFacture
+          }
+        }
+      } else {
+        mergedJour.push({
+          jourSemaine: planning.jourSemaine,
+          heureDebut: planning.heureDebut,
+          heureFin: planning.heureFin,
+          debutMin,
+          finMin,
+          groupes: [nomGroupe],
+          planningIds: [planning.id],
+          groupeIds: planning.groupeId ? [planning.groupeId] : [],
+          tempsFacture: planning.tempsFacture,
+          semaineImpaire: planning.semaineImpaire,
+          groupeDateDebut: planning.groupe?.dateDebut,
+          isBnssa,
+        })
+      }
+    }
+
+    creneauxFusionnes.push(...mergedJour)
+  }
+
+  for (const creneau of creneauxFusionnes) {
     // Calcul de la date de début effective pour ce créneau en fonction de la rentrée
     let creneauDateDebut = new Date(dateDebut)
 
@@ -578,11 +629,35 @@ function obtenirDatesJour(
           // Si spécifié pour ce coach
           if (sa.coachId && sa.coachId === coachId) return true
 
-          // Si spécifié pour un de nos plannings
-          if (sa.planningId && planningIds.includes(sa.planningId)) return true
+          // Si spécifié pour un de nos plannings :
+          // Si le créneau regroupe plusieurs plannings (simultanés), le coach reste présent sauf si TOUS les plannings du créneau sont annulés
+          if (sa.planningId && planningIds.includes(sa.planningId)) {
+            if (planningIds.length <= 1) return true
+            return planningIds.every((pid) =>
+              seancesAnnulees.some((other) => {
+                const oDate = new Date(other.date)
+                return other.planningId === pid &&
+                  current.getFullYear() === oDate.getFullYear() &&
+                  current.getMonth() === oDate.getMonth() &&
+                  current.getDate() === oDate.getDate()
+              })
+            )
+          }
 
-          // Si spécifié pour un de nos groupes
-          if (sa.groupeId && groupeIds.includes(sa.groupeId)) return true
+          // Si spécifié pour un de nos groupes :
+          // De même, le coach reste présent sauf si TOUS les groupes du créneau sont annulés
+          if (sa.groupeId && groupeIds.includes(sa.groupeId)) {
+            if (groupeIds.length <= 1) return true
+            return groupeIds.every((gid) =>
+              seancesAnnulees.some((other) => {
+                const oDate = new Date(other.date)
+                return other.groupeId === gid &&
+                  current.getFullYear() === oDate.getFullYear() &&
+                  current.getMonth() === oDate.getMonth() &&
+                  current.getDate() === oDate.getDate()
+              })
+            )
+          }
 
           return false
         })
@@ -598,10 +673,19 @@ function obtenirDatesJour(
   return dates
 }
 
+export function timeToMinutes(timeStr: string): number {
+  const [h, m] = (timeStr || '00:00').split(':').map(Number)
+  return (h || 0) * 60 + (m || 0)
+}
+
+export function minutesToTime(mins: number): string {
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
 export function calculerDuree(heureDebut: string, heureFin: string): number {
-  const [hD, mD] = heureDebut.split(':').map(Number)
-  const [hF, mF] = heureFin.split(':').map(Number)
-  return (hF * 60 + mF - (hD * 60 + mD)) / 60
+  return (timeToMinutes(heureFin) - timeToMinutes(heureDebut)) / 60
 }
 
 export function arrondirDemiHeureSuperieure(dureeHeures: number): number {
