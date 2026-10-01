@@ -64,7 +64,7 @@ services:
         max-file: "3"
     command: >
       sh -c "
-        npx prisma db push &&
+        npx prisma db push --accept-data-loss &&
         mkdir -p /app/public/uploads /app/backups &&
         chown -R nextjs:nodejs /app/public/uploads /app/backups &&
         exec su-exec nextjs npm run start
