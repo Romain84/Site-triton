@@ -3,6 +3,7 @@ import { getCoachSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { genererNumeroFactureSequentiel, creerFactureCoachSecurisee } from '@/lib/facture-utils'
+import { sanitizeEmailHeader, queueEmail } from '@/lib/email'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import { genererFacturePDF } from '@/lib/facture-pdf-generator'
 import { writeFile, mkdir } from 'fs/promises'
@@ -14,6 +15,11 @@ interface GenererRequest {
   mois: number
   annee: number
 }
+
+const MOIS_NOMS = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+]
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,7 +42,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 1. Vérifier si une facture existe déjà et son statut
+    // 1. Récupérer le coach
+    const coach = await prisma.coach.findUnique({
+      where: { id: session.coachId },
+    })
+
+    if (!coach) {
+      return NextResponse.json(
+        { error: 'Coach non trouvé' },
+        { status: 404 }
+      )
+    }
+
+    // 2. Vérifier si une facture existe déjà et son statut
     let facture = await prisma.factureCoach.findUnique({
       where: {
         coachId_mois_annee: {
@@ -54,12 +72,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Calculer le montant et les détails avec la prise en compte de la rentrée
+    // 3. Calculer le montant et les détails
     const details = await calculerFactureCoach(session.coachId, mois, annee)
 
     const dateNow = new Date()
 
-    // 3. Créer ou mettre à jour la facture
+    // 4. Déterminer le numéro officiel séquentiel
+    let numero: string
+    if (facture?.numero && facture.numero.startsWith(`F-TCC-${annee}-`)) {
+      numero = facture.numero
+    } else {
+      numero = await genererNumeroFactureSequentiel(session.coachId, annee)
+    }
+
+    // 5. Créer ou mettre à jour la facture directement au statut 'envoyee'
     if (!facture) {
       facture = await creerFactureCoachSecurisee({
         coachId: session.coachId,
@@ -67,54 +93,127 @@ export async function POST(request: NextRequest) {
         annee,
         montantTotal: details.totalMontant,
         tauxHoraire: details.tauxHoraire,
-        statut: 'generee',
+        statut: 'envoyee',
         dateGeneration: dateNow,
+        dateEnvoi: dateNow,
       })
     } else {
-      let numero = facture.numero
-      const isAlreadyFinalized = facture.statut === 'generee' || facture.statut === 'envoyee' || facture.statut === 'payee'
-
-      // Si la facture est encore un brouillon, lui attribuer le numéro officiel avec initiales
-      // Si la facture a déjà été générée/envoyée/payée, préserver STRICTEMENT son numéro historique
-      if (!isAlreadyFinalized) {
-        numero = await genererNumeroFactureSequentiel(session.coachId, annee)
-      } else if (!numero || !numero.startsWith(`F-TCC-${annee}-`)) {
-        numero = await genererNumeroFactureSequentiel(session.coachId, annee)
-      }
-
       facture = await prisma.factureCoach.update({
         where: { id: facture.id },
         data: {
           numero,
           montantTotal: details.totalMontant,
           tauxHoraire: details.tauxHoraire,
-          statut: 'generee',
+          statut: 'envoyee',
           dateGeneration: dateNow,
+          dateEnvoi: dateNow,
         },
       })
     }
 
-    // 4. Génération et archivage du PDF officiel sur le disque
-    try {
-      const { buffer: pdfBuffer } = await genererFacturePDF(session.coachId, mois, annee)
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'factures')
-      await mkdir(uploadDir, { recursive: true })
-      const fileName = `facture-${facture.id}.pdf`
-      const filePath = path.join(uploadDir, fileName)
-      await writeFile(filePath, pdfBuffer)
-      const pdfPath = `/uploads/factures/${fileName}`
+    // 6. Génération et archivage du PDF officiel sur le disque
+    const { buffer: pdfBuffer } = await genererFacturePDF(session.coachId, mois, annee)
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'factures')
+    await mkdir(uploadDir, { recursive: true })
+    const fileName = `facture-${facture.id}.pdf`
+    const filePath = path.join(uploadDir, fileName)
+    await writeFile(filePath, pdfBuffer)
+    const pdfPath = `/uploads/factures/${fileName}`
 
-      facture = await prisma.factureCoach.update({
-        where: { id: facture.id },
-        data: { pdfPath },
+    facture = await prisma.factureCoach.update({
+      where: { id: facture.id },
+      data: { pdfPath },
+    })
+
+    const moisNom = MOIS_NOMS[mois - 1] || `${mois}`
+
+    // 7. Envoi de l'e-mail officiel au secrétariat du club avec le PDF joint
+    const settings = await prisma.settings.findFirst()
+    const emailClub = settings?.emailClub || 'tritoncavaillon@gmail.com'
+
+    await queueEmail({
+      to: sanitizeEmailHeader(emailClub),
+      replyTo: coach.email ? sanitizeEmailHeader(coach.email) : undefined,
+      subject: sanitizeEmailHeader(
+        `[Facturation] Facture de ${coach.prenom} ${coach.nom || ''} - ${moisNom} ${annee} (${details.totalMontant.toFixed(2)} €)`
+      ),
+      text: `Bonjour,\n\nVeuillez trouver ci-joint la facture officielle de ${coach.prenom} ${coach.nom || ''} pour le mois de ${moisNom} ${annee}.\nMontant total : ${details.totalMontant.toFixed(2)} €.\n\nTriton Club Cavaillon`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <h2 style="color: #0f172a; margin-top: 0;">Facture Coach — Triton Club Cavaillon</h2>
+          <p style="color: #334155; font-size: 15px; line-height: 1.5;">
+            La facture de <strong>${coach.prenom} ${coach.nom || ''}</strong> pour la période de <strong>${moisNom} ${annee}</strong> a été générée et transmise au club.
+          </p>
+          <div style="background-color: #f8fafc; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 6px;">
+            <p style="margin: 0; color: #0f172a; font-weight: bold;">Récapitulatif de la facture :</p>
+            <p style="margin: 5px 0 0 0; color: #475569; font-size: 14px;">
+              • Référence : <strong>${facture.numero}</strong><br/>
+              • Période : <strong>${moisNom} ${annee}</strong><br/>
+              • Heures travaillées : <strong>${details.totalHeures.toFixed(2)} h</strong><br/>
+              • Montant à régler : <strong style="color: #047857; font-size: 16px;">${details.totalMontant.toFixed(2)} €</strong>
+            </p>
+          </div>
+          <p style="color: #64748b; font-size: 13px;">
+            Le document officiel au format PDF est joint à cet e-mail.
+          </p>
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+          <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+            Triton Club Cavaillon — Facturation & Gestion sportive
+          </p>
+        </div>
+      `,
+      attachments: [
+        {
+          filename: `facture-${facture.numero}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ],
+    })
+
+    // 8. Envoi de l'exemplaire officiel par e-mail au coach pour ses archives
+    if (coach.email) {
+      await queueEmail({
+        to: sanitizeEmailHeader(coach.email),
+        subject: sanitizeEmailHeader(`[Triton Club] Confirmation de votre facture ${facture.numero} - ${moisNom} ${annee}`),
+        text: `Bonjour ${coach.prenom},\n\nVotre facture N° ${facture.numero} pour le mois de ${moisNom} ${annee} d'un montant de ${details.totalMontant.toFixed(2)} € a bien été générée et transmise au secrétariat du club pour règlement.\n\nVous trouverez votre facture au format PDF en pièce jointe pour vos archives.\n\nCordialement,\nTriton Club Cavaillon`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+            <h2 style="color: #0f172a; margin-top: 0;">Bonjour ${coach.prenom},</h2>
+            <p style="color: #334155; font-size: 15px; line-height: 1.5;">
+              Votre facture <strong>N° ${facture.numero}</strong> pour la période de <strong>${moisNom} ${annee}</strong> d'un montant de <strong>${details.totalMontant.toFixed(2)} €</strong> a été générée et transmise avec succès au secrétariat du club pour règlement.
+            </p>
+            <div style="background-color: #f8fafc; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 6px;">
+              <p style="margin: 0; color: #0f172a; font-weight: bold;">Récapitulatif de votre facture :</p>
+              <p style="margin: 5px 0 0 0; color: #475569; font-size: 14px;">
+                • Référence : <strong>${facture.numero}</strong><br/>
+                • Période : <strong>${moisNom} ${annee}</strong><br/>
+                • Total à percevoir : <strong style="color: #047857; font-size: 16px;">${details.totalMontant.toFixed(2)} €</strong><br/>
+                • Statut : <strong style="color: #047857;">Transmise au club</strong>
+              </p>
+            </div>
+            <p style="color: #64748b; font-size: 13px;">
+              Votre document officiel au format PDF est joint à cet e-mail pour vos archives personnelles.
+            </p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+              Triton Club Cavaillon
+            </p>
+          </div>
+        `,
+        attachments: [
+          {
+            filename: `facture-${facture.numero}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          },
+        ],
       })
-    } catch (pdfErr) {
-      coachLogger.error('Erreur lors de la génération physique du PDF', pdfErr)
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Facture générée avec succès ! Vous pouvez maintenant l\'envoyer au club ou la télécharger.',
+      message: 'Facture générée et transmise au club avec succès ! Votre exemplaire PDF vous a été envoyé par e-mail.',
       facture,
       details,
     })

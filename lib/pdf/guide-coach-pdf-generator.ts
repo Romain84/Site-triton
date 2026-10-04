@@ -632,19 +632,19 @@ export function genererGuideCoachPDF(): Buffer {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9.5)
   doc.setTextColor(COLOR_AMBER_TEXT[0], COLOR_AMBER_TEXT[1], COLOR_AMBER_TEXT[2])
-  doc.text('Phase 4 · Bouton « Envoyer au club » (VERROUILLAGE STRICT & DÉFINITIF)', marginX + 4, currentY + 6)
+  doc.text('Phase 4 · Génération & Transmission directe (VERROUILLAGE STRICT)', marginX + 4, currentY + 6)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(COLOR_SLATE_700[0], COLOR_SLATE_700[1], COLOR_SLATE_700[2])
-  doc.text('• Après vérification de votre PDF, cliquez sur « Envoyer au club » puis confirmez la modale.', marginX + 4, currentY + 12)
+  doc.text('• Cliquez sur « Générer la facture » : elle est officialisée et transmise directement au club et sur votre boîte e-mail.', marginX + 4, currentY + 12)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(185, 28, 28) // Rouge alerte
-  doc.text('• ATTENTION : Une fois envoyée, la facture est STRICTEMENT BLOQUÉE. Aucune modification n\'est plus possible !', marginX + 4, currentY + 17)
+  doc.text('• ATTENTION : Une fois générée, la facture est STRICTEMENT BLOQUÉE. Aucune modification n\'est plus possible !', marginX + 4, currentY + 17)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(COLOR_SLATE_700[0], COLOR_SLATE_700[1], COLOR_SLATE_700[2])
   doc.text('• Le secrétariat du club reçoit immédiatement l\'e-mail officiel avec votre facture PDF certifiée en pièce jointe.', marginX + 4, currentY + 22)
-  doc.text('• Vous recevez un e-mail de confirmation d\'envoi avec votre PDF officiel pour vos archives comptables.', marginX + 4, currentY + 27)
+  doc.text('• Vous recevez un e-mail officiel avec votre PDF certifié pour vos archives comptables.', marginX + 4, currentY + 27)
 
   currentY += 37
 
@@ -662,7 +662,7 @@ export function genererGuideCoachPDF(): Buffer {
   doc.setFontSize(8)
   doc.setTextColor(COLOR_SLATE_700[0], COLOR_SLATE_700[1], COLOR_SLATE_700[2])
   doc.text(
-    'Dès validation du virement par la trésorerie du club, la facture passe au statut « Payée ». Vous recevez un e-mail de confirmation.',
+    'Dès validation du virement par la trésorerie du club, la facture passe au statut « Payée », consultable dans votre historique.',
     marginX + 4,
     currentY + 11.5
   )
@@ -718,8 +718,8 @@ export function genererGuideCoachPDF(): Buffer {
 
   const faqItems = [
     {
-      q: 'J\'ai cliqué sur "Envoyer au club" mais j\'ai oublié de facturer une réunion. Puis-je modifier ?',
-      r: 'Une fois transmise, la facture est strictement verrouillée pour garantir la rigueur comptable. Si une modification est absolument indispensable, contactez le secrétariat du club : les administrateurs ont la possibilité de déverrouiller exceptionnellement votre facture vers le statut brouillon.',
+      q: 'J\'ai généré ma facture mais j\'ai oublié de compter une prestation. Puis-je modifier ?',
+      r: 'Une fois générée, la facture est transmise au club et strictement verrouillée pour garantir la rigueur comptable. Si une modification est indispensable, contactez le secrétariat du club : les administrateurs ont la possibilité de déverrouiller exceptionnellement votre facture vers le statut brouillon.',
     },
     {
       q: 'À quelle date dois-je transmettre ma facture mensuelle ?',

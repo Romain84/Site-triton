@@ -55,7 +55,6 @@ function FacturationContent() {
   const [loading, setLoading] = useState(true)
   const [generatingInvoice, setGeneratingInvoice] = useState(false)
   const [downloadingPDF, setDownloadingPDF] = useState(false)
-  const [sendingEmail, setSendingEmail] = useState(false)
   const [data, setData] = useState<FacturationData | null>(null)
   const [allInvoicesOfYear, setAllInvoicesOfYear] = useState<PastInvoice[]>([])
 
@@ -155,9 +154,9 @@ function FacturationContent() {
 
   const handleGenerateInvoice = async () => {
     const confirmed = await confirm({
-      title: 'Générer la facture ?',
-      message: `Voulez-vous générer officiellement votre facture pour ${MOIS_NOMS[selectedMois - 1]} ${selectedAnnee} d'un montant de ${data?.totalMontant.toFixed(2)} € ? Vous pourrez encore la modifier tant qu'elle n'est pas envoyée au club.`,
-      confirmText: 'Oui, générer la facture',
+      title: 'Générer et transmettre la facture ?',
+      message: `Voulez-vous officialiser votre facture pour ${MOIS_NOMS[selectedMois - 1]} ${selectedAnnee} d'un montant de ${data?.totalMontant.toFixed(2)} € ?\n\nLe document PDF officiel sera créé et transmis directement par e-mail au secrétariat du club ainsi qu'à votre adresse e-mail. Une fois générée, la facture sera verrouillée.`,
+      confirmText: 'Oui, générer et envoyer',
       variant: 'success',
       icon: '📄',
     })
@@ -174,7 +173,7 @@ function FacturationContent() {
 
       const resData = await res.json()
       if (res.ok) {
-        toast.success(resData.message || 'Facture générée avec succès !')
+        toast.success(resData.message || 'Facture générée et transmise au club avec succès !')
         fetchFacturation()
       } else {
         toast.error(resData.error || 'Erreur lors de la génération de la facture')
@@ -216,44 +215,6 @@ function FacturationContent() {
       toast.error('Erreur lors de la régénération')
     } finally {
       setGeneratingInvoice(false)
-    }
-  }
-
-  const handleSendEmail = async () => {
-    if (!data?.statut || data.statut === 'brouillon') {
-      toast.error('Veuillez d\'abord cliquer sur "Générer la facture" avant de l\'envoyer au club.')
-      return
-    }
-
-    const confirmed = await confirm({
-      title: 'Envoyer la facture au club ?',
-      message: `Voulez-vous envoyer votre facture de ${MOIS_NOMS[selectedMois - 1]} ${selectedAnnee} (${data?.totalMontant.toFixed(2)} €) par e-mail au secrétariat du club ? Attention : une fois envoyée, la facture sera entièrement verrouillée et ne pourra plus être modifiée.`,
-      confirmText: 'Oui, envoyer au club',
-      variant: 'success',
-      icon: '✉️',
-    })
-
-    if (!confirmed) return
-
-    setSendingEmail(true)
-    try {
-      const res = await fetch('/api/coach/facturation/envoyer-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mois: selectedMois, annee: selectedAnnee }),
-      })
-
-      const resData = await res.json()
-      if (res.ok) {
-        toast.success(resData.message || 'Facture envoyée avec succès au club !')
-        fetchFacturation()
-      } else {
-        toast.error(resData.error || 'Erreur lors de l\'envoi')
-      }
-    } catch {
-      toast.error('Erreur lors de l\'envoi')
-    } finally {
-      setSendingEmail(false)
     }
   }
 
@@ -393,11 +354,9 @@ function FacturationContent() {
           statut={data?.statut}
           isBlocked={data?.isBlocked}
           generatingInvoice={generatingInvoice}
-          sendingEmail={sendingEmail}
           downloadingPDF={downloadingPDF}
           onGenerateInvoice={handleGenerateInvoice}
           onRegenerateInvoice={handleRegenerateInvoice}
-          onSendInvoice={handleSendEmail}
           onDownloadPDF={() => handleDownloadPDF()}
           onOpenModalPrestation={() => setShowModalPrestation(true)}
           onOpenModalCompetition={() => setShowModalCompetition(true)}

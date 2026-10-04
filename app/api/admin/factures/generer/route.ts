@@ -7,7 +7,6 @@ import { sanitizeEmailHeader, queueEmail } from '@/lib/email'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import { genererFacturePDF } from '@/lib/facture-pdf-generator'
 import { logAdminAudit } from '@/lib/admin-audit'
-import { notifyCoach } from '@/lib/notifications'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 
@@ -195,12 +194,42 @@ export async function POST(request: NextRequest) {
         ],
       })
 
-      // Notifier également le coach si son email est renseigné
+      // Envoyer également l'exemplaire officiel avec le PDF au coach pour ses archives
       if (coach.email) {
-        await notifyCoach(coach.email, {
-          sujet: `Facture ${facture.numero} (${moisNom} ${annee}) transmise au club`,
-          messageHtml: `<p>Bonjour ${coach.prenom}, votre facture <strong>${facture.numero}</strong> (${moisNom} ${annee}) d'un montant de <strong>${details.totalMontant.toFixed(2)} €</strong> a été générée et transmise au club pour règlement.</p>`,
-          messageTexte: `Bonjour ${coach.prenom}, votre facture ${facture.numero} (${moisNom} ${annee}) d'un montant de ${details.totalMontant.toFixed(2)} € a été générée et transmise au club.`,
+        await queueEmail({
+          to: sanitizeEmailHeader(coach.email),
+          subject: sanitizeEmailHeader(`[Triton Club] Votre facture ${facture.numero} - ${moisNom} ${annee}`),
+          text: `Bonjour ${coach.prenom},\n\nVotre facture N° ${facture.numero} pour le mois de ${moisNom} ${annee} d'un montant de ${details.totalMontant.toFixed(2)} € a été générée et transmise au club pour règlement.\n\nVous trouverez votre facture au format PDF en pièce jointe pour vos archives.\n\nTriton Club Cavaillon`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+              <h2 style="color: #0f172a; margin-top: 0;">Bonjour ${coach.prenom},</h2>
+              <p style="color: #334155; font-size: 15px; line-height: 1.5;">
+                Votre facture <strong>N° ${facture.numero}</strong> pour la période de <strong>${moisNom} ${annee}</strong> d'un montant de <strong>${details.totalMontant.toFixed(2)} €</strong> a été générée et transmise au club pour règlement.
+              </p>
+              <div style="background-color: #f8fafc; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 6px;">
+                <p style="margin: 0; color: #0f172a; font-weight: bold;">Détails :</p>
+                <p style="margin: 5px 0 0 0; color: #475569; font-size: 14px;">
+                  • Référence : <strong>${facture.numero}</strong><br/>
+                  • Période : <strong>${moisNom} ${annee}</strong><br/>
+                  • Total à régler : <strong style="color: #047857; font-size: 16px;">${details.totalMontant.toFixed(2)} €</strong>
+                </p>
+              </div>
+              <p style="color: #64748b; font-size: 13px;">
+                Votre document officiel au format PDF est joint à cet e-mail pour vos archives personnelles.
+              </p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+              <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                Triton Club Cavaillon
+              </p>
+            </div>
+          `,
+          attachments: [
+            {
+              filename: `facture-${facture.numero}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf',
+            },
+          ],
         })
       }
     }

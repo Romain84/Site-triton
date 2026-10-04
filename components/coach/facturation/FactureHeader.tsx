@@ -7,7 +7,6 @@ import {
   Euro,
   FileText,
   Download,
-  Send,
   Plus,
   Trophy,
   RotateCcw,
@@ -29,11 +28,11 @@ interface FactureHeaderProps {
   statut?: string
   isBlocked?: boolean
   generatingInvoice: boolean
-  sendingEmail: boolean
+  sendingEmail?: boolean
   downloadingPDF: boolean
   onGenerateInvoice: () => void
   onRegenerateInvoice: () => void
-  onSendInvoice: () => void
+  onSendInvoice?: () => void
   onDownloadPDF: () => void
   onOpenModalPrestation: () => void
   onOpenModalCompetition: () => void
@@ -55,11 +54,9 @@ export default function FactureHeader({
   statut,
   isBlocked,
   generatingInvoice,
-  sendingEmail,
   downloadingPDF,
   onGenerateInvoice,
   onRegenerateInvoice,
-  onSendInvoice,
   onDownloadPDF,
   onOpenModalPrestation,
   onOpenModalCompetition,
@@ -173,7 +170,7 @@ export default function FactureHeader({
             <div>
               <p>Cette facture est en <strong>brouillon</strong>. Vérifiez vos séances et prestations ci-dessous.</p>
               <p className="text-[11px] text-amber-700 font-normal mt-0.5">
-                Cliquez sur <strong>&quot;Générer la facture&quot;</strong> pour officialiser le document avec son numéro officiel.
+                Cliquez sur <strong>&quot;Générer la facture&quot;</strong> pour officialiser le document et le transmettre directement au secrétariat du club.
               </p>
             </div>
           </div>
@@ -183,9 +180,9 @@ export default function FactureHeader({
           <div className="p-4 bg-sky-50/90 border border-sky-200/80 rounded-2xl flex items-start gap-3 text-sky-900 text-xs font-semibold leading-relaxed">
             <FileText className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
             <div>
-              <p>Facture générée avec succès ! <strong>Elle n&apos;est pas encore transmise au club.</strong></p>
+              <p>Facture prête à être transmise.</p>
               <p className="text-[11px] text-sky-700 font-normal mt-0.5">
-                Vérifiez le document PDF, puis cliquez sur <strong>&quot;Envoyer au club&quot;</strong> pour validation et règlement.
+                Cliquez sur <strong>&quot;Générer la facture&quot;</strong> pour l&apos;officialiser et la transmettre au club.
               </p>
             </div>
           </div>
@@ -195,9 +192,9 @@ export default function FactureHeader({
           <div className="p-4 bg-emerald-50/90 border border-emerald-200/80 rounded-2xl flex items-start gap-3 text-emerald-900 text-xs font-semibold leading-relaxed">
             <Lock className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
             <div>
-              <p>🔒 <strong>Facture envoyée au club.</strong> Tout est désormais verrouillé.</p>
+              <p>🔒 <strong>Facture transmise au club.</strong> Tout est désormais verrouillé.</p>
               <p className="text-[11px] text-emerald-700 font-normal mt-0.5">
-                Cette facture a été transmise par e-mail au secrétariat du club. Aucune modification n&apos;est plus permise.
+                Cette facture a été transmise par e-mail au secrétariat du club avec le PDF joint. Aucune modification n&apos;est plus permise.
               </p>
             </div>
           </div>
@@ -217,34 +214,22 @@ export default function FactureHeader({
 
         {/* BARRE DE BOUTONS D'ACTION */}
         <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100">
-          {/* ACTION : GÉNÉRER */}
-          {isBrouillon && (
+          {/* ACTION : GÉNÉRER ET TRANSMETTRE */}
+          {(isBrouillon || isGeneree) && (
             <button
               type="button"
               onClick={onGenerateInvoice}
               disabled={generatingInvoice || !totalMontant}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-black shadow-xs transition-all disabled:opacity-50"
+              title="Générer la facture officielle et l'envoyer directement au club et sur votre boîte e-mail"
             >
               {generatingInvoice ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
               <span>Générer la facture</span>
             </button>
           )}
 
-          {/* ACTION : ENVOYER AU CLUB */}
-          {isGeneree && (
-            <button
-              type="button"
-              onClick={onSendInvoice}
-              disabled={sendingEmail}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition-all disabled:opacity-50"
-            >
-              {sendingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              <span>Envoyer au club</span>
-            </button>
-          )}
-
           {/* ACTION : RÉGÉNÉRER */}
-          {(isBrouillon || isGeneree) && !isBlocked && (
+          {isBrouillon && !isBlocked && (
             <button
               type="button"
               onClick={onRegenerateInvoice}
