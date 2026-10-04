@@ -91,14 +91,14 @@ describe('Calcul de facture avec tempsFacture sur le planning', () => {
     expect(ligne.montant).toBe(5 * 30) // 150€
   })
 
-  it('se replie sur l\'arrondi à la demi-heure si tempsFacture est absent ou null', async () => {
+  it('se replie sur la durée réelle exacte sans arrondi si tempsFacture est absent ou null', async () => {
     vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
     vi.mocked(prisma.planning.findMany).mockResolvedValue([
       {
         id: 'plan-2',
         jourSemaine: 'Lundi',
         heureDebut: '17:15',
-        heureFin: '18:00', // 45 min réelles -> arrondi à 1.0h
+        heureFin: '18:00', // 45 min réelles = 0.75h (plus d'arrondi automatique à 1h)
         tempsFacture: null,
         semaineImpaire: false,
         groupeId: 'grp-1',
@@ -111,15 +111,15 @@ describe('Calcul de facture avec tempsFacture sur le planning', () => {
     expect(res.lignesPlanningFixe.length).toBeGreaterThan(0)
     const ligne = res.lignesPlanningFixe[0]
     expect(ligne.description).not.toContain('(Facturé')
-    // 4 lundis * 1.0h = 4.0h
-    expect(ligne.heures).toBe(4)
-    expect(ligne.montant).toBe(4 * 30)
+    // 4 lundis * 0.75h = 3.0h
+    expect(ligne.heures).toBe(3)
+    expect(ligne.montant).toBe(3 * 30)
   })
 
-  it('ne modifie PAS une facture déjà générée, envoyée ou payée', async () => {
+  it('ne modifie PAS une facture déjà envoyée au club ou payée', async () => {
     vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue({
-      id: 'facture-deja-generée',
-      statut: 'generee',
+      id: 'facture-deja-envoyee',
+      statut: 'envoyee',
       montantTotal: 420,
       lignes: [],
     } as any)
@@ -128,9 +128,36 @@ describe('Calcul de facture avec tempsFacture sur le planning', () => {
     const res = await calculerFactureCoach('coach-1', 9, 2026)
 
     expect(res.isBlocked).toBe(true)
-    expect(res.statut).toBe('generee')
+    expect(res.statut).toBe('envoyee')
     expect(res.totalMontant).toBe(420) // Le montant d'origine est strictement conservé
-    expect(res.message).toContain('déjà été générée')
+    expect(res.message).toContain('transmise au club')
+  })
+
+  it('permet de recalculer et régénérer une facture au statut generee avant son envoi', async () => {
+    vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue({
+      id: 'facture-generee-brouillon',
+      statut: 'generee',
+      montantTotal: 100, // Ancien montant avant ajout d'un créneau
+      lignes: [],
+    } as any)
+    vi.mocked(prisma.planning.findMany).mockResolvedValue([
+      {
+        id: 'plan-regen',
+        jourSemaine: 'Lundi',
+        heureDebut: '18:00',
+        heureFin: '19:00', // 60 min -> 4 lundis = 4h
+        tempsFacture: 60,
+        semaineImpaire: false,
+        groupeId: 'grp-1',
+        groupe: { nom: 'Groupe Test' },
+      } as any,
+    ])
+
+    const res = await calculerFactureCoach('coach-1', 9, 2026)
+
+    expect(res.isBlocked).toBe(false) // Non verrouillée avant envoi officiel
+    expect(res.statut).toBe('generee')
+    expect(res.totalMontant).toBe(4 * 30) // Recalculé à 120€ au lieu de rester figé à 100€
   })
 
   it('fusionne 2 groupes gérés en même temps par un coach et ne paye qu\'une seule fois', async () => {
@@ -281,14 +308,14 @@ describe('Calcul de facture avec tempsFacture sur le planning', () => {
 
   it('neutralise le doublon quand un remplacement a lieu en même temps qu\'un cours régulier (Option B)', async () => {
     vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
-    // Coach a cours tous les lundis de 17:15 à 18:00
+    // Coach a cours tous les lundis de 17:15 à 18:00 (tempsFacture = 60 min)
     vi.mocked(prisma.planning.findMany).mockResolvedValue([
       {
         id: 'plan-regulier',
         jourSemaine: 'Lundi',
         heureDebut: '17:15',
         heureFin: '18:00',
-        tempsFacture: null,
+        tempsFacture: 60,
         semaineImpaire: false,
         groupeId: 'grp-avenirs',
         groupe: { nom: 'Avenirs 1' },
@@ -329,14 +356,14 @@ describe('Calcul de facture avec tempsFacture sur le planning', () => {
 
   it('rémunère normalement un remplacement effectué sur une plage horaire différente sans chevauchement', async () => {
     vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
-    // Coach a cours les lundis de 17:15 à 18:00
+    // Coach a cours les lundis de 17:15 à 18:00 (tempsFacture = 60 min)
     vi.mocked(prisma.planning.findMany).mockResolvedValue([
       {
         id: 'plan-regulier',
         jourSemaine: 'Lundi',
         heureDebut: '17:15',
         heureFin: '18:00',
-        tempsFacture: null,
+        tempsFacture: 60,
         semaineImpaire: false,
         groupeId: 'grp-avenirs',
         groupe: { nom: 'Avenirs 1' },
@@ -370,5 +397,290 @@ describe('Calcul de facture avec tempsFacture sur le planning', () => {
     // Total heures = 5.5h
     expect(res.totalHeures).toBe(5.5)
     expect(res.totalMontant).toBe(5.5 * 30)
+  })
+})
+
+describe('Déductions proportionnelles des absences et calculs fiabilisés (Lot 1)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(prisma.settings.findFirst).mockResolvedValue({
+      tauxHoraire: 30,
+      forfaitCompetition: 150,
+      forfaitRegionalActif: false,
+      montantForfaitRegional: 50,
+      debutCoursNormal: '2026-09-01',
+      debutCoursBnssa: null,
+    } as any)
+    vi.mocked(prisma.periodeVacances.findMany).mockResolvedValue([])
+    vi.mocked(prisma.seanceAnnulee.findMany).mockResolvedValue([])
+    vi.mocked(prisma.coach.findUnique).mockResolvedValue({ heuresAdminHebdo: 0 } as any)
+    vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.evenementTournant.findMany).mockResolvedValue([])
+  })
+
+  it('Cas Lorenzo : créneau majoré 19:30-20:15 (45 min payées 1h), absence saisie 19:30-20:45 -> déduit exactement 1h (et non 1h30)', async () => {
+    // Lorenzo a cours tous les mardis de 19:30 à 20:15 (45 min réelles, mais tempsFacture = 60 min)
+    // 5 mardis en septembre 2026 (01, 08, 15, 22, 29) -> 5h payées
+    vi.mocked(prisma.planning.findMany).mockResolvedValue([
+      {
+        id: 'plan-lorenzo',
+        jourSemaine: 'Mardi',
+        heureDebut: '19:30',
+        heureFin: '20:15',
+        tempsFacture: 60,
+        semaineImpaire: false,
+        groupeId: 'grp-aquafit',
+        groupe: { nom: 'AquaFitness' },
+        coachs: [{ coachId: 'lorenzo', coach: { prenom: 'Lorenzo' } }],
+      } as any,
+    ])
+
+    // Absence déclarée le 29/09/2026 de 19:30 à 20:45 (1h15)
+    vi.mocked(prisma.remplacement.findMany)
+      .mockResolvedValueOnce([]) // Aucun remplacement effectué
+      .mockResolvedValueOnce([   // Absence reçue
+        {
+          id: 'remp-lorenzo-abs',
+          coachRemplaceId: 'lorenzo',
+          coachRemplacantId: null,
+          date: new Date('2026-09-29T12:00:00Z'),
+          heureDebut: '19:30',
+          heureFin: '20:45',
+          motif: 'Raison personnelle',
+          statut: 'sans_remplacant',
+          coachRemplacant: null,
+        } as any,
+      ])
+
+    const res = await calculerFactureCoach('lorenzo', 9, 2026)
+
+    // Planning fixe = 5h
+    expect(res.lignesPlanningFixe[0].heures).toBe(5)
+
+    // Déduction d'absence = EXACTEMENT -1.0h (-30€), pas -1.5h (-45€) !
+    expect(res.lignesAbsences).toHaveLength(1)
+    const ligneAbs = res.lignesAbsences[0]
+    expect(ligneAbs.heures).toBe(-1)
+    expect(ligneAbs.montant).toBe(-30)
+    expect(ligneAbs.description).toContain('(-1h00)')
+
+    // Total net : 5h - 1h = 4h (120€)
+    expect(res.totalHeures).toBe(4)
+    expect(res.totalMontant).toBe(120)
+  })
+
+  it('Absence partielle sur créneau majoré : 19:30-20:15 (45 min payées 1h), absence saisie 19:30-19:45 (15 min) -> déduit 20 min', async () => {
+    vi.mocked(prisma.planning.findMany).mockResolvedValue([
+      {
+        id: 'plan-majore',
+        jourSemaine: 'Mardi',
+        heureDebut: '19:30',
+        heureFin: '20:15',
+        tempsFacture: 60,
+        semaineImpaire: false,
+        groupeId: 'grp-aquafit',
+        groupe: { nom: 'AquaFitness' },
+        coachs: [{ coachId: 'coach-1', coach: { prenom: 'Coach' } }],
+      } as any,
+    ])
+
+    // Absence 15 min pendant le créneau (15 / 45 * 60 = 20 min = 1/3h)
+    vi.mocked(prisma.remplacement.findMany)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'remp-partiel-maj',
+          coachRemplaceId: 'coach-1',
+          coachRemplacantId: null,
+          date: new Date('2026-09-29T12:00:00Z'),
+          heureDebut: '19:30',
+          heureFin: '19:45',
+          motif: 'Retard',
+          statut: 'sans_remplacant',
+          coachRemplacant: null,
+        } as any,
+      ])
+
+    const res = await calculerFactureCoach('coach-1', 9, 2026)
+
+    expect(res.lignesAbsences).toHaveLength(1)
+    const ligneAbs = res.lignesAbsences[0]
+    expect(ligneAbs.heures).toBeCloseTo(-20 / 60, 4)
+    expect(ligneAbs.montant).toBeCloseTo(-10, 2) // 20 min à 30€/h = 10€
+    expect(ligneAbs.description).toContain('(-0h20)')
+  })
+
+  it('Absence partielle sur créneau standard : 19:30-21:00 (1h30), absence saisie 19:30-20:00 (30 min) -> déduit 30 min (-0.5h)', async () => {
+    vi.mocked(prisma.planning.findMany).mockResolvedValue([
+      {
+        id: 'plan-std',
+        jourSemaine: 'Mardi',
+        heureDebut: '19:30',
+        heureFin: '21:00',
+        tempsFacture: 90,
+        semaineImpaire: false,
+        groupeId: 'grp-1',
+        groupe: { nom: 'Adultes' },
+        coachs: [{ coachId: 'coach-1', coach: { prenom: 'Coach' } }],
+      } as any,
+    ])
+
+    vi.mocked(prisma.remplacement.findMany)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'remp-partiel-std',
+          coachRemplaceId: 'coach-1',
+          coachRemplacantId: null,
+          date: new Date('2026-09-29T12:00:00Z'),
+          heureDebut: '19:30',
+          heureFin: '20:00',
+          motif: 'Départ tôt',
+          statut: 'sans_remplacant',
+          coachRemplacant: null,
+        } as any,
+      ])
+
+    const res = await calculerFactureCoach('coach-1', 9, 2026)
+
+    expect(res.lignesAbsences).toHaveLength(1)
+    const ligneAbs = res.lignesAbsences[0]
+    expect(ligneAbs.heures).toBe(-0.5)
+    expect(ligneAbs.montant).toBe(-15) // 0.5h * 30€ = 15€
+    expect(ligneAbs.description).toContain('(-0h30)')
+  })
+
+  it('Absence sur 2 cours simultanés du même coach -> déduit une seule fois', async () => {
+    // Coach gère Adultes Loisirs 1 et Adultes Loisirs 2 le mardi 19:30-21:00 (fusionnés en 1 créneau payé 1h30)
+    vi.mocked(prisma.planning.findMany).mockResolvedValue([
+      {
+        id: 'plan-sim-1',
+        jourSemaine: 'Mardi',
+        heureDebut: '19:30',
+        heureFin: '21:00',
+        tempsFacture: 90,
+        semaineImpaire: false,
+        groupeId: 'grp-1',
+        groupe: { nom: 'Adultes Loisirs 1' },
+        coachs: [{ coachId: 'coach-1', coach: { prenom: 'Coach' } }],
+      } as any,
+      {
+        id: 'plan-sim-2',
+        jourSemaine: 'Mardi',
+        heureDebut: '19:30',
+        heureFin: '21:00',
+        tempsFacture: 90,
+        semaineImpaire: false,
+        groupeId: 'grp-2',
+        groupe: { nom: 'Adultes Loisirs 2' },
+        coachs: [{ coachId: 'coach-1', coach: { prenom: 'Coach' } }],
+      } as any,
+    ])
+
+    // Absence de 30 min (19:30-20:00)
+    vi.mocked(prisma.remplacement.findMany)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'remp-abs-simultane',
+          coachRemplaceId: 'coach-1',
+          coachRemplacantId: null,
+          date: new Date('2026-09-29T12:00:00Z'),
+          heureDebut: '19:30',
+          heureFin: '20:00',
+          motif: 'Absence 30 min',
+          statut: 'sans_remplacant',
+          coachRemplacant: null,
+        } as any,
+      ])
+
+    const res = await calculerFactureCoach('coach-1', 9, 2026)
+
+    // Déduit UNE SEULE FOIS 30 min (-0.5h) et non 2 fois (-1.0h)
+    expect(res.lignesAbsences).toHaveLength(1)
+    expect(res.lignesAbsences[0].heures).toBe(-0.5)
+    expect(res.lignesAbsences[0].montant).toBe(-15)
+  })
+
+  it('Absence déclarée hors de tout créneau planifié -> 0h déduite', async () => {
+    vi.mocked(prisma.planning.findMany).mockResolvedValue([
+      {
+        id: 'plan-soir',
+        jourSemaine: 'Mardi',
+        heureDebut: '19:30',
+        heureFin: '21:00',
+        tempsFacture: 90,
+        semaineImpaire: false,
+        groupeId: 'grp-1',
+        groupe: { nom: 'Adultes' },
+        coachs: [{ coachId: 'coach-1', coach: { prenom: 'Coach' } }],
+      } as any,
+    ])
+
+    // Absence saisie à 14:00-15:00 le mardi (aucun créneau à cette heure)
+    vi.mocked(prisma.remplacement.findMany)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'remp-hors-creneau',
+          coachRemplaceId: 'coach-1',
+          coachRemplacantId: null,
+          date: new Date('2026-09-29T12:00:00Z'),
+          heureDebut: '14:00',
+          heureFin: '15:00',
+          motif: 'Rendez-vous après-midi',
+          statut: 'sans_remplacant',
+          coachRemplacant: null,
+        } as any,
+      ])
+
+    const res = await calculerFactureCoach('coach-1', 9, 2026)
+
+    expect(res.lignesAbsences).toHaveLength(1)
+    const ligneAbs = res.lignesAbsences[0]
+    expect(ligneAbs.heures).toBe(0)
+    expect(ligneAbs.montant).toBe(0)
+    expect(ligneAbs.description).toContain('Hors créneau planifié : 0h déduite')
+  })
+
+  it('Remplacement proportionnel : remplaçant d\'un créneau de 45 min payé 60 min effectue les 45 min -> payé 60 min (1h00)', async () => {
+    // Le remplaçant n'a aucun cours régulier
+    vi.mocked(prisma.planning.findMany)
+      .mockResolvedValueOnce([]) // ses propres cours
+      .mockResolvedValueOnce([   // cours du coach remplacé
+        {
+          id: 'plan-collegue',
+          jourSemaine: 'Mardi',
+          heureDebut: '19:30',
+          heureFin: '20:15',
+          tempsFacture: 60,
+          coachs: [{ coachId: 'coach-collegue', coach: { prenom: 'Collègue' } }],
+        } as any,
+      ])
+
+    vi.mocked(prisma.remplacement.findMany)
+      .mockResolvedValueOnce([
+        {
+          id: 'remp-effectue-majore',
+          coachRemplaceId: 'coach-collegue',
+          coachRemplacantId: 'coach-remplacant',
+          planningId: 'plan-collegue',
+          date: new Date('2026-09-29T12:00:00Z'),
+          heureDebut: '19:30',
+          heureFin: '20:15',
+          motif: 'Remplacement séance AquaFitness',
+          coachRemplace: { id: 'coach-collegue', prenom: 'Paul', nom: 'Dupont' },
+        } as any,
+      ])
+      .mockResolvedValueOnce([]) // pas d'absence pour le remplaçant
+
+    const res = await calculerFactureCoach('coach-remplacant', 9, 2026)
+
+    expect(res.lignesRemplacements).toHaveLength(1)
+    const ligneRemp = res.lignesRemplacements[0]
+    // 45 min effectuées sur créneau de 45 min payé 60 min -> payé 1h00 (30€)
+    expect(ligneRemp.heures).toBe(1)
+    expect(ligneRemp.montant).toBe(30)
+    expect(ligneRemp.description).toContain('(1h00 facturées)')
   })
 })

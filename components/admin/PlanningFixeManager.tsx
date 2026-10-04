@@ -546,7 +546,13 @@ export default function PlanningFixeManager() {
     if (!quickEditPlanning) return
     setIsSavingQuick(true)
     try {
-      const parsed = quickTempsFacture ? parseInt(quickTempsFacture, 10) : null
+      const dureeReelle = timeToMinutes(quickEditPlanning.heureFin) - timeToMinutes(quickEditPlanning.heureDebut)
+      const parsed = quickTempsFacture ? parseInt(quickTempsFacture, 10) : dureeReelle
+      if (!parsed || parsed <= 0) {
+        alert('Le temps à facturer est obligatoire et doit être supérieur à 0.')
+        setIsSavingQuick(false)
+        return
+      }
       const response = await fetch(`/api/admin/planning-fixe/${quickEditPlanning.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -641,6 +647,14 @@ export default function PlanningFixeManager() {
       return
     }
 
+    const dureeReelle = heureDebut && heureFin ? Math.max(0, timeToMinutes(heureFin) - timeToMinutes(heureDebut)) : 0
+    const finalTempsFacture = tempsFacture ? parseInt(tempsFacture, 10) : dureeReelle
+
+    if (!finalTempsFacture || finalTempsFacture <= 0) {
+      setError('Le temps à facturer est obligatoire (en minutes).')
+      return
+    }
+
     try {
       const url = editingPlanning
         ? `/api/admin/planning-fixe/${editingPlanning.id}`
@@ -660,7 +674,7 @@ export default function PlanningFixeManager() {
           couleur,
           nomSession: nomSession || null,
           semaineImpaire,
-          tempsFacture: tempsFacture ? parseInt(tempsFacture, 10) : null,
+          tempsFacture: finalTempsFacture,
           actif,
         }),
       })
@@ -935,10 +949,10 @@ export default function PlanningFixeManager() {
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <label className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
-              💳 Temps à facturer (par séance pour chaque coach)
+              💳 Temps à facturer (par séance pour chaque coach) <span className="text-rose-500 font-bold">*</span>
               <HelpTooltip title="Temps à facturer">
                 <p>Ce temps sera facturé pour chaque coach assigné à ce créneau sur toutes les semaines de la saison.</p>
-                <p className="mt-1">Si vous laissez vide ou &quot;Auto&quot;, la durée calculée entre {heureDebut || 'début'} et {heureFin || 'fin'} avec arrondi à la demi-heure sera utilisée.</p>
+                <p className="mt-1">Pré-rempli avec la durée exacte du créneau ({heureDebut || 'début'} – {heureFin || 'fin'}). Modifiable si le créneau bénéficie d&apos;un temps majoré ou forfaitaire.</p>
               </HelpTooltip>
             </label>
             {tempsFacture && (
@@ -970,25 +984,31 @@ export default function PlanningFixeManager() {
                 {preset.label}
               </button>
             ))}
-            <button
-              type="button"
-              onClick={() => setTempsFacture('')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
-                !tempsFacture
-                  ? 'bg-slate-700 text-white shadow-xs'
-                  : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              ⏱️ Auto ({heureDebut && heureFin ? formatMinutesEnHM(Math.ceil((timeToMinutes(heureFin) - timeToMinutes(heureDebut)) / 30) * 30) : 'calculé'})
-            </button>
+            {heureDebut && heureFin && (
+              <button
+                type="button"
+                onClick={() => {
+                  const duree = Math.max(0, timeToMinutes(heureFin) - timeToMinutes(heureDebut))
+                  setTempsFacture(duree.toString())
+                }}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  tempsFacture === Math.max(0, timeToMinutes(heureFin) - timeToMinutes(heureDebut)).toString()
+                    ? 'bg-slate-700 text-white shadow-xs'
+                    : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                ⏱️ Durée réelle ({formatMinutesEnHM(Math.max(0, timeToMinutes(heureFin) - timeToMinutes(heureDebut)))})
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
             <div className="w-48">
               <input
                 type="number"
-                min="0"
+                min="1"
                 step="5"
+                required
                 value={tempsFacture}
                 onChange={(e) => setTempsFacture(e.target.value)}
                 placeholder="Ex: 75 pour 1h15"
@@ -998,7 +1018,7 @@ export default function PlanningFixeManager() {
             <p className="text-xs text-slate-500">
               {tempsFacture
                 ? `→ Applique ${formatMinutesEnHM(parseInt(tempsFacture, 10))} (${(parseInt(tempsFacture, 10) / 60).toFixed(2)}h) sur toute la saison.`
-                : '→ Durée réelle arrondie à la demi-heure supérieure appliquée automatiquement.'}
+                : '→ Champ obligatoire : saisissez le temps facturé en minutes ou cliquez sur les boutons.'}
             </p>
           </div>
         </div>

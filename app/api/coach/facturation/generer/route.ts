@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    if (facture && ['generee', 'envoyee', 'payee'].includes(facture.statut)) {
+    if (facture && ['envoyee', 'payee'].includes(facture.statut)) {
       return NextResponse.json(
-        { error: 'Cette facture a déjà été générée et ne peut plus être recalculée ou modifiée.' },
+        { error: 'Cette facture a déjà été transmise au club et ne peut plus être modifiée.' },
         { status: 403 }
       )
     }
