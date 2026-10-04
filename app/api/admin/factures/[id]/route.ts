@@ -91,6 +91,7 @@ export async function GET(
         montantTotal: finalMontantTotal,
         totalHeures: details.totalHeures,
         lignes: allCalculatedLignes,
+        sections: details.sections,
       },
     })
   } catch (error) {

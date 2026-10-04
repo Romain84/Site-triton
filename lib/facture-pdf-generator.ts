@@ -4,6 +4,7 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import { genererNumeroFactureSequentiel } from '@/lib/facture-utils'
+import { formatHeuresEnHM } from '@/lib/facture-format'
 
 const pdfLogger = logger.withContext('FacturePDFGenerator')
 
@@ -170,81 +171,207 @@ export async function genererFacturePDF(
   // Préparer les données du tableau
   const tableData: any[] = []
 
-  // Planning fixe
-  if (details.lignesPlanningFixe.length > 0) {
-    tableData.push([{ content: 'PLANNING FIXE', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [240, 253, 244], textColor: [22, 101, 52] } }])
-    for (const ligne of details.lignesPlanningFixe) {
-      tableData.push([
-        ligne.description,
-        `${ligne.heures.toFixed(2)} h`,
-        `${ligne.montant.toFixed(2)} €`
-      ])
-    }
-  }
+  // Génération des lignes de facture
+  if (details.sections && details.sections.length > 0) {
+    for (const sec of details.sections) {
+      let headerBg: [number, number, number] = [240, 253, 244]
+      let headerText: [number, number, number] = [22, 101, 52]
 
-  // Planning tournant
-  if (details.lignesPlanningTournant.length > 0) {
-    tableData.push([{ content: 'PLANNING TOURNANT', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [240, 253, 244], textColor: [22, 101, 52] } }])
-    for (const ligne of details.lignesPlanningTournant) {
-      tableData.push([
-        ligne.description,
-        `${ligne.heures.toFixed(2)} h`,
-        `${ligne.montant.toFixed(2)} €`
-      ])
-    }
-  }
-
-  // Remplacements effectués
-  if (details.lignesRemplacements.length > 0) {
-    tableData.push([{ content: 'REMPLACEMENTS EFFECTUÉS', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [239, 246, 255], textColor: [30, 64, 175] } }])
-    for (const ligne of details.lignesRemplacements) {
-      tableData.push([
-        ligne.description,
-        `+${ligne.heures.toFixed(2)} h`,
-        `+${ligne.montant.toFixed(2)} €`
-      ])
-    }
-  }
-
-  // Absences
-  if (details.lignesAbsences.length > 0) {
-    tableData.push([{ content: 'ABSENCES DÉDUITES', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [254, 242, 242], textColor: [153, 27, 27] } }])
-    for (const ligne of details.lignesAbsences) {
-      tableData.push([
-        ligne.description,
-        `-${ligne.heures.toFixed(2)} h`,
-        `-${ligne.montant.toFixed(2)} €`
-      ])
-    }
-  }
-
-  // Lignes manuelles
-  if (details.lignesManuelles.length > 0) {
-    tableData.push([{ content: 'AJOUTS & DÉDUCTIONS MANUELS', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [254, 243, 199], textColor: [146, 64, 14] } }])
-    for (const ligne of details.lignesManuelles) {
-      let heuresText: string
-      let montantText: string
-
-      if (ligne.type === 'competition' || ligne.type === 'forfait_regional') {
-        const estJournee = ligne.demiJournees === 2 || ligne.heures === 2
-        heuresText = estJournee ? '1 journée' : `${ligne.heures || 1} demi-j.`
-        montantText = `${ligne.montant.toFixed(2)} €`
-      } else if (ligne.type === 'forfait_transport') {
-        heuresText = `${ligne.heures || 0} km (aller)`
-        montantText = `${ligne.montant.toFixed(2)} €`
-      } else if (ligne.type === 'absence') {
-        heuresText = `-${Math.abs(ligne.heures || 0).toFixed(2)} h`
-        montantText = `-${Math.abs(ligne.montant).toFixed(2)} €`
-      } else {
-        heuresText = `${(ligne.heures || 0).toFixed(2)} h`
-        montantText = `${ligne.montant.toFixed(2)} €`
+      if (sec.type === 'remplacements') {
+        headerBg = [239, 246, 255]
+        headerText = [30, 64, 175]
+      } else if (sec.type === 'competitions') {
+        headerBg = [236, 253, 245]
+        headerText = [6, 95, 70]
+      } else if (sec.type === 'prestations') {
+        headerBg = [254, 243, 199]
+        headerText = [146, 64, 14]
+      } else if (sec.type === 'autres_absences') {
+        headerBg = [254, 242, 242]
+        headerText = [153, 27, 27]
       }
 
+      // 1. En-tête de section
       tableData.push([
-        ligne.description,
-        heuresText,
-        montantText
+        {
+          content: sec.titre,
+          colSpan: 3,
+          styles: { fontStyle: 'bold', fillColor: headerBg, textColor: headerText }
+        }
       ])
+
+      // 2. Lignes de la section
+      for (const ligne of sec.lignes) {
+        const parts: string[] = []
+        if (ligne.titre) {
+          parts.push(ligne.titre)
+        } else {
+          parts.push(ligne.description)
+        }
+
+        if (ligne.sousTitre) {
+          parts.push(ligne.sousTitre)
+        } else if (ligne.type === 'competition') {
+          const estJournee = ligne.demiJournees === 2 || ligne.heures === 2
+          const info = [
+            estJournee ? '1 journée' : '1 demi-journée',
+            ligne.date ? new Date(ligne.date).toLocaleDateString('fr-FR') : null,
+            ligne.lieu ? `Lieu : ${ligne.lieu}` : null
+          ].filter(Boolean).join(' • ')
+          if (info) parts.push(info)
+        } else if (ligne.type === 'forfait_transport') {
+          const info = [
+            `${ligne.heures || 0} km aller (0,30 €/km)`,
+            ligne.date ? new Date(ligne.date).toLocaleDateString('fr-FR') : null,
+            ligne.lieu ? `Destination : ${ligne.lieu}` : null
+          ].filter(Boolean).join(' • ')
+          if (info) parts.push(info)
+        } else if (ligne.date) {
+          parts.push(`Date : ${new Date(ligne.date).toLocaleDateString('fr-FR')}`)
+        }
+
+        if (ligne.datesBadges && ligne.datesBadges.length > 0) {
+          parts.push(`Dates : ${ligne.datesBadges.join(', ')}`)
+        }
+
+        const designation = parts.join('\n')
+
+        let heuresText = ''
+        if (ligne.detailCalculDuree) {
+          heuresText = ligne.detailCalculDuree
+        } else if (ligne.type === 'competition' || ligne.type === 'forfait_regional') {
+          const estJournee = ligne.demiJournees === 2 || ligne.heures === 2
+          heuresText = estJournee ? '1 journée' : `${ligne.heures || 1} demi-j.`
+        } else if (ligne.type === 'forfait_transport') {
+          heuresText = `${ligne.heures || 0} km aller`
+        } else if (ligne.heures !== undefined && ligne.heures !== 0) {
+          heuresText = formatHeuresEnHM(ligne.heures)
+        }
+
+        const montantText = `${ligne.montant < 0 ? '−' : ''}${Math.abs(ligne.montant).toFixed(2)} €`
+
+        tableData.push([
+          designation,
+          heuresText,
+          montantText
+        ])
+
+        // Absences associées imbriquées sous la séance
+        if (ligne.absencesAssociees && ligne.absencesAssociees.length > 0) {
+          for (const abs of ligne.absencesAssociees) {
+            const absDesc = `   ↳ Absence ${abs.date}${abs.motif ? ` (${abs.motif})` : ''}${abs.coachRemplacantNom ? ` — Remplacé par ${abs.coachRemplacantNom}` : ''}`
+            tableData.push([
+              {
+                content: absDesc,
+                styles: { textColor: [185, 28, 28], fontStyle: 'italic' }
+              },
+              {
+                content: abs.texteDeduction || formatHeuresEnHM(abs.heures),
+                styles: { textColor: [185, 28, 28], halign: 'right' }
+              },
+              {
+                content: `−${Math.abs(abs.montant).toFixed(2)} €`,
+                styles: { textColor: [185, 28, 28], fontStyle: 'bold', halign: 'right' }
+              }
+            ])
+          }
+        }
+      }
+
+      // 3. Sous-total de la section
+      tableData.push([
+        {
+          content: `Sous-total ${sec.titre.toLowerCase()}`,
+          styles: { fontStyle: 'bold', fillColor: [248, 250, 252], textColor: [71, 85, 105] }
+        },
+        {
+          content: sec.sousTotalDureeHM || formatHeuresEnHM(sec.sousTotalHeures),
+          styles: { fontStyle: 'bold', fillColor: [248, 250, 252], halign: 'right', textColor: [71, 85, 105] }
+        },
+        {
+          content: `${sec.sousTotalMontant < 0 ? '−' : ''}${Math.abs(sec.sousTotalMontant).toFixed(2)} €`,
+          styles: { fontStyle: 'bold', fillColor: [248, 250, 252], halign: 'right', textColor: [15, 23, 42] }
+        }
+      ])
+    }
+  } else {
+    // Fallback rétrocompatible ancien format
+    // Planning fixe
+    if (details.lignesPlanningFixe.length > 0) {
+      tableData.push([{ content: 'PLANNING FIXE', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [240, 253, 244], textColor: [22, 101, 52] } }])
+      for (const ligne of details.lignesPlanningFixe) {
+        tableData.push([
+          ligne.description,
+          `${ligne.heures.toFixed(2)} h`,
+          `${ligne.montant.toFixed(2)} €`
+        ])
+      }
+    }
+
+    // Planning tournant
+    if (details.lignesPlanningTournant.length > 0) {
+      tableData.push([{ content: 'PLANNING TOURNANT', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [240, 253, 244], textColor: [22, 101, 52] } }])
+      for (const ligne of details.lignesPlanningTournant) {
+        tableData.push([
+          ligne.description,
+          `${ligne.heures.toFixed(2)} h`,
+          `${ligne.montant.toFixed(2)} €`
+        ])
+      }
+    }
+
+    // Remplacements effectués
+    if (details.lignesRemplacements.length > 0) {
+      tableData.push([{ content: 'REMPLACEMENTS EFFECTUÉS', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [239, 246, 255], textColor: [30, 64, 175] } }])
+      for (const ligne of details.lignesRemplacements) {
+        tableData.push([
+          ligne.description,
+          `+${ligne.heures.toFixed(2)} h`,
+          `+${ligne.montant.toFixed(2)} €`
+        ])
+      }
+    }
+
+    // Absences
+    if (details.lignesAbsences.length > 0) {
+      tableData.push([{ content: 'ABSENCES DÉDUITES', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [254, 242, 242], textColor: [153, 27, 27] } }])
+      for (const ligne of details.lignesAbsences) {
+        tableData.push([
+          ligne.description,
+          `-${ligne.heures.toFixed(2)} h`,
+          `-${ligne.montant.toFixed(2)} €`
+        ])
+      }
+    }
+
+    // Lignes manuelles
+    if (details.lignesManuelles.length > 0) {
+      tableData.push([{ content: 'AJOUTS & DÉDUCTIONS MANUELS', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [254, 243, 199], textColor: [146, 64, 14] } }])
+      for (const ligne of details.lignesManuelles) {
+        let heuresText: string
+        let montantText: string
+
+        if (ligne.type === 'competition' || ligne.type === 'forfait_regional') {
+          const estJournee = ligne.demiJournees === 2 || ligne.heures === 2
+          heuresText = estJournee ? '1 journée' : `${ligne.heures || 1} demi-j.`
+          montantText = `${ligne.montant.toFixed(2)} €`
+        } else if (ligne.type === 'forfait_transport') {
+          heuresText = `${ligne.heures || 0} km (aller)`
+          montantText = `${ligne.montant.toFixed(2)} €`
+        } else if (ligne.type === 'absence') {
+          heuresText = `-${Math.abs(ligne.heures || 0).toFixed(2)} h`
+          montantText = `-${Math.abs(ligne.montant).toFixed(2)} €`
+        } else {
+          heuresText = `${(ligne.heures || 0).toFixed(2)} h`
+          montantText = `${ligne.montant.toFixed(2)} €`
+        }
+
+        tableData.push([
+          ligne.description,
+          heuresText,
+          montantText
+        ])
+      }
     }
   }
 
@@ -304,8 +431,7 @@ export async function genererFacturePDF(
   doc.setTextColor(71, 85, 105)
   doc.text('TOTAL HEURES :', totalBoxStartX + 4, currentY + 11)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(15, 23, 42)
-  doc.text(`${details.totalHeures.toFixed(2)} h`, rightAlignX - 4, currentY + 11, { align: 'right' })
+  doc.text(`${formatHeuresEnHM(details.totalHeures)} (${details.totalHeures.toFixed(2)} h)`, rightAlignX - 4, currentY + 11, { align: 'right' })
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9)

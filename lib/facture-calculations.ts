@@ -1,4 +1,18 @@
 import { prisma } from '@/lib/prisma'
+import { formatMinutesEnHM, formatHeuresEnHM } from '@/lib/facture-format'
+
+export interface FactureAbsenceAssociee {
+  id?: string
+  date: string // "29/09"
+  dateComplete: string // "2026-09-29"
+  motif?: string | null
+  coachRemplacantNom?: string | null
+  heures: number // négatif, ex: -1.5
+  montant: number // négatif, ex: -45.00
+  minutes: number // ex: 90
+  texteDeduction: string // "− 1h30"
+  description: string // "↳ Absence 29/09 (piscine fermée)"
+}
 
 export interface FactureLigneCalculated {
   id?: string
@@ -12,6 +26,29 @@ export interface FactureLigneCalculated {
   demiJournees?: number | null
   coachRemplaceId?: string | null
   remplacementId?: string | null
+
+  // Nouveaux champs structurés Lot 7
+  titre?: string // Ligne 1 : ex "Juniors Compétition · Benjamins 1 · Benjamins 2", "Adultes Compétition — pour Florian"
+  sousTitre?: string // Ligne 2 : ex "Mardi 19:30 – 21:00", "Vendredi 18:15 – 20:00 · PPG, Petit Bassin, Lignes 1-4"
+  datesBadges?: string[] // Ligne 3 : ex ["01/09", "08/09", "15/09", "22/09", "29/09"]
+  nbSeances?: number // ex 5
+  dureeUnitaireMinutes?: number // ex 90
+  detailCalculDuree?: string // ex "5 × 1h30 = 7h30", "1h30"
+  espaces?: string[] // ex ["PPG", "Petit Bassin", "Lignes 1-4"]
+  absencesAssociees?: FactureAbsenceAssociee[] // Absences déduites imbriquées sous cette séance
+  estAbsenceOrpheline?: boolean // true si absence non rattachée à un créneau fixe
+  coachRemplaceNom?: string | null
+  noteInfo?: string | null // ex "déjà payé (cours simultané)"
+}
+
+export interface FactureSectionGroup {
+  id: string
+  titre: string
+  type: 'planning_fixe' | 'planning_tournant' | 'remplacements' | 'competitions' | 'prestations' | 'autres_absences'
+  lignes: FactureLigneCalculated[]
+  sousTotalHeures: number
+  sousTotalMontant: number
+  sousTotalDureeHM?: string
 }
 
 export interface FactureCoachDetails {
@@ -33,6 +70,7 @@ export interface FactureCoachDetails {
   isBlocked?: boolean
   statut?: string
   message?: string
+  sections?: FactureSectionGroup[] // Lot 7: Vue structurée par sections avec sous-totaux
 }
 
 /**
@@ -173,6 +211,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     },
     include: {
       groupe: true,
+      occupations: true,
     },
   })
 
@@ -205,13 +244,30 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     groupes: string[]
     planningIds: string[]
     groupeIds: string[]
+    espaces: string[]
     tempsFacture?: number | null
     semaineImpaire?: boolean
     groupeDateDebut?: Date | null
     isBnssa?: boolean
+    absencesAssociees: FactureAbsenceAssociee[]
+    calculatedOccurrences?: {
+      dates: Date[]
+      occurences: number
+      totalHrs: number
+      dureeHeures: number
+      tempsFactureMin: number
+      dureeReelleMin: number
+    }
   }
 
   const creneauxFusionnes: CreneauFusionne[] = []
+
+  const getEspacesDuPlanning = (p: any): string[] => {
+    if (p.occupations && Array.isArray(p.occupations) && p.occupations.length > 0) {
+      return p.occupations.map((o: any) => o.espace).filter(Boolean)
+    }
+    return p.lieu ? [p.lieu] : []
+  }
 
   // Pour chaque jour/périodicité, fusionner les créneaux qui se chevauchent pour ce coach
   // (Règle métier : un coach qui gère 2 groupes en même temps n'est facturé qu'une seule fois)
@@ -230,6 +286,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       const finMin = timeToMinutes(planning.heureFin)
       const isBnssa = (planning.groupe?.nom || '').toLowerCase().includes('bnssa')
       const nomGroupe = planning.groupe?.nom || 'Groupe'
+      const espacesDuPlanning = getEspacesDuPlanning(planning)
       const last = mergedJour.length > 0 ? mergedJour[mergedJour.length - 1] : null
 
       // Chevauchement strict : le créneau commence strictement avant la fin du créneau précédent
@@ -240,6 +297,11 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
         }
         if (!last.groupes.includes(nomGroupe)) {
           last.groupes.push(nomGroupe)
+        }
+        for (const esp of espacesDuPlanning) {
+          if (!last.espaces.includes(esp)) {
+            last.espaces.push(esp)
+          }
         }
         last.planningIds.push(planning.id)
         if (planning.groupeId && !last.groupeIds.includes(planning.groupeId)) {
@@ -271,10 +333,12 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
           groupes: [nomGroupe],
           planningIds: [planning.id],
           groupeIds: planning.groupeId ? [planning.groupeId] : [],
+          espaces: [...espacesDuPlanning],
           tempsFacture: planning.tempsFacture,
           semaineImpaire: planning.semaineImpaire,
           groupeDateDebut: planning.groupe?.dateDebut,
           isBnssa,
+          absencesAssociees: [],
         })
       }
     }
@@ -286,6 +350,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
   const creneauxEffectuesParDate = new Map<string, Array<{ debutMin: number; finMin: number; description: string }>>()
   // Créneaux réguliers actifs par date avec temps facturé (pour déduction proportionnelle exacte des absences)
   const creneauxActifsParDate = new Map<string, Array<{
+    creneauFusionne: CreneauFusionne
     debutMin: number
     finMin: number
     dureeReelleMin: number
@@ -332,6 +397,17 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     if (occurences > 0) {
       const dureeReelleMin = creneau.finMin - creneau.debutMin
       const tempsFactureMin = creneau.tempsFacture && creneau.tempsFacture > 0 ? creneau.tempsFacture : dureeReelleMin
+      const dureeHeures = tempsFactureMin / 60
+      const totalHrs = dureeHeures * occurences
+
+      creneau.calculatedOccurrences = {
+        dates,
+        occurences,
+        totalHrs,
+        dureeHeures,
+        tempsFactureMin,
+        dureeReelleMin,
+      }
 
       // Enregistrer les créneaux réguliers effectués par date (Option B et absences)
       for (const d of dates) {
@@ -347,6 +423,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
         const listActifs = creneauxActifsParDate.get(dateKey) || []
         listActifs.push({
+          creneauFusionne: creneau,
           debutMin: creneau.debutMin,
           finMin: creneau.finMin,
           dureeReelleMin,
@@ -356,59 +433,14 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
         })
         creneauxActifsParDate.set(dateKey, listActifs)
       }
-
-      // Calcul des heures facturées basé sur le tempsFacture (ou durée réelle exacte sans arrondi)
-      const dureeHeures = tempsFactureMin / 60
-      let detailFacture = ''
-
-      if (tempsFactureMin !== dureeReelleMin) {
-        detailFacture = ` (Facturé ${formatMinutesEnHM(tempsFactureMin)})`
-      }
-
-      const totalHrs = dureeHeures * occurences
-      heuresPlanningFixe += totalHrs
-      const groupesStr = creneau.groupes.join(', ')
-      const datesStr = dates.map((d) => d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })).join(', ')
-
-      lignesPlanningFixe.push({
-        type: 'planning_fixe',
-        description: `${creneau.jourSemaine} ${creneau.heureDebut}-${creneau.heureFin} - ${groupesStr}${detailFacture} (${datesStr})`,
-        heures: totalHrs,
-        montant: totalHrs * tauxHoraire,
-      })
     }
   }
 
-  // 1.b Heures administratives automatiques pour le coach (si activées)
+  // Informations administratives du coach (si configurées)
   const coachInfo = await prisma.coach.findUnique({
     where: { id: coachId },
     select: { heuresAdminHebdo: true },
   })
-
-  if (coachInfo?.heuresAdminHebdo && coachInfo.heuresAdminHebdo > 0) {
-    let adminDateDebut = new Date(dateDebut)
-    if (dateDebutSaison && adminDateDebut < dateDebutSaison) {
-      if (dateFin >= dateDebutSaison) {
-        adminDateDebut = new Date(dateDebutSaison)
-      } else {
-        // Mois entièrement antérieur à la rentrée
-        adminDateDebut = new Date(dateFin)
-      }
-    }
-
-    const { nbSemaines } = compterSemainesHorsVacances(adminDateDebut, dateFin, periodesVacances)
-    if (nbSemaines > 0) {
-      const totalHrsAdmin = nbSemaines * coachInfo.heuresAdminHebdo
-      const montantAdmin = totalHrsAdmin * tauxHoraire
-      heuresPlanningFixe += totalHrsAdmin
-      lignesPlanningFixe.push({
-        type: 'planning_fixe',
-        description: `Heures administratives (${nbSemaines} semaine${nbSemaines > 1 ? 's' : ''} hors vacances - ${coachInfo.heuresAdminHebdo}h/sem)`,
-        heures: totalHrsAdmin,
-        montant: montantAdmin,
-      })
-    }
-  }
 
   const manualRempIds = (factureExistante?.lignes?.map(l => l.remplacementId).filter(Boolean) as string[]) || []
 
@@ -471,6 +503,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     const rempDateObj = new Date(remp.date)
     const dateKey = `${rempDateObj.getFullYear()}-${String(rempDateObj.getMonth() + 1).padStart(2, '0')}-${String(rempDateObj.getDate()).padStart(2, '0')}`
     const dateStr = rempDateObj.toLocaleDateString('fr-FR')
+    const rempDateCourt = rempDateObj.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
     const coachNom = remp.coachRemplace ? `${remp.coachRemplace.prenom} ${remp.coachRemplace.nom || ''}`.trim() : 'Coach'
 
     const rempDebutMin = timeToMinutes(remp.heureDebut)
@@ -500,6 +533,9 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       ? Math.max(0, Math.min(rempFinMin, slotFinMin) - Math.max(rempDebutMin, slotDebutMin))
       : Math.max(0, rempFinMin - rempDebutMin)
 
+    const groupeNom = slotAssocie?.groupe?.nom || 'Remplacement'
+    const titre = `${groupeNom} — pour ${coachNom}`
+
     // Option B : Vérifier si le coach remplaçant avait déjà un cours régulier sur cette date à la même heure
     const seancesMemeJour = creneauxEffectuesParDate.get(dateKey) || []
     const seancesChevauchantes = seancesMemeJour.filter((s) => rempDebutMin < s.finMin && s.debutMin < rempFinMin)
@@ -518,24 +554,40 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
       if (minutesNonCouvertes <= 0) {
         // Le remplacement a eu lieu 100% en même temps que son cours régulier déjà rémunéré
+        const sousTitre = `${jourSemaineRemp} ${dateStr} · ${remp.heureDebut} – ${remp.heureFin} · déjà payé (cours simultané avec ${descGroupes})`
         lignesRemplacements.push({
+          id: remp.id,
           type: 'remplacement',
           description: `Remplacement de ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin} (Simultané avec ${descGroupes} : déjà rémunéré dans planning fixe)`,
           heures: 0,
           montant: 0,
           date: remp.date,
+          titre,
+          sousTitre,
+          datesBadges: [rempDateCourt],
+          detailCalculDuree: '0h00',
+          coachRemplaceNom: coachNom,
+          noteInfo: 'déjà payé (cours simultané)',
         })
       } else {
         // Le remplacement déborde partiellement du cours régulier : payé au prorata
         const minutesPayees = (minutesNonCouvertes / slotDureeReelleMin) * slotTempsFactureMin
         const heuresPayees = minutesPayees / 60
         heuresRemplacements += heuresPayees
+        const sousTitre = `${jourSemaineRemp} ${dateStr} · ${remp.heureDebut} – ${remp.heureFin} · prolongation de ${formatMinutesEnHM(Math.round(minutesPayees))} facturée`
         lignesRemplacements.push({
+          id: remp.id,
           type: 'remplacement',
           description: `Remplacement de ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin} (Simultané avec ${descGroupes} : prolongation de ${formatMinutesEnHM(Math.round(minutesPayees))} facturée)`,
           heures: heuresPayees,
           montant: heuresPayees * tauxHoraire,
           date: remp.date,
+          titre,
+          sousTitre,
+          datesBadges: [rempDateCourt],
+          detailCalculDuree: formatHeuresEnHM(heuresPayees),
+          coachRemplaceNom: coachNom,
+          noteInfo: `prolongation de ${formatMinutesEnHM(Math.round(minutesPayees))} facturée`,
         })
       }
     } else {
@@ -547,12 +599,23 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
         slotTempsFactureMin !== slotDureeReelleMin
           ? ` (${formatMinutesEnHM(Math.round(minutesPayees))} facturées)`
           : ''
+
+      const sousTitreParts = [`${jourSemaineRemp} ${dateStr} · ${remp.heureDebut} – ${remp.heureFin}`]
+      if (detailMajor) sousTitreParts.push(detailMajor.trim())
+      if (remp.motif) sousTitreParts.push(remp.motif)
+
       lignesRemplacements.push({
+        id: remp.id,
         type: 'remplacement',
         description: `Remplacement de ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin}${detailMajor}${remp.motif ? ` (${remp.motif})` : ''}`,
         heures: heuresPayees,
         montant: heuresPayees * tauxHoraire,
         date: remp.date,
+        titre,
+        sousTitre: sousTitreParts.join(' · '),
+        datesBadges: [rempDateCourt],
+        detailCalculDuree: formatHeuresEnHM(heuresPayees),
+        coachRemplaceNom: coachNom,
       })
     }
   }
@@ -563,6 +626,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     const rempDateObj = new Date(remp.date)
     const dateKey = `${rempDateObj.getFullYear()}-${String(rempDateObj.getMonth() + 1).padStart(2, '0')}-${String(rempDateObj.getDate()).padStart(2, '0')}`
     const dateStr = rempDateObj.toLocaleDateString('fr-FR')
+    const dateCourtStr = rempDateObj.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
 
     const estPendantVacances = periodesVacances.some((p) => {
       const debut = new Date(p.dateDebut)
@@ -597,17 +661,43 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
         // Déduction = (minutes d'absence pendant le créneau / durée réelle du créneau) * temps facturé du créneau
         const deductionMin = (chevauchementMin / slot.dureeReelleMin) * slot.tempsFactureMin
         totalDeductionMinutes += deductionMin
+
+        // Rattacher directement la déduction d'absence sous la séance concernée (Lot 7)
+        if (slot.creneauFusionne) {
+          const deductionHeures = deductionMin / 60
+          const motifOrCoach = remp.motif ? remp.motif : coachNom ? `Remplacé(e) par ${coachNom}` : ''
+          const descAbsence = `↳ Absence ${dateCourtStr}${motifOrCoach ? ` (${motifOrCoach})` : ''}`
+
+          slot.creneauFusionne.absencesAssociees.push({
+            id: remp.id,
+            date: dateCourtStr,
+            dateComplete: dateKey,
+            motif: remp.motif || null,
+            coachRemplacantNom: coachNom,
+            heures: -deductionHeures,
+            montant: -deductionHeures * tauxHoraire,
+            minutes: Math.round(deductionMin),
+            texteDeduction: `− ${formatMinutesEnHM(Math.round(deductionMin))}`,
+            description: descAbsence,
+          })
+        }
       }
     }
 
     if (!aChevauchement) {
       // Aucun créneau actif ce jour-là sur cette plage horaire (ex: absence déclarée hors cours ou séance annulée)
       lignesAbsences.push({
+        id: remp.id,
         type: 'absence',
         description: `${descPrefix} - ${dateStr} ${remp.heureDebut}-${remp.heureFin}${remp.motif ? ` (${remp.motif})` : ''} (Hors créneau planifié : 0h déduite)`,
         heures: 0,
         montant: 0,
         date: remp.date,
+        titre: `${descPrefix}`,
+        sousTitre: `${dateStr} ${remp.heureDebut} – ${remp.heureFin} · Hors créneau planifié`,
+        datesBadges: [dateCourtStr],
+        detailCalculDuree: '0h00',
+        estAbsenceOrpheline: true,
       })
     } else {
       const dureeHeures = totalDeductionMinutes / 60
@@ -615,11 +705,92 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       const detailDeduction = ` (-${formatMinutesEnHM(Math.round(totalDeductionMinutes))})`
 
       lignesAbsences.push({
+        id: remp.id,
         type: 'absence',
         description: `${descPrefix} - ${dateStr} ${remp.heureDebut}-${remp.heureFin}${detailDeduction}${remp.motif ? ` (${remp.motif})` : ''}`,
         heures: -dureeHeures,
         montant: -dureeHeures * tauxHoraire,
         date: remp.date,
+        titre: `${descPrefix}`,
+        sousTitre: `${dateStr} ${remp.heureDebut} – ${remp.heureFin}${remp.motif ? ` · ${remp.motif}` : ''}`,
+        datesBadges: [dateCourtStr],
+        detailCalculDuree: `− ${formatMinutesEnHM(Math.round(totalDeductionMinutes))}`,
+        estAbsenceOrpheline: false,
+      })
+    }
+  }
+
+  // 1.c Finaliser la construction des lignes du planning fixe (avec absences associées imbriquées)
+  for (const creneau of creneauxFusionnes) {
+    if (creneau.calculatedOccurrences && creneau.calculatedOccurrences.occurences > 0) {
+      const { dates, occurences, totalHrs, tempsFactureMin, dureeReelleMin } = creneau.calculatedOccurrences
+      heuresPlanningFixe += totalHrs
+      const groupesStr = creneau.groupes.join(', ')
+      const datesStr = dates.map((d) => d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })).join(', ')
+      let detailFacture = ''
+
+      if (tempsFactureMin !== dureeReelleMin) {
+        detailFacture = ` (Facturé ${formatMinutesEnHM(tempsFactureMin)})`
+      }
+
+      const datesBadges = dates.map((d) => d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }))
+      const titre = creneau.groupes.join(' · ')
+      const sousTitreParts = [`${creneau.jourSemaine} ${creneau.heureDebut} – ${creneau.heureFin}`]
+      if (creneau.espaces && creneau.espaces.length > 0) {
+        sousTitreParts.push(creneau.espaces.join(', '))
+      }
+      if (tempsFactureMin !== dureeReelleMin) {
+        sousTitreParts.push(`(facturé ${formatMinutesEnHM(tempsFactureMin)})`)
+      }
+      const sousTitre = sousTitreParts.join(' · ')
+
+      const detailCalculDuree = occurences > 1
+        ? `${occurences} × ${formatMinutesEnHM(tempsFactureMin)} = ${formatMinutesEnHM(Math.round(totalHrs * 60))}`
+        : formatMinutesEnHM(tempsFactureMin)
+
+      lignesPlanningFixe.push({
+        type: 'planning_fixe',
+        description: `${creneau.jourSemaine} ${creneau.heureDebut}-${creneau.heureFin} - ${groupesStr}${detailFacture} (${datesStr})`,
+        heures: totalHrs,
+        montant: totalHrs * tauxHoraire,
+        titre,
+        sousTitre,
+        datesBadges,
+        nbSeances: occurences,
+        dureeUnitaireMinutes: tempsFactureMin,
+        detailCalculDuree,
+        espaces: creneau.espaces,
+        absencesAssociees: creneau.absencesAssociees,
+      })
+    }
+  }
+
+  // Heures administratives automatiques pour le coach (si activées)
+  if (coachInfo?.heuresAdminHebdo && coachInfo.heuresAdminHebdo > 0) {
+    let adminDateDebut = new Date(dateDebut)
+    if (dateDebutSaison && adminDateDebut < dateDebutSaison) {
+      if (dateFin >= dateDebutSaison) {
+        adminDateDebut = new Date(dateDebutSaison)
+      } else {
+        adminDateDebut = new Date(dateFin)
+      }
+    }
+
+    const { nbSemaines } = compterSemainesHorsVacances(adminDateDebut, dateFin, periodesVacances)
+    if (nbSemaines > 0) {
+      const totalHrsAdmin = nbSemaines * coachInfo.heuresAdminHebdo
+      const montantAdmin = totalHrsAdmin * tauxHoraire
+      heuresPlanningFixe += totalHrsAdmin
+      lignesPlanningFixe.push({
+        type: 'planning_fixe',
+        description: `Heures administratives (${nbSemaines} semaine${nbSemaines > 1 ? 's' : ''} hors vacances - ${coachInfo.heuresAdminHebdo}h/sem)`,
+        heures: totalHrsAdmin,
+        montant: montantAdmin,
+        titre: 'Heures administratives',
+        sousTitre: `${nbSemaines} semaine${nbSemaines > 1 ? 's' : ''} hors vacances · ${coachInfo.heuresAdminHebdo}h / sem`,
+        datesBadges: [],
+        nbSeances: nbSemaines,
+        detailCalculDuree: `${nbSemaines} × ${coachInfo.heuresAdminHebdo}h = ${formatHeuresEnHM(totalHrsAdmin)}`,
       })
     }
   }
@@ -647,12 +818,18 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       const dureeHeures = arrondirDemiHeureSuperieure(calculerDuree(evt.heureDebut, evt.heureFin))
       heuresPlanningTournant += dureeHeures
       const dateStr = new Date(evt.date).toLocaleDateString('fr-FR')
+      const evtDateCourt = dateEvt.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
       lignesPlanningTournant.push({
+        id: evt.id,
         type: 'planning_tournant',
         description: `${evt.titre} - ${dateStr} ${evt.heureDebut}-${evt.heureFin}`,
         heures: dureeHeures,
         montant: dureeHeures * tauxHoraire,
         date: evt.date,
+        titre: evt.titre,
+        sousTitre: `${dateStr} · ${evt.heureDebut} – ${evt.heureFin}${evt.lieu ? ` · ${evt.lieu}` : ''}`,
+        datesBadges: [evtDateCourt],
+        detailCalculDuree: formatHeuresEnHM(dureeHeures),
       })
     }
   }
@@ -675,21 +852,58 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
   if (factureBrouillon) {
     lignesManuelles = factureBrouillon.lignes
       .filter((l) => ['remplacement', 'competition', 'forfait_regional', 'forfait_transport', 'absence', 'manuel'].includes(l.type))
-      .map((l) => ({
-        id: l.id,
-        type: l.type as any,
-        description: l.description,
-        heures: l.heures ?? 0,
-        montant: l.montant,
-        date: l.date,
-        groupe: l.groupe || null,
-        lieu: l.lieu || null,
-        demiJournees: l.demiJournees || null,
-        coachRemplaceId: l.coachRemplaceId || null,
-        remplacementId: l.remplacementId || null,
-      }))
-  }
+      .map((l) => {
+        let titre = l.description
+        let sousTitre = ''
+        let detailCalculDuree = ''
+        const dateFormatted = l.date ? new Date(l.date).toLocaleDateString('fr-FR') : null
+        const dateBadge = l.date ? [new Date(l.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })] : []
 
+        if (l.type === 'competition' || l.type === 'forfait_regional') {
+          const estJournee = l.demiJournees === 2 || l.heures === 2
+          titre = `🏆 ${l.description || 'Compétition'}`
+          const parts = []
+          if (dateFormatted) parts.push(dateFormatted)
+          if (l.lieu) parts.push(l.lieu)
+          parts.push(estJournee ? '1 journée complète' : '1 demi-journée')
+          sousTitre = parts.join(' · ')
+          detailCalculDuree = estJournee ? '1 journée' : '1 demi-j.'
+        } else if (l.type === 'forfait_transport') {
+          titre = '🚗 Forfait transport'
+          const parts = []
+          if (dateFormatted) parts.push(dateFormatted)
+          if (l.lieu) parts.push(l.lieu)
+          parts.push(`${l.heures || 0} km aller (${((l.heures || 0) * 2)} km A/R) · 0,30 €/km`)
+          sousTitre = parts.join(' · ')
+          detailCalculDuree = `${l.heures || 0} km aller`
+        } else {
+          titre = `✏️ ${l.description || 'Prestation'}`
+          const parts = []
+          if (dateFormatted) parts.push(dateFormatted)
+          if (l.lieu) parts.push(l.lieu)
+          sousTitre = parts.join(' · ')
+          detailCalculDuree = l.heures ? formatHeuresEnHM(l.heures) : '-'
+        }
+
+        return {
+          id: l.id,
+          type: l.type as any,
+          description: l.description,
+          heures: l.heures ?? 0,
+          montant: l.montant,
+          date: l.date,
+          groupe: l.groupe || null,
+          lieu: l.lieu || null,
+          demiJournees: l.demiJournees || null,
+          coachRemplaceId: l.coachRemplaceId || null,
+          remplacementId: l.remplacementId || null,
+          titre,
+          sousTitre,
+          datesBadges: dateBadge,
+          detailCalculDuree,
+        }
+      })
+  }
 
   // Totaux
   const totalHeures = heuresPlanningFixe + heuresPlanningTournant + heuresRemplacements - heuresAbsences +
@@ -716,7 +930,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     message = 'Cette facture est générée. Vous pouvez la régénérer si vous modifiez vos prestations avant l\'envoi au club.'
   }
 
-  return {
+  const detailsObj: FactureCoachDetails = {
     mois,
     annee,
     tauxHoraire,
@@ -736,6 +950,10 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     statut: factureExistante?.statut || 'brouillon',
     message,
   }
+
+  detailsObj.sections = structurerFactureSections(detailsObj)
+
+  return detailsObj
 }
 
 // Helpers
@@ -861,11 +1079,127 @@ export function arrondirDemiHeureSuperieure(dureeHeures: number): number {
   return Math.ceil(dureeHeures * 2) / 2
 }
 
-export function formatMinutesEnHM(minutes?: number | null): string {
-  if (!minutes || minutes <= 0) return '0h00'
-  const h = Math.floor(minutes / 60)
-  const m = Math.round(minutes % 60)
-  return `${h}h${m.toString().padStart(2, '0')}`
+export { formatMinutesEnHM, formatHeuresEnHM }
+
+export function structurerFactureSections(details: FactureCoachDetails): FactureSectionGroup[] {
+  const sections: FactureSectionGroup[] = []
+
+  // 1. Planning régulier
+  if (details.lignesPlanningFixe && details.lignesPlanningFixe.length > 0) {
+    const lignesFixes = details.lignesPlanningFixe
+    // Calcul du sous-total net (heures régulières - absences rattachées)
+    let sousTotalHeures = 0
+    let sousTotalMontant = 0
+
+    for (const l of lignesFixes) {
+      sousTotalHeures += l.heures || 0
+      sousTotalMontant += l.montant || 0
+      if (l.absencesAssociees && l.absencesAssociees.length > 0) {
+        for (const abs of l.absencesAssociees) {
+          sousTotalHeures += abs.heures // négatif
+          sousTotalMontant += abs.montant // négatif
+        }
+      }
+    }
+
+    sections.push({
+      id: 'planning_fixe',
+      titre: 'PLANNING RÉGULIER',
+      type: 'planning_fixe',
+      lignes: lignesFixes,
+      sousTotalHeures,
+      sousTotalMontant,
+      sousTotalDureeHM: formatHeuresEnHM(sousTotalHeures),
+    })
+  }
+
+  // 2. Planning tournant
+  if (details.lignesPlanningTournant && details.lignesPlanningTournant.length > 0) {
+    const sousTotalHeures = details.lignesPlanningTournant.reduce((s, l) => s + (l.heures || 0), 0)
+    const sousTotalMontant = details.lignesPlanningTournant.reduce((s, l) => s + (l.montant || 0), 0)
+    sections.push({
+      id: 'planning_tournant',
+      titre: 'PLANNING TOURNANT',
+      type: 'planning_tournant',
+      lignes: details.lignesPlanningTournant,
+      sousTotalHeures,
+      sousTotalMontant,
+      sousTotalDureeHM: formatHeuresEnHM(sousTotalHeures),
+    })
+  }
+
+  // 3. Remplacements effectués
+  if (details.lignesRemplacements && details.lignesRemplacements.length > 0) {
+    const sousTotalHeures = details.lignesRemplacements.reduce((s, l) => s + (l.heures || 0), 0)
+    const sousTotalMontant = details.lignesRemplacements.reduce((s, l) => s + (l.montant || 0), 0)
+    sections.push({
+      id: 'remplacements',
+      titre: 'REMPLACEMENTS EFFECTUÉS',
+      type: 'remplacements',
+      lignes: details.lignesRemplacements,
+      sousTotalHeures,
+      sousTotalMontant,
+      sousTotalDureeHM: formatHeuresEnHM(sousTotalHeures),
+    })
+  }
+
+  // 4. Compétitions & Déplacements
+  const lignesCompEtTransport = (details.lignesManuelles || []).filter(
+    (l) => ['competition', 'forfait_regional', 'forfait_transport'].includes(l.type)
+  )
+  if (lignesCompEtTransport.length > 0) {
+    const sousTotalMontant = lignesCompEtTransport.reduce((s, l) => s + (l.montant || 0), 0)
+    sections.push({
+      id: 'competitions',
+      titre: 'COMPÉTITIONS & DÉPLACEMENTS',
+      type: 'competitions',
+      lignes: lignesCompEtTransport,
+      sousTotalHeures: 0,
+      sousTotalMontant,
+    })
+  }
+
+  // 5. Prestations diverses
+  const lignesPrestations = (details.lignesManuelles || []).filter((l) => l.type === 'manuel')
+  if (lignesPrestations.length > 0) {
+    const sousTotalHeures = lignesPrestations.reduce((s, l) => s + (l.heures || 0), 0)
+    const sousTotalMontant = lignesPrestations.reduce((s, l) => s + (l.montant || 0), 0)
+    sections.push({
+      id: 'prestations',
+      titre: 'PRESTATIONS DIVERSES',
+      type: 'prestations',
+      lignes: lignesPrestations,
+      sousTotalHeures,
+      sousTotalMontant,
+      sousTotalDureeHM: formatHeuresEnHM(sousTotalHeures),
+    })
+  }
+
+  // 6. Autres absences (orphelines / non rattachées)
+  const absencesRattacheesIds = new Set<string>()
+  for (const f of details.lignesPlanningFixe || []) {
+    for (const abs of f.absencesAssociees || []) {
+      if (abs.id) absencesRattacheesIds.add(abs.id)
+    }
+  }
+  const absencesOrphelines = (details.lignesAbsences || []).filter(
+    (a) => !a.id || !absencesRattacheesIds.has(a.id)
+  )
+  if (absencesOrphelines.length > 0) {
+    const sousTotalHeures = absencesOrphelines.reduce((s, l) => s + (l.heures || 0), 0)
+    const sousTotalMontant = absencesOrphelines.reduce((s, l) => s + (l.montant || 0), 0)
+    sections.push({
+      id: 'autres_absences',
+      titre: 'AUTRES ABSENCES / AJUSTEMENTS',
+      type: 'autres_absences',
+      lignes: absencesOrphelines,
+      sousTotalHeures,
+      sousTotalMontant,
+      sousTotalDureeHM: formatHeuresEnHM(sousTotalHeures),
+    })
+  }
+
+  return sections
 }
 
 function compterSemainesHorsVacances(

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { HelpTooltip } from '@/components/ui/Tooltip'
+import { formatHeuresEnHM } from '@/lib/facture-format'
 
 interface Coach {
   id: string
@@ -484,6 +485,155 @@ export default function FacturesManager() {
     if (filterCoach !== 'all' && f.coachId !== filterCoach) return false
     return true
   })
+
+  const renderFactureSections = (sections: any[]) => {
+    return (
+      <div className="space-y-4">
+        {sections.map((sec: any) => (
+          <div key={sec.id} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+            <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                  {sec.titre}
+                </span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
+                  {sec.lignes.length}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-bold">
+                {sec.sousTotalHeures !== 0 && (
+                  <span className="text-slate-500">
+                    {sec.sousTotalDureeHM || formatHeuresEnHM(sec.sousTotalHeures)}
+                  </span>
+                )}
+                <span className={sec.sousTotalMontant < 0 ? 'text-red-600' : 'text-slate-900'}>
+                  {sec.sousTotalMontant < 0 ? `-${Math.abs(sec.sousTotalMontant).toFixed(2)} €` : `${sec.sousTotalMontant.toFixed(2)} €`}
+                </span>
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-100 p-3 space-y-2">
+              {sec.lignes.map((l: any, idx: number) => {
+                const dateFormatted = l.date ? new Date(l.date).toLocaleDateString('fr-FR') : null
+                return (
+                  <div key={l.id || idx} className="p-2.5 rounded-lg hover:bg-slate-50/50 space-y-1.5 text-xs">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1 flex-1 min-w-0">
+                        {/* Ligne 1: Titre */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {l.type === 'competition' && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                              🏆 Compétition
+                            </span>
+                          )}
+                          {l.type === 'forfait_transport' && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              🚗 Transport
+                            </span>
+                          )}
+                          <p className="font-bold text-slate-900 truncate">
+                            {l.titre || l.description}
+                          </p>
+                          {l.noteInfo && (
+                            <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
+                              {l.noteInfo}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Ligne 2: Sous-titre */}
+                        {l.sousTitre ? (
+                          <p className="text-slate-500 font-medium text-[11px]">
+                            {l.sousTitre}
+                          </p>
+                        ) : dateFormatted ? (
+                          <p className="text-slate-500 text-[11px]">
+                            Date : {dateFormatted}
+                          </p>
+                        ) : null}
+
+                        {/* Ligne 3: Badges dates */}
+                        {l.datesBadges && l.datesBadges.length > 0 && (
+                          <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase">Séances :</span>
+                            {l.datesBadges.map((badge: string, bIdx: number) => (
+                              <span
+                                key={bIdx}
+                                className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/60"
+                              >
+                                {badge}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Durée & Montant */}
+                      <div className="text-right shrink-0">
+                        <p className={`font-black text-xs ${l.montant < 0 ? 'text-red-600' : 'text-slate-950'}`}>
+                          {l.montant < 0 ? `-${Math.abs(l.montant).toFixed(2)} €` : `${l.montant.toFixed(2)} €`}
+                        </p>
+                        <p className="text-[11px] font-semibold text-slate-500">
+                          {l.detailCalculDuree || (l.heures ? formatHeuresEnHM(l.heures) : '')}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Absences imbriquées en rouge */}
+                    {l.absencesAssociees && l.absencesAssociees.length > 0 && (
+                      <div className="ml-3 mt-1.5 pt-1.5 border-l-2 border-red-300 pl-2.5 space-y-1">
+                        {l.absencesAssociees.map((abs: any, aIdx: number) => (
+                          <div
+                            key={abs.id || aIdx}
+                            className="flex items-center justify-between gap-2 px-2.5 py-1 rounded-md bg-red-50/70 border border-red-200/60 text-[11px]"
+                          >
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-red-800">↳ Absence {abs.date}</span>
+                              {abs.motif && <span className="text-red-600 italic">({abs.motif})</span>}
+                              {abs.coachRemplacantNom && (
+                                <span className="text-[10px] bg-white border border-red-200 text-red-700 px-1 py-0.2 rounded font-medium">
+                                  Remplacé par {abs.coachRemplacantNom}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0 text-right">
+                              <span className="text-red-700 font-medium">
+                                {abs.texteDeduction || formatHeuresEnHM(abs.heures)}
+                              </span>
+                              <span className="text-red-700 font-bold">
+                                −{Math.abs(abs.montant).toFixed(2)} €
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="bg-slate-50 px-4 py-2 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="font-bold text-slate-600 uppercase text-[10px]">
+                Sous-total {sec.titre}
+              </span>
+              <div className="flex items-center gap-2 font-bold">
+                {sec.sousTotalHeures !== 0 && (
+                  <span className="text-slate-600">
+                    {sec.sousTotalDureeHM || formatHeuresEnHM(sec.sousTotalHeures)}
+                  </span>
+                )}
+                <span className="text-slate-900 font-black">
+                  {sec.sousTotalMontant < 0 ? `-${Math.abs(sec.sousTotalMontant).toFixed(2)} €` : `${sec.sousTotalMontant.toFixed(2)} €`}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
 
   if (loading) {
     return (
@@ -1200,161 +1350,167 @@ export default function FacturesManager() {
                     </div>
                   </div>
 
-                  {/* Lignes du Planning Fixe */}
-                  <div className="space-y-3">
-                    <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
-                      🗓️ Planning Fixe
-                      <span className="text-xs bg-sky-50 text-primary px-2 py-0.5 rounded-full font-medium">
-                        {previewFacture.lignes
-                          .filter((l: any) => l.type === "planning_fixe")
-                          .reduce((sum: number, l: any) => sum + (l.heures ?? 0), 0)
-                          .toFixed(1)}h
-                      </span>
-                    </h4>
-                    <div className="space-y-2">
-                      {previewFacture.lignes.filter((l: any) => l.type === "planning_fixe").length === 0 ? (
-                        <p className="text-sm text-slate-400 italic">Aucune heure de planning fixe.</p>
-                      ) : (
-                        previewFacture.lignes
-                          .filter((l: any) => l.type === "planning_fixe")
-                          .map((l: any) => (
-                            <div key={l.id} className="border border-slate-100 p-3 rounded-lg flex items-center justify-between bg-white text-sm">
-                              <p className="font-medium text-slate-700 pr-4">{l.description}</p>
-                              <div className="text-right shrink-0">
-                                <p className="font-bold text-slate-800">{l.heures?.toFixed(1)}h</p>
-                                <p className="text-xs text-slate-400">+{l.montant?.toFixed(2)}€</p>
-                              </div>
-                            </div>
-                          ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Lignes de Remplacements Effectués */}
-                  <div className="space-y-3">
-                    <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
-                      ➕ Remplacements Effectués
-                      <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
-                        +{previewFacture.lignes
-                          .filter((l: any) => l.type === "remplacement")
-                          .reduce((sum: number, l: any) => sum + (l.heures ?? 0), 0)
-                          .toFixed(1)}h
-                      </span>
-                    </h4>
-                    <div className="space-y-2">
-                      {previewFacture.lignes.filter((l: any) => l.type === "remplacement").length === 0 ? (
-                        <p className="text-sm text-slate-400 italic">Aucun remplacement effectué.</p>
-                      ) : (
-                        previewFacture.lignes
-                          .filter((l: any) => l.type === "remplacement")
-                          .map((l: any) => (
-                            <div key={l.id} className="border border-emerald-100 p-3 rounded-lg flex items-center justify-between bg-emerald-50/20 text-sm">
-                              <p className="font-medium text-emerald-800 pr-4">{l.description}</p>
-                              <div className="text-right shrink-0">
-                                <p className="font-bold text-emerald-800">+{l.heures?.toFixed(1)}h</p>
-                                <p className="text-xs text-emerald-600">+{l.montant?.toFixed(2)}€</p>
-                              </div>
-                            </div>
-                          ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Lignes d'Absences */}
-                  <div className="space-y-3">
-                    <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
-                      ➖ Absences à Déduire
-                      <span className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded-full font-medium">
-                        {previewFacture.lignes
-                          .filter((l: any) => l.type === "absence")
-                          .reduce((sum: number, l: any) => sum + (l.heures ?? 0), 0)
-                          .toFixed(1)}h
-                      </span>
-                    </h4>
-                    <div className="space-y-2">
-                      {previewFacture.lignes.filter((l: any) => l.type === "absence").length === 0 ? (
-                        <p className="text-sm text-slate-400 italic">Aucune absence déduite.</p>
-                      ) : (
-                        previewFacture.lignes
-                          .filter((l: any) => l.type === "absence")
-                          .map((l: any) => (
-                            <div key={l.id} className="border border-red-100 p-3 rounded-lg flex items-center justify-between bg-red-50/20 text-sm">
-                              <p className="font-medium text-red-800 pr-4">{l.description}</p>
-                              <div className="text-right shrink-0">
-                                <p className="font-bold text-red-800">-{Math.abs(l.heures ?? 0).toFixed(1)}h</p>
-                                <p className="text-xs text-red-600">-{Math.abs(l.montant ?? 0).toFixed(2)}€</p>
-                              </div>
-                            </div>
-                          ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Autres Forfaits & Lignes */}
-                  {previewFacture.lignes.filter((l: any) => !["planning_fixe", "remplacement", "absence"].includes(l.type)).length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
-                        <span>🏆 Autres Forfaits & Activités</span>
-                        <span className="text-xs bg-emerald-50 text-primary px-2 py-0.5 rounded-full font-bold">
-                          +{previewFacture.lignes
-                            .filter((l: any) => !["planning_fixe", "remplacement", "absence"].includes(l.type))
-                            .reduce((sum: number, l: any) => sum + (l.montant ?? 0), 0)
-                            .toFixed(2)} €
-                        </span>
-                      </h4>
-                      <div className="space-y-2">
-                        {previewFacture.lignes
-                          .filter((l: any) => !["planning_fixe", "remplacement", "absence"].includes(l.type))
-                          .map((l: any) => {
-                            const isComp = l.type === 'competition' || l.type === 'forfait_regional'
-                            const isTransport = l.type === 'forfait_transport'
-                            const isJournee = isComp && (l.demiJournees === 2 || l.heures === 2)
-
-                            return (
-                              <div key={l.id} className="border border-slate-100 p-3 rounded-xl flex items-center justify-between bg-white text-sm shadow-2xs">
-                                <div className="space-y-1 pr-4">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    {isComp && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-primary border border-emerald-200/80">
-                                        🏆 Compétition
-                                      </span>
-                                    )}
-                                    {isTransport && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                                        🚗 Forfait Transport
-                                      </span>
-                                    )}
-                                    {l.type === 'manuel' && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                                        ✏️ Prestation
-                                      </span>
-                                    )}
+                  {previewFacture.sections && previewFacture.sections.length > 0 ? (
+                    renderFactureSections(previewFacture.sections)
+                  ) : (
+                    <>
+                      {/* Lignes du Planning Fixe */}
+                      <div className="space-y-3">
+                        <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
+                          🗓️ Planning Fixe
+                          <span className="text-xs bg-sky-50 text-primary px-2 py-0.5 rounded-full font-medium">
+                            {previewFacture.lignes
+                              .filter((l: any) => l.type === "planning_fixe")
+                              .reduce((sum: number, l: any) => sum + (l.heures ?? 0), 0)
+                              .toFixed(1)}h
+                          </span>
+                        </h4>
+                        <div className="space-y-2">
+                          {previewFacture.lignes.filter((l: any) => l.type === "planning_fixe").length === 0 ? (
+                            <p className="text-sm text-slate-400 italic">Aucune heure de planning fixe.</p>
+                          ) : (
+                            previewFacture.lignes
+                              .filter((l: any) => l.type === "planning_fixe")
+                              .map((l: any) => (
+                                <div key={l.id} className="border border-slate-100 p-3 rounded-lg flex items-center justify-between bg-white text-sm">
+                                  <p className="font-medium text-slate-700 pr-4">{l.description}</p>
+                                  <div className="text-right shrink-0">
+                                    <p className="font-bold text-slate-800">{l.heures?.toFixed(1)}h</p>
+                                    <p className="text-xs text-slate-400">+{l.montant?.toFixed(2)}€</p>
                                   </div>
-                                  <p className="font-semibold text-slate-800 text-xs sm:text-sm">{l.description}</p>
                                 </div>
-                                <div className="text-right shrink-0">
-                                  {isComp ? (
-                                    <p className="font-bold text-slate-600 text-xs">
-                                      {isJournee ? '1 journée' : '1 demi-j.'}
-                                    </p>
-                                  ) : isTransport ? (
-                                    <p className="font-bold text-slate-600 text-xs">
-                                      {l.heures} km aller
-                                    </p>
-                                  ) : l.heures ? (
-                                    <p className="font-bold text-slate-600 text-xs">
-                                      {l.heures.toFixed(1)}h
-                                    </p>
-                                  ) : null}
-                                  <p className="text-sm font-black text-slate-900">
-                                    {l.montant?.toFixed(2)} €
-                                  </p>
-                                </div>
-                              </div>
-                            )
-                          })}
+                              ))
+                          )}
+                        </div>
                       </div>
-                    </div>
+
+                      {/* Lignes de Remplacements Effectués */}
+                      <div className="space-y-3">
+                        <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
+                          ➕ Remplacements Effectués
+                          <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
+                            +{previewFacture.lignes
+                              .filter((l: any) => l.type === "remplacement")
+                              .reduce((sum: number, l: any) => sum + (l.heures ?? 0), 0)
+                              .toFixed(1)}h
+                          </span>
+                        </h4>
+                        <div className="space-y-2">
+                          {previewFacture.lignes.filter((l: any) => l.type === "remplacement").length === 0 ? (
+                            <p className="text-sm text-slate-400 italic">Aucun remplacement effectué.</p>
+                          ) : (
+                            previewFacture.lignes
+                              .filter((l: any) => l.type === "remplacement")
+                              .map((l: any) => (
+                                <div key={l.id} className="border border-emerald-100 p-3 rounded-lg flex items-center justify-between bg-emerald-50/20 text-sm">
+                                  <p className="font-medium text-emerald-800 pr-4">{l.description}</p>
+                                  <div className="text-right shrink-0">
+                                    <p className="font-bold text-emerald-800">+{l.heures?.toFixed(1)}h</p>
+                                    <p className="text-xs text-emerald-600">+{l.montant?.toFixed(2)}€</p>
+                                  </div>
+                                </div>
+                              ))
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Lignes d'Absences */}
+                      <div className="space-y-3">
+                        <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
+                          ➖ Absences à Déduire
+                          <span className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded-full font-medium">
+                            {previewFacture.lignes
+                              .filter((l: any) => l.type === "absence")
+                              .reduce((sum: number, l: any) => sum + (l.heures ?? 0), 0)
+                              .toFixed(1)}h
+                          </span>
+                        </h4>
+                        <div className="space-y-2">
+                          {previewFacture.lignes.filter((l: any) => l.type === "absence").length === 0 ? (
+                            <p className="text-sm text-slate-400 italic">Aucune absence déduite.</p>
+                          ) : (
+                            previewFacture.lignes
+                              .filter((l: any) => l.type === "absence")
+                              .map((l: any) => (
+                                <div key={l.id} className="border border-red-100 p-3 rounded-lg flex items-center justify-between bg-red-50/20 text-sm">
+                                  <p className="font-medium text-red-800 pr-4">{l.description}</p>
+                                  <div className="text-right shrink-0">
+                                    <p className="font-bold text-red-800">-{Math.abs(l.heures ?? 0).toFixed(1)}h</p>
+                                    <p className="text-xs text-red-600">-{Math.abs(l.montant ?? 0).toFixed(2)}€</p>
+                                  </div>
+                                </div>
+                              ))
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Autres Forfaits & Lignes */}
+                      {previewFacture.lignes.filter((l: any) => !["planning_fixe", "remplacement", "absence"].includes(l.type)).length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
+                            <span>🏆 Autres Forfaits & Activités</span>
+                            <span className="text-xs bg-emerald-50 text-primary px-2 py-0.5 rounded-full font-bold">
+                              +{previewFacture.lignes
+                                .filter((l: any) => !["planning_fixe", "remplacement", "absence"].includes(l.type))
+                                .reduce((sum: number, l: any) => sum + (l.montant ?? 0), 0)
+                                .toFixed(2)} €
+                            </span>
+                          </h4>
+                          <div className="space-y-2">
+                            {previewFacture.lignes
+                              .filter((l: any) => !["planning_fixe", "remplacement", "absence"].includes(l.type))
+                              .map((l: any) => {
+                                const isComp = l.type === 'competition' || l.type === 'forfait_regional'
+                                const isTransport = l.type === 'forfait_transport'
+                                const isJournee = isComp && (l.demiJournees === 2 || l.heures === 2)
+
+                                return (
+                                  <div key={l.id} className="border border-slate-100 p-3 rounded-xl flex items-center justify-between bg-white text-sm shadow-2xs">
+                                    <div className="space-y-1 pr-4">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        {isComp && (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-primary border border-emerald-200/80">
+                                            🏆 Compétition
+                                          </span>
+                                        )}
+                                        {isTransport && (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                                            🚗 Forfait Transport
+                                          </span>
+                                        )}
+                                        {l.type === 'manuel' && (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                                            ✏️ Prestation
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="font-semibold text-slate-800 text-xs sm:text-sm">{l.description}</p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                      {isComp ? (
+                                        <p className="font-bold text-slate-600 text-xs">
+                                          {isJournee ? '1 journée' : '1 demi-j.'}
+                                        </p>
+                                      ) : isTransport ? (
+                                        <p className="font-bold text-slate-600 text-xs">
+                                          {l.heures} km aller
+                                        </p>
+                                      ) : l.heures ? (
+                                        <p className="font-bold text-slate-600 text-xs">
+                                          {l.heures.toFixed(1)}h
+                                        </p>
+                                      ) : null}
+                                      <p className="text-sm font-black text-slate-900">
+                                        {l.montant?.toFixed(2)} €
+                                      </p>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               ) : (
@@ -1368,6 +1524,17 @@ export default function FacturesManager() {
                 <div className="flex justify-between items-center text-slate-700 text-sm font-medium">
                   <span>Total heures travaillées :</span>
                   <span className="font-bold text-slate-900 text-base">
+                    {formatHeuresEnHM(
+                      previewFacture.totalHeures !== undefined && previewFacture.totalHeures !== null
+                        ? previewFacture.totalHeures
+                        : previewFacture.lignes
+                            ?.filter((l: any) => ['planning_fixe', 'planning_tournant', 'remplacement', 'absence', 'manuel'].includes(l.type))
+                            .reduce((sum: number, l: any) => {
+                              if (l.type === 'absence') return sum - Math.abs(l.heures ?? 0)
+                              return sum + (l.heures ?? 0)
+                            }, 0) ?? 0
+                    )}{' '}
+                    (
                     {(
                       previewFacture.totalHeures !== undefined && previewFacture.totalHeures !== null
                         ? previewFacture.totalHeures
@@ -1377,7 +1544,7 @@ export default function FacturesManager() {
                               if (l.type === 'absence') return sum - Math.abs(l.heures ?? 0)
                               return sum + (l.heures ?? 0)
                             }, 0) ?? 0
-                    ).toFixed(1)}h
+                    ).toFixed(1)}h)
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-4 bg-sky-50 border border-sky-100 rounded-xl">
@@ -1547,164 +1714,170 @@ export default function FacturesManager() {
                 </div>
               </div>
 
-              {/* Lignes Planning Fixe */}
-              <div className="space-y-3">
-                <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
-                  <span>🗓️ Planning Fixe</span>
-                  <span className="text-xs bg-sky-50 text-primary px-2 py-0.5 rounded-full font-medium">
-                    {readOnlyCoachPreview.heuresFixes.toFixed(1)}h
-                  </span>
-                </h4>
-                <div className="space-y-2">
-                  {!readOnlyCoachPreview.details?.lignesPlanningFixe || readOnlyCoachPreview.details.lignesPlanningFixe.length === 0 ? (
-                    <p className="text-sm text-slate-400 italic">Aucune heure de planning fixe.</p>
-                  ) : (
-                    readOnlyCoachPreview.details.lignesPlanningFixe.map((l: any, idx: number) => (
-                      <div key={idx} className="border border-slate-100 p-3 rounded-lg flex items-center justify-between bg-white text-sm">
-                        <p className="font-medium text-slate-700 pr-4">{l.description}</p>
-                        <div className="text-right shrink-0">
-                          <p className="font-bold text-slate-800">{l.heures?.toFixed(1)}h</p>
-                          <p className="text-xs text-slate-400">+{l.montant?.toFixed(2)}€</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Lignes Planning Tournant si présent */}
-              {readOnlyCoachPreview.details?.lignesPlanningTournant && readOnlyCoachPreview.details.lignesPlanningTournant.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
-                    <span>🔄 Planning Tournant</span>
-                    <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
-                      +{readOnlyCoachPreview.heuresTournants.toFixed(1)}h
-                    </span>
-                  </h4>
-                  <div className="space-y-2">
-                    {readOnlyCoachPreview.details.lignesPlanningTournant.map((l: any, idx: number) => (
-                      <div key={idx} className="border border-indigo-100 p-3 rounded-lg flex items-center justify-between bg-indigo-50/20 text-sm">
-                        <p className="font-medium text-indigo-800 pr-4">{l.description}</p>
-                        <div className="text-right shrink-0">
-                          <p className="font-bold text-indigo-800">+{l.heures?.toFixed(1)}h</p>
-                          <p className="text-xs text-indigo-600">+{l.montant?.toFixed(2)}€</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Lignes Remplacements */}
-              <div className="space-y-3">
-                <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
-                  <span>➕ Remplacements Effectués</span>
-                  <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
-                    +{readOnlyCoachPreview.heuresRemplacements.toFixed(1)}h
-                  </span>
-                </h4>
-                <div className="space-y-2">
-                  {!readOnlyCoachPreview.details?.lignesRemplacements || readOnlyCoachPreview.details.lignesRemplacements.length === 0 ? (
-                    <p className="text-sm text-slate-400 italic">Aucun remplacement effectué ce mois-ci.</p>
-                  ) : (
-                    readOnlyCoachPreview.details.lignesRemplacements.map((l: any, idx: number) => (
-                      <div key={idx} className="border border-emerald-100 p-3 rounded-lg flex items-center justify-between bg-emerald-50/20 text-sm">
-                        <p className="font-medium text-emerald-800 pr-4">{l.description}</p>
-                        <div className="text-right shrink-0">
-                          <p className="font-bold text-emerald-800">+{l.heures?.toFixed(1)}h</p>
-                          <p className="text-xs text-emerald-600">+{l.montant?.toFixed(2)}€</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Lignes d'Absences */}
-              <div className="space-y-3">
-                <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
-                  <span>➖ Absences à Déduire</span>
-                  <span className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded-full font-medium">
-                    -{readOnlyCoachPreview.heuresAbsences.toFixed(1)}h
-                  </span>
-                </h4>
-                <div className="space-y-2">
-                  {!readOnlyCoachPreview.details?.lignesAbsences || readOnlyCoachPreview.details.lignesAbsences.length === 0 ? (
-                    <p className="text-sm text-slate-400 italic">Aucune absence déduite ce mois-ci.</p>
-                  ) : (
-                    readOnlyCoachPreview.details.lignesAbsences.map((l: any, idx: number) => (
-                      <div key={idx} className="border border-red-100 p-3 rounded-lg flex items-center justify-between bg-red-50/20 text-sm">
-                        <p className="font-medium text-red-800 pr-4">{l.description}</p>
-                        <div className="text-right shrink-0">
-                          <p className="font-bold text-red-800">-{Math.abs(l.heures ?? 0).toFixed(1)}h</p>
-                          <p className="text-xs text-red-600">-{Math.abs(l.montant ?? 0).toFixed(2)}€</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Lignes Manuelles / Compétitions */}
-              {readOnlyCoachPreview.details?.lignesManuelles && readOnlyCoachPreview.details.lignesManuelles.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
-                    <span>🏆 Compétitions & Forfaits</span>
-                    <span className="text-xs bg-emerald-50 text-primary px-2 py-0.5 rounded-full font-bold">
-                      +{readOnlyCoachPreview.details.lignesManuelles.reduce((sum: number, l: any) => sum + (l.montant ?? 0), 0).toFixed(2)} €
-                    </span>
-                  </h4>
-                  <div className="space-y-2">
-                    {readOnlyCoachPreview.details.lignesManuelles.map((l: any, idx: number) => {
-                      const isComp = l.type === 'competition' || l.type === 'forfait_regional'
-                      const isTransport = l.type === 'forfait_transport'
-                      const isJournee = isComp && (l.demiJournees === 2 || l.heures === 2)
-
-                      return (
-                        <div key={idx} className="border border-slate-100 p-3 rounded-xl flex items-center justify-between bg-white text-sm shadow-2xs">
-                          <div className="space-y-1 pr-4">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {isComp && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-primary border border-emerald-200/80">
-                                  🏆 Compétition
-                                </span>
-                              )}
-                              {isTransport && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                                  🚗 Transport
-                                </span>
-                              )}
-                              {l.type === 'manuel' && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                                  ✏️ Prestation
-                                </span>
-                              )}
+              {readOnlyCoachPreview.details?.sections && readOnlyCoachPreview.details.sections.length > 0 ? (
+                renderFactureSections(readOnlyCoachPreview.details.sections)
+              ) : (
+                <>
+                  {/* Lignes Planning Fixe */}
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
+                      <span>🗓️ Planning Fixe</span>
+                      <span className="text-xs bg-sky-50 text-primary px-2 py-0.5 rounded-full font-medium">
+                        {readOnlyCoachPreview.heuresFixes.toFixed(1)}h
+                      </span>
+                    </h4>
+                    <div className="space-y-2">
+                      {!readOnlyCoachPreview.details?.lignesPlanningFixe || readOnlyCoachPreview.details.lignesPlanningFixe.length === 0 ? (
+                        <p className="text-sm text-slate-400 italic">Aucune heure de planning fixe.</p>
+                      ) : (
+                        readOnlyCoachPreview.details.lignesPlanningFixe.map((l: any, idx: number) => (
+                          <div key={idx} className="border border-slate-100 p-3 rounded-lg flex items-center justify-between bg-white text-sm">
+                            <p className="font-medium text-slate-700 pr-4">{l.description}</p>
+                            <div className="text-right shrink-0">
+                              <p className="font-bold text-slate-800">{l.heures?.toFixed(1)}h</p>
+                              <p className="text-xs text-slate-400">+{l.montant?.toFixed(2)}€</p>
                             </div>
-                            <p className="font-semibold text-slate-800 text-xs sm:text-sm">{l.description}</p>
                           </div>
-                          <div className="text-right shrink-0">
-                            {isComp ? (
-                              <p className="font-bold text-slate-600 text-xs">
-                                {isJournee ? '1 journée' : '1 demi-j.'}
-                              </p>
-                            ) : isTransport ? (
-                              <p className="font-bold text-slate-600 text-xs">
-                                {l.heures} km aller
-                              </p>
-                            ) : l.heures ? (
-                              <p className="font-bold text-slate-600 text-xs">
-                                {l.heures.toFixed(1)}h
-                              </p>
-                            ) : null}
-                            <p className="text-sm font-black text-slate-900">
-                              {l.montant?.toFixed(2)} €
-                            </p>
-                          </div>
-                        </div>
-                      )
-                    })}
+                        ))
+                      )}
+                    </div>
                   </div>
-                </div>
+
+                  {/* Lignes Planning Tournant si présent */}
+                  {readOnlyCoachPreview.details?.lignesPlanningTournant && readOnlyCoachPreview.details.lignesPlanningTournant.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
+                        <span>🔄 Planning Tournant</span>
+                        <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
+                          +{readOnlyCoachPreview.heuresTournants.toFixed(1)}h
+                        </span>
+                      </h4>
+                      <div className="space-y-2">
+                        {readOnlyCoachPreview.details.lignesPlanningTournant.map((l: any, idx: number) => (
+                          <div key={idx} className="border border-indigo-100 p-3 rounded-lg flex items-center justify-between bg-indigo-50/20 text-sm">
+                            <p className="font-medium text-indigo-800 pr-4">{l.description}</p>
+                            <div className="text-right shrink-0">
+                              <p className="font-bold text-indigo-800">+{l.heures?.toFixed(1)}h</p>
+                              <p className="text-xs text-indigo-600">+{l.montant?.toFixed(2)}€</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lignes Remplacements */}
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
+                      <span>➕ Remplacements Effectués</span>
+                      <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
+                        +{readOnlyCoachPreview.heuresRemplacements.toFixed(1)}h
+                      </span>
+                    </h4>
+                    <div className="space-y-2">
+                      {!readOnlyCoachPreview.details?.lignesRemplacements || readOnlyCoachPreview.details.lignesRemplacements.length === 0 ? (
+                        <p className="text-sm text-slate-400 italic">Aucun remplacement effectué ce mois-ci.</p>
+                      ) : (
+                        readOnlyCoachPreview.details.lignesRemplacements.map((l: any, idx: number) => (
+                          <div key={idx} className="border border-emerald-100 p-3 rounded-lg flex items-center justify-between bg-emerald-50/20 text-sm">
+                            <p className="font-medium text-emerald-800 pr-4">{l.description}</p>
+                            <div className="text-right shrink-0">
+                              <p className="font-bold text-emerald-800">+{l.heures?.toFixed(1)}h</p>
+                              <p className="text-xs text-emerald-600">+{l.montant?.toFixed(2)}€</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Lignes d'Absences */}
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
+                      <span>➖ Absences à Déduire</span>
+                      <span className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded-full font-medium">
+                        -{readOnlyCoachPreview.heuresAbsences.toFixed(1)}h
+                      </span>
+                    </h4>
+                    <div className="space-y-2">
+                      {!readOnlyCoachPreview.details?.lignesAbsences || readOnlyCoachPreview.details.lignesAbsences.length === 0 ? (
+                        <p className="text-sm text-slate-400 italic">Aucune absence déduite ce mois-ci.</p>
+                      ) : (
+                        readOnlyCoachPreview.details.lignesAbsences.map((l: any, idx: number) => (
+                          <div key={idx} className="border border-red-100 p-3 rounded-lg flex items-center justify-between bg-red-50/20 text-sm">
+                            <p className="font-medium text-red-800 pr-4">{l.description}</p>
+                            <div className="text-right shrink-0">
+                              <p className="font-bold text-red-800">-{Math.abs(l.heures ?? 0).toFixed(1)}h</p>
+                              <p className="text-xs text-red-600">-{Math.abs(l.montant ?? 0).toFixed(2)}€</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Lignes Manuelles / Compétitions */}
+                  {readOnlyCoachPreview.details?.lignesManuelles && readOnlyCoachPreview.details.lignesManuelles.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-1.5 flex items-center justify-between">
+                        <span>🏆 Compétitions & Forfaits</span>
+                        <span className="text-xs bg-emerald-50 text-primary px-2 py-0.5 rounded-full font-bold">
+                          +{readOnlyCoachPreview.details.lignesManuelles.reduce((sum: number, l: any) => sum + (l.montant ?? 0), 0).toFixed(2)} €
+                        </span>
+                      </h4>
+                      <div className="space-y-2">
+                        {readOnlyCoachPreview.details.lignesManuelles.map((l: any, idx: number) => {
+                          const isComp = l.type === 'competition' || l.type === 'forfait_regional'
+                          const isTransport = l.type === 'forfait_transport'
+                          const isJournee = isComp && (l.demiJournees === 2 || l.heures === 2)
+
+                          return (
+                            <div key={idx} className="border border-slate-100 p-3 rounded-xl flex items-center justify-between bg-white text-sm shadow-2xs">
+                              <div className="space-y-1 pr-4">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {isComp && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-primary border border-emerald-200/80">
+                                      🏆 Compétition
+                                    </span>
+                                  )}
+                                  {isTransport && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                                      🚗 Transport
+                                    </span>
+                                  )}
+                                  {l.type === 'manuel' && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                                      ✏️ Prestation
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="font-semibold text-slate-800 text-xs sm:text-sm">{l.description}</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                {isComp ? (
+                                  <p className="font-bold text-slate-600 text-xs">
+                                    {isJournee ? '1 journée' : '1 demi-j.'}
+                                  </p>
+                                ) : isTransport ? (
+                                  <p className="font-bold text-slate-600 text-xs">
+                                    {l.heures} km aller
+                                  </p>
+                                ) : l.heures ? (
+                                  <p className="font-bold text-slate-600 text-xs">
+                                    {l.heures.toFixed(1)}h
+                                  </p>
+                                ) : null}
+                                <p className="text-sm font-black text-slate-900">
+                                  {l.montant?.toFixed(2)} €
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -1713,7 +1886,7 @@ export default function FacturesManager() {
               <div className="flex justify-between items-center text-slate-700 text-sm font-medium">
                 <span>Total heures travaillées :</span>
                 <span className="font-bold text-slate-900 text-base">
-                  {readOnlyCoachPreview.totalHeures.toFixed(1)}h
+                  {formatHeuresEnHM(readOnlyCoachPreview.totalHeures)} ({readOnlyCoachPreview.totalHeures.toFixed(1)}h)
                 </span>
               </div>
               <div className="flex justify-between items-center p-4 bg-sky-50 border border-sky-100 rounded-xl">

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { formatMinutesEnHM } from '@/components/admin/PlanningFixeManager'
-import { calculerFactureCoach } from '@/lib/facture-calculations'
+import { calculerFactureCoach, formatHeuresEnHM, structurerFactureSections } from '@/lib/facture-calculations'
 import { prisma } from '@/lib/prisma'
 
 vi.mock('@/lib/prisma', () => ({
@@ -684,3 +684,214 @@ describe('Déductions proportionnelles des absences et calculs fiabilisés (Lot 
     expect(ligneRemp.description).toContain('(1h00 facturées)')
   })
 })
+
+describe('Lot 7 — Lignes de facture lisibles et structurées (3 niveaux, absences imbriquées, sections)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(prisma.settings.findFirst).mockResolvedValue({
+      tauxHoraire: 30,
+      forfaitCompetition: 150,
+      forfaitRegionalActif: false,
+      montantForfaitRegional: 50,
+      debutCoursNormal: '2026-09-01',
+      debutCoursBnssa: null,
+    } as any)
+    vi.mocked(prisma.periodeVacances.findMany).mockResolvedValue([])
+    vi.mocked(prisma.seanceAnnulee.findMany).mockResolvedValue([])
+    vi.mocked(prisma.coach.findUnique).mockResolvedValue({ heuresAdminHebdo: 0 } as any)
+    vi.mocked(prisma.remplacement.findMany).mockResolvedValue([])
+    vi.mocked(prisma.evenementTournant.findMany).mockResolvedValue([])
+  })
+
+  it('formatHeuresEnHM formate correctement les heures positives et négatives', () => {
+    expect(formatHeuresEnHM(7.5)).toBe('7h30')
+    expect(formatHeuresEnHM(1.5)).toBe('1h30')
+    expect(formatHeuresEnHM(1.75)).toBe('1h45')
+    expect(formatHeuresEnHM(0)).toBe('0h00')
+    expect(formatHeuresEnHM(-1.5)).toBe('− 1h30')
+    expect(formatHeuresEnHM(-1.0)).toBe('− 1h00')
+    expect(formatHeuresEnHM(null)).toBe('0h00')
+    expect(formatHeuresEnHM(undefined)).toBe('0h00')
+  })
+
+  it('génère les 3 niveaux et imbrique l\'absence sous le créneau régulier correspondant avec sous-total net', async () => {
+    vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.planning.findMany).mockResolvedValue([
+      {
+        id: 'plan-juniors',
+        jourSemaine: 'Mardi',
+        heureDebut: '19:30',
+        heureFin: '21:00', // 1h30 = 90 min
+        tempsFacture: 90,
+        semaineImpaire: false,
+        groupeId: 'grp-1',
+        groupe: { nom: 'Juniors Compétition' },
+        occupations: [],
+      } as any,
+    ])
+
+    // Absence le mardi 29/09 sur ce créneau (piscine fermée)
+    vi.mocked(prisma.remplacement.findMany)
+      .mockResolvedValueOnce([]) // effectues
+      .mockResolvedValueOnce([   // recus (absences)
+        {
+          id: 'remp-absence-29',
+          coachRemplaceId: 'coach-1',
+          coachRemplacantId: null,
+          date: new Date('2026-09-29T12:00:00Z'),
+          heureDebut: '19:30',
+          heureFin: '21:00',
+          motif: 'piscine fermée',
+          coachRemplacant: null,
+        } as any,
+      ])
+
+    const res = await calculerFactureCoach('coach-1', 9, 2026)
+
+    // Vérifier la ligne du planning fixe
+    expect(res.lignesPlanningFixe).toHaveLength(1)
+    const ligneFixe = res.lignesPlanningFixe[0]
+    expect(ligneFixe.titre).toBe('Juniors Compétition')
+    expect(ligneFixe.sousTitre).toBe('Mardi 19:30 – 21:00')
+    expect(ligneFixe.datesBadges).toEqual(['01/09', '08/09', '15/09', '22/09', '29/09'])
+    expect(ligneFixe.detailCalculDuree).toBe('5 × 1h30 = 7h30')
+    expect(ligneFixe.heures).toBe(7.5)
+    expect(ligneFixe.montant).toBe(225)
+
+    // Vérifier l'absence imbriquée sous ce créneau
+    expect(ligneFixe.absencesAssociees).toBeDefined()
+    expect(ligneFixe.absencesAssociees).toHaveLength(1)
+    const absAssociee = ligneFixe.absencesAssociees![0]
+    expect(absAssociee.date).toBe('29/09')
+    expect(absAssociee.motif).toBe('piscine fermée')
+    expect(absAssociee.heures).toBe(-1.5)
+    expect(absAssociee.montant).toBe(-45)
+    expect(absAssociee.texteDeduction).toBe('− 1h30')
+    expect(absAssociee.description).toContain('↳ Absence 29/09 (piscine fermée)')
+
+    // Vérifier les sections
+    expect(res.sections).toBeDefined()
+    const secPlanning = res.sections!.find((s) => s.id === 'planning_fixe')
+    expect(secPlanning).toBeDefined()
+    expect(secPlanning!.titre).toBe('PLANNING RÉGULIER')
+    // Sous-total net : 7h30 - 1h30 = 6h00 (180 €)
+    expect(secPlanning!.sousTotalHeures).toBe(6)
+    expect(secPlanning!.sousTotalMontant).toBe(180)
+    expect(secPlanning!.sousTotalDureeHM).toBe('6h00')
+
+    // Total général du mois
+    expect(res.totalHeures).toBe(6)
+    expect(res.totalMontant).toBe(180)
+  })
+
+  it('affiche les occupations / espaces multiples dans le sous-titre de la séance', async () => {
+    vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.planning.findMany).mockResolvedValue([
+      {
+        id: 'plan-synchro',
+        jourSemaine: 'Vendredi',
+        heureDebut: '18:15',
+        heureFin: '20:00', // 1h45 = 105 min
+        tempsFacture: 105,
+        semaineImpaire: false,
+        groupe: { nom: 'Natation Artistique' },
+        occupations: [
+          { espace: 'PPG' },
+          { espace: 'Petit Bassin' },
+          { espace: 'Lignes 1-4' },
+        ],
+      } as any,
+    ])
+
+    const res = await calculerFactureCoach('coach-claire', 9, 2026)
+
+    expect(res.lignesPlanningFixe).toHaveLength(1)
+    const ligne = res.lignesPlanningFixe[0]
+    expect(ligne.titre).toBe('Natation Artistique')
+    expect(ligne.sousTitre).toBe('Vendredi 18:15 – 20:00 · PPG, Petit Bassin, Lignes 1-4')
+    expect(ligne.espaces).toEqual(['PPG', 'Petit Bassin', 'Lignes 1-4'])
+  })
+
+  it('structure les remplacements et les sections avec sous-totaux cohérents', async () => {
+    vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue({
+      id: 'fact-1',
+      statut: 'brouillon',
+      lignes: [
+        {
+          id: 'lig-comp',
+          type: 'competition',
+          description: 'Championnat Régional PACA',
+          lieu: 'Avignon',
+          date: new Date('2026-09-20'),
+          demiJournees: 2,
+          montant: 130,
+        },
+        {
+          id: 'lig-transport',
+          type: 'forfait_transport',
+          description: 'Déplacement Avignon',
+          lieu: 'Avignon',
+          date: new Date('2026-09-20'),
+          heures: 40,
+          montant: 24,
+        },
+      ],
+    } as any)
+
+    vi.mocked(prisma.planning.findMany)
+      .mockResolvedValueOnce([]) // planning du coach
+      .mockResolvedValueOnce([   // planning du coach remplacé
+        {
+          id: 'plan-flo',
+          jourSemaine: 'Lundi',
+          heureDebut: '19:30',
+          heureFin: '21:00',
+          tempsFacture: 90,
+          groupe: { nom: 'Adultes Compétition' },
+          coachs: [{ coachId: 'coach-flo' }],
+        } as any,
+      ])
+
+    vi.mocked(prisma.remplacement.findMany)
+      .mockResolvedValueOnce([
+        {
+          id: 'remp-flo',
+          coachRemplaceId: 'coach-flo',
+          coachRemplacantId: 'coach-1',
+          date: new Date('2026-09-21T12:00:00Z'),
+          heureDebut: '19:30',
+          heureFin: '21:00',
+          coachRemplace: { prenom: 'Florian', nom: 'Di-Giusto' },
+        } as any,
+      ])
+      .mockResolvedValueOnce([])
+
+    const res = await calculerFactureCoach('coach-1', 9, 2026)
+
+    // Vérifier la ligne de remplacement
+    expect(res.lignesRemplacements).toHaveLength(1)
+    const remp = res.lignesRemplacements[0]
+    expect(remp.titre).toBe('Adultes Compétition — pour Florian Di-Giusto')
+    expect(remp.detailCalculDuree).toBe('1h30')
+    expect(remp.datesBadges).toEqual(['21/09'])
+    expect(remp.heures).toBe(1.5)
+    expect(remp.montant).toBe(45)
+
+    // Vérifier les sections générées
+    expect(res.sections).toBeDefined()
+    const secRemp = res.sections!.find((s) => s.id === 'remplacements')
+    expect(secRemp).toBeDefined()
+    expect(secRemp!.sousTotalHeures).toBe(1.5)
+    expect(secRemp!.sousTotalMontant).toBe(45)
+    expect(secRemp!.sousTotalDureeHM).toBe('1h30')
+
+    const secComp = res.sections!.find((s) => s.id === 'competitions')
+    expect(secComp).toBeDefined()
+    expect(secComp!.sousTotalMontant).toBe(154) // 130 + 24
+
+    // Total montant = 45 + 154 = 199 €
+    expect(res.totalMontant).toBe(199)
+    expect(res.totalHeures).toBe(1.5)
+  })
+})
+
