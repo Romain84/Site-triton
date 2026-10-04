@@ -43,7 +43,7 @@ export default function CoachNav() {
       label: 'Créneaux & Remplacements',
       shortLabel: 'Créneaux',
       icon: Repeat,
-      active: pathname.startsWith('/coach/planning-tournant') || pathname.startsWith('/coach/remplacements'),
+      active: pathname.startsWith('/coach/planning-tournant'),
       badge: availableShiftsCount > 0 ? availableShiftsCount : undefined,
     },
     {
@@ -51,7 +51,7 @@ export default function CoachNav() {
       label: 'Facturation & PDF',
       shortLabel: 'Facturation',
       icon: Receipt,
-      active: pathname.startsWith('/coach/facturation') || pathname.startsWith('/coach/historique'),
+      active: pathname.startsWith('/coach/facturation'),
     },
     {
       href: '/coach/profil',

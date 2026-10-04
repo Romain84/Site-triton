@@ -114,8 +114,8 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
 - **Vacances & Séances Annulées** :
   - Les vacances scolaires avec `impacteFacturation: true` suspendent automatiquement les heures de cours régulières.
   - Les séances ponctuellement déclarées comme annulées (`seanceAnnulee`) sont soustraites automatiquement des heures travaillées.
-- **Export Comptable Abby** :
-  - Intégration et export dédié au format Abby (`/api/coach/facturation/exporter-abby`) pour les déclarations auto-entrepreneurs des éducateurs.
+- **Génération & Archivage PDF** :
+  - Génération de factures PDF certifiées avec récapitulatif détaillé pour la comptabilité et les déclarations auto-entrepreneurs des éducateurs.
 - **Workflow & Rôle Admin** :
   - La facture mensuelle reste en **Brouillon** tant qu'elle n'est pas officialisée.
   - **Génération par le coach** : Bouton "Générer la facture" (attribue le numéro séquentiel avec initiales, calcule et génère le PDF).

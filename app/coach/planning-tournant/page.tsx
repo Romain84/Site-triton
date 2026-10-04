@@ -13,8 +13,14 @@ import {
   Sparkles,
   Plus,
   Loader2,
-  Send,
-  UserCheck
+  UserCheck,
+  Calendar,
+  Clock,
+  AlertCircle,
+  HelpCircle,
+  Users,
+  Hourglass,
+  Ban,
 } from 'lucide-react'
 
 interface Coach {
@@ -58,26 +64,30 @@ export default function PlanningTournantPage() {
   // Coach session
   const [currentCoach, setCurrentCoach] = useState<Coach | null>(null)
 
-  // Créneaux tournants state
+  // Navigation 2 onglets principaux
+  const [mainTab, setMainTab] = useState<'a_pourvoir' | 'mes_creneaux'>('a_pourvoir')
+
+  // Données
   const [evenements, setEvenements] = useState<Evenement[]>([])
   const [loadingTournants, setLoadingTournants] = useState(true)
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [filterMode, setFilterMode] = useState<'available' | 'mine' | 'all'>('available')
-
-  // Remplacements state
   const [demandesOuvertes, setDemandesOuvertes] = useState<Remplacement[]>([])
   const [mesAbsences, setMesAbsences] = useState<Remplacement[]>([])
+  const [mesRemplacements, setMesRemplacements] = useState<Remplacement[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [loadingRemplacements, setLoadingRemplacements] = useState(true)
-  const [remplacementTab, setRemplacementTab] = useState<'ouvertes' | 'mes_absences' | 'declarer'>('ouvertes')
-  const [submittingAbsence, setSubmittingAbsence] = useState(false)
 
-  // Form state pour déclaration d'absence
+  // Actions
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+  // Formulaire rapide déclaration absence
+  const [showDeclareForm, setShowDeclareForm] = useState(false)
   const [absenceDate, setAbsenceDate] = useState('')
   const [absenceHeureDebut, setAbsenceHeureDebut] = useState('18:00')
   const [absenceHeureFin, setAbsenceHeureFin] = useState('19:30')
   const [absenceMotif, setAbsenceMotif] = useState('')
   const [absenceCoachRemplacantId, setAbsenceCoachRemplacantId] = useState('')
+  const [absenceSansRemplacant, setAbsenceSansRemplacant] = useState(false)
+  const [submittingAbsence, setSubmittingAbsence] = useState(false)
 
   const fetchEvenements = useCallback(async () => {
     try {
@@ -108,6 +118,7 @@ export default function PlanningTournantPage() {
         const data = await resRemplacements.json()
         setDemandesOuvertes(data.demandesOuvertes || [])
         setMesAbsences(data.mesAbsences || [])
+        setMesRemplacements(data.mesRemplacements || [])
       }
 
       if (resCoaches.ok) {
@@ -138,9 +149,9 @@ export default function PlanningTournantPage() {
     initPage()
   }, [fetchEvenements, fetchRemplacements])
 
-  // Actions Créneaux Tournants
-  const handleTake = async (id: string) => {
-    setActionLoading(id)
+  // Actions
+  const handleTakeTournant = async (id: string) => {
+    setActionLoading(`tourn-${id}`)
     try {
       const response = await fetch(`/api/coach/planning-tournant/${id}/take`, {
         method: 'POST',
@@ -158,7 +169,7 @@ export default function PlanningTournantPage() {
     }
   }
 
-  const handleRelease = async (id: string) => {
+  const handleReleaseTournant = async (id: string) => {
     const confirmed = await confirm({
       title: 'Libérer ce créneau ?',
       message: 'Ce créneau sera immédiatement remis à disposition des autres entraîneurs du club.',
@@ -168,7 +179,7 @@ export default function PlanningTournantPage() {
 
     if (!confirmed) return
 
-    setActionLoading(id)
+    setActionLoading(`tourn-${id}`)
     try {
       const response = await fetch(`/api/coach/planning-tournant/${id}/release`, {
         method: 'POST',
@@ -186,8 +197,14 @@ export default function PlanningTournantPage() {
     }
   }
 
-  // Actions Remplacements
   const handleAccepterRemplacement = async (id: string) => {
+    const ok = await confirm({
+      title: 'Accepter ce remplacement ?',
+      message: 'Ce créneau sera automatiquement ajouté à votre planning et à votre facturation.',
+      confirmText: 'Prendre ce remplacement',
+    })
+    if (!ok) return
+
     setActionLoading(`rempl-${id}`)
     try {
       const res = await fetch(`/api/coach/remplacements/${id}/accepter`, {
@@ -195,10 +212,38 @@ export default function PlanningTournantPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        toast.success('Remplacement accepté avec succès !')
+        toast.success('Remplacement accepté !')
         await fetchRemplacements()
       } else {
         toast.error(data.error || 'Erreur lors de l\'acceptation')
+      }
+    } catch {
+      toast.error('Erreur réseau')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleAnnulerAbsence = async (id: string) => {
+    const ok = await confirm({
+      title: 'Annuler votre absence ?',
+      message: 'Votre cours régulier sera rétabli et la déduction retirée de votre facture.',
+      confirmText: 'Rétablir mon cours',
+      variant: 'danger',
+    })
+    if (!ok) return
+
+    setActionLoading(`cancel-abs-${id}`)
+    try {
+      const res = await fetch(`/api/coach/remplacements/${id}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(data.message || 'Absence annulée')
+        await fetchRemplacements()
+      } else {
+        toast.error(data.error || 'Erreur lors de l\'annulation')
       }
     } catch {
       toast.error('Erreur réseau')
@@ -224,17 +269,21 @@ export default function PlanningTournantPage() {
           heureDebut: absenceHeureDebut,
           heureFin: absenceHeureFin,
           motif: absenceMotif.trim() || undefined,
-          coachRemplacantId: absenceCoachRemplacantId || undefined,
+          coachRemplacantId: !absenceSansRemplacant && absenceCoachRemplacantId ? absenceCoachRemplacantId : undefined,
+          sansRemplacant: absenceSansRemplacant,
+          statut: absenceSansRemplacant ? 'sans_remplacant' : (absenceCoachRemplacantId ? 'accepte' : 'en_attente'),
         }),
       })
 
       const data = await res.json()
       if (res.ok) {
-        toast.success('Votre demande d\'absence a été transmise !')
+        toast.success(data.message || 'Absence enregistrée avec succès')
         setAbsenceDate('')
         setAbsenceMotif('')
         setAbsenceCoachRemplacantId('')
-        setRemplacementTab('mes_absences')
+        setAbsenceSansRemplacant(false)
+        setShowDeclareForm(false)
+        setMainTab('mes_creneaux')
         await fetchRemplacements()
       } else {
         toast.error(data.error || 'Erreur lors de la déclaration')
@@ -246,501 +295,194 @@ export default function PlanningTournantPage() {
     }
   }
 
-  // Calculs filtres Tournants
-  const availableCount = useMemo(() => {
-    return evenements.filter((e) => !e.coachId).length
+  // Créneaux tournants libres
+  const tournantsLibres = useMemo(() => {
+    return evenements.filter((e) => !e.coachId)
   }, [evenements])
 
-  const mineCount = useMemo(() => {
-    return currentCoach ? evenements.filter((e) => e.coachId === currentCoach.id).length : 0
+  // Mes créneaux tournants
+  const mesTournants = useMemo(() => {
+    if (!currentCoach) return []
+    return evenements.filter((e) => e.coachId === currentCoach.id)
   }, [evenements, currentCoach])
 
-  const filteredEvenements = useMemo(() => {
-    if (filterMode === 'available') {
-      return evenements.filter((e) => !e.coachId)
-    }
-    if (filterMode === 'mine' && currentCoach) {
-      return evenements.filter((e) => e.coachId === currentCoach.id)
-    }
-    return evenements
-  }, [evenements, filterMode, currentCoach])
+  // Compteur total à pourvoir
+  const totalAPourvoir = tournantsLibres.length + demandesOuvertes.length
 
-  const formatDateFr = (dateStr: string) => {
-    const d = new Date(dateStr)
-    const jours = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
-    const mois = ['Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.']
-    return `${jours[d.getDay()]} ${d.getDate()} ${mois[d.getMonth()]} ${d.getFullYear()}`
+  const formatDateFr = (dStr: string) => {
+    return new Date(dStr).toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    })
   }
 
   return (
     <div className="min-h-screen pt-2 pb-24 sm:pb-12 bg-slate-50/50 text-slate-900">
-      <div className="container mx-auto px-4 max-w-7xl space-y-6">
+      <div className="container mx-auto px-4 max-w-5xl space-y-6">
         <CoachNav />
 
-        {/* EN-TÊTE DE LA PAGE UNIFIÉE */}
-        <header className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-7 shadow-xs">
+        {/* HEADER */}
+        <header className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-7 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-primary text-[11px] font-extrabold uppercase tracking-wider mb-1.5 border border-emerald-200/60">
-                <Repeat className="w-3 h-3 text-primary" />
-                <span>Créneaux Tournants &amp; Remplacements</span>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse" />
+                <span className="text-[11px] font-black uppercase tracking-wider text-cyan-700">
+                  Gestion des entraînements
+                </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">
-                Planning &amp; Entraide Coachs
+                Remplacements &amp; Créneaux
               </h1>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Gérez vos créneaux tournants et assurez l&apos;entraide pour les remplacements sur une seule interface.
+                Consultez les créneaux à pourvoir ou gérez vos demandes d&apos;absences.
               </p>
             </div>
 
-            {/* Badges compteurs rapides */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200/60">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>{availableCount} tournant{availableCount > 1 ? 's' : ''} libre{availableCount > 1 ? 's' : ''}</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200/60">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                <span>{demandesOuvertes.length} remplacement{demandesOuvertes.length > 1 ? 's' : ''} en attente</span>
-              </span>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowDeclareForm(!showDeclareForm)
+                if (!showDeclareForm) setMainTab('mes_creneaux')
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-900 text-white text-xs font-black shadow-xs transition-all self-start sm:self-center"
+            >
+              <Plus className="w-4 h-4 text-cyan-400" />
+              <span>{showDeclareForm ? 'Fermer le formulaire' : 'Déclarer une absence'}</span>
+            </button>
+          </div>
+
+          {/* SÉLECTEUR 2 ONGLETS PRINCIPAUX */}
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setMainTab('a_pourvoir')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all ${
+                mainTab === 'a_pourvoir'
+                  ? 'bg-slate-950 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:text-slate-950 hover:bg-slate-200/60'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <span>À pourvoir</span>
+              {totalAPourvoir > 0 && (
+                <span className="px-2 py-0.5 text-[10px] rounded-full bg-emerald-500 text-white font-extrabold animate-pulse">
+                  {totalAPourvoir}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMainTab('mes_creneaux')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all ${
+                mainTab === 'mes_creneaux'
+                  ? 'bg-slate-950 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:text-slate-950 hover:bg-slate-200/60'
+              }`}
+            >
+              <Users className="w-4 h-4 text-cyan-400" />
+              <span>Mes demandes &amp; créneaux</span>
+              {(mesAbsences.length > 0 || mesTournants.length > 0) && (
+                <span className="px-2 py-0.5 text-[10px] rounded-full bg-slate-200 text-slate-800 font-extrabold">
+                  {mesAbsences.length + mesTournants.length}
+                </span>
+              )}
+            </button>
           </div>
         </header>
 
-        {/* GRILLE 2 COLONNES */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* COLONNE 1 : CRÉNEAUX TOURNANTS */}
-          <div className="space-y-4">
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* FORMULAIRE RAPIDE DÉCLARATION ABSENCE */}
+        {showDeclareForm && (
+          <section className="bg-white border border-rose-200 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                <span>Déclarer une absence ponctuelle</span>
+              </h2>
+              <span className="text-xs text-slate-400">
+                Vous pouvez également déclarer une absence en 1 clic directement depuis{' '}
+                <a href="/coach/dashboard" className="text-cyan-600 underline font-bold">
+                  votre agenda
+                </a>.
+              </span>
+            </div>
+
+            <form onSubmit={handleSubmitAbsence} className="space-y-4 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <h2 className="text-base sm:text-lg font-black text-slate-950 flex items-center gap-2">
-                    <Repeat className="w-4 h-4 text-primary" />
-                    <span>Créneaux Tournants</span>
-                  </h2>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Prenez ou libérez vos créneaux tournants de saison
-                  </p>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={absenceDate}
+                    onChange={(e) => setAbsenceDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
+                  />
                 </div>
 
-                {/* Filtres Créneaux */}
-                <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-fit">
-                  <button
-                    type="button"
-                    onClick={() => setFilterMode('available')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      filterMode === 'available'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <span>À pourvoir</span>
-                    {availableCount > 0 && (
-                      <span className="ml-1 px-1.5 py-0.2 text-[10px] rounded-full bg-emerald-600 text-white font-black">
-                        {availableCount}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterMode('mine')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      filterMode === 'mine'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <span>Mes créneaux</span>
-                    {mineCount > 0 && (
-                      <span className="ml-1 px-1.5 py-0.2 text-[10px] rounded-full bg-slate-900 text-white font-black">
-                        {mineCount}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterMode('all')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      filterMode === 'all'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <span>Tous</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Liste des créneaux */}
-            <div className="space-y-3">
-              {loadingTournants ? (
-                <div className="bg-white border border-slate-200/80 rounded-3xl p-10 text-center space-y-2">
-                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
-                  <p className="text-xs text-slate-500 font-bold">Chargement des créneaux...</p>
-                </div>
-              ) : filteredEvenements.length === 0 ? (
-                <div className="bg-white border border-slate-200/80 rounded-3xl p-8 text-center space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 mx-auto flex items-center justify-center">
-                    <CheckCircle2 className="w-5 h-5" />
-                  </div>
-                  <p className="text-xs font-bold text-slate-700">Aucun créneau dans cette sélection</p>
-                  <p className="text-[11px] text-slate-400">
-                    {filterMode === 'available'
-                      ? 'Tous les créneaux tournants sont actuellement pourvus.'
-                      : 'Aucun créneau ne correspond à vos filtres.'}
-                  </p>
-                </div>
-              ) : (
-                filteredEvenements.map((evt) => {
-                  const isMine = currentCoach && evt.coachId === currentCoach.id
-                  const isAvailable = !evt.coachId
-                  const isActionLoading = actionLoading === evt.id
-                  const groupNames = (evt.groupes && evt.groupes.length > 0)
-                    ? evt.groupes.map(g => g.nom).join(', ')
-                    : (evt.groupe?.nom || evt.titre)
-
-                  return (
-                    <div
-                      key={evt.id}
-                      className={`p-4 rounded-2xl border transition-all ${
-                        isAvailable
-                          ? 'bg-emerald-50/40 border-emerald-200 hover:border-emerald-300'
-                          : isMine
-                          ? 'bg-white border-primary/40 shadow-xs'
-                          : 'bg-white border-slate-200/80'
-                      }`}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="px-2 py-0.5 rounded-lg text-xs font-black bg-slate-900 text-white tracking-wide font-mono">
-                              {evt.heureDebut} - {evt.heureFin}
-                            </span>
-                            <span className="text-xs font-extrabold text-slate-900">
-                              {formatDateFr(evt.date)}
-                            </span>
-                            {isAvailable ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white">
-                                Libre
-                              </span>
-                            ) : isMine ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
-                                Pour vous
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
-                                Coach : {evt.coach?.prenom} {evt.coach?.nom || ''}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs font-bold text-slate-800">
-                            {groupNames}
-                          </p>
-                          <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span>{evt.lieu || 'Piscine Alphonse Roudière'}</span>
-                          </div>
-                        </div>
-
-                        <div className="shrink-0 pt-1 sm:pt-0">
-                          {isAvailable ? (
-                            <button
-                              type="button"
-                              onClick={() => handleTake(evt.id)}
-                              disabled={isActionLoading}
-                              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-black transition-all shadow-xs disabled:opacity-50 cursor-pointer"
-                            >
-                              {isActionLoading ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <Sparkles className="w-3.5 h-3.5" />
-                              )}
-                              <span>Prendre</span>
-                            </button>
-                          ) : isMine ? (
-                            <button
-                              type="button"
-                              onClick={() => handleRelease(evt.id)}
-                              disabled={isActionLoading}
-                              className="w-full sm:w-auto inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
-                            >
-                              {isActionLoading ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : null}
-                              <span>Libérer</span>
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </div>
-
-          {/* COLONNE 2 : REMPLACEMENTS & ABSENCES */}
-          <div className="space-y-4">
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-base sm:text-lg font-black text-slate-950 flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-primary" />
-                    <span>Remplacements &amp; Absences</span>
-                  </h2>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Solidarité entre entraîneurs du club
-                  </p>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Heure de début *</label>
+                  <input
+                    type="time"
+                    required
+                    value={absenceHeureDebut}
+                    onChange={(e) => setAbsenceHeureDebut(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
+                  />
                 </div>
 
-                {/* Onglets Remplacements */}
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setRemplacementTab('ouvertes')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      remplacementTab === 'ouvertes'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <span>À pourvoir</span>
-                    {demandesOuvertes.length > 0 && (
-                      <span className="ml-1 px-1.5 py-0.2 text-[10px] rounded-full bg-amber-600 text-white font-black">
-                        {demandesOuvertes.length}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRemplacementTab('mes_absences')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      remplacementTab === 'mes_absences'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <span>Mes absences</span>
-                    {mesAbsences.length > 0 && (
-                      <span className="ml-1 px-1.5 py-0.2 text-[10px] rounded-full bg-slate-900 text-white font-black">
-                        {mesAbsences.length}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRemplacementTab('declarer')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      remplacementTab === 'declarer'
-                        ? 'bg-primary text-white shadow-xs'
-                        : 'bg-emerald-50 text-primary hover:bg-emerald-100'
-                    }`}
-                  >
-                    <span className="flex items-center gap-1">
-                      <Plus className="w-3 h-3" />
-                      <span>Déclarer</span>
-                    </span>
-                  </button>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Heure de fin *</label>
+                  <input
+                    type="time"
+                    required
+                    value={absenceHeureFin}
+                    onChange={(e) => setAbsenceHeureFin(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
+                  />
                 </div>
               </div>
-            </div>
 
-            {/* Contenu Colonne 2 */}
-            {loadingRemplacements ? (
-              <div className="bg-white border border-slate-200/80 rounded-3xl p-10 text-center space-y-2">
-                <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
-                <p className="text-xs text-slate-500 font-bold">Chargement des remplacements...</p>
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Motif <span className="text-slate-400 font-normal">(facultatif)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex : Raisons personnelles, maladie, déplacement..."
+                  value={absenceMotif}
+                  onChange={(e) => setAbsenceMotif(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
+                />
               </div>
-            ) : remplacementTab === 'ouvertes' ? (
-              <div className="space-y-3">
-                {demandesOuvertes.length === 0 ? (
-                  <div className="bg-white border border-slate-200/80 rounded-3xl p-8 text-center space-y-2">
-                    <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center">
-                      <CheckCircle2 className="w-5 h-5" />
-                    </div>
-                    <p className="text-xs font-bold text-slate-700">Aucun remplacement en attente</p>
-                    <p className="text-[11px] text-slate-400">
-                      Tous les entraînements sont couverts par les entraîneurs du club.
-                    </p>
-                  </div>
-                ) : (
-                  demandesOuvertes.map((demande) => {
-                    const isActionLoading = actionLoading === `rempl-${demande.id}`
-                    return (
-                      <div
-                        key={demande.id}
-                        className="p-4 rounded-2xl bg-white border border-amber-200/90 shadow-xs space-y-3"
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="px-2 py-0.5 rounded-lg text-xs font-black bg-slate-900 text-white font-mono">
-                                {demande.heureDebut} - {demande.heureFin}
-                              </span>
-                              <span className="text-xs font-extrabold text-slate-900">
-                                {formatDateFr(demande.date)}
-                              </span>
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900">
-                                À remplacer
-                              </span>
-                            </div>
-                            <p className="text-xs font-bold text-slate-800">
-                              Entraîneur : {demande.coachRemplace?.prenom} {demande.coachRemplace?.nom || ''}
-                            </p>
-                            {demande.motif && (
-                              <p className="text-[11px] text-slate-500 italic">
-                                Motif : {demande.motif}
-                              </p>
-                            )}
-                          </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleAccepterRemplacement(demande.id)}
-                            disabled={isActionLoading}
-                            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-black transition-all shadow-xs disabled:opacity-50 cursor-pointer shrink-0"
-                          >
-                            {isActionLoading ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Sparkles className="w-3.5 h-3.5" />
-                            )}
-                            <span>Je remplace mon collègue</span>
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
-            ) : remplacementTab === 'mes_absences' ? (
-              <div className="space-y-3">
-                {mesAbsences.length === 0 ? (
-                  <div className="bg-white border border-slate-200/80 rounded-3xl p-8 text-center space-y-2">
-                    <p className="text-xs font-bold text-slate-700">Vous n&apos;avez déclaré aucune absence</p>
-                    <p className="text-[11px] text-slate-400">
-                      En cas d&apos;imprévu, basculez sur l&apos;onglet « Déclarer ».
-                    </p>
-                  </div>
-                ) : (
-                  mesAbsences.map((abs) => (
-                    <div
-                      key={abs.id}
-                      className="p-4 rounded-2xl bg-white border border-slate-200/80 space-y-2"
-                    >
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="px-2 py-0.5 rounded-lg text-xs font-black bg-slate-900 text-white font-mono">
-                            {abs.heureDebut} - {abs.heureFin}
-                          </span>
-                          <span className="text-xs font-extrabold text-slate-900">
-                            {formatDateFr(abs.date)}
-                          </span>
-                        </div>
+              {/* Choix remplaçant */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={absenceSansRemplacant}
+                    onChange={(e) => setAbsenceSansRemplacant(e.target.checked)}
+                    className="rounded-sm text-cyan-600 focus:ring-cyan-500"
+                  />
+                  <span>Pas de remplaçant nécessaire (cours annulé ou assuré seul par le co-entraîneur)</span>
+                </label>
 
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                            abs.statut === 'accepte'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : abs.statut === 'sans_remplacant'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {abs.statut === 'accepte' ? 'Remplacé' : abs.statut === 'sans_remplacant' ? 'Sans remplacement' : 'En attente'}
-                        </span>
-                      </div>
-
-                      {abs.coachRemplacant ? (
-                        <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                          <span>Remplacé par {abs.coachRemplacant.prenom} {abs.coachRemplacant.nom || ''}</span>
-                        </p>
-                      ) : abs.statut === 'sans_remplacant' ? (
-                        <p className="text-[11px] text-red-600 font-medium">
-                          Absence non remplacée (déduite de votre facturation)
-                        </p>
-                      ) : (
-                        <p className="text-[11px] text-slate-500 italic">
-                          Demande visible par tous les collègues
-                        </p>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            ) : (
-              /* FORMULAIRE DE DÉCLARATION D'ABSENCE */
-              <form
-                onSubmit={handleSubmitAbsence}
-                className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-xs space-y-4"
-              >
-                <div className="border-b border-slate-100 pb-2">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
-                    Déclarer une absence / Demander un remplaçant
-                  </h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Renseignez vos horaires pour alerter vos collègues
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700">Date de l&apos;absence *</label>
-                    <input
-                      type="date"
-                      required
-                      value={absenceDate}
-                      onChange={(e) => setAbsenceDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:border-primary focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-700">Heure début *</label>
-                      <input
-                        type="time"
-                        required
-                        value={absenceHeureDebut}
-                        onChange={(e) => setAbsenceHeureDebut(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:border-primary focus:outline-none font-mono"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-700">Heure fin *</label>
-                      <input
-                        type="time"
-                        required
-                        value={absenceHeureFin}
-                        onChange={(e) => setAbsenceHeureFin(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:border-primary focus:outline-none font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700">Motif (optionnel)</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Déplacement pro, empêchement..."
-                      value={absenceMotif}
-                      onChange={(e) => setAbsenceMotif(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:border-primary focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700">Collègue déjà prévenu (optionnel)</label>
+                {!absenceSansRemplacant && (
+                  <div className="pt-1">
+                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Désigner un remplaçant direct <span className="text-emerald-600 font-semibold">(Validation 1-clic)</span>
+                    </label>
                     <select
                       value={absenceCoachRemplacantId}
                       onChange={(e) => setAbsenceCoachRemplacantId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:border-primary focus:outline-none"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
                     >
-                      <option value="">Tous les coachs (ouvert à tous)</option>
+                      <option value="">-- Proposer à tous les entraîneurs (demande ouverte) --</option>
                       {coaches
-                        .filter((c) => !currentCoach || c.id !== currentCoach.id)
+                        .filter((c) => c.id !== currentCoach?.id)
                         .map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.prenom} {c.nom || ''}
@@ -748,33 +490,385 @@ export default function PlanningTournantPage() {
                         ))}
                     </select>
                   </div>
-                </div>
+                )}
+              </div>
 
-                <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setRemplacementTab('ouvertes')}
-                    className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submittingAbsence}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-extrabold shadow-xs transition-all disabled:opacity-50 cursor-pointer"
-                  >
-                    {submittingAbsence ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Send className="w-3.5 h-3.5" />
-                    )}
-                    <span>Envoyer la demande</span>
-                  </button>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDeclareForm(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingAbsence}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-950 text-white text-xs font-black hover:bg-slate-900 transition-all shadow-xs disabled:opacity-50"
+                >
+                  {submittingAbsence ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Confirmer l&apos;absence</span>}
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
+
+        {/* CONTENU ONGLETS */}
+
+        {/* ===================== ONGLET 1 : À POURVOIR ===================== */}
+        {mainTab === 'a_pourvoir' && (
+          <div className="space-y-6">
+            {/* 1.1 REMPLACEMENTS DEMANDÉS PAR LES COLLÈGUES */}
+            <div className="space-y-3">
+              <h2 className="text-base font-black text-slate-950 flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-emerald-600" />
+                <span>Remplacements ouverts à l&apos;équipe ({demandesOuvertes.length})</span>
+              </h2>
+
+              {loadingRemplacements ? (
+                <div className="bg-white border border-slate-200/80 rounded-3xl p-8 text-center space-y-2">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto text-cyan-600" />
+                  <p className="text-xs text-slate-500 font-bold">Chargement des remplacements...</p>
                 </div>
-              </form>
+              ) : demandesOuvertes.length === 0 ? (
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 text-center text-xs text-slate-500">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
+                  <p className="font-bold text-slate-700">Aucun remplacement en attente</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Tous les collègues sont présents ou ont trouvé un remplaçant.</p>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {demandesOuvertes.map((r) => {
+                    const isAction = actionLoading === `rempl-${r.id}`
+                    return (
+                      <div
+                        key={r.id}
+                        className="bg-white border border-emerald-200 rounded-2xl p-4 shadow-xs space-y-3 hover:border-emerald-300 transition-all"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="px-2 py-0.5 rounded-md text-xs font-black bg-slate-900 text-white font-mono">
+                              {r.heureDebut} – {r.heureFin}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                              À pourvoir
+                            </span>
+                          </div>
+
+                          <p className="text-xs font-extrabold text-slate-900 pt-1">
+                            {formatDateFr(r.date)}
+                          </p>
+
+                          <p className="text-xs text-slate-600 font-medium">
+                            Collègue absent : <strong>{r.coachRemplace?.prenom} {r.coachRemplace?.nom || ''}</strong>
+                          </p>
+
+                          {r.motif && (
+                            <p className="text-[11px] text-slate-500 italic">
+                              Motif : « {r.motif} »
+                            </p>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAccepterRemplacement(r.id)}
+                          disabled={isAction}
+                          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition-all disabled:opacity-50"
+                        >
+                          {isAction ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <UserCheck className="w-4 h-4" />
+                              <span>Prendre ce remplacement</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 1.2 CRÉNEAUX TOURNANTS LIBRES */}
+            <div className="space-y-3 pt-2">
+              <h2 className="text-base font-black text-slate-950 flex items-center gap-2">
+                <Repeat className="w-4 h-4 text-purple-600" />
+                <span>Créneaux tournants libres ({tournantsLibres.length})</span>
+              </h2>
+
+              {loadingTournants ? (
+                <div className="bg-white border border-slate-200/80 rounded-3xl p-8 text-center space-y-2">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto text-purple-600" />
+                  <p className="text-xs text-slate-500 font-bold">Chargement des créneaux tournants...</p>
+                </div>
+              ) : tournantsLibres.length === 0 ? (
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 text-center text-xs text-slate-500">
+                  <CheckCircle2 className="w-6 h-6 text-purple-500 mx-auto mb-1.5" />
+                  <p className="font-bold text-slate-700">Aucun créneau tournant libre</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Tous les créneaux tournants ont été attribués.</p>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {tournantsLibres.map((evt) => {
+                    const isAction = actionLoading === `tourn-${evt.id}`
+                    const groupNames =
+                      evt.groupes && evt.groupes.length > 0
+                        ? evt.groupes.map((g) => g.nom).join(', ')
+                        : evt.groupe?.nom || evt.titre
+
+                    return (
+                      <div
+                        key={evt.id}
+                        className="bg-white border border-purple-200 rounded-2xl p-4 shadow-xs space-y-3 hover:border-purple-300 transition-all"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="px-2 py-0.5 rounded-md text-xs font-black bg-slate-900 text-white font-mono">
+                              {evt.heureDebut} – {evt.heureFin}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-800">
+                              Tournant libre
+                            </span>
+                          </div>
+
+                          <p className="text-xs font-extrabold text-slate-900 pt-1">
+                            {formatDateFr(evt.date)}
+                          </p>
+
+                          <p className="text-xs font-bold text-purple-950">
+                            {groupNames}
+                          </p>
+
+                          <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{evt.lieu || 'Piscine Alphonse Roudière'}</span>
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleTakeTournant(evt.id)}
+                          disabled={isAction}
+                          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black shadow-xs transition-all disabled:opacity-50"
+                        >
+                          {isAction ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4" />
+                              <span>Prendre le créneau</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ===================== ONGLET 2 : MES CRÉNEAUX & DEMANDES ===================== */}
+        {mainTab === 'mes_creneaux' && (
+          <div className="space-y-6">
+            {/* 2.1 MES ABSENCES DÉCLARÉES */}
+            <div className="space-y-3">
+              <h2 className="text-base font-black text-slate-950 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600" />
+                <span>Mes absences déclarées ({mesAbsences.length})</span>
+              </h2>
+
+              {mesAbsences.length === 0 ? (
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 text-center text-xs text-slate-400">
+                  Vous n&apos;avez aucune absence déclarée en cours.
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {mesAbsences.map((abs) => {
+                    const isAction = actionLoading === `cancel-abs-${abs.id}`
+                    return (
+                      <div
+                        key={abs.id}
+                        className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs space-y-3"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="px-2 py-0.5 rounded-md text-xs font-black bg-slate-900 text-white font-mono">
+                              {abs.heureDebut} – {abs.heureFin}
+                            </span>
+
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                abs.statut === 'accepte'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : abs.statut === 'sans_remplacant'
+                                  ? 'bg-slate-100 text-slate-700'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              {abs.statut === 'accepte'
+                                ? 'Pourvu'
+                                : abs.statut === 'sans_remplacant'
+                                ? 'Sans remplaçant'
+                                : 'En recherche'}
+                            </span>
+                          </div>
+
+                          <p className="text-xs font-extrabold text-slate-900 pt-1">
+                            {formatDateFr(abs.date)}
+                          </p>
+
+                          {abs.coachRemplacant ? (
+                            <p className="text-xs text-emerald-700 font-bold flex items-center gap-1">
+                              <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Remplacé(e) par : {abs.coachRemplacant.prenom} {abs.coachRemplacant.nom || ''}</span>
+                            </p>
+                          ) : abs.statut === 'sans_remplacant' ? (
+                            <p className="text-xs text-slate-500">
+                              Séance sans remplaçant
+                            </p>
+                          ) : (
+                            <p className="text-xs text-amber-700 flex items-center gap-1">
+                              <Hourglass className="w-3.5 h-3.5" />
+                              <span>Visible par vos collègues pour prise en charge</span>
+                            </p>
+                          )}
+
+                          {abs.motif && (
+                            <p className="text-[11px] text-slate-500 italic">
+                              Motif : « {abs.motif} »
+                            </p>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAnnulerAbsence(abs.id)}
+                          disabled={isAction}
+                          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-all disabled:opacity-50"
+                        >
+                          {isAction ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <span>Annuler mon absence</span>
+                          )}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 2.2 MES CRÉNEAUX TOURNANTS RÉSERVÉS */}
+            <div className="space-y-3 pt-2">
+              <h2 className="text-base font-black text-slate-950 flex items-center gap-2">
+                <Repeat className="w-4 h-4 text-cyan-600" />
+                <span>Mes créneaux tournants réservés ({mesTournants.length})</span>
+              </h2>
+
+              {mesTournants.length === 0 ? (
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 text-center text-xs text-slate-400">
+                  Vous n&apos;avez réservé aucun créneau tournant pour le moment.
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {mesTournants.map((evt) => {
+                    const isAction = actionLoading === `tourn-${evt.id}`
+                    const groupNames =
+                      evt.groupes && evt.groupes.length > 0
+                        ? evt.groupes.map((g) => g.nom).join(', ')
+                        : evt.groupe?.nom || evt.titre
+
+                    return (
+                      <div
+                        key={evt.id}
+                        className="bg-white border border-cyan-200 rounded-2xl p-4 shadow-xs space-y-3"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="px-2 py-0.5 rounded-md text-xs font-black bg-slate-900 text-white font-mono">
+                              {evt.heureDebut} – {evt.heureFin}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-100 text-cyan-800">
+                              Confirmé
+                            </span>
+                          </div>
+
+                          <p className="text-xs font-extrabold text-slate-900 pt-1">
+                            {formatDateFr(evt.date)}
+                          </p>
+
+                          <p className="text-xs font-bold text-slate-900">
+                            {groupNames}
+                          </p>
+
+                          <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{evt.lieu || 'Piscine Alphonse Roudière'}</span>
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleReleaseTournant(evt.id)}
+                          disabled={isAction}
+                          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-bold transition-all disabled:opacity-50"
+                        >
+                          {isAction ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <span>Libérer ce créneau</span>
+                          )}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 2.3 MES REMPLACEMENTS EFFECTUÉS */}
+            {mesRemplacements.length > 0 && (
+              <div className="space-y-3 pt-2">
+                <h2 className="text-base font-black text-slate-950 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Remplacements pris en charge ({mesRemplacements.length})</span>
+                </h2>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {mesRemplacements.map((r) => (
+                    <div
+                      key={r.id}
+                      className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="px-2 py-0.5 rounded-md text-xs font-black bg-slate-900 text-white font-mono">
+                          {r.heureDebut} – {r.heureFin}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                          Assuré par vous
+                        </span>
+                      </div>
+
+                      <p className="text-xs font-extrabold text-slate-900 pt-1">
+                        {formatDateFr(r.date)}
+                      </p>
+
+                      <p className="text-xs text-slate-600">
+                        Pour : <strong>{r.coachRemplace?.prenom} {r.coachRemplace?.nom || ''}</strong>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
