@@ -52,6 +52,7 @@ async function getGroupes(): Promise<Groupe[]> {
     return await prisma.groupe.findMany({
       where: {
         actif: true,
+        visiblePublic: true,
         OR: [
           { tarif: { not: null } },
           { tarif1Cours: { not: null } },

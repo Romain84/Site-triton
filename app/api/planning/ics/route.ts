@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { libelleOccupations } from '@/lib/planning-occupations'
 
 function toIcsDate(date: Date) {
   return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
@@ -22,7 +23,13 @@ function buildEvent(uid: string, title: string, start: Date, end: Date, descript
 // Exporte un flux ICS combinant planning fixe et événements calendrier.
 export async function GET() {
   const [plannings, evenements] = await Promise.all([
-    prisma.planning.findMany({ where: { actif: true }, include: { groupe: true } }),
+    prisma.planning.findMany({
+      where: { actif: true },
+      include: {
+        groupe: true,
+        occupations: { orderBy: { ordre: 'asc' } },
+      },
+    }),
     prisma.evenementCalendrier.findMany({ where: { actif: true } }),
   ])
 
@@ -42,7 +49,7 @@ export async function GET() {
         start,
         end,
         `${planning.heureDebut} - ${planning.heureFin}`,
-        planning.lieu || undefined
+        libelleOccupations(planning) || planning.lieu || undefined
       )
     )
   }

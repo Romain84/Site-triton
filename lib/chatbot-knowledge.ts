@@ -410,7 +410,10 @@ export async function getGroupesKnowledgeBase(): Promise<string> {
 
   try {
     const groupes = await prisma.groupe.findMany({
-      where: { actif: true },
+      where: {
+        actif: true,
+        visiblePublic: true,
+      },
       orderBy: [{ niveau: 'asc' }, { ordre: 'asc' }],
     })
 

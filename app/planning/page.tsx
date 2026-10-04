@@ -52,7 +52,11 @@ async function getData() {
               inscrits: true,
               ordre: true,
               complet: true,
+              visiblePublic: true,
             },
+          },
+          occupations: {
+            orderBy: { ordre: 'asc' },
           },
         },
         orderBy: [
@@ -61,7 +65,7 @@ async function getData() {
         ],
       }),
       prisma.groupe.findMany({
-        where: { actif: true },
+        where: { actif: true, visiblePublic: true },
         select: {
           id: true,
           nom: true,

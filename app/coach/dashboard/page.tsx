@@ -5,6 +5,7 @@ import CoachNav from '@/components/coach/CoachNav'
 import Link from 'next/link'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
 import CoachAgendaBassin, { AgendaSession } from '@/components/coach/CoachAgendaBassin'
+import { libelleOccupations } from '@/lib/planning-occupations'
 import {
   CalendarDays,
   Receipt,
@@ -80,6 +81,7 @@ async function getCoachData(coachId: string) {
           coach: { select: { id: true, prenom: true, nom: true } },
         },
       },
+      occupations: { orderBy: { ordre: 'asc' } },
     },
   })
 
@@ -165,7 +167,7 @@ export default async function CoachDashboard() {
           date: dayDate,
           heureDebut: p.heureDebut,
           heureFin: p.heureFin,
-          lieu: p.lieu || 'Piscine Alphonse Roudière',
+          lieu: libelleOccupations(p) || p.lieu || 'Piscine Alphonse Roudière',
           groupe: p.nomSession || p.groupe?.nom || 'Groupe',
           isMySession,
           coachName: coachesText || null,

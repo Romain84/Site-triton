@@ -5,6 +5,13 @@ import { getErrorMessage } from '@/lib/utils'
 import { HelpTooltip } from '@/components/ui/Tooltip'
 import toast from 'react-hot-toast'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
+import {
+  ESPACES_PISCINE,
+  calculerAmplitude,
+  eclaterParOccupation,
+  libelleOccupations,
+  type OccupationInput,
+} from '@/lib/planning-occupations'
 
 interface Coach {
   id: string
@@ -35,6 +42,7 @@ interface Planning {
   semaineImpaire?: boolean
   tempsFacture?: number | null
   actif: boolean
+  occupations?: Array<{ id?: string; espace: string; heureDebut: string; heureFin: string }>
 }
 
 export const formatMinutesEnHM = (minutes?: number | null): string => {
@@ -56,14 +64,44 @@ const COULEURS = [
   { nom: 'Rose', valeur: '#E91E63' },
 ]
 
-const PRESET_LIEUX = [
-  'Grand Bassin - Ligne 1',
-  'Grand Bassin - Ligne 2',
-  'Grand Bassin - Ligne 3',
-  'Grand Bassin - Ligne 4',
-  'Petit Bassin',
-  'PPG',
-]
+const PRESET_LIEUX = [...ESPACES_PISCINE] as string[]
+
+interface BlocEspaces {
+  cle: string
+  espaces: string[]
+  autre: string
+  heureDebut: string
+  heureFin: string
+}
+
+const nouveauBloc = (heureDebut = '', heureFin = '', espaces: string[] = ['Grand Bassin - Ligne 1']): BlocEspaces => ({
+  cle: Math.random().toString(36).slice(2),
+  espaces,
+  autre: '',
+  heureDebut,
+  heureFin,
+})
+
+const blocsVersOccupations = (blocs: BlocEspaces[]): OccupationInput[] =>
+  blocs.flatMap(b => {
+    const espaces = [...b.espaces, ...(b.autre.trim() ? [b.autre.trim()] : [])]
+    return espaces.map(espace => ({ espace, heureDebut: b.heureDebut, heureFin: b.heureFin }))
+  }).filter(o => o.heureDebut && o.heureFin && timeToMinutes(o.heureDebut) < timeToMinutes(o.heureFin))
+
+const planningVersBlocs = (p: Planning): BlocEspaces[] => {
+  const occs = p.occupations && p.occupations.length > 0
+    ? p.occupations
+    : [{ espace: p.lieu || 'Grand Bassin - Ligne 1', heureDebut: p.heureDebut, heureFin: p.heureFin }]
+  const parHoraire = new Map<string, BlocEspaces>()
+  occs.forEach(o => {
+    const cle = `${o.heureDebut}-${o.heureFin}`
+    const bloc = parHoraire.get(cle) || nouveauBloc(o.heureDebut, o.heureFin, [])
+    if (PRESET_LIEUX.includes(o.espace)) bloc.espaces.push(o.espace)
+    else bloc.autre = o.espace
+    parHoraire.set(cle, bloc)
+  })
+  return [...parHoraire.values()].sort((a, b) => timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut))
+}
 
 const timeToMinutes = (timeStr: string | null | undefined): number => {
   if (!timeStr) return 0
@@ -444,8 +482,6 @@ export default function PlanningFixeManager() {
 
   // Form state
   const [jourSemaine, setJourSemaine] = useState('Lundi')
-  const [heureDebut, setHeureDebut] = useState('')
-  const [heureFin, setHeureFin] = useState('')
   const [groupeId, setGroupeId] = useState('')
   const [coachIds, setCoachIds] = useState<string[]>([])
   const [nomSession, setNomSession] = useState('')
@@ -456,9 +492,12 @@ export default function PlanningFixeManager() {
   const [quickTempsFacture, setQuickTempsFacture] = useState('')
   const [isSavingQuick, setIsSavingQuick] = useState(false)
   
-  // Custom lieu selector state
-  const [lieuType, setLieuType] = useState('Grand Bassin - Ligne 1')
-  const [lieuCustom, setLieuCustom] = useState('')
+  // Espaces occupés par la séance (un bloc = des espaces partageant les mêmes horaires)
+  const [blocsEspaces, setBlocsEspaces] = useState<BlocEspaces[]>([nouveauBloc()])
+  const occupationsForm = blocsVersOccupations(blocsEspaces)
+  const amplitudeForm = calculerAmplitude(occupationsForm)
+  const heureDebut = amplitudeForm?.heureDebut || ''
+  const heureFin = amplitudeForm?.heureFin || ''
   
   const [couleur, setCouleur] = useState('#00bcd4')
   const [semaineImpaire, setSemaineImpaire] = useState(false)
@@ -486,14 +525,11 @@ export default function PlanningFixeManager() {
 
   const resetForm = () => {
     setJourSemaine('Lundi')
-    setHeureDebut('')
-    setHeureFin('')
     setGroupeId('')
     setCoachIds([])
     setNomSession('')
     setTempsFacture('')
-    setLieuType('Grand Bassin - Ligne 1')
-    setLieuCustom('')
+    setBlocsEspaces([nouveauBloc()])
     setCouleur('#00bcd4')
     setSemaineImpaire(false)
     setActif(true)
@@ -584,21 +620,11 @@ export default function PlanningFixeManager() {
   const handleEdit = (planning: Planning) => {
     setEditingPlanning(planning)
     setJourSemaine(planning.jourSemaine)
-    setHeureDebut(planning.heureDebut)
-    setHeureFin(planning.heureFin)
     setGroupeId(planning.groupeId)
     setCoachIds(planning.coachs.map(c => c.coach.id))
     setNomSession(planning.nomSession || '')
     setTempsFacture(planning.tempsFacture ? planning.tempsFacture.toString() : '')
-    
-    const currentLieu = planning.lieu || 'Grand Bassin - Ligne 1'
-    if (PRESET_LIEUX.includes(currentLieu)) {
-      setLieuType(currentLieu)
-      setLieuCustom('')
-    } else {
-      setLieuType('Autre')
-      setLieuCustom(currentLieu)
-    }
+    setBlocsEspaces(planningVersBlocs(planning))
     
     setCouleur(planning.couleur || '#00bcd4')
     setSemaineImpaire(planning.semaineImpaire || false)
@@ -610,7 +636,10 @@ export default function PlanningFixeManager() {
     e.preventDefault()
     setError('')
 
-    const finalLieu = lieuType === 'Autre' ? lieuCustom : lieuType
+    if (occupationsForm.length === 0) {
+      setError('Ajoutez au moins un espace avec des horaires valides (début avant fin).')
+      return
+    }
 
     try {
       const url = editingPlanning
@@ -626,7 +655,8 @@ export default function PlanningFixeManager() {
           heureFin,
           groupeId,
           coachIds,
-          lieu: finalLieu,
+          lieu: occupationsForm[0].espace,
+          occupations: occupationsForm,
           couleur,
           nomSession: nomSession || null,
           semaineImpaire,
@@ -656,6 +686,11 @@ export default function PlanningFixeManager() {
     if (!planning) return
 
     if (planning.lieu === targetLane) return
+
+    if ((planning.occupations?.length || 0) > 1) {
+      toast.error('Cette séance occupe plusieurs espaces (PPG, bassin...). Modifiez ses espaces via le formulaire.')
+      return
+    }
 
     try {
       // Optimistic update
@@ -781,32 +816,119 @@ export default function PlanningFixeManager() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Heure début *
+        {/* Espaces occupés par la séance */}
+        <div className="bg-cyan-50/40 border border-cyan-200 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <label className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+              🏊 Espaces occupés et horaires *
+              <HelpTooltip title="Espaces occupés">
+                <p>Une séance peut utiliser plusieurs espaces : par exemple PPG de 18:15 à 19:00, puis Petit Bassin de 19:00 à 20:00 et Lignes 1 à 4 de 19:15 à 20:00.</p>
+                <p className="mt-1">Cochez plusieurs lignes dans un même bloc si elles ont les mêmes horaires. Les horaires globaux de la séance (utilisés pour la facturation) sont calculés automatiquement.</p>
+              </HelpTooltip>
             </label>
-            <input
-              type="time"
-              value={heureDebut}
-              onChange={(e) => setHeureDebut(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-white border border-cyan-300 text-cyan-900">
+              Séance : {heureDebut && heureFin ? `${heureDebut} – ${heureFin}` : 'horaires à saisir'}
+            </span>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Heure fin *
-            </label>
-            <input
-              type="time"
-              value={heureFin}
-              onChange={(e) => setHeureFin(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
-          </div>
+          {blocsEspaces.map((bloc, idx) => {
+            const majBloc = (patch: Partial<BlocEspaces>) =>
+              setBlocsEspaces(prev => prev.map(b => (b.cle === bloc.cle ? { ...b, ...patch } : b)))
+            const basculerEspace = (espace: string) =>
+              majBloc({
+                espaces: bloc.espaces.includes(espace)
+                  ? bloc.espaces.filter(e => e !== espace)
+                  : [...bloc.espaces, espace],
+              })
+            const lignes = PRESET_LIEUX.slice(0, 4)
+            const toutGrandBassin = lignes.every(l => bloc.espaces.includes(l))
+            return (
+              <div key={bloc.cle} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Espace {idx + 1}</span>
+                  <input
+                    type="time"
+                    value={bloc.heureDebut}
+                    onChange={(e) => majBloc({ heureDebut: e.target.value })}
+                    required
+                    className="px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                    aria-label={`Début espace ${idx + 1}`}
+                  />
+                  <span className="text-slate-400">→</span>
+                  <input
+                    type="time"
+                    value={bloc.heureFin}
+                    onChange={(e) => majBloc({ heureFin: e.target.value })}
+                    required
+                    className="px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                    aria-label={`Fin espace ${idx + 1}`}
+                  />
+                  {blocsEspaces.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setBlocsEspaces(prev => prev.filter(b => b.cle !== bloc.cle))}
+                      className="ml-auto text-xs font-bold text-red-600 hover:bg-red-50 px-2 py-1 rounded-lg"
+                    >
+                      Retirer
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      majBloc({
+                        espaces: toutGrandBassin
+                          ? bloc.espaces.filter(e => !lignes.includes(e))
+                          : [...new Set([...bloc.espaces, ...lignes])],
+                      })
+                    }
+                    className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition-all ${
+                      toutGrandBassin ? 'bg-cyan-600 text-white border-cyan-600' : 'bg-white text-cyan-800 border-cyan-300 hover:bg-cyan-50'
+                    }`}
+                  >
+                    Tout le grand bassin
+                  </button>
+                  {PRESET_LIEUX.map(espace => (
+                    <label
+                      key={espace}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border cursor-pointer transition-all ${
+                        bloc.espaces.includes(espace)
+                          ? 'bg-slate-900 text-white border-slate-900'
+                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={bloc.espaces.includes(espace)}
+                        onChange={() => basculerEspace(espace)}
+                      />
+                      {espace.replace('Grand Bassin - ', '')}
+                    </label>
+                  ))}
+                  <input
+                    type="text"
+                    value={bloc.autre}
+                    onChange={(e) => majBloc({ autre: e.target.value })}
+                    placeholder="Autre lieu (ex : Salle de gym)"
+                    className="px-2.5 py-1 text-xs border border-slate-300 rounded-lg w-48"
+                  />
+                </div>
+              </div>
+            )
+          })}
+
+          <button
+            type="button"
+            onClick={() => {
+              const dernier = blocsEspaces[blocsEspaces.length - 1]
+              setBlocsEspaces(prev => [...prev, nouveauBloc(dernier?.heureDebut || '', dernier?.heureFin || '', [])])
+            }}
+            className="text-xs font-bold text-cyan-800 bg-white border border-dashed border-cyan-400 hover:bg-cyan-50 px-3 py-1.5 rounded-lg"
+          >
+            + Ajouter un espace avec d&apos;autres horaires
+          </button>
         </div>
 
         {/* Bloc Temps à facturer par coach */}
@@ -919,32 +1041,6 @@ export default function PlanningFixeManager() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Lieu / Emplacement *
-            </label>
-            <select
-              value={lieuType}
-              onChange={(e) => setLieuType(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent mb-2"
-            >
-              {PRESET_LIEUX.map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-              <option value="Autre">Autre lieu (Saisie manuelle)</option>
-            </select>
-            {lieuType === 'Autre' && (
-              <input
-                type="text"
-                value={lieuCustom}
-                onChange={(e) => setLieuCustom(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent animate-fadeIn"
-                placeholder="Saisissez le lieu (ex: Salle de gym)"
-              />
-            )}
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Couleur
@@ -1184,8 +1280,8 @@ export default function PlanningFixeManager() {
                                 <span className="text-gray-400">Non assigné</span>
                               )}
                             </td>
-                            <td className="py-3 px-4 text-sm text-gray-600">
-                              {planning.lieu || '-'}
+                            <td className="py-3 px-4 text-sm text-gray-600 font-medium">
+                              {libelleOccupations(planning)}
                             </td>
                             <td className="py-3 px-4 text-center">
                               <span
@@ -1259,8 +1355,9 @@ export default function PlanningFixeManager() {
           {/* Compute dynamic lane assignments & stats */}
           {(() => {
             const dayPlannings = plannings.filter(p => p.jourSemaine === selectedDayBassin)
+            const dayPlanningsAffiches = eclaterParOccupation(dayPlannings)
             
-            const hasPPG = dayPlannings.some(p => {
+            const hasPPG = dayPlanningsAffiches.some(p => {
               const lieu = p.lieu || ''
               return lieu.toUpperCase().includes('PPG')
             })
@@ -1290,7 +1387,7 @@ export default function PlanningFixeManager() {
             const explicitPlannings: Planning[] = []
             const genericPlannings: Planning[] = []
             
-            dayPlannings.forEach(p => {
+            dayPlanningsAffiches.forEach(p => {
               const lieu = p.lieu || ''
               if (laneKeys.includes(lieu)) {
                 explicitPlannings.push(p)
@@ -1579,11 +1676,11 @@ export default function PlanningFixeManager() {
                                       key={planning.id}
                                       draggable
                                       onDragStart={(e) => {
-                                        e.dataTransfer.setData('text/plain', planning.id)
+                                        e.dataTransfer.setData('text/plain', (planning as any).planningSourceId || planning.id)
                                         e.dataTransfer.effectAllowed = 'move'
                                       }}
                                       onClick={() => {
-                                        handleEdit(planning)
+                                        handleEdit((planning as any).seance || planning)
                                         setShowForm(true)
                                         window.scrollTo({ top: 0, behavior: 'smooth' })
                                       }}

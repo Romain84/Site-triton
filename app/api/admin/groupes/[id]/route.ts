@@ -46,6 +46,7 @@ export async function PUT(
         enfantsBureau: validatedData.enfantsBureau,
         ordre: validatedData.ordre,
         actif: validatedData.actif,
+        visiblePublic: validatedData.visiblePublic,
         annule: validatedData.annule,
         complet: validatedData.complet,
       },

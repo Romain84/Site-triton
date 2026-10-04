@@ -3,6 +3,7 @@ import { getAdminSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { clearChatbotKnowledgeCache } from '@/lib/chatbot-knowledge'
+import { sanitizeOccupations, calculerAmplitude } from '@/lib/planning-occupations'
 
 const planningLogger = logger.withContext('PlanningFixe')
 
@@ -34,6 +35,7 @@ export async function GET() {
             couleur: true,
           },
         },
+        occupations: { orderBy: { ordre: 'asc' } },
       },
       orderBy: [
         { jourSemaine: 'asc' },
@@ -71,13 +73,27 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { jourSemaine, heureDebut, heureFin, groupeId, coachIds = [], lieu, couleur, nomSession, semaineImpaire, tempsFacture } = body
+    const { jourSemaine, groupeId, coachIds = [], lieu, couleur, nomSession, semaineImpaire, tempsFacture } = body
+    let { heureDebut, heureFin } = body
+
+    // Espaces occupés : si fournis, ils définissent les horaires globaux de la séance
+    let occupations = sanitizeOccupations(body.occupations)
+    const amplitude = calculerAmplitude(occupations)
+    if (amplitude) {
+      heureDebut = amplitude.heureDebut
+      heureFin = amplitude.heureFin
+    }
 
     if (!jourSemaine || !heureDebut || !heureFin || !groupeId) {
       return NextResponse.json(
         { error: 'Jour, heures et groupe sont requis' },
         { status: 400 }
       )
+    }
+
+    const lieuFinal = occupations[0]?.espace || lieu || 'Piscine de Cavaillon'
+    if (occupations.length === 0) {
+      occupations = [{ espace: lieuFinal, heureDebut, heureFin }]
     }
 
     const parsedTempsFacture = tempsFacture !== undefined && tempsFacture !== null && tempsFacture !== '' 
@@ -90,7 +106,7 @@ export async function POST(request: NextRequest) {
         heureDebut,
         heureFin,
         groupeId,
-        lieu: lieu || 'Piscine de Cavaillon',
+        lieu: lieuFinal,
         couleur: couleur || '#00bcd4',
         nomSession: nomSession || null,
         semaineImpaire: Boolean(semaineImpaire),
@@ -98,6 +114,9 @@ export async function POST(request: NextRequest) {
         actif: true,
         coachs: {
           create: coachIds.map((coachId: string) => ({ coachId })),
+        },
+        occupations: {
+          create: occupations.map((o, ordre) => ({ ...o, ordre })),
         },
       },
       include: {
@@ -111,6 +130,7 @@ export async function POST(request: NextRequest) {
         groupe: {
           select: { id: true, nom: true, couleur: true },
         },
+        occupations: { orderBy: { ordre: 'asc' } },
       },
     })
 

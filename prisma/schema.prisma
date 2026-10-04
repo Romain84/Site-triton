@@ -74,10 +74,26 @@ model Planning {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   coachs      CoachPlanning[]
+  occupations OccupationPlanning[]
   groupe      Groupe?         @relation(fields: [groupeId], references: [id])
 
   @@index([groupeId])
   @@map("plannings")
+}
+
+// Espaces occupés par une séance (ex : PPG 18:15-19:00, Petit Bassin 19:00-20:00, Lignes 1 à 4 19:15-20:00).
+// Sert uniquement à l'affichage du planning bassin : la facturation utilise les horaires globaux et tempsFacture de la séance.
+model OccupationPlanning {
+  id         String   @id @default(cuid())
+  planningId String
+  espace     String
+  heureDebut String
+  heureFin   String
+  ordre      Int      @default(0)
+  planning   Planning @relation(fields: [planningId], references: [id], onDelete: Cascade)
+
+  @@index([planningId])
+  @@map("occupations_planning")
 }
 
 model CoachPlanning {
@@ -174,6 +190,7 @@ model Groupe {
   prixLicence            Float?
   prixFormationPSE       Float?
   actif                  Boolean                @default(true)
+  visiblePublic          Boolean                @default(true)
   annule                 Boolean                @default(false)
   complet                Boolean                @default(false)
   ordre                  Int                    @default(0)

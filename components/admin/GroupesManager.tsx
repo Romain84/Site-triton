@@ -24,6 +24,7 @@ interface Groupe {
   prixFormationPSE: number | null
   niveau: string | null
   actif: boolean
+  visiblePublic?: boolean
   annule: boolean
   complet: boolean
   dateDebut: string | null
@@ -61,6 +62,7 @@ export default function GroupesManager() {
   const [prixFormationPSE, setPrixFormationPSE] = useState('')
   const [niveau, setNiveau] = useState('')
   const [actif, setActif] = useState(true)
+  const [visiblePublic, setVisiblePublic] = useState(true)
   const [annule, setAnnule] = useState(false)
   const [complet, setComplet] = useState(false)
   const [dateDebut, setDateDebut] = useState('')
@@ -107,6 +109,7 @@ export default function GroupesManager() {
     setPrixFormationPSE('')
     setNiveau('')
     setActif(true)
+    setVisiblePublic(true)
     setAnnule(false)
     setComplet(false)
     setDateDebut('')
@@ -139,6 +142,7 @@ export default function GroupesManager() {
     setPrixFormationPSE(groupe.prixFormationPSE?.toString() || '')
     setNiveau(groupe.niveau || '')
     setActif(groupe.actif)
+    setVisiblePublic(groupe.visiblePublic !== false)
     setAnnule(groupe.annule || false)
     setComplet(groupe.complet || false)
     setDateDebut(groupe.dateDebut ? groupe.dateDebut.split('T')[0] : '')
@@ -191,6 +195,7 @@ export default function GroupesManager() {
           prixFormationPSE: prixFormationPSE || null,
           niveau: niveau || null,
           actif,
+          visiblePublic,
           annule,
           complet,
           couleur: couleur || null,
@@ -731,9 +736,27 @@ export default function GroupesManager() {
               onChange={(e) => setActif(e.target.checked)}
               className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
             />
-            <label htmlFor="actif" className="ml-2 text-sm text-gray-700">
-              Groupe actif (visible sur le site)
+            <label htmlFor="actif" className="ml-2 text-sm text-gray-700 font-medium">
+              Groupe actif (utilisable dans le club)
             </label>
+          </div>
+
+          <div className="flex items-start">
+            <input
+              type="checkbox"
+              id="visiblePublic"
+              checked={visiblePublic}
+              onChange={(e) => setVisiblePublic(e.target.checked)}
+              className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary mt-0.5"
+            />
+            <div className="ml-2">
+              <label htmlFor="visiblePublic" className="text-sm text-gray-700 font-medium block">
+                Afficher sur le site public (page Groupes, inscription, chatbot)
+              </label>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Décochez pour les groupes purement techniques (ex : PPG) : leurs séances restent visibles au planning pour occuper le bassin, mais sans fiche ni inscription publique.
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center">
@@ -958,6 +981,11 @@ export default function GroupesManager() {
                         >
                           {groupe.actif ? 'Actif' : 'Inactif'}
                         </span>
+                        {groupe.visiblePublic === false && (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800" title="Masqué sur le site public">
+                            Masqué public
+                          </span>
+                        )}
                         {groupe.complet && (
                           <span className="px-2 py-0.5 text-xs font-black bg-red-600 text-white rounded-md uppercase tracking-wider">
                             COMPLET

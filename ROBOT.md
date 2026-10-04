@@ -221,7 +221,7 @@ npx prisma db push
 npx prisma studio
 
 # Déploiement VPS (sur 146.59.239.75)
-cd /opt/site-triton
+cd /root/docker/site_triton
 git pull origin main
 docker compose -f docker-compose.vps.yml build web
 docker compose -f docker-compose.vps.yml up -d web

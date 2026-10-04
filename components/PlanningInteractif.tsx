@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { eclaterParOccupation, libelleOccupations } from '@/lib/planning-occupations'
 
 interface Planning {
   id: string
@@ -13,6 +14,7 @@ interface Planning {
     id: string
     nom: string
     couleur: string | null
+    visiblePublic?: boolean
   } | null
   coachs: Array<{
     id: string
@@ -26,6 +28,11 @@ interface Planning {
   nomSession: string | null
   semaineImpaire?: boolean
   actif: boolean
+  occupations?: Array<{
+    espace: string
+    heureDebut: string
+    heureFin: string
+  }>
 }
 
 interface Groupe {
@@ -579,7 +586,8 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
           const nextLaneKey = grandBassinLaneKeys[nextIdx]
           const nextPlannings = laneAssignments[nextLaneKey]
           const matchingIndex = nextPlannings.findIndex(other => 
-            (other.nomSession || other.groupe?.nom) === groupName &&
+            (((other as any).planningSourceId && (p as any).planningSourceId && (other as any).planningSourceId === (p as any).planningSourceId) ||
+             (other.nomSession || other.groupe?.nom) === groupName) &&
             other.heureDebut === p.heureDebut &&
             other.heureFin === p.heureFin
           )
@@ -962,7 +970,7 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
                           return (
                             <div
                               key={planning.id}
-                              onClick={() => setSelectedPlanningDetails(planning)}
+                              onClick={() => setSelectedPlanningDetails((planning as any).seance || planning)}
                               title={`${planning.nomSession || planning.groupe?.nom}\nHoraires : ${planning.heureDebut} - ${planning.heureFin}\nLieu : ${planning.lieu || 'Piscine'}${planning.coachs && planning.coachs.length > 0 ? `\nCoach(s) : ${planning.coachs.map(c => c.coach.prenom).join(', ')}` : ''}`}
                               style={{
                                 top: `calc(${topPct}% + 1px)`,
@@ -1270,7 +1278,7 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
 
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 font-medium">
                             <span className="flex items-center gap-1">
-                              📍 {session.lieu || 'Piscine Municipale'}
+                              📍 {libelleOccupations(session) || session.lieu || 'Piscine Municipale'}
                             </span>
                             {session.coachs.length > 0 && (
                               <span className="flex items-center gap-1">
@@ -1347,7 +1355,7 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
                                   {session.nomSession || session.groupe?.nom}
                                 </h3>
                                 <div className="flex gap-x-4 mt-1 text-[10px] text-slate-500 font-medium">
-                                  <span>📍 {session.lieu || 'Piscine'}</span>
+                                  <span>📍 {libelleOccupations(session) || session.lieu || 'Piscine'}</span>
                                   {session.coachs.length > 0 && (
                                     <span>👨‍🏫 {session.coachs.map(c => c.coach.prenom).join(', ')}</span>
                                   )}
@@ -1440,7 +1448,7 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
                                         </div>
                                       )}
                                       <div className="text-[9px] print:text-[7px] print:leading-none font-bold mt-0.5 uppercase tracking-wide truncate max-w-[110px] print:max-w-none mx-auto opacity-75">
-                                        {session.lieu || 'Piscine'}
+                                        {libelleOccupations(session) || session.lieu || 'Piscine'}
                                       </div>
                                     </div>
                                   ))}
@@ -1486,7 +1494,7 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
 
           {/* 1. Screen view: only show currently selected day */}
           <div className="print:hidden">
-            {renderPoolGrid(selectedDayBassin, planningsFiltres.filter(p => p.jourSemaine === selectedDayBassin), false)}
+            {renderPoolGrid(selectedDayBassin, eclaterParOccupation(planningsFiltres.filter(p => p.jourSemaine === selectedDayBassin)), false)}
           </div>
 
           {/* 2. Print view: loop through all 7 days, each on its own page */}
@@ -1496,7 +1504,7 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
               if (dayPlannings.length === 0) return null // Only print days that have planning slots
               return (
                 <div key={day} className="page-break-container">
-                  {renderPoolGrid(day, dayPlannings, true)}
+                  {renderPoolGrid(day, eclaterParOccupation(dayPlannings), true)}
                 </div>
               )
             })}
@@ -1551,7 +1559,7 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
               </div>
 
               <div className="flex items-center gap-3 text-slate-600 font-semibold text-sm">
-                <span>🏊 {selectedPlanningDetails.lieu || 'Piscine Municipale'}</span>
+                <span>🏊 {libelleOccupations(selectedPlanningDetails) || selectedPlanningDetails.lieu || 'Piscine Municipale'}</span>
               </div>
 
               {selectedPlanningDetails.coachs && selectedPlanningDetails.coachs.length > 0 && (
@@ -1566,12 +1574,14 @@ export default function PlanningInteractif({ plannings, groupes, initialGroupeId
               )}
             </div>
 
-            <a
-              href="/inscription"
-              className="w-full bg-slate-950 text-white font-bold text-center text-xs uppercase tracking-wider py-3.5 rounded-xl hover:bg-slate-900 transition-colors shadow-sm active:scale-[0.98]"
-            >
-              S&apos;inscrire à ce groupe
-            </a>
+            {selectedPlanningDetails.groupe?.visiblePublic !== false && (
+              <a
+                href="/inscription"
+                className="w-full bg-slate-950 text-white font-bold text-center text-xs uppercase tracking-wider py-3.5 rounded-xl hover:bg-slate-900 transition-colors shadow-sm active:scale-[0.98]"
+              >
+                S&apos;inscrire à ce groupe
+              </a>
+            )}
           </div>
         </div>
       )}

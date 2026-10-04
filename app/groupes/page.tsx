@@ -34,6 +34,7 @@ async function getGroupes() {
     const list = await prisma.groupe.findMany({
       where: {
         actif: true,
+        visiblePublic: true,
       },
       orderBy: { ordre: 'asc' },
       select: {

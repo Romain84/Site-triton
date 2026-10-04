@@ -3,6 +3,7 @@ import { getAdminSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { clearChatbotKnowledgeCache } from '@/lib/chatbot-knowledge'
+import { sanitizeOccupations, calculerAmplitude } from '@/lib/planning-occupations'
 
 const planningLogger = logger.withContext('PlanningFixe')
 
@@ -19,21 +20,59 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const { jourSemaine, heureDebut, heureFin, groupeId, coachIds = [], lieu, couleur, actif, nomSession, semaineImpaire, tempsFacture } = body
+    const { jourSemaine, groupeId, coachIds = [], couleur, actif, nomSession, semaineImpaire, tempsFacture } = body
+    let { heureDebut, heureFin, lieu } = body
 
     const parsedTempsFacture = tempsFacture !== undefined 
       ? (tempsFacture !== null && tempsFacture !== '' ? parseInt(String(tempsFacture), 10) : null)
       : undefined
+
+    const existant = await prisma.planning.findUnique({
+      where: { id },
+      include: { occupations: { orderBy: { ordre: 'asc' } } },
+    })
+    if (!existant) {
+      return NextResponse.json({ error: 'Séance introuvable' }, { status: 404 })
+    }
+
+    // Espaces occupés :
+    // - fournis par le formulaire -> ils remplacent les anciens et définissent les horaires globaux
+    // - non fournis et séance mono-espace -> l'espace unique suit le lieu et les horaires (glisser-déposer, édition rapide)
+    // - non fournis et séance multi-espaces -> espaces et horaires globaux conservés
+    let nouvellesOccupations: { espace: string; heureDebut: string; heureFin: string }[] | null = null
+    if (Array.isArray(body.occupations)) {
+      nouvellesOccupations = sanitizeOccupations(body.occupations)
+      const amplitude = calculerAmplitude(nouvellesOccupations)
+      if (amplitude) {
+        heureDebut = amplitude.heureDebut
+        heureFin = amplitude.heureFin
+        lieu = nouvellesOccupations[0].espace
+      }
+    } else if (existant.occupations.length > 1) {
+      heureDebut = existant.heureDebut
+      heureFin = existant.heureFin
+      lieu = existant.lieu
+    }
+    const debutFinal = heureDebut || existant.heureDebut
+    const finFinal = heureFin || existant.heureFin
+    const lieuFinal = lieu ?? existant.lieu
+    if (!nouvellesOccupations || nouvellesOccupations.length === 0) {
+      if (existant.occupations.length <= 1) {
+        nouvellesOccupations = [{ espace: lieuFinal || 'Piscine de Cavaillon', heureDebut: debutFinal, heureFin: finFinal }]
+      } else {
+        nouvellesOccupations = null
+      }
+    }
 
     // Update planning and replace coach assignments
     const planning = await prisma.planning.update({
       where: { id },
       data: {
         jourSemaine,
-        heureDebut,
-        heureFin,
+        heureDebut: debutFinal,
+        heureFin: finFinal,
         groupeId,
-        lieu,
+        lieu: lieuFinal,
         couleur,
         nomSession: nomSession || null,
         semaineImpaire: semaineImpaire !== undefined ? Boolean(semaineImpaire) : false,
@@ -45,6 +84,12 @@ export async function PUT(
           deleteMany: {}, // Remove all existing coach assignments
           create: coachIds.map((coachId: string) => ({ coachId })), // Create new assignments
         },
+        ...(nouvellesOccupations && {
+          occupations: {
+            deleteMany: {},
+            create: nouvellesOccupations.map((o, ordre) => ({ ...o, ordre })),
+          },
+        }),
       },
       include: {
         coachs: {
@@ -57,6 +102,7 @@ export async function PUT(
         groupe: {
           select: { id: true, nom: true, couleur: true },
         },
+        occupations: { orderBy: { ordre: 'asc' } },
       },
     })
 
