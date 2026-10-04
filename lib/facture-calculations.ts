@@ -439,7 +439,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     select: { heuresAdminHebdo: true },
   })
 
-  const manualRempIds = (factureExistante?.lignes?.map(l => l.remplacementId).filter(Boolean) as string[]) || []
+  const manualRempIds = (factureExistante?.lignes?.map(l => l.remplacementId).filter(id => Boolean(id) && !id?.startsWith('comp_')) as string[]) || []
 
   // 2. Remplacements et Absences (pour tout le mois concerné)
   const [remplacementsEffectues, remplacementsRecus] = await Promise.all([

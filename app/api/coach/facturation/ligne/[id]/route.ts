@@ -76,7 +76,7 @@ export async function PUT(
       },
     })
 
-    if (updatedLigne.remplacementId) {
+    if (updatedLigne.remplacementId && !updatedLigne.remplacementId.startsWith('comp_')) {
       try {
         await prisma.remplacement.update({
           where: { id: updatedLigne.remplacementId },
@@ -180,12 +180,17 @@ export async function DELETE(
       )
     }
 
-    if (ligne.remplacementId?.startsWith('comp_')) {
+    const compGroupId = ligne.groupeCompetitionId || (ligne.remplacementId?.startsWith('comp_') ? ligne.remplacementId : null)
+
+    if (compGroupId) {
       // Supprimer toutes les lignes associées à cette compétition (forfait compétition + éventuel forfait transport)
       await prisma.ligneFactureCoach.deleteMany({
         where: {
           factureId: ligne.factureId,
-          remplacementId: ligne.remplacementId,
+          OR: [
+            { groupeCompetitionId: compGroupId },
+            { remplacementId: compGroupId },
+          ],
         },
       })
     } else {

@@ -58,6 +58,17 @@ interface CoachEnCoursItem {
   heuresRemplacements: number
   heuresAbsences: number
   heuresManuelles: number
+  anomalies?: {
+    id: string
+    code: string
+    severite: 'error' | 'warning' | 'info'
+    titre: string
+    description: string
+    date?: string
+  }[]
+  nbAnomalies?: number
+  nbErreurs?: number
+  nbWarnings?: number
   details: any | null
 }
 
@@ -700,10 +711,16 @@ export default function FacturesManager() {
           }`}
         >
           <span>⚡</span>
-          <span>Factures en cours & Génération</span>
-          <span className="ml-1 px-2 py-0.5 rounded-full text-[11px] bg-sky-50 text-sky-700 border border-sky-200 font-bold">
-            Temps réel
-          </span>
+          <span>Contrôle du mois & Factures en cours</span>
+          {enCoursData?.stats?.totalAnomalies && enCoursData.stats.totalAnomalies > 0 ? (
+            <span className="ml-1 px-2 py-0.5 rounded-full text-[11px] bg-amber-100 text-amber-800 border border-amber-200 font-bold">
+              {enCoursData.stats.totalAnomalies} point{enCoursData.stats.totalAnomalies > 1 ? 's' : ''}
+            </span>
+          ) : (
+            <span className="ml-1 px-2 py-0.5 rounded-full text-[11px] bg-sky-50 text-sky-700 border border-sky-200 font-bold">
+              Temps réel
+            </span>
+          )}
         </button>
       </div>
 
@@ -995,40 +1012,69 @@ export default function FacturesManager() {
 
           {/* Cartes statistiques globales */}
           {enCoursData?.stats && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="card p-4 border-l-4 border-l-primary">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total prévisionnel</p>
-                <p className="text-xl sm:text-2xl font-black text-primary mt-1">
-                  {enCoursData.stats.totalMontant.toFixed(2)} €
-                </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Tous coachs confondus</p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                <div className="card p-4 border-l-4 border-l-primary">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total prévisionnel</p>
+                  <p className="text-xl sm:text-2xl font-black text-primary mt-1">
+                    {enCoursData.stats.totalMontant.toFixed(2)} €
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Tous coachs confondus</p>
+                </div>
+
+                <div className="card p-4 border-l-4 border-l-sky-400">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Volume d&apos;heures</p>
+                  <p className="text-xl sm:text-2xl font-black text-slate-800 mt-1">
+                    {formatHeuresEnHM(enCoursData.stats.totalHeures)}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">({enCoursData.stats.totalHeures.toFixed(1)} h nettes)</p>
+                </div>
+
+                <div className="card p-4 border-l-4 border-l-emerald-400">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Coachs actifs</p>
+                  <p className="text-xl sm:text-2xl font-black text-emerald-700 mt-1">
+                    {enCoursData.stats.coachesActifs} / {enCoursData.stats.totalCoaches}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Avec heures ou forfaits</p>
+                </div>
+
+                <div className="card p-4 border-l-4 border-l-purple-400">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Statut factures</p>
+                  <p className="text-xl sm:text-2xl font-black text-purple-700 mt-1">
+                    {enCoursData.coaches.filter((c) => c.statut !== 'non_generee').length} générée(s)
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {enCoursData.coaches.filter((c) => c.statut === 'non_generee').length} en attente
+                  </p>
+                </div>
+
+                <div className={`card p-4 border-l-4 ${enCoursData.stats.totalAnomalies && enCoursData.stats.totalAnomalies > 0 ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-emerald-500'}`}>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Contrôle / Alertes</p>
+                  <p className={`text-xl sm:text-2xl font-black mt-1 ${enCoursData.stats.totalAnomalies && enCoursData.stats.totalAnomalies > 0 ? 'text-amber-800' : 'text-emerald-700'}`}>
+                    {enCoursData.stats.totalAnomalies || 0}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {enCoursData.stats.totalAnomalies && enCoursData.stats.totalAnomalies > 0
+                      ? `Sur ${enCoursData.stats.coachesAvecAnomalies || 0} coach(s)`
+                      : '✅ Aucune anomalie'}
+                  </p>
+                </div>
               </div>
 
-              <div className="card p-4 border-l-4 border-l-sky-400">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Volume d&apos;heures</p>
-                <p className="text-xl sm:text-2xl font-black text-slate-800 mt-1">
-                  {enCoursData.stats.totalHeures.toFixed(1)} h
-                </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Heures nettes calculées</p>
-              </div>
-
-              <div className="card p-4 border-l-4 border-l-emerald-400">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Coachs avec activité</p>
-                <p className="text-xl sm:text-2xl font-black text-emerald-700 mt-1">
-                  {enCoursData.stats.coachesActifs} / {enCoursData.stats.totalCoaches}
-                </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Ayant des heures ou forfaits</p>
-              </div>
-
-              <div className="card p-4 border-l-4 border-l-purple-400">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Statut des factures</p>
-                <p className="text-xl sm:text-2xl font-black text-purple-700 mt-1">
-                  {enCoursData.coaches.filter((c) => c.statut !== 'non_generee').length} générée(s)
-                </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  {enCoursData.coaches.filter((c) => c.statut === 'non_generee').length} en attente
-                </p>
-              </div>
+              {/* Bannière de points de vigilance si anomalies détectées */}
+              {enCoursData.stats.totalAnomalies && enCoursData.stats.totalAnomalies > 0 ? (
+                <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-4 flex items-start gap-3">
+                  <span className="text-xl mt-0.5">⚠️</span>
+                  <div className="space-y-0.5 text-xs text-amber-900">
+                    <p className="font-bold text-amber-950">
+                      {enCoursData.stats.totalAnomalies} point(s) de vigilance détecté(s) sur {enCoursData.stats.coachesAvecAnomalies} entraîneur(s)
+                    </p>
+                    <p className="text-amber-800 leading-relaxed">
+                      Certaines déclarations nécessitent une attention particulière (absence sans créneau, durée déclarée supérieure au cours, remplacement simultané, etc.). Consultez la colonne <strong>&quot;Contrôle &amp; Alertes&quot;</strong> du tableau ci-dessous ou cliquez sur <strong>&quot;Détail&quot;</strong> pour examiner et valider.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -1057,6 +1103,7 @@ export default function FacturesManager() {
                       <th className="py-3.5 px-4 text-right">Total heures</th>
                       <th className="py-3.5 px-4 text-right">Taux</th>
                       <th className="py-3.5 px-4 text-right">Total prévisionnel</th>
+                      <th className="py-3.5 px-4 text-center">Contrôle &amp; Alertes</th>
                       <th className="py-3.5 px-4 text-center">Actions</th>
                     </tr>
                   </thead>
@@ -1095,13 +1142,13 @@ export default function FacturesManager() {
                           </td>
 
                           <td className="py-3.5 px-4 text-right text-slate-700 font-medium">
-                            {c.heuresFixes.toFixed(1)}h
+                            {formatHeuresEnHM(c.heuresFixes)}
                           </td>
 
                           <td className="py-3.5 px-4 text-right">
                             {c.heuresRemplacements > 0 ? (
                               <span className="text-emerald-700 font-semibold">
-                                +{c.heuresRemplacements.toFixed(1)}h
+                                +{formatHeuresEnHM(c.heuresRemplacements)}
                               </span>
                             ) : (
                               <span className="text-slate-300">-</span>
@@ -1111,7 +1158,7 @@ export default function FacturesManager() {
                           <td className="py-3.5 px-4 text-right">
                             {c.heuresAbsences > 0 ? (
                               <span className="text-red-700 font-semibold">
-                                -{c.heuresAbsences.toFixed(1)}h
+                                -{formatHeuresEnHM(c.heuresAbsences)}
                               </span>
                             ) : (
                               <span className="text-slate-300">-</span>
@@ -1120,7 +1167,10 @@ export default function FacturesManager() {
 
                           <td className="py-3.5 px-4 text-right">
                             <span className="font-bold text-slate-900">
-                              {c.totalHeures.toFixed(1)}h
+                              {formatHeuresEnHM(c.totalHeures)}
+                            </span>
+                            <span className="block text-[10px] text-slate-400">
+                              ({c.totalHeures.toFixed(1)}h)
                             </span>
                           </td>
 
@@ -1132,6 +1182,34 @@ export default function FacturesManager() {
                             <span className="text-base font-black text-primary">
                               {c.totalMontant.toFixed(2)} €
                             </span>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-center">
+                            {c.nbAnomalies && c.nbAnomalies > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenReadOnlyPreview(c)}
+                                className={`inline-flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-xl border text-center transition-all cursor-pointer ${
+                                  c.nbErreurs && c.nbErreurs > 0
+                                    ? 'bg-red-50 text-red-800 border-red-200 hover:bg-red-100'
+                                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                                }`}
+                                title={c.anomalies?.map(a => `• ${a.titre} : ${a.description}`).join('\n')}
+                              >
+                                <span className="inline-flex items-center gap-1 text-[11px] font-black">
+                                  <span>⚠️</span>
+                                  <span>{c.nbAnomalies} point{c.nbAnomalies > 1 ? 's' : ''}</span>
+                                </span>
+                                <span className="text-[10px] text-slate-600 font-medium truncate max-w-[130px]">
+                                  {c.anomalies?.[0]?.titre}
+                                </span>
+                              </button>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span>✅</span>
+                                <span>Conforme</span>
+                              </span>
+                            )}
                           </td>
 
                           <td className="py-3.5 px-4 text-center">
@@ -1717,6 +1795,48 @@ export default function FacturesManager() {
                   )}
                 </div>
               </div>
+
+              {/* Points de vigilance & Contrôle */}
+              {readOnlyCoachPreview.anomalies && readOnlyCoachPreview.anomalies.length > 0 ? (
+                <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-amber-950 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                      <span>⚠️</span>
+                      <span>Points de vigilance à contrôler ({readOnlyCoachPreview.anomalies.length})</span>
+                    </h4>
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                      Vérification conseillée
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {readOnlyCoachPreview.anomalies.map((a, aIdx) => (
+                      <div
+                        key={a.id || aIdx}
+                        className="bg-white/95 p-3 rounded-xl border border-amber-200 shadow-2xs space-y-1 text-xs"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`font-bold ${a.severite === 'error' ? 'text-red-700' : a.severite === 'warning' ? 'text-amber-900' : 'text-blue-900'}`}>
+                            {a.severite === 'error' ? '🔴' : a.severite === 'warning' ? '🟠' : 'ℹ️'} {a.titre}
+                          </span>
+                          {a.date && (
+                            <span className="text-[10px] text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded">
+                              {a.date}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                          {a.description}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-800 flex items-center gap-2">
+                  <span>✅</span>
+                  <span><strong>Contrôle conforme :</strong> Aucun point de vigilance ni anomalie détecté pour ce coach ce mois-ci.</span>
+                </div>
+              )}
 
               {readOnlyCoachPreview.details?.sections && readOnlyCoachPreview.details.sections.length > 0 ? (
                 renderFactureSections(readOnlyCoachPreview.details.sections)

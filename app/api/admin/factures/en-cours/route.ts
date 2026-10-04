@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { requireAdmin } from '@/lib/api/guards'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
+import { analyserControleMois } from '@/lib/services/facture-controle-service'
 
 const adminLogger = logger.withContext('AdminFacturesEnCours')
 
@@ -80,6 +81,11 @@ export async function GET(request: NextRequest) {
           const heuresAbsences = (details.lignesAbsences || []).reduce((acc, l) => acc + (l.heures || 0), 0)
           const heuresManuelles = (details.lignesManuelles || []).reduce((acc, l) => acc + (l.heures || 0), 0)
 
+          // Analyse automatique des anomalies et points de vigilance
+          const anomalies = await analyserControleMois(coach.id, mois, annee, details)
+          const nbErreurs = anomalies.filter((a) => a.severite === 'error').length
+          const nbWarnings = anomalies.filter((a) => a.severite === 'warning').length
+
           return {
             coach,
             statut: existing?.statut || 'non_generee',
@@ -94,6 +100,10 @@ export async function GET(request: NextRequest) {
             heuresRemplacements,
             heuresAbsences,
             heuresManuelles,
+            anomalies,
+            nbAnomalies: anomalies.length,
+            nbErreurs,
+            nbWarnings,
             details,
           }
         } catch (err) {
@@ -112,6 +122,18 @@ export async function GET(request: NextRequest) {
             heuresRemplacements: 0,
             heuresAbsences: 0,
             heuresManuelles: 0,
+            anomalies: [
+              {
+                id: `calc-err-${coach.id}`,
+                code: 'MONTANT_NEGATIF',
+                severite: 'error',
+                titre: 'Erreur de calcul',
+                description: 'Impossible de calculer la facture pour cet entraîneur.',
+              },
+            ],
+            nbAnomalies: 1,
+            nbErreurs: 1,
+            nbWarnings: 0,
             details: null,
             error: 'Erreur de calcul',
           }
@@ -123,6 +145,8 @@ export async function GET(request: NextRequest) {
     const totalMoisMontant = results.reduce((acc, r) => acc + r.totalMontant, 0)
     const totalMoisHeures = results.reduce((acc, r) => acc + r.totalHeures, 0)
     const coachesAvecActivite = results.filter((r) => r.totalHeures > 0 || r.totalMontant > 0).length
+    const totalAnomalies = results.reduce((acc, r) => acc + (r.nbAnomalies || 0), 0)
+    const coachesAvecAnomalies = results.filter((r) => (r.nbAnomalies || 0) > 0).length
 
     return NextResponse.json({
       mois,
@@ -133,6 +157,8 @@ export async function GET(request: NextRequest) {
         totalHeures: totalMoisHeures,
         totalCoaches: results.length,
         coachesActifs: coachesAvecActivite,
+        totalAnomalies,
+        coachesAvecAnomalies,
       },
     })
   } catch (error) {

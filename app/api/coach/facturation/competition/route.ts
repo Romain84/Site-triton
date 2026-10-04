@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
         demiJournees,
         montant: montantCompetition,
         lieu: lieuFinal,
-        remplacementId: compGroupId,
+        groupeCompetitionId: compGroupId,
       },
     })
 
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
           heures: distanceKm,
           montant: montantTransport,
           lieu: lieuFinal,
-          remplacementId: compGroupId,
+          groupeCompetitionId: compGroupId,
         },
       })
     }

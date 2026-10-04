@@ -493,16 +493,18 @@ model LigneFactureCoach {
   montantFixe     Float?
   lieu            String?
   groupe          String?
-  coachRemplaceId String?
-  remplacementId  String?
-  montant         Float
-  ordre           Int          @default(0)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  coachRemplace   Coach?       @relation("LignesRemplacementCoach", fields: [coachRemplaceId], references: [id])
-  facture         FactureCoach @relation(fields: [factureId], references: [id], onDelete: Cascade)
+  coachRemplaceId     String?
+  remplacementId      String?
+  groupeCompetitionId String?
+  montant             Float
+  ordre               Int          @default(0)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  coachRemplace       Coach?       @relation("LignesRemplacementCoach", fields: [coachRemplaceId], references: [id])
+  facture             FactureCoach @relation(fields: [factureId], references: [id], onDelete: Cascade)
 
   @@index([factureId])
+  @@index([groupeCompetitionId])
   @@map("lignes_facture_coach")
 }
 
