@@ -588,7 +588,11 @@ export default function FacturesManager() {
                             className="flex items-center justify-between gap-2 px-2.5 py-1 rounded-md bg-red-50/70 border border-red-200/60 text-[11px]"
                           >
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-red-800">↳ Absence {abs.date}</span>
+                              <span className="font-bold text-red-800">
+                                {abs.type === 'annulation' || abs.description?.includes('Séance annulée')
+                                  ? `↳ Séance annulée ${abs.date}`
+                                  : `↳ Absence ${abs.date}`}
+                              </span>
                               {abs.motif && <span className="text-red-600 italic">({abs.motif})</span>}
                               {abs.coachRemplacantNom && (
                                 <span className="text-[10px] bg-white border border-red-200 text-red-700 px-1 py-0.2 rounded font-medium">

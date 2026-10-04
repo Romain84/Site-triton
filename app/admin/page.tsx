@@ -30,6 +30,7 @@ const SystemVersionsManager = lazy(() => import('@/components/admin/SystemVersio
 const PodiumsManager = lazy(() => import('@/components/admin/PodiumsManager'))
 const VisiteursManager = lazy(() => import('@/components/admin/VisiteursManager'))
 const TestsNageManager = lazy(() => import('@/components/admin/TestsNageManager'))
+const SeancesAnnuleesManager = lazy(() => import('@/components/admin/SeancesAnnuleesManager'))
 
 // Loading component
 const TabLoading = () => (
@@ -41,7 +42,7 @@ const TabLoading = () => (
   </div>
 )
 
-type Tab = 'dashboard' | 'visiteurs' | 'profils' | 'podiums' | 'tests-nage' | 'factures' | 'devis' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
+type Tab = 'dashboard' | 'visiteurs' | 'profils' | 'podiums' | 'tests-nage' | 'factures' | 'devis' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'seances-annulees' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
 
 const CATEGORIES = [
   {
@@ -75,6 +76,7 @@ const CATEGORIES = [
     items: [
       { id: 'planning-fixe', label: 'Planning Fixe', icon: '📅' },
       { id: 'planning-tournant', label: 'Planning Tournant', icon: '🔄' },
+      { id: 'seances-annulees', label: 'Séances Annulées & Exceptions', icon: '🚫' },
       { id: 'vacances', label: 'Vacances', icon: '🏖️' }
     ]
   },
@@ -337,6 +339,7 @@ const CATEGORIES = [
             {activeTab === 'cout-groupes' && <CoutGroupesTab />}
             {activeTab === 'planning-tournant' && <PlanningTournantTab />}
             {activeTab === 'planning-fixe' && <PlanningFixeTab />}
+            {activeTab === 'seances-annulees' && <SeancesAnnuleesTab />}
             {activeTab === 'evenements' && <EvenementsTab />}
             {activeTab === 'actualites' && <ActualitesTab />}
             {activeTab === 'galerie' && <GalerieTab />}
@@ -724,6 +727,11 @@ function PlanningTournantTab() {
 // Planning Fixe Tab
 function PlanningFixeTab() {
   return <PlanningFixeManager />
+}
+
+// Seances Annulees Tab
+function SeancesAnnuleesTab() {
+  return <SeancesAnnuleesManager />
 }
 
 

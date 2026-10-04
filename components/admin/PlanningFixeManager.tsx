@@ -12,6 +12,7 @@ import {
   libelleOccupations,
   type OccupationInput,
 } from '@/lib/planning-occupations'
+import ModalAnnulerSeance from '@/components/admin/ModalAnnulerSeance'
 
 interface Coach {
   id: string
@@ -472,6 +473,7 @@ export default function PlanningFixeManager() {
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingPlanning, setEditingPlanning] = useState<Planning | null>(null)
+  const [showAnnulerModal, setShowAnnulerModal] = useState(false)
 
   // View states
   const [viewMode, setViewMode] = useState<'liste' | 'bassin'>('bassin')
@@ -1172,6 +1174,14 @@ export default function PlanningFixeManager() {
               📋 Vue Liste
             </button>
           </div>
+          <button
+            onClick={() => setShowAnnulerModal(true)}
+            className="px-3.5 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors text-sm font-semibold flex items-center gap-1.5 shadow-2xs"
+            title="Annuler une séance ponctuelle ou déclarer une fermeture"
+          >
+            <span>🚫</span>
+            <span>Annuler une séance</span>
+          </button>
           <button
             onClick={() => {
               setEditingPlanning(null)
@@ -1952,6 +1962,14 @@ export default function PlanningFixeManager() {
             </div>
           </div>
         </div>
+      )}
+
+      {showAnnulerModal && (
+        <ModalAnnulerSeance
+          isOpen={showAnnulerModal}
+          onClose={() => setShowAnnulerModal(false)}
+          onSuccess={() => fetchData()}
+        />
       )}
     </div>
   )

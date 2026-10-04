@@ -56,6 +56,7 @@ interface AbsenceAssociee {
   minutes?: number
   texteDeduction?: string
   description: string
+  type?: 'absence' | 'annulation'
 }
 
 interface LigneFacture {
@@ -1239,7 +1240,9 @@ function FacturationContent() {
                                         >
                                           <div className="flex items-center gap-2 flex-wrap">
                                             <span className="font-bold text-red-800">
-                                              ↳ Absence {abs.date}
+                                              {abs.type === 'annulation' || abs.description?.includes('Séance annulée')
+                                                ? `↳ Séance annulée ${abs.date}`
+                                                : `↳ Absence ${abs.date}`}
                                             </span>
                                             {abs.motif && (
                                               <span className="text-[11px] text-red-700/80 italic">

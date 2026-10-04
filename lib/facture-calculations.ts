@@ -11,7 +11,8 @@ export interface FactureAbsenceAssociee {
   montant: number // négatif, ex: -45.00
   minutes: number // ex: 90
   texteDeduction: string // "− 1h30"
-  description: string // "↳ Absence 29/09 (piscine fermée)"
+  description: string // "↳ Absence 29/09 (piscine fermée)" ou "↳ Séance annulée 29/09 (piscine fermée)"
+  type?: 'absence' | 'annulation'
 }
 
 export interface FactureLigneCalculated {
@@ -386,10 +387,6 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       creneauDateDebut,
       dateFin,
       periodesVacances,
-      seancesAnnulees,
-      coachId,
-      creneau.planningIds,
-      creneau.groupeIds,
       creneau.semaineImpaire
     )
     const occurences = dates.length
@@ -497,6 +494,86 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
   const joursSemaineRef = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
 
+  let heuresAbsences = 0
+  const lignesAbsences: FactureLigneCalculated[] = []
+  const creneauxAnnulesKeys = new Set<string>()
+
+  // 1.b Traitement des séances annulées par le club (Lot 2)
+  // Règle métier validée : une séance annulée par le club n'est pas rémunérée au coach.
+  // La facture déduit exactement le temps facturé du créneau (sans avoir à créer une absence manuelle par coach).
+  for (const sa of seancesAnnulees) {
+    const saDateObj = new Date(sa.date)
+    const saDateKey = `${saDateObj.getFullYear()}-${String(saDateObj.getMonth() + 1).padStart(2, '0')}-${String(saDateObj.getDate()).padStart(2, '0')}`
+    const saDateCourtStr = saDateObj.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+    const saDateStr = saDateObj.toLocaleDateString('fr-FR')
+
+    const slotsDuJour = creneauxActifsParDate.get(saDateKey) || []
+
+    for (const slot of slotsDuJour) {
+      // Vérifier si cette annulation cible ce créneau :
+      // 1. Annulation générale (tous les cours du club ce jour-là)
+      // 2. Annulation ciblant spécifiquement ce coach
+      // 3. Annulation ciblant un des plannings de ce créneau
+      // 4. Annulation ciblant un des groupes de ce créneau
+      const isGeneral = !sa.planningId && !sa.groupeId && !sa.coachId
+      const isMemeCoach = sa.coachId && sa.coachId === coachId
+      const isMemePlanning = sa.planningId && slot.planningIds.includes(sa.planningId)
+      const isMemeGroupe = sa.groupeId && slot.creneauFusionne.groupeIds.includes(sa.groupeId)
+
+      if (isGeneral || isMemeCoach || isMemePlanning || isMemeGroupe) {
+        const slotKey = `${slot.creneauFusionne.jourSemaine}_${slot.creneauFusionne.heureDebut}_${slot.creneauFusionne.heureFin}`
+        const annulationSlotKey = `${saDateKey}_${slotKey}`
+
+        if (creneauxAnnulesKeys.has(annulationSlotKey)) {
+          // Déjà déduit pour ce créneau sur cette date (ex: annulation générale + règle spécifique)
+          continue
+        }
+        creneauxAnnulesKeys.add(annulationSlotKey)
+
+        const deductionMin = slot.tempsFactureMin
+        const deductionHeures = deductionMin / 60
+        const deductionMontant = deductionHeures * tauxHoraire
+        heuresAbsences += deductionHeures
+
+        const motifTexte = sa.motif?.trim() || 'piscine fermée'
+        const descAnnulation = `↳ Séance annulée ${saDateCourtStr} (${motifTexte})`
+        const nomGroupes = slot.groupes.join(' · ')
+
+        // 1. Imbrication directe sous la séance (Lot 7)
+        if (slot.creneauFusionne) {
+          slot.creneauFusionne.absencesAssociees.push({
+            id: sa.id,
+            date: saDateCourtStr,
+            dateComplete: saDateKey,
+            motif: motifTexte,
+            coachRemplacantNom: null,
+            heures: -deductionHeures,
+            montant: -deductionMontant,
+            minutes: deductionMin,
+            texteDeduction: `− ${formatMinutesEnHM(deductionMin)}`,
+            description: descAnnulation,
+            type: 'annulation',
+          })
+        }
+
+        // 2. Ligne d'absence pour la liste globale / rétrocompatibilité
+        lignesAbsences.push({
+          id: sa.id,
+          type: 'absence',
+          date: saDateObj,
+          description: `Séance annulée (${motifTexte}) – ${saDateCourtStr} ${nomGroupes}`,
+          heures: -deductionHeures,
+          montant: -deductionMontant,
+          titre: `Séance annulée — ${nomGroupes}`,
+          sousTitre: `${slot.creneauFusionne.jourSemaine} ${saDateStr} · ${slot.creneauFusionne.heureDebut} – ${slot.creneauFusionne.heureFin} · ${motifTexte}`,
+          datesBadges: [saDateCourtStr],
+          detailCalculDuree: `− ${formatMinutesEnHM(deductionMin)}`,
+          estAbsenceOrpheline: false,
+        })
+      }
+    }
+  }
+
   let heuresRemplacements = 0
   const lignesRemplacements: FactureLigneCalculated[] = []
   for (const remp of remplacementsEffectues) {
@@ -535,6 +612,38 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
     const groupeNom = slotAssocie?.groupe?.nom || 'Remplacement'
     const titre = `${groupeNom} — pour ${coachNom}`
+
+    // Si la séance a été annulée par le club ce jour-là, le remplaçant n'est pas rémunéré (Lot 2)
+    const slotKeyRemp = slotAssocie ? `${slotAssocie.jourSemaine}_${slotAssocie.heureDebut}_${slotAssocie.heureFin}` : ''
+    const annulationRempKey = `${dateKey}_${slotKeyRemp}`
+    const aAnnulationClub = creneauxAnnulesKeys.has(annulationRempKey) || seancesAnnulees.some(sa => {
+      const saD = new Date(sa.date)
+      const isMemeDate = saD.getFullYear() === rempDateObj.getFullYear() &&
+                         saD.getMonth() === rempDateObj.getMonth() &&
+                         saD.getDate() === rempDateObj.getDate()
+      if (!isMemeDate) return false
+      if (!sa.planningId && !sa.groupeId && !sa.coachId) return true
+      if (sa.planningId && remp.planningId === sa.planningId) return true
+      return false
+    })
+
+    if (aAnnulationClub) {
+      lignesRemplacements.push({
+        id: remp.id,
+        type: 'remplacement',
+        description: `Remplacement de ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin} (Séance annulée par le club : non rémunéré)`,
+        heures: 0,
+        montant: 0,
+        date: remp.date,
+        titre,
+        sousTitre: `${jourSemaineRemp} ${dateStr} · ${remp.heureDebut} – ${remp.heureFin} · séance annulée par le club`,
+        datesBadges: [rempDateCourt],
+        detailCalculDuree: '0h00',
+        coachRemplaceNom: coachNom,
+        noteInfo: 'séance annulée par le club',
+      })
+      continue
+    }
 
     // Option B : Vérifier si le coach remplaçant avait déjà un cours régulier sur cette date à la même heure
     const seancesMemeJour = creneauxEffectuesParDate.get(dateKey) || []
@@ -620,8 +729,6 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     }
   }
 
-  let heuresAbsences = 0
-  const lignesAbsences: FactureLigneCalculated[] = []
   for (const remp of remplacementsRecus) {
     const rempDateObj = new Date(remp.date)
     const dateKey = `${rempDateObj.getFullYear()}-${String(rempDateObj.getMonth() + 1).padStart(2, '0')}-${String(rempDateObj.getDate()).padStart(2, '0')}`
@@ -651,6 +758,13 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     let aChevauchement = false
 
     for (const slot of slotsDuJour) {
+      const slotKey = `${slot.creneauFusionne.jourSemaine}_${slot.creneauFusionne.heureDebut}_${slot.creneauFusionne.heureFin}`
+      const annulationSlotKey = `${dateKey}_${slotKey}`
+
+      if (creneauxAnnulesKeys.has(annulationSlotKey)) {
+        // Le créneau a déjà été déduit par une annulation club : pas de double pénalisation pour le coach
+        continue
+      }
       const chevauchementMin = Math.max(
         0,
         Math.min(rempFinMin, slot.finMin) - Math.max(rempDebutMin, slot.debutMin)
@@ -970,10 +1084,6 @@ function obtenirDatesJour(
   dateDebut: Date,
   dateFin: Date,
   periodesVacances: Array<{ dateDebut: Date; dateFin: Date }> = [],
-  seancesAnnulees: any[] = [],
-  coachId?: string,
-  planningIds: string[] = [],
-  groupeIds: string[] = [],
   semaineImpaire?: boolean
 ): Date[] {
   const joursMap: { [key: string]: number } = {
@@ -993,7 +1103,7 @@ function obtenirDatesJour(
         continue
       }
 
-      // 1. Vérifier si cette date tombe pendant une période de vacances
+      // Vérifier si cette date tombe pendant une période de vacances
       const estEnVacances = periodesVacances.some((periode) => {
         const debut = new Date(periode.dateDebut)
         const fin = new Date(periode.dateFin)
@@ -1001,57 +1111,7 @@ function obtenirDatesJour(
       })
 
       if (!estEnVacances) {
-        // 2. Vérifier si cette séance spécifique est annulée
-        const estAnnulee = seancesAnnulees.some((sa) => {
-          const saDate = new Date(sa.date)
-          const matchDate = current.getFullYear() === saDate.getFullYear() &&
-                            current.getMonth() === saDate.getMonth() &&
-                            current.getDate() === saDate.getDate()
-
-          if (!matchDate) return false
-
-          // Si pas de restriction, c'est une annulation générale
-          if (!sa.planningId && !sa.groupeId && !sa.coachId) return true
-
-          // Si spécifié pour ce coach
-          if (sa.coachId && sa.coachId === coachId) return true
-
-          // Si spécifié pour un de nos plannings :
-          // Si le créneau regroupe plusieurs plannings (simultanés), le coach reste présent sauf si TOUS les plannings du créneau sont annulés
-          if (sa.planningId && planningIds.includes(sa.planningId)) {
-            if (planningIds.length <= 1) return true
-            return planningIds.every((pid) =>
-              seancesAnnulees.some((other) => {
-                const oDate = new Date(other.date)
-                return other.planningId === pid &&
-                  current.getFullYear() === oDate.getFullYear() &&
-                  current.getMonth() === oDate.getMonth() &&
-                  current.getDate() === oDate.getDate()
-              })
-            )
-          }
-
-          // Si spécifié pour un de nos groupes :
-          // De même, le coach reste présent sauf si TOUS les groupes du créneau sont annulés
-          if (sa.groupeId && groupeIds.includes(sa.groupeId)) {
-            if (groupeIds.length <= 1) return true
-            return groupeIds.every((gid) =>
-              seancesAnnulees.some((other) => {
-                const oDate = new Date(other.date)
-                return other.groupeId === gid &&
-                  current.getFullYear() === oDate.getFullYear() &&
-                  current.getMonth() === oDate.getMonth() &&
-                  current.getDate() === oDate.getDate()
-              })
-            )
-          }
-
-          return false
-        })
-
-        if (!estAnnulee) {
-          dates.push(new Date(current))
-        }
+        dates.push(new Date(current))
       }
     }
     current.setDate(current.getDate() + 1)

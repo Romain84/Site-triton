@@ -259,7 +259,10 @@ export async function genererFacturePDF(
         // Absences associées imbriquées sous la séance
         if (ligne.absencesAssociees && ligne.absencesAssociees.length > 0) {
           for (const abs of ligne.absencesAssociees) {
-            const absDesc = `   ↳ Absence ${abs.date}${abs.motif ? ` (${abs.motif})` : ''}${abs.coachRemplacantNom ? ` — Remplacé par ${abs.coachRemplacantNom}` : ''}`
+            const isAnnulation = abs.type === 'annulation' || abs.description?.includes('Séance annulée')
+            const absDesc = isAnnulation
+              ? `   ↳ Séance annulée ${abs.date}${abs.motif ? ` (${abs.motif})` : ''}`
+              : `   ↳ Absence ${abs.date}${abs.motif ? ` (${abs.motif})` : ''}${abs.coachRemplacantNom ? ` — Remplacé par ${abs.coachRemplacantNom}` : ''}`
             tableData.push([
               {
                 content: absDesc,

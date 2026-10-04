@@ -43,7 +43,47 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(seances)
+    // Récupérer les métadonnées pour enrichir l'affichage
+    const [coaches, groupes, plannings] = await Promise.all([
+      prisma.coach.findMany({ select: { id: true, prenom: true, nom: true } }),
+      prisma.groupe.findMany({ select: { id: true, nom: true } }),
+      prisma.planning.findMany({
+        select: {
+          id: true,
+          jourSemaine: true,
+          heureDebut: true,
+          heureFin: true,
+          tempsFacture: true,
+          groupe: { select: { nom: true } },
+          coachs: { select: { coach: { select: { prenom: true, nom: true } } } },
+        },
+      }),
+    ])
+
+    const coachesMap = new Map(coaches.map((c) => [c.id, `${c.prenom} ${c.nom || ''}`.trim()]))
+    const groupesMap = new Map(groupes.map((g) => [g.id, g.nom]))
+    const planningsMap = new Map(
+      plannings.map((p) => [
+        p.id,
+        {
+          jourSemaine: p.jourSemaine,
+          heureDebut: p.heureDebut,
+          heureFin: p.heureFin,
+          groupeNom: p.groupe?.nom || 'Sans groupe',
+          tempsFacture: p.tempsFacture,
+          coachsNoms: p.coachs.map((cp) => `${cp.coach.prenom} ${cp.coach.nom || ''}`.trim()).join(', '),
+        },
+      ])
+    )
+
+    const seancesEnrichies = seances.map((s) => ({
+      ...s,
+      coachNom: s.coachId ? coachesMap.get(s.coachId) || null : null,
+      groupeNom: s.groupeId ? groupesMap.get(s.groupeId) || null : null,
+      planningInfo: s.planningId ? planningsMap.get(s.planningId) || null : null,
+    }))
+
+    return NextResponse.json(seancesEnrichies)
   } catch (error) {
     adminLogger.error('Erreur lors de la récupération des séances annulées', error)
     return NextResponse.json(
@@ -53,7 +93,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Enregistrer une nouvelle séance annulée
+// POST - Enregistrer une ou plusieurs séances annulées
 export async function POST(request: NextRequest) {
   try {
     const session = await getAdminSession()
@@ -66,7 +106,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { date, motif, planningId, groupeId, coachId } = body
+    const { date, motif, planningId, planningIds, groupeId, coachId, annulerTout } = body
 
     if (!date) {
       return NextResponse.json(
@@ -75,13 +115,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const targetDate = new Date(date)
+
+    // Cas 1 : Multiples créneaux sélectionnés
+    if (Array.isArray(planningIds) && planningIds.length > 0) {
+      const createdSeances = []
+      for (const pId of planningIds) {
+        const seance = await prisma.seanceAnnulee.create({
+          data: {
+            date: targetDate,
+            motif: motif || null,
+            planningId: pId,
+            groupeId: null,
+            coachId: null,
+          },
+        })
+        createdSeances.push(seance)
+
+        logAdminAudit({
+          action: 'seance_annulee.create',
+          actorId: session.userId,
+          actorRole: session.role,
+          targetType: 'seance_annulee',
+          targetId: seance.id,
+          details: {
+            date: seance.date,
+            motif: seance.motif,
+            planningId: seance.planningId,
+          },
+        })
+      }
+
+      return NextResponse.json({
+        success: true,
+        count: createdSeances.length,
+        seances: createdSeances,
+      }, { status: 201 })
+    }
+
+    // Cas 2 : Annulation de toute la journée ou d'une cible unique
     const seance = await prisma.seanceAnnulee.create({
       data: {
-        date: new Date(date),
+        date: targetDate,
         motif: motif || null,
-        planningId: planningId || null,
-        groupeId: groupeId || null,
-        coachId: coachId || null,
+        planningId: annulerTout ? null : (planningId || null),
+        groupeId: annulerTout ? null : (groupeId || null),
+        coachId: annulerTout ? null : (coachId || null),
       },
     })
 
@@ -98,6 +177,7 @@ export async function POST(request: NextRequest) {
         planningId: seance.planningId,
         groupeId: seance.groupeId,
         coachId: seance.coachId,
+        annulerTout: !!annulerTout,
       },
     })
 
