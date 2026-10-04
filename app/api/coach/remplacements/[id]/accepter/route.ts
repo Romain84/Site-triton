@@ -3,6 +3,7 @@ import { getCoachSession } from '@/lib/auth/session'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { syncRemplacementBillingLines } from '@/lib/services/remplacement-service'
+import { notifyRemplacementAccepte } from '@/lib/notifications'
 
 const coachLogger = logger.withContext('AccepterRemplacementAPI')
 
@@ -49,16 +50,43 @@ export async function POST(
         statut: 'accepte',
       },
       include: {
-        coachRemplace: { select: { id: true, prenom: true, nom: true } },
-        coachRemplacant: { select: { id: true, prenom: true, nom: true } },
+        coachRemplace: { select: { id: true, prenom: true, nom: true, email: true } },
+        coachRemplacant: { select: { id: true, prenom: true, nom: true, email: true } },
       },
     })
 
     // Synchronisation automatique des 2 lignes de facturation (Coach remplacé & Coach remplaçant)
     await syncRemplacementBillingLines(updated.id)
 
+    // Récupérer le groupe si lié au planning
+    let groupeNom: string | null = null
+    if (updated.planningId) {
+      const p = await prisma.planning.findUnique({
+        where: { id: updated.planningId },
+        include: { groupe: { select: { nom: true } } },
+      })
+      groupeNom = p?.nomSession || p?.groupe?.nom || null
+    }
+
+    const dateFormatted = new Date(updated.date).toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    })
+
+    if (updated.coachRemplacant) {
+      await notifyRemplacementAccepte({
+        coachRemplace: updated.coachRemplace,
+        coachRemplacant: updated.coachRemplacant,
+        dateStr: dateFormatted,
+        heureDebut: updated.heureDebut,
+        heureFin: updated.heureFin,
+        groupeNom,
+      })
+    }
+
     return NextResponse.json({
-      message: 'Remplacement accepté ! Les lignes de facturation ont été ajoutées pour vous et votre collègue.',
+      message: 'Remplacement accepté ! Les lignes de facturation ont été synchronisées pour vous et votre collègue.',
       remplacement: updated,
     })
   } catch (error) {

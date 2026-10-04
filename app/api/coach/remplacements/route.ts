@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { logger } from '@/lib/logger'
 import { syncRemplacementBillingLines } from '@/lib/services/remplacement-service'
+import { notifyRemplacementDirect, notifyAdmin } from '@/lib/notifications'
 
 const coachLogger = logger.withContext('CoachRemplacementsAPI')
 
@@ -15,6 +16,8 @@ const coachRemplacementSchema = z.object({
   coachRemplacantId: z.string().optional().nullable(),
   motif: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
+  sansRemplacant: z.boolean().optional(),
+  statut: z.enum(['en_attente', 'accepte', 'sans_remplacant']).optional(),
 })
 
 // GET: Récupérer les demandes de remplacements (ouvertes, mes absences, mes remplacements acceptés)
@@ -110,7 +113,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const statutFinal = data.coachRemplacantId ? 'accepte' : 'en_attente'
+    let statutFinal = 'en_attente'
+    if (data.coachRemplacantId) {
+      statutFinal = 'accepte'
+    } else if (data.sansRemplacant || data.statut === 'sans_remplacant') {
+      statutFinal = 'sans_remplacant'
+    }
+
+    // Récupérer les informations de groupe ou planning pour la notification
+    let groupeNom: string | null = null
+    if (data.planningId) {
+      const p = await prisma.planning.findUnique({
+        where: { id: data.planningId },
+        include: { groupe: { select: { nom: true } } },
+      })
+      groupeNom = p?.nomSession || p?.groupe?.nom || null
+    }
 
     const remplacement = await prisma.remplacement.create({
       data: {
@@ -126,21 +144,56 @@ export async function POST(request: NextRequest) {
       },
       include: {
         coachRemplace: {
-          select: { id: true, prenom: true, nom: true },
+          select: { id: true, prenom: true, nom: true, email: true },
         },
         coachRemplacant: {
-          select: { id: true, prenom: true, nom: true },
+          select: { id: true, prenom: true, nom: true, email: true },
         },
       },
     })
 
-    if (statutFinal === 'accepte') {
+    // Synchronisation de facturation immédiate
+    if (statutFinal === 'accepte' || statutFinal === 'sans_remplacant') {
       await syncRemplacementBillingLines(remplacement.id)
+    }
+
+    const dateFormatted = new Date(data.date).toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    })
+
+    // Envoi des notifications selon le statut
+    if (statutFinal === 'accepte' && remplacement.coachRemplacant) {
+      await notifyRemplacementDirect({
+        coachRemplace: remplacement.coachRemplace,
+        coachRemplacant: remplacement.coachRemplacant,
+        dateStr: dateFormatted,
+        heureDebut: data.heureDebut,
+        heureFin: data.heureFin,
+        groupeNom,
+        motif: data.motif || null,
+      })
+    } else if (statutFinal === 'sans_remplacant') {
+      await notifyAdmin({
+        sujet: `[Coachs] Absence sans remplaçant : ${remplacement.coachRemplace.prenom} (${dateFormatted})`,
+        messageTexte: `${remplacement.coachRemplace.prenom} a déclaré une absence sans remplaçant le ${dateFormatted} de ${data.heureDebut} à ${data.heureFin} (${groupeNom || 'Séance'}). Motif : ${data.motif || 'Non précisé'}.`,
+        messageHtml: `<p><strong>${remplacement.coachRemplace.prenom}</strong> a déclaré une absence sans remplaçant le <strong>${dateFormatted}</strong> de ${data.heureDebut} à ${data.heureFin} (${groupeNom || 'Séance'}).</p><p>Motif : ${data.motif || 'Non précisé'}</p>`,
+      })
+    } else {
+      // en_attente : avertir l'admin qu'un créneau est à pourvoir
+      await notifyAdmin({
+        sujet: `[Coachs] Demande de remplacement ouverte : ${remplacement.coachRemplace.prenom} (${dateFormatted})`,
+        messageTexte: `${remplacement.coachRemplace.prenom} recherche un remplaçant le ${dateFormatted} (${data.heureDebut} - ${data.heureFin}) pour ${groupeNom || 'Séance'}.`,
+        messageHtml: `<p><strong>${remplacement.coachRemplace.prenom}</strong> recherche un remplaçant le <strong>${dateFormatted}</strong> (${data.heureDebut} - ${data.heureFin}) pour <strong>${groupeNom || 'Séance'}</strong>.</p>`,
+      })
     }
 
     return NextResponse.json({
       message: data.coachRemplacantId
-        ? 'Remplacement validé et lignes de facturation générées'
+        ? `Remplacement validé directement avec ${remplacement.coachRemplacant?.prenom} !`
+        : statutFinal === 'sans_remplacant'
+        ? 'Absence enregistrée sans remplaçant'
         : 'Absence/Remplacement proposé aux autres coachs avec succès',
       remplacement,
     })

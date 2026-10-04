@@ -4,8 +4,9 @@ import { prisma } from '@/lib/prisma'
 import CoachNav from '@/components/coach/CoachNav'
 import Link from 'next/link'
 import { calculerFactureCoach } from '@/lib/facture-calculations'
-import CoachAgendaBassin, { AgendaSession } from '@/components/coach/CoachAgendaBassin'
-import { libelleOccupations } from '@/lib/planning-occupations'
+import CoachAgendaBassin from '@/components/coach/CoachAgendaBassin'
+import { getCoachAgenda } from '@/lib/services/coach-agenda-service'
+import { formatHeuresEnHM } from '@/lib/facture-format'
 import {
   CalendarDays,
   Receipt,
@@ -23,7 +24,7 @@ async function getCoachData(coachId: string) {
   const currentMonth = now.getMonth() + 1
   const currentYear = now.getFullYear()
 
-  const [coach, currentMonthCalculations, facturesRecentes] = await Promise.all([
+  const [coach, currentMonthCalculations, facturesRecentes, agendaData] = await Promise.all([
     prisma.coach.findUnique({
       where: { id: coachId },
       select: {
@@ -49,48 +50,14 @@ async function getCoachData(coachId: string) {
         statut: true,
       },
     }),
+    getCoachAgenda(coachId, 14),
   ])
-
-  // Load upcoming rotating events for the next 7 days
-  const dateFin7Jours = new Date()
-  dateFin7Jours.setDate(now.getDate() + 7)
-
-  const upcomingTournants = await prisma.evenementTournant.findMany({
-    where: {
-      actif: true,
-      date: {
-        gte: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0),
-        lte: new Date(dateFin7Jours.getFullYear(), dateFin7Jours.getMonth(), dateFin7Jours.getDate(), 23, 59, 59),
-      },
-    },
-    include: {
-      coach: { select: { id: true, prenom: true, nom: true } },
-      groupe: { select: { id: true, nom: true, couleur: true } },
-      groupes: { select: { id: true, nom: true, couleur: true } },
-    },
-    orderBy: { date: 'asc' },
-  })
-
-  // Load fixed schedules to generate 7-day instances
-  const planningsFixe = await prisma.planning.findMany({
-    where: { actif: true },
-    include: {
-      groupe: true,
-      coachs: {
-        include: {
-          coach: { select: { id: true, prenom: true, nom: true } },
-        },
-      },
-      occupations: { orderBy: { ordre: 'asc' } },
-    },
-  })
 
   return {
     coach,
     currentMonthCalculations,
     facturesRecentes,
-    upcomingTournants,
-    planningsFixe,
+    agendaData,
   }
 }
 
@@ -105,8 +72,7 @@ export default async function CoachDashboard() {
     coach,
     currentMonthCalculations,
     facturesRecentes,
-    upcomingTournants,
-    planningsFixe,
+    agendaData,
   } = await getCoachData(session.coachId)
 
   if (!coach) {
@@ -119,69 +85,6 @@ export default async function CoachDashboard() {
     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
   ]
   const currentMoisNom = moisNoms[now.getMonth()]
-
-  // Build upcoming sessions list for 7 days
-  const upcomingSessions: AgendaSession[] = []
-
-  // 1. Tournants
-  upcomingTournants.forEach((evt) => {
-    const groupName = (evt.groupes && evt.groupes.length > 0)
-      ? evt.groupes.map(g => g.nom).join(', ')
-      : (evt.groupe?.nom || evt.titre)
-
-    upcomingSessions.push({
-      id: evt.id,
-      type: 'tournant',
-      titre: groupName,
-      date: new Date(evt.date),
-      heureDebut: evt.heureDebut,
-      heureFin: evt.heureFin,
-      lieu: evt.lieu,
-      groupe: groupName,
-      isMySession: evt.coachId === session.coachId,
-      coachName: evt.coach ? `${evt.coach.prenom} ${evt.coach.nom || ''}`.trim() : null,
-      couleur: evt.groupe?.couleur || (evt.groupes && evt.groupes.length > 0 ? evt.groupes[0].couleur : null),
-    })
-  })
-
-  // 2. Fixed slots
-  const joursMapRef: { [key: string]: number } = {
-    'Dimanche': 0, 'Lundi': 1, 'Mardi': 2, 'Mercredi': 3,
-    'Jeudi': 4, 'Vendredi': 5, 'Samedi': 6
-  }
-
-  for (let i = 0; i < 7; i++) {
-    const dayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)
-    const dayOfWeekNum = dayDate.getDay()
-
-    planningsFixe.forEach((p) => {
-      const dayNum = joursMapRef[p.jourSemaine]
-      if (dayNum === dayOfWeekNum) {
-        const isMySession = p.coachs.some((c) => c.coachId === session.coachId)
-        const coachesText = p.coachs.map((c) => `${c.coach.prenom} ${c.coach.nom || ''}`.trim()).join(', ')
-
-        upcomingSessions.push({
-          id: `${p.id}-${dayDate.toISOString().split('T')[0]}`,
-          type: 'fixe',
-          titre: p.nomSession || p.groupe?.nom || 'Entraînement',
-          date: dayDate,
-          heureDebut: p.heureDebut,
-          heureFin: p.heureFin,
-          lieu: libelleOccupations(p) || p.lieu || 'Piscine Alphonse Roudière',
-          groupe: p.nomSession || p.groupe?.nom || 'Groupe',
-          isMySession,
-          coachName: coachesText || null,
-          couleur: p.groupe?.couleur ?? null,
-        })
-      }
-    })
-  }
-
-  upcomingSessions.sort((a, b) => {
-    const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime()
-    if (dateDiff !== 0) return dateDiff
-    return a.heureDebut.localeCompare(b.heureDebut)
-  })
 
   const getStatutBadge = (statut: string) => {
     switch (statut) {
@@ -202,7 +105,6 @@ export default async function CoachDashboard() {
         <header className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-7 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              
               <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">
                 Bonjour {coach.prenom}
               </h1>
@@ -236,7 +138,7 @@ export default async function CoachDashboard() {
             </div>
           </div>
 
-          {/* 2 MAIN STAT METRICS */}
+          {/* 2 MAIN STAT METRICS - FORMAT H/MIN */}
           <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100">
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-150 space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
@@ -244,7 +146,7 @@ export default async function CoachDashboard() {
                 <span>Heures {currentMoisNom}</span>
               </span>
               <p className="text-xl sm:text-2xl font-black text-slate-950">
-                {currentMonthCalculations.totalHeures.toFixed(2)} h
+                {formatHeuresEnHM(currentMonthCalculations.totalHeures)}
               </p>
             </div>
 
@@ -260,16 +162,20 @@ export default async function CoachDashboard() {
           </div>
         </header>
 
-        {/* AGENDA SECTION */}
+        {/* AGENDA RÉEL 14 JOURS */}
         <section className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-7 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-black text-slate-950 flex items-center gap-2">
               <CalendarDays className="w-5 h-5 text-cyan-600" />
-              <span>Agenda des 7 prochains jours</span>
+              <span>Mon Agenda &amp; Entraînements (14 jours)</span>
             </h2>
           </div>
 
-          <CoachAgendaBassin sessions={upcomingSessions} currentCoachId={session.coachId} />
+          <CoachAgendaBassin
+            initialJours={agendaData.jours}
+            initialCoaches={agendaData.coaches}
+            currentCoachId={session.coachId}
+          />
         </section>
 
         {/* RECENT INVOICES MINI-CARD */}
