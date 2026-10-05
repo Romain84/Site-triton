@@ -70,17 +70,17 @@ const CATEGORIES: NavCategory[] = [
     ]
   },
   {
-    title: 'Pilotage & Stats',
-    items: [
-      { id: 'dashboard', label: 'Tableau de bord', icon: '📊', keywords: ['cockpit', 'vue', 'resume', 'accueil'] },
-      { id: 'visiteurs', label: 'Statistiques visiteurs', icon: '🌍', keywords: ['trafic', 'stats', 'audience', 'analytics', 'visites'] },
-    ]
-  },
-  {
     title: 'Équipe & Coachs',
     items: [
       { id: 'profils', label: 'Profils & Accès', icon: '👥', keywords: ['coachs', 'entraineurs', 'utilisateurs', 'roles', 'comptes'] },
       { id: 'remplacements', label: 'Remplacements & Shifts', icon: '🔄', keywords: ['absences', 'coach', 'substituts', 'interventions'] },
+    ]
+  },
+  {
+    title: 'Pilotage & Stats',
+    items: [
+      { id: 'dashboard', label: 'Tableau de bord', icon: '📊', keywords: ['cockpit', 'vue', 'resume', 'accueil'] },
+      { id: 'visiteurs', label: 'Statistiques visiteurs', icon: '🌍', keywords: ['trafic', 'stats', 'audience', 'analytics', 'visites'] },
     ]
   },
   {
