@@ -60,6 +60,16 @@ interface NavCategory {
 
 const CATEGORIES: NavCategory[] = [
   {
+    title: 'Finances & Comptabilité',
+    items: [
+      { id: 'factures', label: 'Factures Coachs', icon: '💰', keywords: ['paie', 'remuneration', 'abby', 'compta', 'reglement'] },
+      { id: 'devis', label: 'Devis & Formations', icon: '📝', keywords: ['bnssa', 'devis', 'facturation', 'propositions'] },
+      { id: 'finances', label: 'Finances & Bilan', icon: '📈', keywords: ['tresorerie', 'budget', 'recettes', 'depenses', 'comptabilite'] },
+      { id: 'cout-groupes', label: 'Coût des Groupes', icon: '💶', keywords: ['rentabilite', 'cout de revient', 'charges'] },
+      { id: 'dons', label: 'Dons & Reçus Fiscaux', icon: '🎗️', keywords: ['cerfa', 'mecenat', 'fiscalite', 'donateurs'] },
+    ]
+  },
+  {
     title: 'Pilotage & Stats',
     items: [
       { id: 'dashboard', label: 'Tableau de bord', icon: '📊', keywords: ['cockpit', 'vue', 'resume', 'accueil'] },
@@ -89,16 +99,6 @@ const CATEGORIES: NavCategory[] = [
       { id: 'evenements', label: 'Événements & Compétitions', icon: '📆', keywords: ['pdf', 'ffn', 'stages', 'calendrier', 'rencontres'] },
       { id: 'seances-annulees', label: 'Séances Annulées', icon: '🚫', keywords: ['exceptions', 'fermeture', 'bassin', 'annulation'] },
       { id: 'vacances', label: 'Vacances Scolaires', icon: '🏖️', keywords: ['fermetures', 'toussaint', 'noel', 'zone b'] },
-    ]
-  },
-  {
-    title: 'Finances & Comptabilité',
-    items: [
-      { id: 'factures', label: 'Factures Coachs', icon: '💰', keywords: ['paie', 'remuneration', 'abby', 'compta', 'reglement'] },
-      { id: 'devis', label: 'Devis & Formations', icon: '📝', keywords: ['bnssa', 'devis', 'facturation', 'propositions'] },
-      { id: 'finances', label: 'Finances & Bilan', icon: '📈', keywords: ['tresorerie', 'budget', 'recettes', 'depenses', 'comptabilite'] },
-      { id: 'cout-groupes', label: 'Coût des Groupes', icon: '💶', keywords: ['rentabilite', 'cout de revient', 'charges'] },
-      { id: 'dons', label: 'Dons & Reçus Fiscaux', icon: '🎗️', keywords: ['cerfa', 'mecenat', 'fiscalite', 'donateurs'] },
     ]
   },
   {
