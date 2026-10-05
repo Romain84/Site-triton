@@ -44,67 +44,90 @@ const TabLoading = () => (
 
 type Tab = 'dashboard' | 'visiteurs' | 'profils' | 'podiums' | 'tests-nage' | 'factures' | 'devis' | 'finances' | 'dons' | 'groupes' | 'remplacements' | 'cout-groupes' | 'planning-tournant' | 'planning-fixe' | 'seances-annulees' | 'evenements' | 'actualites' | 'galerie' | 'vacances' | 'chatbot' | 'chatbot-suggestions' | 'chatbot-stats' | 'audit-logs' | 'parametres' | 'database' | 'inscription-page' | 'system-versions'
 
-const CATEGORIES = [
+const FINANCE_TABS: Tab[] = ['finances', 'factures', 'devis', 'cout-groupes', 'dons']
+
+interface NavItem {
+  id: Tab
+  label: string
+  icon: string
+  keywords?: string[]
+}
+
+interface NavCategory {
+  title: string
+  items: NavItem[]
+}
+
+const CATEGORIES: NavCategory[] = [
   {
-    title: 'Général',
+    title: 'Pilotage & Stats',
     items: [
-      { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-      { id: 'visiteurs', label: 'Statistiques visiteurs', icon: '🌍' },
-      { id: 'factures', label: 'Factures', icon: '💰' },
-      { id: 'devis', label: 'Devis & Formations', icon: '📝' },
-      { id: 'finances', label: 'Finances', icon: '📈' },
-      { id: 'dons', label: 'Dons & Reçus', icon: '🎗️' },
-      { id: 'database', label: 'Sauvegarde BDD', icon: '💾' },
-      { id: 'system-versions', label: 'Versions & Composants', icon: '📦' },
-      { id: 'parametres', label: 'Paramètres', icon: '⚙️' },
-      { id: 'audit-logs', label: 'Journal d\'Audit', icon: '🕵️‍♂️' }
+      { id: 'dashboard', label: 'Tableau de bord', icon: '📊', keywords: ['cockpit', 'vue', 'resume', 'accueil'] },
+      { id: 'visiteurs', label: 'Statistiques visiteurs', icon: '🌍', keywords: ['trafic', 'stats', 'audience', 'analytics', 'visites'] },
     ]
   },
   {
-    title: 'Sportif',
+    title: 'Équipe & Coachs',
     items: [
-      { id: 'profils', label: 'Profils', icon: '👥' },
-      { id: 'tests-nage', label: 'Tests de Nage & Niveau', icon: '⏱️' },
-      { id: 'podiums', label: 'Podiums & Bilan Saison', icon: '🏅' },
-      { id: 'groupes', label: 'Groupes / Jauges', icon: '👥' },
-      { id: 'remplacements', label: 'Remplacements & Prestations', icon: '🔄' },
-      { id: 'cout-groupes', label: 'Coût Groupes', icon: '💶' }
+      { id: 'profils', label: 'Profils & Accès', icon: '👥', keywords: ['coachs', 'entraineurs', 'utilisateurs', 'roles', 'comptes'] },
+      { id: 'remplacements', label: 'Remplacements & Shifts', icon: '🔄', keywords: ['absences', 'coach', 'substituts', 'interventions'] },
     ]
   },
   {
-    title: 'Planning',
+    title: 'Sportif & Adhérents',
     items: [
-      { id: 'planning-fixe', label: 'Planning Fixe', icon: '📅' },
-      { id: 'planning-tournant', label: 'Planning Tournant', icon: '🔄' },
-      { id: 'evenements', label: 'Événements & Compétitions', icon: '📆' },
-      { id: 'seances-annulees', label: 'Séances Annulées & Exceptions', icon: '🚫' },
-      { id: 'vacances', label: 'Vacances', icon: '🏖️' }
+      { id: 'groupes', label: 'Groupes / Jauges', icon: '🏊‍♂️', keywords: ['nageurs', 'effectifs', 'cours', 'categories', 'sections'] },
+      { id: 'tests-nage', label: 'Tests de Nage & Niveaux', icon: '⏱️', keywords: ['evaluations', 'brevets', 'chrono', 'creneaux'] },
+      { id: 'podiums', label: 'Podiums & Palmarès', icon: '🏅', keywords: ['resultats', 'medailles', 'records', 'competitions'] },
     ]
   },
   {
-    title: 'Contenu',
+    title: 'Calendrier & Plannings',
     items: [
-      { id: 'actualites', label: 'Actualités', icon: '📰' },
-      { id: 'galerie', label: 'Galerie', icon: '🖼️' },
-      { id: 'inscription-page', label: 'Page Inscription', icon: '📋' }
+      { id: 'planning-fixe', label: 'Planning Fixe', icon: '📅', keywords: ['horaires', 'creneaux', 'semaine', 'grille'] },
+      { id: 'planning-tournant', label: 'Planning Tournant', icon: '🔄', keywords: ['rotation', 'samedi', 'coaching'] },
+      { id: 'evenements', label: 'Événements & Compétitions', icon: '📆', keywords: ['pdf', 'ffn', 'stages', 'calendrier', 'rencontres'] },
+      { id: 'seances-annulees', label: 'Séances Annulées', icon: '🚫', keywords: ['exceptions', 'fermeture', 'bassin', 'annulation'] },
+      { id: 'vacances', label: 'Vacances Scolaires', icon: '🏖️', keywords: ['fermetures', 'toussaint', 'noel', 'zone b'] },
     ]
   },
   {
-    title: 'Intelligence',
+    title: 'Finances & Comptabilité',
     items: [
-      { id: 'chatbot', label: 'Chatbot', icon: '🤖' },
-      { id: 'chatbot-suggestions', label: 'Suggestions Chatbot', icon: '💡' },
-      { id: 'chatbot-stats', label: 'Usage & Quotas', icon: '📊' }
+      { id: 'factures', label: 'Factures Coachs', icon: '💰', keywords: ['paie', 'remuneration', 'abby', 'compta', 'reglement'] },
+      { id: 'devis', label: 'Devis & Formations', icon: '📝', keywords: ['bnssa', 'devis', 'facturation', 'propositions'] },
+      { id: 'finances', label: 'Finances & Bilan', icon: '📈', keywords: ['tresorerie', 'budget', 'recettes', 'depenses', 'comptabilite'] },
+      { id: 'cout-groupes', label: 'Coût des Groupes', icon: '💶', keywords: ['rentabilite', 'cout de revient', 'charges'] },
+      { id: 'dons', label: 'Dons & Reçus Fiscaux', icon: '🎗️', keywords: ['cerfa', 'mecenat', 'fiscalite', 'donateurs'] },
+    ]
+  },
+  {
+    title: 'Communication & Site',
+    items: [
+      { id: 'actualites', label: 'Actualités & Blog', icon: '📰', keywords: ['articles', 'news', 'instagram', 'publications'] },
+      { id: 'galerie', label: 'Galerie Photos', icon: '🖼️', keywords: ['photos', 'albums', 'medias', 'images'] },
+      { id: 'inscription-page', label: 'Page Inscription', icon: '📋', keywords: ['adhesion', 'tarif', 'dossier', 'page publique'] },
+    ]
+  },
+  {
+    title: 'Système & IA',
+    items: [
+      { id: 'chatbot', label: 'Assistant IA (Chatbot)', icon: '🤖', keywords: ['robot', 'intelligence', 'suggestions', 'quotas', 'faq'] },
+      { id: 'parametres', label: 'Paramètres Club', icon: '⚙️', keywords: ['smtp', 'email', 'configuration', 'coordonnees'] },
+      { id: 'database', label: 'Sauvegarde BDD', icon: '💾', keywords: ['backup', 'postgres', 'restauration', 'dump'] },
+      { id: 'audit-logs', label: 'Journal d\'Audit', icon: '🕵️‍♂️', keywords: ['logs', 'securite', 'historique', 'tracabilite'] },
+      { id: 'system-versions', label: 'Versions & Diagnostic', icon: '📦', keywords: ['maintenance', 'vps', 'serveur', 'dependances'] },
     ]
   }
 ]
 
-  export default function AdminPage() {
+export default function AdminPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [loading, setLoading] = useState(true)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<{ id: string; email: string; role: string } | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Persist active tab on reload / query params
   useEffect(() => {
@@ -113,7 +136,7 @@ const CATEGORIES = [
       const tabParam = urlParams.get('tab') as Tab
 
       // Sécurité client : si superviseur, rediriger si tab finances manuellement ciblé
-      if (currentUser?.role === 'superviseur' && ['finances', 'factures', 'devis', 'cout-groupes'].includes(tabParam)) {
+      if (currentUser?.role === 'superviseur' && FINANCE_TABS.includes(tabParam)) {
         setActiveTab('dashboard')
         localStorage.setItem('admin.activeTab', 'dashboard')
         return
@@ -126,7 +149,7 @@ const CATEGORIES = [
       }
 
       const savedTab = localStorage.getItem('admin.activeTab') as Tab
-      if (savedTab && !(currentUser?.role === 'superviseur' && ['finances', 'factures', 'cout-groupes'].includes(savedTab))) {
+      if (savedTab && !(currentUser?.role === 'superviseur' && FINANCE_TABS.includes(savedTab))) {
         setActiveTab(savedTab)
       }
     }
@@ -219,7 +242,7 @@ const CATEGORIES = [
           fixed md:sticky top-0 left-0 z-50 h-screen w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between p-5 transition-transform duration-300 ease-in-out md:translate-x-0
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}>
-          <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-140px)] pr-1">
+          <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-140px)] pr-1">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-2">
               <div className="flex items-center gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
@@ -237,63 +260,116 @@ const CATEGORIES = [
               </a>
             </div>
 
-            {/* Sidebar navigation list */}
-            <nav className="space-y-5">
-              {CATEGORIES.map((cat) => {
-                const filteredItems = cat.items.filter(item => {
-                  if (item.id === 'dons') {
-                    return currentUser?.role === 'admin'
-                  }
-                  if (currentUser?.role === 'superviseur') {
-                    return !['factures', 'finances', 'cout-groupes', 'dons'].includes(item.id)
-                  }
-                  return true
+            {/* Barre de recherche rapide d'onglets */}
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Rechercher un onglet..."
+                className="w-full pl-7 pr-6 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white transition-all"
+              />
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">
+                🔍
+              </span>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                  title="Effacer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Navigation par catégories */}
+            <nav className="space-y-4">
+              {(() => {
+                let totalVisible = 0
+                const renderedCategories = CATEGORIES.map((cat) => {
+                  const filteredItems = cat.items.filter((item) => {
+                    if (item.id === 'dons' && currentUser?.role !== 'admin') {
+                      return false
+                    }
+                    if (currentUser?.role === 'superviseur' && FINANCE_TABS.includes(item.id)) {
+                      return false
+                    }
+                    if (searchQuery.trim()) {
+                      const q = searchQuery.toLowerCase().trim()
+                      const matchLabel = item.label.toLowerCase().includes(q)
+                      const matchCat = cat.title.toLowerCase().includes(q)
+                      const matchKeywords = item.keywords?.some((k) => k.toLowerCase().includes(q))
+                      return matchLabel || matchCat || matchKeywords
+                    }
+                    return true
+                  })
+
+                  if (filteredItems.length === 0) return null
+                  totalVisible += filteredItems.length
+
+                  return (
+                    <div key={cat.title} className="space-y-1">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-2">
+                        {cat.title}
+                      </p>
+                      <div className="space-y-0.5">
+                        {filteredItems.map((item) => {
+                          const isActive =
+                            activeTab === item.id ||
+                            (item.id === 'chatbot' &&
+                              (activeTab === 'chatbot-suggestions' || activeTab === 'chatbot-stats'))
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => {
+                                setActiveTab(item.id)
+                                localStorage.setItem('admin.activeTab', item.id)
+                                // Update URL query parameters without reloading
+                                if (typeof window !== 'undefined') {
+                                  const url = new URL(window.location.href)
+                                  url.searchParams.set('tab', item.id)
+                                  window.history.replaceState({}, '', url.toString())
+                                }
+                                setIsMobileMenuOpen(false)
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
+                                isActive
+                                  ? 'bg-slate-950 text-white shadow-sm'
+                                  : 'text-slate-650 hover:text-slate-900 hover:bg-slate-50'
+                              }`}
+                            >
+                              <span className="flex items-center gap-2">
+                                <span>{item.icon}</span>
+                                <span>{item.label}</span>
+                              </span>
+                              {isActive && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
                 })
 
-                if (filteredItems.length === 0) return null
-
-                return (
-                  <div key={cat.title} className="space-y-1.5">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-2">
-                      {cat.title}
-                    </p>
-                    <div className="space-y-0.5">
-                      {filteredItems.map((item) => {
-                        const isActive = activeTab === item.id
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => {
-                              setActiveTab(item.id as Tab)
-                              localStorage.setItem('admin.activeTab', item.id)
-                              // Update URL query parameters without reloading
-                              if (typeof window !== 'undefined') {
-                                const url = new URL(window.location.href)
-                                url.searchParams.set('tab', item.id)
-                                window.history.replaceState({}, '', url.toString())
-                              }
-                              setIsMobileMenuOpen(false)
-                            }}
-                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
-                              isActive
-                                ? 'bg-slate-950 text-white shadow-sm'
-                                : 'text-slate-650 hover:text-slate-900 hover:bg-slate-50'
-                            }`}
-                          >
-                            <span className="flex items-center gap-2">
-                              <span>{item.icon}</span>
-                              <span>{item.label}</span>
-                            </span>
-                            {isActive && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                            )}
-                          </button>
-                        )
-                      })}
+                if (searchQuery.trim() && totalVisible === 0) {
+                  return (
+                    <div className="text-center py-6 px-2">
+                      <p className="text-xs text-slate-400">Aucun onglet trouvé pour &quot;{searchQuery}&quot;</p>
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="mt-2 text-[11px] text-primary hover:underline font-semibold"
+                      >
+                        Effacer la recherche
+                      </button>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                }
+
+                return renderedCategories
+              })()}
             </nav>
           </div>
 
@@ -345,9 +421,17 @@ const CATEGORIES = [
             {activeTab === 'actualites' && <ActualitesTab />}
             {activeTab === 'galerie' && <GalerieTab />}
             {activeTab === 'vacances' && <VacancesTab />}
-            {activeTab === 'chatbot' && <ChatbotTab />}
-            {activeTab === 'chatbot-suggestions' && <ChatbotSuggestionsTab />}
-            {activeTab === 'chatbot-stats' && <ChatbotStatsTab />}
+            {(activeTab === 'chatbot' || activeTab === 'chatbot-suggestions' || activeTab === 'chatbot-stats') && (
+              <ChatbotHubTab
+                initialSubTab={
+                  activeTab === 'chatbot-suggestions'
+                    ? 'suggestions'
+                    : activeTab === 'chatbot-stats'
+                    ? 'stats'
+                    : 'knowledge'
+                }
+              />
+            )}
             {activeTab === 'audit-logs' && <AuditLogsTab />}
             {activeTab === 'parametres' && <ParametresTab />}
             {activeTab === 'database' && <DatabaseTab />}
@@ -756,21 +840,78 @@ function VacancesTab() {
   return <VacancesManager />
 }
 
-// Chatbot Tab
-function ChatbotTab() {
-  return <ChatbotKnowledgeManager />
-}
+// Chatbot Hub Tab (Base de connaissances, Suggestions et Statistiques / Quotas unifiés)
+function ChatbotHubTab({ initialSubTab = 'knowledge' }: { initialSubTab?: 'knowledge' | 'suggestions' | 'stats' }) {
+  const [subTab, setSubTab] = useState<'knowledge' | 'suggestions' | 'stats'>(initialSubTab)
 
+  useEffect(() => {
+    setSubTab(initialSubTab)
+  }, [initialSubTab])
 
+  return (
+    <div className="space-y-6 animate-fade-in-up">
+      {/* En-tête avec sous-onglets horizontaux */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
+        <div>
+          <span className="inline-flex items-center gap-1.5 border border-primary/20 bg-primary/5 text-primary-dark px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase shadow-2xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            Intelligence Artificielle
+          </span>
+          <h2 className="text-2xl font-extrabold text-slate-950 tracking-tight mt-2 flex items-center gap-2">
+            <span>🤖</span>
+            <span>Assistant IA · Hub Chatbot</span>
+          </h2>
+          <p className="text-slate-500 text-xs mt-0.5">
+            Gérez la base de connaissances du club, traitez les retours utilisateurs et suivez la consommation d&apos;API.
+          </p>
+        </div>
 
-// Chatbot Suggestions Tab
-function ChatbotSuggestionsTab() {
-  return <ChatbotSuggestionsManager />
-}
+        {/* Pilules de navigation sous-onglets */}
+        <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200/80 self-start sm:self-auto shadow-2xs">
+          <button
+            onClick={() => setSubTab('knowledge')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              subTab === 'knowledge'
+                ? 'bg-white text-slate-950 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>📚</span>
+            <span>Connaissances</span>
+          </button>
+          <button
+            onClick={() => setSubTab('suggestions')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              subTab === 'suggestions'
+                ? 'bg-white text-slate-950 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>💡</span>
+            <span>Suggestions</span>
+          </button>
+          <button
+            onClick={() => setSubTab('stats')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              subTab === 'stats'
+                ? 'bg-white text-slate-950 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>📊</span>
+            <span>Usage & Quotas</span>
+          </button>
+        </div>
+      </div>
 
-// Chatbot Stats Tab
-function ChatbotStatsTab() {
-  return <ChatbotStatsManager />
+      {/* Affichage du composant sélectionné */}
+      <div>
+        {subTab === 'knowledge' && <ChatbotKnowledgeManager />}
+        {subTab === 'suggestions' && <ChatbotSuggestionsManager />}
+        {subTab === 'stats' && <ChatbotStatsManager />}
+      </div>
+    </div>
+  )
 }
 
 // Audit Logs Tab
