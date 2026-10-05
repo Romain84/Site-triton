@@ -771,117 +771,126 @@ export default function FacturesManager() {
           <p className="text-gray-600">Aucune facture trouvée</p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-3">
           {filteredFactures.map((facture) => (
-            <div key={facture.id} className="card p-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2 flex-wrap">
-                    <h3 className="text-lg font-semibold">
-                      {facture.numero}
-                    </h3>
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        statutsLabels[facture.statut]?.color || 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {statutsLabels[facture.statut]?.label || facture.statut}
-                    </span>
-                    {facture._count && facture._count.lignes > 0 && (
-                      <span className="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold border border-amber-200 flex items-center gap-1 animate-pulse">
-                        ⚠️ À vérifier (Ajout manuel)
+            <div
+              key={facture.id}
+              className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white hover:border-slate-300 transition-all shadow-2xs space-y-3.5"
+            >
+              {/* LIGNE PRINCIPALE : INFOS COACH & MONTANT */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* GAUCHE : COACH, NUMÉRO, PÉRIODE */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary font-black text-sm flex items-center justify-center shrink-0">
+                    {facture.coach.prenom?.[0] || 'C'}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
+                        {facture.coach.prenom} {facture.coach.nom || ''}
+                      </h3>
+                      <span className="text-xs font-mono font-semibold text-slate-400">
+                        {facture.numero}
                       </span>
-                    )}
-                  </div>
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <p>
-                      <strong>Coach:</strong> {facture.coach.prenom} {facture.coach.nom || ''}
-                    </p>
-                    <p>
-                      <strong>Période:</strong> {moisNoms[facture.mois - 1]} {facture.annee}
-                    </p>
-                    <p>
-                      <strong>Montant total:</strong> {facture.montantTotal.toFixed(2)}€
-                    </p>
-                    <p>
-                      <strong>Taux horaire:</strong> {facture.tauxHoraire.toFixed(2)}€/h
-                    </p>
-                  </div>
-                  <div className="mt-4 flex gap-2 flex-wrap items-center">
-                    <button
-                      onClick={() => handleOpenPreview(facture.id)}
-                      className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 hover:text-gray-900 transition-colors flex items-center gap-1.5"
-                    >
-                      🔎 Consulter le détail
-                    </button>
-                    {facture.statut === 'brouillon' && (
-                      <button
-                        onClick={() => handleQuickGenerate(facture.id)}
-                        disabled={generatingAction === `quick-gen-${facture.id}`}
-                        className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-2xs"
-                        title="Générer la facture et créer le PDF officiel"
-                      >
-                        <span>⚡</span>
-                        <span>{generatingAction === `quick-gen-${facture.id}` ? 'Génération...' : 'Générer la facture'}</span>
-                      </button>
-                    )}
-                    {facture.pdfPath && (
-                      <a
-                        href={facture.pdfPath}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 hover:text-sky-900 transition-colors flex items-center gap-1.5"
-                      >
-                        📄 PDF
-                      </a>
-                    )}
-                    <button
-                      onClick={() => handleQuickSendToClub(facture.id)}
-                      disabled={generatingAction === `quick-${facture.id}`}
-                      className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 hover:text-emerald-900 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                      title="Générer/mettre à jour le PDF et l'envoyer au club par e-mail"
-                    >
-                      {generatingAction === `quick-${facture.id}` ? 'Envoi...' : '✉️ Envoyer au club'}
-                    </button>
-                    {(facture.statut === 'envoyee' || facture.statut === 'payee') && (
-                      <button
-                        onClick={() => handleUnlockFacture(facture.id, facture.numero)}
-                        disabled={updatingId === facture.id}
-                        className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                        title="Repasser en brouillon pour permettre au coach de modifier ses séances"
-                      >
-                        🔓 Déverrouiller
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDeleteFacture(facture.id, facture.numero)}
-                      className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 hover:text-red-900 transition-colors flex items-center gap-1.5"
-                    >
-                      🗑️ Supprimer
-                    </button>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 font-medium">
+                      <span className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-md text-[11px]">
+                        📅 {moisNoms[facture.mois - 1]} {facture.annee}
+                      </span>
+                      {facture._count && facture._count.lignes > 0 && (
+                        <span className="bg-amber-50 text-amber-800 text-[11px] px-2 py-0.5 rounded-md font-bold border border-amber-200/80 flex items-center gap-1">
+                          ⚠️ Ajout manuel
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Changer le statut:
-                  </label>
+                {/* DROITE : STATUT & MONTANT */}
+                <div className="flex items-center sm:flex-col sm:items-end justify-between gap-1 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                      statutsLabels[facture.statut]?.color || 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    {statutsLabels[facture.statut]?.label || facture.statut}
+                  </span>
+                  <p className="text-lg sm:text-xl font-black text-slate-950">
+                    {facture.montantTotal.toFixed(2)} €
+                  </p>
+                </div>
+              </div>
+
+              {/* LIGNE SECONDAIRE : BOUTONS D'ACTION & SELECTEUR DE STATUT */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-100/80">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => handleOpenPreview(facture.id)}
+                    className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    🔎 Détail
+                  </button>
+                  {facture.statut === 'brouillon' && (
+                    <button
+                      onClick={() => handleQuickGenerate(facture.id)}
+                      disabled={generatingAction === `quick-gen-${facture.id}`}
+                      className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-2xs"
+                      title="Générer la facture et créer le PDF officiel"
+                    >
+                      <span>⚡</span>
+                      <span>{generatingAction === `quick-gen-${facture.id}` ? 'Génération...' : 'Générer'}</span>
+                    </button>
+                  )}
+                  {facture.pdfPath && (
+                    <a
+                      href={facture.pdfPath}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 transition-colors flex items-center gap-1.5"
+                    >
+                      📄 PDF
+                    </a>
+                  )}
+                  <button
+                    onClick={() => handleQuickSendToClub(facture.id)}
+                    disabled={generatingAction === `quick-${facture.id}`}
+                    className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                    title="Générer/mettre à jour le PDF et l'envoyer au club par e-mail"
+                  >
+                    {generatingAction === `quick-${facture.id}` ? 'Envoi...' : '✉️ Envoyer club'}
+                  </button>
+                  {(facture.statut === 'envoyee' || facture.statut === 'payee') && (
+                    <button
+                      onClick={() => handleUnlockFacture(facture.id, facture.numero)}
+                      disabled={updatingId === facture.id}
+                      className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                      title="Repasser en brouillon pour permettre au coach de modifier ses séances"
+                    >
+                      🔓 Déverrouiller
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDeleteFacture(facture.id, facture.numero)}
+                    className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    🗑️
+                  </button>
+                </div>
+
+                {/* SELECT STATUT COMPACT */}
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <span className="text-[11px] font-semibold text-slate-400">Statut:</span>
                   <select
                     value={facture.statut}
                     onChange={(e) => handleChangeStatut(facture.id, e.target.value)}
                     disabled={updatingId === facture.id}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-2.5 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50/50 text-slate-800 font-semibold focus:ring-1 focus:ring-primary focus:bg-white disabled:opacity-50 cursor-pointer"
                   >
                     <option value="brouillon">Brouillon</option>
                     <option value="generee">Générée</option>
                     <option value="envoyee">Envoyée</option>
                     <option value="payee">Payée</option>
                   </select>
-                  {updatingId === facture.id && (
-                    <p className="text-xs text-gray-500 text-center">
-                      Mise à jour...
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
@@ -1013,47 +1022,47 @@ export default function FacturesManager() {
           {/* Cartes statistiques globales */}
           {enCoursData?.stats && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-                <div className="card p-4 border-l-4 border-l-primary">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total prévisionnel</p>
-                  <p className="text-xl sm:text-2xl font-black text-primary mt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
+                <div className="p-3 sm:p-3.5 rounded-xl border border-primary/20 bg-primary/5 shadow-2xs">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-primary-dark">Total prévisionnel</p>
+                  <p className="text-lg sm:text-xl font-black text-primary mt-1">
                     {enCoursData.stats.totalMontant.toFixed(2)} €
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Tous coachs confondus</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Tous coachs</p>
                 </div>
 
-                <div className="card p-4 border-l-4 border-l-sky-400">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Volume d&apos;heures</p>
-                  <p className="text-xl sm:text-2xl font-black text-slate-800 mt-1">
+                <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Volume d&apos;heures</p>
+                  <p className="text-lg sm:text-xl font-black text-slate-900 mt-1">
                     {formatHeuresEnHM(enCoursData.stats.totalHeures)}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">({enCoursData.stats.totalHeures.toFixed(1)} h nettes)</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">({enCoursData.stats.totalHeures.toFixed(1)} h nettes)</p>
                 </div>
 
-                <div className="card p-4 border-l-4 border-l-emerald-400">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Coachs actifs</p>
-                  <p className="text-xl sm:text-2xl font-black text-emerald-700 mt-1">
+                <div className="p-3 sm:p-3.5 rounded-xl border border-emerald-200/60 bg-emerald-50/30 shadow-2xs">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Coachs actifs</p>
+                  <p className="text-lg sm:text-xl font-black text-emerald-800 mt-1">
                     {enCoursData.stats.coachesActifs} / {enCoursData.stats.totalCoaches}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Avec heures ou forfaits</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Avec heures ou forfaits</p>
                 </div>
 
-                <div className="card p-4 border-l-4 border-l-purple-400">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Statut factures</p>
-                  <p className="text-xl sm:text-2xl font-black text-purple-700 mt-1">
+                <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Statut factures</p>
+                  <p className="text-lg sm:text-xl font-black text-purple-700 mt-1">
                     {enCoursData.coaches.filter((c) => c.statut !== 'non_generee').length} générée(s)
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[10px] text-slate-400 mt-0.5">
                     {enCoursData.coaches.filter((c) => c.statut === 'non_generee').length} en attente
                   </p>
                 </div>
 
-                <div className={`card p-4 border-l-4 ${enCoursData.stats.totalAnomalies && enCoursData.stats.totalAnomalies > 0 ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-emerald-500'}`}>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Contrôle / Alertes</p>
-                  <p className={`text-xl sm:text-2xl font-black mt-1 ${enCoursData.stats.totalAnomalies && enCoursData.stats.totalAnomalies > 0 ? 'text-amber-800' : 'text-emerald-700'}`}>
+                <div className={`p-3 sm:p-3.5 rounded-xl border shadow-2xs ${enCoursData.stats.totalAnomalies && enCoursData.stats.totalAnomalies > 0 ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200/80 bg-white'}`}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Contrôle / Alertes</p>
+                  <p className={`text-lg sm:text-xl font-black mt-1 ${enCoursData.stats.totalAnomalies && enCoursData.stats.totalAnomalies > 0 ? 'text-amber-800' : 'text-emerald-700'}`}>
                     {enCoursData.stats.totalAnomalies || 0}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[10px] text-slate-400 mt-0.5">
                     {enCoursData.stats.totalAnomalies && enCoursData.stats.totalAnomalies > 0
                       ? `Sur ${enCoursData.stats.coachesAvecAnomalies || 0} coach(s)`
                       : '✅ Aucune anomalie'}
@@ -1101,7 +1110,6 @@ export default function FacturesManager() {
                       <th className="py-3.5 px-4 text-right">Rempl.</th>
                       <th className="py-3.5 px-4 text-right">Absences</th>
                       <th className="py-3.5 px-4 text-right">Total heures</th>
-                      <th className="py-3.5 px-4 text-right">Taux</th>
                       <th className="py-3.5 px-4 text-right">Total prévisionnel</th>
                       <th className="py-3.5 px-4 text-center">Contrôle &amp; Alertes</th>
                       <th className="py-3.5 px-4 text-center">Actions</th>
@@ -1172,10 +1180,6 @@ export default function FacturesManager() {
                             <span className="block text-[10px] text-slate-400">
                               ({c.totalHeures.toFixed(1)}h)
                             </span>
-                          </td>
-
-                          <td className="py-3.5 px-4 text-right text-slate-600 text-xs">
-                            {c.tauxHoraire.toFixed(2)} €/h
                           </td>
 
                           <td className="py-3.5 px-4 text-right">
@@ -1635,9 +1639,6 @@ export default function FacturesManager() {
                     <span className="text-2xl font-black text-primary">
                       {previewFacture.montantTotal?.toFixed(2)}€
                     </span>
-                    <p className="text-[10px] text-slate-400 font-medium">
-                      Calculé au taux de {previewFacture.tauxHoraire?.toFixed(2)}€/h
-                    </p>
                   </div>
                 </div>
 
@@ -2016,9 +2017,6 @@ export default function FacturesManager() {
               <div className="flex justify-between items-center p-4 bg-sky-50 border border-sky-100 rounded-xl">
                 <div>
                   <span className="font-bold text-slate-700 block">Total prévisionnel :</span>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    Calculé au taux de {readOnlyCoachPreview.tauxHoraire?.toFixed(2)}€/h
-                  </span>
                 </div>
                 <div className="text-right">
                   <span className="text-2xl font-black text-primary">
