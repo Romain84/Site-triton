@@ -76,6 +76,7 @@ const CATEGORIES = [
     items: [
       { id: 'planning-fixe', label: 'Planning Fixe', icon: '📅' },
       { id: 'planning-tournant', label: 'Planning Tournant', icon: '🔄' },
+      { id: 'evenements', label: 'Événements & Compétitions', icon: '📆' },
       { id: 'seances-annulees', label: 'Séances Annulées & Exceptions', icon: '🚫' },
       { id: 'vacances', label: 'Vacances', icon: '🏖️' }
     ]
