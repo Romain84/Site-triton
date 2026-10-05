@@ -355,16 +355,6 @@ export default function CoachAgendaBassin({
                         {session.groupe}
                       </span>
 
-                      <span className="text-[11px] font-bold text-slate-400">
-                        {session.dureeFormattee}
-                      </span>
-
-                      {session.tempsFactureFormatte && session.tempsFactureFormatte !== session.dureeFormattee && (
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                          Facturé {session.tempsFactureFormatte}
-                        </span>
-                      )}
-
                       {/* BADGES STATUT */}
                       {session.estAnnule && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800">

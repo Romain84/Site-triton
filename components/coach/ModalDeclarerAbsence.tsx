@@ -165,14 +165,7 @@ export default function ModalDeclarerAbsence({
               <span className="flex items-center gap-1 text-slate-700 font-bold">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
                 <span>{session.heureDebut} – {session.heureFin}</span>
-                <span className="text-slate-400 font-normal">({session.dureeFormattee})</span>
               </span>
-
-              {session.tempsFactureFormatte && session.tempsFactureFormatte !== session.dureeFormattee && (
-                <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">
-                  Temps facturé : {session.tempsFactureFormatte}
-                </span>
-              )}
 
               <span className="flex items-center gap-1 text-slate-500">
                 <MapPin className="w-3.5 h-3.5 text-slate-400" />
