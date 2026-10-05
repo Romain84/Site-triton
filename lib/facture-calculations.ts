@@ -850,9 +850,6 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       const datesBadges = dates.map((d) => d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }))
       const titre = creneau.groupes.join(' · ')
       const sousTitreParts = [`${creneau.jourSemaine} ${creneau.heureDebut} – ${creneau.heureFin}`]
-      if (creneau.espaces && creneau.espaces.length > 0) {
-        sousTitreParts.push(creneau.espaces.join(', '))
-      }
       if (tempsFactureMin !== dureeReelleMin) {
         sousTitreParts.push(`(facturé ${formatMinutesEnHM(tempsFactureMin)})`)
       }
@@ -941,7 +938,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
         montant: dureeHeures * tauxHoraire,
         date: evt.date,
         titre: evt.titre,
-        sousTitre: `${dateStr} · ${evt.heureDebut} – ${evt.heureFin}${evt.lieu ? ` · ${evt.lieu}` : ''}`,
+        sousTitre: `${dateStr} · ${evt.heureDebut} – ${evt.heureFin}`,
         datesBadges: [evtDateCourt],
         detailCalculDuree: formatHeuresEnHM(dureeHeures),
       })

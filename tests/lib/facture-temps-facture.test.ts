@@ -784,7 +784,7 @@ describe('Lot 7 — Lignes de facture lisibles et structurées (3 niveaux, absen
     expect(res.totalMontant).toBe(180)
   })
 
-  it('affiche les occupations / espaces multiples dans le sous-titre de la séance', async () => {
+  it('garde les espaces sur l objet ligne mais simplifie le sous-titre sans superflu', async () => {
     vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
     vi.mocked(prisma.planning.findMany).mockResolvedValue([
       {
@@ -808,7 +808,7 @@ describe('Lot 7 — Lignes de facture lisibles et structurées (3 niveaux, absen
     expect(res.lignesPlanningFixe).toHaveLength(1)
     const ligne = res.lignesPlanningFixe[0]
     expect(ligne.titre).toBe('Natation Artistique')
-    expect(ligne.sousTitre).toBe('Vendredi 18:15 – 20:00 · PPG, Petit Bassin, Lignes 1-4')
+    expect(ligne.sousTitre).toBe('Vendredi 18:15 – 20:00')
     expect(ligne.espaces).toEqual(['PPG', 'Petit Bassin', 'Lignes 1-4'])
   })
 
@@ -892,6 +892,33 @@ describe('Lot 7 — Lignes de facture lisibles et structurées (3 niveaux, absen
     // Total montant = 45 + 154 = 199 €
     expect(res.totalMontant).toBe(199)
     expect(res.totalHeures).toBe(1.5)
+  })
+
+  it('exclut le lieu superflu dans le sous-titre des créneaux tournants', async () => {
+    vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.planning.findMany).mockResolvedValue([])
+    vi.mocked(prisma.remplacement.findMany).mockResolvedValue([])
+    vi.mocked(prisma.evenementTournant.findMany).mockResolvedValue([
+      {
+        id: 'evt-tournant-1',
+        coachId: 'coach-1',
+        titre: 'ADULTES SAMEDI',
+        date: new Date('2026-10-03T09:00:00Z'),
+        heureDebut: '11:00',
+        heureFin: '12:30',
+        lieu: 'Piscine de Cavaillon',
+        actif: true,
+      } as any,
+    ])
+
+    const res = await calculerFactureCoach('coach-1', 10, 2026)
+
+    expect(res.lignesPlanningTournant).toHaveLength(1)
+    const ligneTournant = res.lignesPlanningTournant[0]
+    expect(ligneTournant.titre).toBe('ADULTES SAMEDI')
+    expect(ligneTournant.sousTitre).toBe('03/10/2026 · 11:00 – 12:30')
+    expect(ligneTournant.sousTitre).not.toContain('Piscine de Cavaillon')
+    expect(ligneTournant.datesBadges).toEqual(['03/10'])
   })
 })
 
