@@ -191,15 +191,17 @@ export default function EvenementsManager() {
 
   const handleAutoImport = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!calendarFile || !reglementFile) {
-      toast.error('Veuillez sélectionner les deux fichiers PDF')
+    if (!calendarFile) {
+      toast.error('Veuillez sélectionner au moins le fichier PDF du calendrier')
       return
     }
     setAutoImportLoading(true)
     try {
       const fd = new FormData()
       fd.append('calendar', calendarFile)
-      fd.append('reglement', reglementFile)
+      if (reglementFile) {
+        fd.append('reglement', reglementFile)
+      }
       if (regionalFile) {
         fd.append('regional', regionalFile)
       }
@@ -1801,7 +1803,7 @@ export default function EvenementsManager() {
                 <span className="text-xl">📅</span>
                 <div>
                   <h3 className="font-bold text-gray-900">Importation Automatique FFN</h3>
-                  <p className="text-xs text-gray-400 mt-0.5">Saison 2026 - Une seule étape</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Saison 2026 / 2027 — Détection intelligente</p>
                 </div>
               </div>
               <button
@@ -1819,7 +1821,7 @@ export default function EvenementsManager() {
               {/* Note informative */}
               <div className="bg-sky-50 border border-sky-100 p-4 rounded-xl text-xs text-sky-800 leading-relaxed font-medium space-y-1">
                 <p className="font-bold text-sky-900 text-sm">💡 Comment ça marche ?</p>
-                <p>Uploadez simultanément le calendrier et les deux règlements (départemental CD84 & régional PACA). Le système se charge d&apos;extraire les compétitions, de lier les pages de règlements correspondantes et de distribuer les épreuves sur les plannings de chaque groupe en une seule seconde !</p>
+                <p>Uploadez le PDF du calendrier (départemental ou régional). Si vous disposez déjà des règlements sportifs (CD84 et/ou PACA), ajoutez-les pour lier les fiches d&apos;épreuves, ouvertures de portes et horaires. Sinon, importez uniquement le calendrier : le système créera automatiquement toutes les compétitions futures sur les plannings des groupes !</p>
               </div>
 
               {/* Fichier 1 : Calendrier */}
@@ -1836,7 +1838,7 @@ export default function EvenementsManager() {
                   <div className="text-center space-y-1">
                     <span className="text-2xl block">📅</span>
                     <span className="text-xs font-semibold text-gray-600 block">
-                      {calendarFile ? calendarFile.name : 'Sélectionner le PDF du Calendrier'}
+                      {calendarFile ? calendarFile.name : 'Sélectionner le PDF du Calendrier (CD84 ou Régional)'}
                     </span>
                     {calendarFile && (
                       <span className="text-[10px] text-emerald-600 font-medium font-mono">Fichier sélectionné ({Math.round(calendarFile.size / 1024)} KB)</span>
@@ -1847,11 +1849,10 @@ export default function EvenementsManager() {
 
               {/* Fichier 2 : Règlement CD84 */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide">2. Règlement sportif départemental CD84 (PDF) *</label>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide">2. Règlement sportif départemental CD84 (PDF) <span className="text-gray-400 font-normal lowercase">(optionnel)</span></label>
                 <div className="relative border-2 border-dashed border-gray-200 rounded-xl p-4 hover:border-indigo-400 transition-colors bg-gray-50/30">
                   <input
                     type="file"
-                    required
                     accept="application/pdf"
                     onChange={e => setReglementFile(e.target.files?.[0] || null)}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -1859,7 +1860,7 @@ export default function EvenementsManager() {
                   <div className="text-center space-y-1">
                     <span className="text-2xl block">🏆</span>
                     <span className="text-xs font-semibold text-gray-600 block">
-                      {reglementFile ? reglementFile.name : 'Sélectionner le PDF du Règlement CD84'}
+                      {reglementFile ? reglementFile.name : 'Sélectionner le Règlement CD84 avec fiches détaillées (optionnel)'}
                     </span>
                     {reglementFile && (
                       <span className="text-[10px] text-indigo-600 font-medium font-mono">Fichier sélectionné ({Math.round(reglementFile.size / 1024)} KB)</span>
@@ -1870,11 +1871,10 @@ export default function EvenementsManager() {
 
               {/* Fichier 3 : Règlement Régional */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide">3. Règlement sportif régional PACA (PDF) *</label>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide">3. Règlement sportif régional PACA (PDF) <span className="text-gray-400 font-normal lowercase">(optionnel - dès réception)</span></label>
                 <div className="relative border-2 border-dashed border-gray-200 rounded-xl p-4 hover:border-violet-400 transition-colors bg-gray-50/30">
                   <input
                     type="file"
-                    required
                     accept="application/pdf"
                     onChange={e => setRegionalFile(e.target.files?.[0] || null)}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -1882,7 +1882,7 @@ export default function EvenementsManager() {
                   <div className="text-center space-y-1">
                     <span className="text-2xl block">🌐</span>
                     <span className="text-xs font-semibold text-gray-600 block">
-                      {regionalFile ? regionalFile.name : 'Sélectionner le PDF du Règlement PACA'}
+                      {regionalFile ? regionalFile.name : 'Sélectionner le Règlement PACA (optionnel)'}
                     </span>
                     {regionalFile && (
                       <span className="text-[10px] text-violet-600 font-medium font-mono">Fichier sélectionné ({Math.round(regionalFile.size / 1024)} KB)</span>

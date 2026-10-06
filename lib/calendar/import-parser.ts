@@ -643,7 +643,14 @@ export function parseCalendarEventsFromText(
   let currentMonth = 0
   let currentYear = new Date().getFullYear()
 
-  for (const line of lines) {
+  // Détecter l'année de saison dès l'en-tête (ex: "SAISON 2027" ou "COMPÉTITIONS ... 2027")
+  const titleYearMatch = text.match(/(?:SAISON|COMP[EÉ]TITIONS.*?)\s*(\d{4})/i)
+  if (titleYearMatch) {
+    currentYear = parseInt(titleYearMatch[1], 10)
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.replace(/^\s*\((\d{1,2})\)/, '$1').trim()
     const monthMatch = line.match(MONTH_HEADER_RE)
     if (monthMatch) {
       const monthClean = monthMatch[1].replace(/\s+/g, '')

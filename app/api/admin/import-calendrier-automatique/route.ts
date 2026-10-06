@@ -194,57 +194,54 @@ export async function POST(request: NextRequest) {
     if (!(calendarFile instanceof File)) {
       return apiError('Fichier PDF du calendrier manquant', 400, undefined, 'MISSING_CALENDAR');
     }
-    if (!(reglementFile instanceof File)) {
-      return apiError('Fichier PDF du règlement départemental manquant', 400, undefined, 'MISSING_REGLEMENT_DEP');
-    }
-    if (!(regionalFile instanceof File)) {
-      return apiError('Fichier PDF du règlement régional manquant', 400, undefined, 'MISSING_REGLEMENT_REG');
-    }
 
     const calendarBuffer = Buffer.from(await calendarFile.arrayBuffer());
-    const reglementBuffer = Buffer.from(await reglementFile.arrayBuffer());
-    const regionalBuffer = Buffer.from(await regionalFile.arrayBuffer());
-
-    // 1. Sauvegarder les fichiers avec un nom unique pour éviter les conflits et le cache navigateur
-    const timestamp = Date.now();
-    const cleanCalName = calendarFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const uniqueCalName = `${timestamp}-${cleanCalName}`;
-
-    const cleanRegName = reglementFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const uniqueRegName = `${timestamp}-${cleanRegName}`;
-
-    const cleanRegionalName = regionalFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const uniqueRegionalName = `${timestamp}-${cleanRegionalName}`;
-
     const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'reglements');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
+    // 1. Sauvegarder le calendrier avec un nom unique
+    const timestamp = Date.now();
+    const cleanCalName = calendarFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const uniqueCalName = `${timestamp}-${cleanCalName}`;
     fs.writeFileSync(path.join(uploadDir, uniqueCalName), calendarBuffer);
-    fs.writeFileSync(path.join(uploadDir, uniqueRegName), reglementBuffer);
-    fs.writeFileSync(path.join(uploadDir, uniqueRegionalName), regionalBuffer);
 
-    const pdfReglementPath = `/uploads/reglements/${uniqueRegName}`;
-    const regionalPdfPath = `/uploads/reglements/${uniqueRegionalName}`;
+    // 2. Extraire les fiches depuis le règlement départemental (si fourni)
+    let sheets: any[] = [];
+    let pdfReglementPath: string | null = null;
+    if (reglementFile instanceof File) {
+      const reglementBuffer = Buffer.from(await reglementFile.arrayBuffer());
+      const cleanRegName = reglementFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const uniqueRegName = `${timestamp}-${cleanRegName}`;
+      fs.writeFileSync(path.join(uploadDir, uniqueRegName), reglementBuffer);
+      pdfReglementPath = `/uploads/reglements/${uniqueRegName}`;
 
-    // 2. Extraire les fiches de compétition depuis le règlement départemental
-    const regText = await parsePdfText(reglementBuffer, { pagerender: makeReglementPagerender() });
-    const sheets = parseCompetitionSheets(regText);
-    sheets.forEach(s => (s as any).pdfPath = pdfReglementPath);
-    importLogger.info(`${sheets.length} fiches de compétition extraites du règlement départemental.`);
+      const regText = await parsePdfText(reglementBuffer, { pagerender: makeReglementPagerender() });
+      sheets = parseCompetitionSheets(regText);
+      sheets.forEach(s => (s as any).pdfPath = pdfReglementPath);
+      importLogger.info(`${sheets.length} fiches de compétition extraites du règlement départemental.`);
+    }
 
-    // Extraire les fiches de compétition depuis le règlement régional
-    const regionalText = await parsePdfText(regionalBuffer, { pagerender: makeReglementPagerender() });
-    const regionalSheets = parseCompetitionSheets(regionalText);
-    regionalSheets.forEach(s => (s as any).pdfPath = regionalPdfPath);
-    importLogger.info(`${regionalSheets.length} fiches de compétition extraites du règlement régional PACA.`);
+    // Extraire les fiches depuis le règlement régional (si fourni)
+    let regionalSheets: any[] = [];
+    let regionalPdfPath: string | null = null;
+    if (regionalFile instanceof File) {
+      const regionalBuffer = Buffer.from(await regionalFile.arrayBuffer());
+      const cleanRegionalName = regionalFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const uniqueRegionalName = `${timestamp}-${cleanRegionalName}`;
+      fs.writeFileSync(path.join(uploadDir, uniqueRegionalName), regionalBuffer);
+      regionalPdfPath = `/uploads/reglements/${uniqueRegionalName}`;
+
+      const regionalText = await parsePdfText(regionalBuffer, { pagerender: makeReglementPagerender() });
+      regionalSheets = parseCompetitionSheets(regionalText);
+      regionalSheets.forEach(s => (s as any).pdfPath = regionalPdfPath);
+      importLogger.info(`${regionalSheets.length} fiches de compétition extraites du règlement régional PACA.`);
+    }
 
     const allSheets = [...sheets, ...regionalSheets];
 
     // 3. Extraire le texte du PDF calendrier et parser les événements de manière robuste
-    // Extraction du texte calendrier avec tri par position Y (pdfjs-dist direct)
-    // Fallback sur PDFParse si pdfjs-dist échoue
     let calendarText: string;
     try {
       calendarText = await extractCalendarTextFromPdf(calendarBuffer);
@@ -256,22 +253,34 @@ export async function POST(request: NextRequest) {
     const events = parseCalendarEventsFromText(calendarText, allSheets);
     importLogger.info(`Parsed ${events.length} events from calendar PDF using robust regex parser.`);
 
+    if (events.length === 0) {
+      return apiError('Aucun événement détecté dans le calendrier PDF. Vérifiez que le fichier est lisible.', 422, undefined, 'NO_EVENTS_FOUND');
+    }
+
     // 4. Charger les groupes pour la distribution
     const dbGroups = await prisma.groupe.findMany({
       select: { id: true, nom: true, niveau: true }
     });
 
-    // 5. Nettoyer les anciennes compétitions 2026
-    const deleteResult = await prisma.evenementCalendrier.deleteMany({
-      where: {
-        date: {
-          gte: new Date(2026, 0, 1),
-          lte: new Date(2026, 11, 31)
-        },
-        type: 'competition'
-      }
-    });
-    importLogger.info(`Deleted ${deleteResult.count} old 2026 competitions.`);
+    // 5. Nettoyer les anciennes compétitions pour les années des événements importés
+    const targetYears = Array.from(new Set(
+      events.map(e => new Date(e.date).getFullYear()).filter(y => !isNaN(y) && y >= 2025)
+    ));
+
+    let totalDeleted = 0;
+    for (const year of targetYears) {
+      const deleteResult = await prisma.evenementCalendrier.deleteMany({
+        where: {
+          date: {
+            gte: new Date(year, 0, 1),
+            lte: new Date(year, 11, 31, 23, 59, 59, 999)
+          },
+          type: 'competition'
+        }
+      });
+      totalDeleted += deleteResult.count;
+      importLogger.info(`Suppression de ${deleteResult.count} anciennes compétitions pour l'année ${year}.`);
+    }
 
     // 6. Insérer les nouveaux événements distribués par groupes
     let totalInsertions = 0;
@@ -346,7 +355,7 @@ export async function POST(request: NextRequest) {
       message: 'Importation réussie',
       eventsCount: events.length,
       insertionsCount: totalInsertions,
-      deletedCount: deleteResult.count
+      deletedCount: totalDeleted
     });
 
   } catch (err) {
