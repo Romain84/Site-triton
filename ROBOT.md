@@ -91,8 +91,9 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
   - Dès la première connexion (`mustChangePassword: true`), une modale obligatoire et conviviale invite le coach à définir son mot de passe personnel.
   - Aucune mention visible du mot de passe `1234` sur la page publique de login coach.
   - Côté Admin (`/admin/coaches`) : bouton de réinitialisation 1-clic remettant `mustChangePassword: true` et le mot de passe `1234`.
-- **Interface & Expérience Coach** :
+  - **Interface & Expérience Coach** :
   - Accueil simplifié en 2 colonnes (Planning Tournant / Remplacements).
+  - **Planning & Agenda épurés** : Affichage direct des horaires (ex. `18:00 – 19:30`), du groupe et du lieu. Aucun affichage de durée globale (ex. `1h30`) ni de mention "Facturé Xh" superflue dans l'agenda ou la modale d'absence.
   - Le chatbot IA d'assistance est **strictement masqué** dans l'espace coach pour laisser l'interface claire.
   - Guide d'utilisation officiel téléchargeable en PDF haute définition via `/api/guide-coach`.
 
@@ -105,6 +106,9 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
     - Si un coach a déjà une facture existante pour l'année (ex: facture 0001), sa prochaine facture démarre au numéro suivant (`0002`).
     - Pour un coach sans facture émise sur l'année, sa série démarre à `0001`.
   - **Inviolabilité stricte de l'existant** : Ne JAMAIS modifier, renommer ou écraser le numéro d'une facture déjà finalisée (`generee`, `envoyee`, `payee`). La facture `F-TCC-2026-0001` reste 100% intacte.
+- **Épuration visuelle des lignes de facture (UI et PDF)** :
+  - **Séances régulières** : Le sous-titre affiche uniquement le jour et les horaires (ex. `Vendredi 17:00 – 18:00`). Les bassins physiques et lignes d'eau (ex. `Grand Bassin - Ligne 1, Ligne 2`) sont strictement exclus car superflus.
+  - **Créneaux tournants** : Le sous-titre affiche uniquement la date et les horaires (ex. `03/10/2026 · 11:00 – 12:30`). Le lieu (ex. `Piscine de Cavaillon`) est strictement exclu.
 - **Règle d'arrondi des heures** : Arrondi strict à la demi-heure supérieure (`Math.ceil(minutes / 30) * 0.5`) sur tous les créneaux (fixes, remplacements, absences, tournants).
 - **Date de rentrée sportive** :
   - Les séances fixes (`planningsFixe`) antérieures à la date officielle de reprise des cours (`settings.debutCoursNormal`, ex: 14 Septembre 2026) ne sont JAMAIS facturées.
@@ -118,9 +122,9 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
   - Génération de factures PDF certifiées avec récapitulatif détaillé pour la comptabilité et les déclarations auto-entrepreneurs des éducateurs.
 - **Workflow & Rôle Admin** :
   - La facture mensuelle reste en **Brouillon** tant qu'elle n'est pas officialisée.
-  - **Génération par le coach** : Bouton "Générer la facture" (attribue le numéro séquentiel avec initiales, calcule et génère le PDF).
-  - **Génération directe par l'Admin** : Depuis Admin > Factures (onglet *"⚡ Factures en cours & Génération"*), l'administrateur peut générer ou envoyer la facture à la place de chaque coach en 1 clic.
-  - **Notification e-mail au club (`emailClub`)** : Reçue **UNIQUEMENT** lorsque la facture passe au statut **"Envoyée" (`envoyee`)**. **AUCUN e-mail** en "Brouillon" ou "Générée".
+  - **Génération et transmission en 1 clic** : Le bouton "Générer la facture" génère le PDF ET transmet directement la facture au club au statut `envoyee`. Il n'y a pas de bouton "Envoyer" séparé.
+  - **Génération directe par l'Admin** : Depuis Admin > Factures (onglet *"⚡ Factures en cours & Génération"*), l'administrateur peut générer la facture à la place de chaque coach en 1 clic (statut `envoyee` direct avec transmission e-mail).
+  - **Notification e-mail au club (`emailClub`)** : Reçue **UNIQUEMENT** lorsque la facture passe au statut **"Envoyée" (`envoyee`)** lors de cette génération directe. **AUCUN e-mail** en "Brouillon".
   - **Verrouillage post-envoi** : Dès que le statut est `envoyee`, la facture et ses séances sont verrouillées. Seul l'admin dispose du bouton "Déverrouiller" pour la repasser en brouillon si besoin.
 
 ### C. Remplacements, Vacations Tournantes & Prestations Manuelles
@@ -200,6 +204,12 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
 ### K. Audience & Respect RGPD
 - **Analytics interne privacy-first** : Table `Visite` (`/api/analytics/track`) sans aucun cookie tiers, sans transmission externe, 100% conforme aux directives de la CNIL et au RGPD.
 
+### L. Structure & Ergonomie de l'Espace Administration (`/admin`)
+- **Hiérarchie et priorité des pôles** :
+  1. **Pôle 1 : Finances & Comptabilité** (Factures coachs, Devis & conventions, Trésorerie & bilans, Reçus fiscaux CERFA).
+  2. **Pôle 2 : Équipe & Gestion sportive** (Gestion des coachs, Remplacements & vacations, Planning régulier, Séances annulées).
+  3. **Pôles suivants** : Adhérents & Inscriptions, Communication & Événements, Configuration & Système.
+
 ---
 
 ## 📦 5. COMMANDES CLÉS DU PROJET
@@ -220,11 +230,10 @@ npx prisma db push
 # Accès à l'interface graphique de la base de données
 npx prisma studio
 
-# Déploiement VPS (sur 146.59.239.75)
-cd /root/docker/site_triton
-git pull origin main
-docker compose -f docker-compose.vps.yml build web
-docker compose -f docker-compose.vps.yml up -d web
+# Déploiement VPS (sur 146.59.239.75, connexion: ssh debian@146.59.239.75)
+sudo git -C /root/docker/site_triton pull origin main
+sudo docker compose -f /root/docker/site_triton/docker-compose.vps.yml build web
+sudo docker compose -f /root/docker/site_triton/docker-compose.vps.yml up -d web
 
 # Maintenance disque VPS (en cas de saturation d'espace)
 sudo docker builder prune -af
