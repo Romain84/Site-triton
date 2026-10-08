@@ -598,15 +598,68 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       return rempDebutMin < sFin && sDeb < rempFinMin
     }).sort((a, b) => timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut))
 
-    const slotsToProcess = matchingSlots.length > 0 ? matchingSlots : [null]
+    // Règle club : fusionner les créneaux simultanés du coach absent (multi-groupes au même créneau = payé une seule fois)
+    interface SlotFusionneRemp {
+      id: string
+      heureDebut: string
+      heureFin: string
+      debutMin: number
+      finMin: number
+      groupes: string[]
+      tempsFactureMin: number
+      planningIds: string[]
+      groupeIds: string[]
+    }
+
+    const slotsFusionnes: SlotFusionneRemp[] = []
+    for (const p of matchingSlots) {
+      const sDeb = timeToMinutes(p.heureDebut)
+      const sFin = timeToMinutes(p.heureFin)
+      const dureeReelle = Math.max(1, sFin - sDeb)
+      const tempsFacture = p.tempsFacture && p.tempsFacture > 0 ? p.tempsFacture : dureeReelle
+      const nomGrp = p.groupe?.nom || 'Groupe'
+      const last = slotsFusionnes.length > 0 ? slotsFusionnes[slotsFusionnes.length - 1] : null
+
+      // Chevauchement strict : le créneau commence strictement avant la fin du créneau précédent
+      if (last && sDeb < last.finMin) {
+        if (sFin > last.finMin) {
+          last.finMin = sFin
+          last.heureFin = minutesToTime(sFin)
+        }
+        if (!last.groupes.includes(nomGrp)) {
+          last.groupes.push(nomGrp)
+        }
+        last.planningIds.push(p.id)
+        if (p.groupeId && !last.groupeIds.includes(p.groupeId)) {
+          last.groupeIds.push(p.groupeId)
+        }
+        if (tempsFacture > last.tempsFactureMin) {
+          last.tempsFactureMin = tempsFacture
+        }
+      } else {
+        slotsFusionnes.push({
+          id: p.id,
+          heureDebut: p.heureDebut,
+          heureFin: p.heureFin,
+          debutMin: sDeb,
+          finMin: sFin,
+          groupes: [nomGrp],
+          tempsFactureMin: tempsFacture,
+          planningIds: [p.id],
+          groupeIds: p.groupeId ? [p.groupeId] : [],
+        })
+      }
+    }
+
+    const slotsToProcess = slotsFusionnes.length > 0 ? slotsFusionnes : [null]
 
     for (const slotAssocie of slotsToProcess) {
-      const slotDebutMin = slotAssocie ? timeToMinutes(slotAssocie.heureDebut) : rempDebutMin
-      const slotFinMin = slotAssocie ? timeToMinutes(slotAssocie.heureFin) : rempFinMin
+      const slotDebutMin = slotAssocie ? slotAssocie.debutMin : rempDebutMin
+      const slotFinMin = slotAssocie ? slotAssocie.finMin : rempFinMin
       const slotDureeReelleMin = Math.max(1, slotFinMin - slotDebutMin)
       const slotTempsFactureMin =
-        slotAssocie?.tempsFacture && slotAssocie.tempsFacture > 0
-          ? slotAssocie.tempsFacture
+        slotAssocie?.tempsFactureMin && slotAssocie.tempsFactureMin > 0
+          ? slotAssocie.tempsFactureMin
           : slotDureeReelleMin
 
       // Durée réelle couverte sur ce créneau
@@ -619,12 +672,12 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       const portionDebutStr = minutesToTime(portionDebutMin)
       const portionFinStr = minutesToTime(portionFinMin)
 
-      const groupeNom = slotAssocie?.groupe?.nom || 'Remplacement'
+      const groupeNom = slotAssocie ? slotAssocie.groupes.join(' · ') : 'Remplacement'
       const titre = `${groupeNom} — pour ${coachNom}`
-      const ligneId = matchingSlots.length > 1 && slotAssocie ? `${remp.id}_${slotAssocie.id}` : remp.id
+      const ligneId = slotsFusionnes.length > 1 && slotAssocie ? `${remp.id}_${slotAssocie.id}` : remp.id
 
       // Si la séance a été annulée par le club ce jour-là, le remplaçant n'est pas rémunéré (Lot 2)
-      const slotKeyRemp = slotAssocie ? `${slotAssocie.jourSemaine}_${slotAssocie.heureDebut}_${slotAssocie.heureFin}` : ''
+      const slotKeyRemp = slotAssocie ? `${jourSemaineRemp}_${slotAssocie.heureDebut}_${slotAssocie.heureFin}` : ''
       const annulationRempKey = `${dateKey}_${slotKeyRemp}`
       const aAnnulationClub = (slotKeyRemp && creneauxAnnulesKeys.has(annulationRempKey)) || seancesAnnulees.some(sa => {
         const saD = new Date(sa.date)
@@ -633,8 +686,8 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
                            saD.getDate() === rempDateObj.getDate()
         if (!isMemeDate) return false
         if (!sa.planningId && !sa.groupeId && !sa.coachId) return true
-        if (sa.planningId && (slotAssocie?.id === sa.planningId || remp.planningId === sa.planningId)) return true
-        if (sa.groupeId && slotAssocie?.groupeId === sa.groupeId) return true
+        if (sa.planningId && (slotAssocie?.planningIds.includes(sa.planningId) || remp.planningId === sa.planningId)) return true
+        if (sa.groupeId && slotAssocie?.groupeIds.includes(sa.groupeId)) return true
         if (sa.coachId && (sa.coachId === remp.coachRemplaceId || sa.coachId === coachId)) return true
         return false
       })

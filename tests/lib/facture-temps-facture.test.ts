@@ -991,5 +991,83 @@ describe('Lot 7 — Lignes de facture lisibles et structurées (3 niveaux, absen
     expect(res.totalHeures).toBe(2)
     expect(res.totalMontant).toBe(60)
   })
+
+  it('fusionne les créneaux simultanés du coach absent pour ne payer qu une seule fois la durée (ex: 3 groupes de 18h00 à 19h15 -> 1 seule ligne de 1h15)', async () => {
+    vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.evenementTournant.findMany).mockResolvedValue([])
+
+    // Remplacement effectué par Fabien pour Julie de 18h00 à 19h15 le vendredi 02/10/2026
+    vi.mocked(prisma.remplacement.findMany)
+      .mockResolvedValueOnce([
+        {
+          id: 'remp-julie-fabien',
+          date: new Date('2026-10-02T12:00:00Z'),
+          heureDebut: '18:00',
+          heureFin: '19:15',
+          coachRemplaceId: 'coach-julie',
+          coachRemplacantId: 'coach-fabien',
+          motif: 'Trophée des sports',
+          planningId: null,
+          actif: true,
+          coachRemplace: { id: 'coach-julie', prenom: 'Julie', nom: 'PETRELLA' },
+        } as any,
+      ])
+      .mockResolvedValueOnce([]) // remplacements reçus (0)
+
+    // Les plannings de Julie le vendredi : 3 groupes SIMULTANÉS de 18h00 à 19h15
+    vi.mocked(prisma.planning.findMany)
+      .mockResolvedValueOnce([]) // Fabien n'a pas de cours régulier ce vendredi à cette heure
+      .mockResolvedValueOnce([
+        {
+          id: 'plan-julie-adultes',
+          jourSemaine: 'Vendredi',
+          heureDebut: '18:00',
+          heureFin: '19:15',
+          tempsFacture: null,
+          actif: true,
+          groupeId: 'grp-adultes',
+          groupe: { nom: 'Adultes Compétition' },
+          coachs: [{ coachId: 'coach-julie' }],
+        } as any,
+        {
+          id: 'plan-julie-benj2',
+          jourSemaine: 'Vendredi',
+          heureDebut: '18:00',
+          heureFin: '19:15',
+          tempsFacture: null,
+          actif: true,
+          groupeId: 'grp-benj2',
+          groupe: { nom: 'Benjamins 2' },
+          coachs: [{ coachId: 'coach-julie' }],
+        } as any,
+        {
+          id: 'plan-julie-benj1',
+          jourSemaine: 'Vendredi',
+          heureDebut: '18:00',
+          heureFin: '19:15',
+          tempsFacture: null,
+          actif: true,
+          groupeId: 'grp-benj1',
+          groupe: { nom: 'Benjamins 1' },
+          coachs: [{ coachId: 'coach-julie' }],
+        } as any,
+      ])
+
+    const res = await calculerFactureCoach('coach-fabien', 10, 2026)
+
+    // Exactement 1 seule ligne fusionnée !
+    expect(res.lignesRemplacements).toHaveLength(1)
+
+    const ligne = res.lignesRemplacements[0]
+    expect(ligne.titre).toBe('Adultes Compétition · Benjamins 2 · Benjamins 1 — pour Julie PETRELLA')
+    expect(ligne.sousTitre).toContain('18:00 – 19:15')
+    expect(ligne.sousTitre).toContain('Trophée des sports')
+    expect(ligne.heures).toBe(1.25)
+    expect(ligne.montant).toBe(37.5) // 1.25 * 30
+    expect(ligne.detailCalculDuree).toBe('1h15')
+
+    expect(res.totalHeures).toBe(1.25)
+    expect(res.totalMontant).toBe(37.5)
+  })
 })
 
