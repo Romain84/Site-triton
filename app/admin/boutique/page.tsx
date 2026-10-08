@@ -107,6 +107,8 @@ function BoutiquePageContent() {
           setProduits(data.produits)
         } else if (res.status === 401) {
           router.push('/admin/login')
+        } else if (res.status === 403) {
+          router.push('/admin')
         } else {
           setError(data.error || 'Erreur lors du chargement des produits')
         }
@@ -121,6 +123,8 @@ function BoutiquePageContent() {
           setCommandes(data.commandes)
         } else if (res.status === 401) {
           router.push('/admin/login')
+        } else if (res.status === 403) {
+          router.push('/admin')
         } else {
           setError(data.error || 'Erreur lors du chargement des commandes')
         }

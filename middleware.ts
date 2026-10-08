@@ -4,6 +4,7 @@ import { jwtVerify } from 'jose'
 import { getSessionSecretKey } from './lib/auth/session-secret'
 import { isSameOriginRequest } from './lib/security/origin'
 import { requiresSameOriginCheck } from './lib/security/protected-api'
+import { isSuperviseurFinanceRoute } from './lib/security/superviseur-guard'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -59,7 +60,7 @@ export async function middleware(request: NextRequest) {
     }
     try {
       const { payload } = await jwtVerify(adminToken, getSessionSecretKey())
-      if (payload.type !== 'admin' || !payload.userId) {
+      if (payload.type !== 'admin' || !payload.userId || payload.role === 'superviseur') {
         return NextResponse.json({ error: 'Accès interdit - Droits administrateur requis' }, { status: 403 })
       }
       return response
@@ -77,7 +78,7 @@ export async function middleware(request: NextRequest) {
     if (adminToken) {
       try {
         const { payload } = await jwtVerify(adminToken, getSessionSecretKey())
-        if (payload.type === 'admin' && payload.userId) {
+        if (payload.type === 'admin' && payload.userId && payload.role !== 'superviseur') {
           isAuthorized = true
         }
       } catch {
@@ -129,15 +130,13 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/admin/login', request.url))
       }
 
-      // Sécurité 2 : Rôle Superviseur -> interdiction des routes finances
+      // Sécurité 2 : Rôle Superviseur -> interdiction absolue des finances, boutique et documents d'argent
       if (payload.role === 'superviseur') {
-        const isFinanceRoute =
-          pathname.startsWith('/api/admin/finances') ||
-          pathname.startsWith('/api/admin/comptabilite') ||
-          pathname.startsWith('/api/admin/factures') ||
-          pathname === '/api/admin/groupes/cout-saison'
+        if (pathname.startsWith('/admin/boutique')) {
+          return NextResponse.redirect(new URL('/admin', request.url))
+        }
 
-        if (isFinanceRoute) {
+        if (isSuperviseurFinanceRoute(pathname)) {
           return NextResponse.json({ error: 'Accès interdit aux superviseurs (Droits insuffisants)' }, { status: 403 })
         }
       }

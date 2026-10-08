@@ -53,7 +53,12 @@ interface Settings {
   piscinesFrequentes?: string | null
 }
 
-export default function ParametresManager() {
+interface ParametresManagerProps {
+  currentUser?: { id: string; email: string; role: string } | null
+}
+
+export default function ParametresManager({ currentUser }: ParametresManagerProps = {}) {
+  const isSuperviseur = currentUser?.role === 'superviseur'
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testingSmtp, setTestingSmtp] = useState(false)
@@ -63,6 +68,12 @@ export default function ParametresManager() {
   const [isInitialized, setIsInitialized] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [activeTab, setActiveTab] = useState<'general' | 'finances' | 'documents' | 'system'>('general')
+
+  useEffect(() => {
+    if (isSuperviseur && activeTab === 'finances') {
+      setActiveTab('general')
+    }
+  }, [isSuperviseur, activeTab])
 
   // Form state
   const [tauxHoraire, setTauxHoraire] = useState('35')
@@ -505,6 +516,53 @@ export default function ParametresManager() {
     }
   }
 
+  const getPayload = () => {
+    const payload: Record<string, any> = {
+      boutiqueOuverte,
+      dateLivraisonBoutique: dateLivraisonBoutique || null,
+      facturationElectronique,
+      emailClub,
+      logoUrl: logoUrl || null,
+      statutsUrl: statutsUrl || null,
+      reglementPiscineUrl: reglementPiscineUrl || null,
+      reglementClubUrl: reglementClubUrl || null,
+      formulaireLicenceFfnUrl: formulaireLicenceFfnUrl || null,
+      afficherBoutonTest,
+      codeAccesTestsNage: codeAccesTestsNage.trim() || null,
+      signaturePresidentUrl: signaturePresidentUrl || null,
+      nomSignataireRecu: nomSignataireRecu || 'Le Président',
+      titreSignataireRecu: titreSignataireRecu || 'Président',
+      signatureTresoriereUrl: signatureTresoriereUrl || null,
+      nomTresoriereRecu: nomTresoriereRecu || 'La Trésorière',
+      titreTresoriereRecu: titreTresoriereRecu || 'Trésorière',
+      smtpHost,
+      smtpPort,
+      smtpUser,
+      smtpPassword: smtpPassword || undefined,
+      inscriptionUrl: inscriptionUrl || null,
+      chatbotModel,
+      debutCoursNormal,
+      debutCoursBnssa,
+      datesTests,
+      interSaisonActif,
+      texteFiligrane,
+      piscinesFrequentes: JSON.stringify(piscinesFrequentes),
+    }
+
+    if (!isSuperviseur) {
+      payload.tauxHoraire = tauxHoraire
+      payload.forfaitCompetition = forfaitCompetition
+      payload.nbCompetitionsAnnee = nbCompetitionsAnnee
+      payload.nbDemiJourneesParCompetition = nbDemiJourneesParCompetition
+      payload.forfaitRegionalActif = forfaitRegionalActif
+      payload.montantForfaitRegional = montantForfaitRegional
+      payload.reductionEnfantBureau = reductionEnfantBureau
+      payload.soldeDepartSaison = soldeDepartSaison
+    }
+
+    return payload
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -515,45 +573,7 @@ export default function ParametresManager() {
       const response = await fetch('/api/admin/parametres', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tauxHoraire,
-          forfaitCompetition,
-          nbCompetitionsAnnee,
-          nbDemiJourneesParCompetition,
-          forfaitRegionalActif,
-          montantForfaitRegional,
-          reductionEnfantBureau,
-          boutiqueOuverte,
-          dateLivraisonBoutique: dateLivraisonBoutique || null,
-          facturationElectronique,
-          emailClub,
-          logoUrl: logoUrl || null,
-          statutsUrl: statutsUrl || null,
-          reglementPiscineUrl: reglementPiscineUrl || null,
-          reglementClubUrl: reglementClubUrl || null,
-          formulaireLicenceFfnUrl: formulaireLicenceFfnUrl || null,
-          afficherBoutonTest,
-          codeAccesTestsNage: codeAccesTestsNage.trim() || null,
-          signaturePresidentUrl: signaturePresidentUrl || null,
-          nomSignataireRecu: nomSignataireRecu || 'Le Président',
-          titreSignataireRecu: titreSignataireRecu || 'Président',
-          signatureTresoriereUrl: signatureTresoriereUrl || null,
-          nomTresoriereRecu: nomTresoriereRecu || 'La Trésorière',
-          titreTresoriereRecu: titreTresoriereRecu || 'Trésorière',
-          smtpHost,
-          smtpPort,
-          smtpUser,
-          smtpPassword: smtpPassword || undefined,
-          inscriptionUrl: inscriptionUrl || null,
-          soldeDepartSaison,
-          chatbotModel,
-          debutCoursNormal,
-          debutCoursBnssa,
-          datesTests,
-          interSaisonActif,
-          texteFiligrane,
-          piscinesFrequentes: JSON.stringify(piscinesFrequentes),
-        }),
+        body: JSON.stringify(getPayload()),
       })
 
       if (!response.ok) {
@@ -574,14 +594,19 @@ export default function ParametresManager() {
 
   const isChanged = () => {
     if (!settings) return false
+    const financeChanged =
+      !isSuperviseur &&
+      (tauxHoraire !== (settings.tauxHoraire?.toString() || '35') ||
+        forfaitCompetition !== (settings.forfaitCompetition?.toString() || '150') ||
+        nbCompetitionsAnnee !== (settings.nbCompetitionsAnnee?.toString() || '20') ||
+        nbDemiJourneesParCompetition !== (settings.nbDemiJourneesParCompetition?.toString() || '2') ||
+        forfaitRegionalActif !== (settings.forfaitRegionalActif ?? false) ||
+        montantForfaitRegional !== (settings.montantForfaitRegional?.toString() || '50') ||
+        reductionEnfantBureau !== (settings.reductionEnfantBureau?.toString() || '50') ||
+        soldeDepartSaison !== (settings.soldeDepartSaison?.toString() || '0'))
+
     return (
-      tauxHoraire !== (settings.tauxHoraire?.toString() || '35') ||
-      forfaitCompetition !== (settings.forfaitCompetition?.toString() || '150') ||
-      nbCompetitionsAnnee !== (settings.nbCompetitionsAnnee?.toString() || '20') ||
-      nbDemiJourneesParCompetition !== (settings.nbDemiJourneesParCompetition?.toString() || '2') ||
-      forfaitRegionalActif !== (settings.forfaitRegionalActif ?? false) ||
-      montantForfaitRegional !== (settings.montantForfaitRegional?.toString() || '50') ||
-      reductionEnfantBureau !== (settings.reductionEnfantBureau?.toString() || '50') ||
+      financeChanged ||
       boutiqueOuverte !== (settings.boutiqueOuverte ?? true) ||
       dateLivraisonBoutique !== (settings.dateLivraisonBoutique || 'Mi-Octobre 2026') ||
       facturationElectronique !== (settings.facturationElectronique ?? false) ||
@@ -603,7 +628,6 @@ export default function ParametresManager() {
       smtpUser !== (settings.smtpUser || '') ||
       (smtpPassword !== '') ||
       inscriptionUrl !== (settings.inscriptionUrl || '/actualites/inscriptions-2025-2026') ||
-      soldeDepartSaison !== (settings.soldeDepartSaison?.toString() || '0') ||
       chatbotModel !== (settings.chatbotModel || 'mistral-small') ||
       debutCoursNormal !== (settings.debutCoursNormal || 'Lundi 21 Septembre 2026') ||
       debutCoursBnssa !== (settings.debutCoursBnssa || 'Jeudi 1er Octobre 2026') ||
@@ -621,44 +645,7 @@ export default function ParametresManager() {
       const response = await fetch('/api/admin/parametres', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tauxHoraire,
-          forfaitCompetition,
-          nbCompetitionsAnnee,
-          nbDemiJourneesParCompetition,
-          forfaitRegionalActif,
-          montantForfaitRegional,
-          reductionEnfantBureau,
-          boutiqueOuverte,
-          dateLivraisonBoutique: dateLivraisonBoutique || null,
-          facturationElectronique,
-          emailClub,
-          logoUrl: logoUrl || null,
-          statutsUrl: statutsUrl || null,
-          reglementPiscineUrl: reglementPiscineUrl || null,
-          reglementClubUrl: reglementClubUrl || null,
-          formulaireLicenceFfnUrl: formulaireLicenceFfnUrl || null,
-          afficherBoutonTest,
-          signaturePresidentUrl: signaturePresidentUrl || null,
-          nomSignataireRecu: nomSignataireRecu || 'Le Président',
-          titreSignataireRecu: titreSignataireRecu || 'Président',
-          signatureTresoriereUrl: signatureTresoriereUrl || null,
-          nomTresoriereRecu: nomTresoriereRecu || 'La Trésorière',
-          titreTresoriereRecu: titreTresoriereRecu || 'Trésorière',
-          smtpHost,
-          smtpPort,
-          smtpUser,
-          smtpPassword: smtpPassword || undefined,
-          inscriptionUrl: inscriptionUrl || null,
-          soldeDepartSaison,
-          chatbotModel,
-          debutCoursNormal,
-          debutCoursBnssa,
-          datesTests,
-          interSaisonActif,
-          texteFiligrane,
-          piscinesFrequentes: JSON.stringify(piscinesFrequentes),
-        }),
+        body: JSON.stringify(getPayload()),
       })
 
       if (!response.ok) {
@@ -887,17 +874,19 @@ export default function ParametresManager() {
         >
           <span>🏠</span> Général & Rentrée
         </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('finances')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'finances'
-              ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <span>💰</span> Tarifs & Trésorerie
-        </button>
+        {!isSuperviseur && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('finances')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+              activeTab === 'finances'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <span>💰</span> Tarifs & Trésorerie
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setActiveTab('documents')}
@@ -1212,7 +1201,7 @@ export default function ParametresManager() {
             </motion.div>
           )}
 
-          {activeTab === 'finances' && (
+          {activeTab === 'finances' && !isSuperviseur && (
             <motion.div
               key="finances"
               initial={{ opacity: 0, y: 10 }}

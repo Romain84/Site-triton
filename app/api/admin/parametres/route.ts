@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { isSameOriginRequest } from '@/lib/security/origin'
 import { apiError, apiSuccess } from '@/lib/api/response'
 import { encryptSmtpPassword } from '@/lib/email'
+import { maskSettingsForSuperviseur, FINANCIAL_SETTINGS_KEYS } from '@/lib/security/superviseur-guard'
 
 const adminLogger = logger.withContext('Admin')
 
@@ -100,7 +101,8 @@ const settingsSelect = {
 } as const
 
 function toSafeSettings(
-  settings: any
+  settings: any,
+  role?: string
 ) {
   if (!settings) {
     return null
@@ -108,12 +110,18 @@ function toSafeSettings(
 
   const { smtpPassword, instagramAccessToken, ...rest } = settings
 
-  return {
+  const safe = {
     ...rest,
     smtpPasswordConfigured: Boolean(smtpPassword),
     instagramConfigured: Boolean(instagramAccessToken),
     instagramAccessToken: instagramAccessToken ? '••••••••' : null,
   }
+
+  if (role === 'superviseur') {
+    return maskSettingsForSuperviseur(safe)
+  }
+
+  return safe
 }
 
 // GET: Fetch settings
@@ -165,7 +173,7 @@ export async function GET() {
       })
     }
 
-    return apiSuccess({ settings: toSafeSettings(settings) })
+    return apiSuccess({ settings: toSafeSettings(settings, session.role) })
   } catch (error) {
     adminLogger.error('Erreur lors de la récupération des paramètres', error)
     return apiError('Erreur serveur', 500)
@@ -236,6 +244,12 @@ export async function PUT(request: NextRequest) {
     if (val.piscinesFrequentes !== undefined) updateData.piscinesFrequentes = val.piscinesFrequentes
     if (encryptedSmtpPassword !== undefined) updateData.smtpPassword = encryptedSmtpPassword
 
+    if (session.role === 'superviseur') {
+      for (const key of FINANCIAL_SETTINGS_KEYS) {
+        delete updateData[key]
+      }
+    }
+
     // Get existing settings id or create new
     const existingSettings = await prisma.settings.findFirst({
       select: { id: true },
@@ -297,7 +311,7 @@ export async function PUT(request: NextRequest) {
       })
     }
 
-    return apiSuccess({ settings: toSafeSettings(settings) })
+    return apiSuccess({ settings: toSafeSettings(settings, session.role) })
   } catch (error) {
     adminLogger.error('Erreur lors de la mise à jour des paramètres', error)
     return apiError('Erreur serveur', 500)

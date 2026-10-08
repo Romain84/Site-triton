@@ -375,13 +375,15 @@ export default function AdminPage() {
 
           {/* Footer Action buttons in Sidebar */}
           <div className="border-t border-slate-100 pt-4 mt-4 space-y-2">
-            <a
-              href="/admin/boutique"
-              className="flex items-center justify-center gap-2 w-full py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg transition-all shadow-2xs"
-            >
-              <span>🛍️</span>
-              <span>Boutique Admin</span>
-            </a>
+            {currentUser?.role !== 'superviseur' && (
+              <a
+                href="/admin/boutique"
+                className="flex items-center justify-center gap-2 w-full py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg transition-all shadow-2xs"
+              >
+                <span>🛍️</span>
+                <span>Boutique Admin</span>
+              </a>
+            )}
             <button
               onClick={handleLogout}
               className="w-full py-2.5 bg-red-50 hover:bg-red-100 border border-red-100 text-red-600 text-xs font-semibold rounded-lg transition-all"
@@ -433,7 +435,7 @@ export default function AdminPage() {
               />
             )}
             {activeTab === 'audit-logs' && <AuditLogsTab />}
-            {activeTab === 'parametres' && <ParametresTab />}
+            {activeTab === 'parametres' && <ParametresTab currentUser={currentUser} />}
             {activeTab === 'database' && <DatabaseTab />}
             {activeTab === 'inscription-page' && <InscriptionPageTab />}
             {activeTab === 'system-versions' && <SystemVersionsTab />}
@@ -920,8 +922,8 @@ function AuditLogsTab() {
 }
 
 // Parametres Tab
-function ParametresTab() {
-  return <ParametresManager />
+function ParametresTab({ currentUser }: { currentUser: { id: string; email: string; role: string } | null }) {
+  return <ParametresManager currentUser={currentUser} />
 }
 
 // Database Tab

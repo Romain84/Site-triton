@@ -16,11 +16,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         router.push('/admin/login')
         return
       }
+      const data = await response.json().catch(() => null)
+      if (data?.user?.role === 'superviseur' && pathname?.startsWith('/admin/boutique')) {
+        router.push('/admin')
+        return
+      }
       setLoading(false)
     } catch {
       router.push('/admin/login')
     }
-  }, [router])
+  }, [router, pathname])
 
   useEffect(() => {
     const timer = setTimeout(() => {
