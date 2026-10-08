@@ -587,145 +587,162 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     const rempFinMin = timeToMinutes(remp.heureFin)
     const jourSemaineRemp = joursSemaineRef[rempDateObj.getDay()]
 
-    // Identifier le créneau planifié d'origine du coach remplacé
-    const slotAssocie = planningsReplaces.find((p) => {
+    // Identifier les créneaux planifiés d'origine du coach remplacé couverts par le remplacement
+    const matchingSlots = planningsReplaces.filter((p) => {
+      if (p.jourSemaine !== jourSemaineRemp) return false
       if (remp.planningId && p.id === remp.planningId) return true
       const memeCoach = Array.isArray(p.coachs) && p.coachs.some((c) => c.coachId === remp.coachRemplaceId)
-      if (!memeCoach || p.jourSemaine !== jourSemaineRemp) return false
+      if (!memeCoach) return false
       const sDeb = timeToMinutes(p.heureDebut)
       const sFin = timeToMinutes(p.heureFin)
       return rempDebutMin < sFin && sDeb < rempFinMin
-    })
+    }).sort((a, b) => timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut))
 
-    const slotDebutMin = slotAssocie ? timeToMinutes(slotAssocie.heureDebut) : rempDebutMin
-    const slotFinMin = slotAssocie ? timeToMinutes(slotAssocie.heureFin) : rempFinMin
-    const slotDureeReelleMin = Math.max(1, slotFinMin - slotDebutMin)
-    const slotTempsFactureMin =
-      slotAssocie?.tempsFacture && slotAssocie.tempsFacture > 0
-        ? slotAssocie.tempsFacture
-        : slotDureeReelleMin
+    const slotsToProcess = matchingSlots.length > 0 ? matchingSlots : [null]
 
-    // Durée réelle couverte sur le créneau
-    const dureeCouverteMin = slotAssocie
-      ? Math.max(0, Math.min(rempFinMin, slotFinMin) - Math.max(rempDebutMin, slotDebutMin))
-      : Math.max(0, rempFinMin - rempDebutMin)
+    for (const slotAssocie of slotsToProcess) {
+      const slotDebutMin = slotAssocie ? timeToMinutes(slotAssocie.heureDebut) : rempDebutMin
+      const slotFinMin = slotAssocie ? timeToMinutes(slotAssocie.heureFin) : rempFinMin
+      const slotDureeReelleMin = Math.max(1, slotFinMin - slotDebutMin)
+      const slotTempsFactureMin =
+        slotAssocie?.tempsFacture && slotAssocie.tempsFacture > 0
+          ? slotAssocie.tempsFacture
+          : slotDureeReelleMin
 
-    const groupeNom = slotAssocie?.groupe?.nom || 'Remplacement'
-    const titre = `${groupeNom} — pour ${coachNom}`
+      // Durée réelle couverte sur ce créneau
+      const portionDebutMin = Math.max(rempDebutMin, slotDebutMin)
+      const portionFinMin = Math.min(rempFinMin, slotFinMin)
+      const dureeCouverteMin = Math.max(0, portionFinMin - portionDebutMin)
 
-    // Si la séance a été annulée par le club ce jour-là, le remplaçant n'est pas rémunéré (Lot 2)
-    const slotKeyRemp = slotAssocie ? `${slotAssocie.jourSemaine}_${slotAssocie.heureDebut}_${slotAssocie.heureFin}` : ''
-    const annulationRempKey = `${dateKey}_${slotKeyRemp}`
-    const aAnnulationClub = creneauxAnnulesKeys.has(annulationRempKey) || seancesAnnulees.some(sa => {
-      const saD = new Date(sa.date)
-      const isMemeDate = saD.getFullYear() === rempDateObj.getFullYear() &&
-                         saD.getMonth() === rempDateObj.getMonth() &&
-                         saD.getDate() === rempDateObj.getDate()
-      if (!isMemeDate) return false
-      if (!sa.planningId && !sa.groupeId && !sa.coachId) return true
-      if (sa.planningId && remp.planningId === sa.planningId) return true
-      return false
-    })
+      if (dureeCouverteMin <= 0) continue
 
-    if (aAnnulationClub) {
-      lignesRemplacements.push({
-        id: remp.id,
-        type: 'remplacement',
-        description: `Remplacement de ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin} (Séance annulée par le club : non rémunéré)`,
-        heures: 0,
-        montant: 0,
-        date: remp.date,
-        titre,
-        sousTitre: `${jourSemaineRemp} ${dateStr} · ${remp.heureDebut} – ${remp.heureFin} · séance annulée par le club`,
-        datesBadges: [rempDateCourt],
-        detailCalculDuree: '0h00',
-        coachRemplaceNom: coachNom,
-        noteInfo: 'séance annulée par le club',
+      const portionDebutStr = minutesToTime(portionDebutMin)
+      const portionFinStr = minutesToTime(portionFinMin)
+
+      const groupeNom = slotAssocie?.groupe?.nom || 'Remplacement'
+      const titre = `${groupeNom} — pour ${coachNom}`
+      const ligneId = matchingSlots.length > 1 && slotAssocie ? `${remp.id}_${slotAssocie.id}` : remp.id
+
+      // Si la séance a été annulée par le club ce jour-là, le remplaçant n'est pas rémunéré (Lot 2)
+      const slotKeyRemp = slotAssocie ? `${slotAssocie.jourSemaine}_${slotAssocie.heureDebut}_${slotAssocie.heureFin}` : ''
+      const annulationRempKey = `${dateKey}_${slotKeyRemp}`
+      const aAnnulationClub = (slotKeyRemp && creneauxAnnulesKeys.has(annulationRempKey)) || seancesAnnulees.some(sa => {
+        const saD = new Date(sa.date)
+        const isMemeDate = saD.getFullYear() === rempDateObj.getFullYear() &&
+                           saD.getMonth() === rempDateObj.getMonth() &&
+                           saD.getDate() === rempDateObj.getDate()
+        if (!isMemeDate) return false
+        if (!sa.planningId && !sa.groupeId && !sa.coachId) return true
+        if (sa.planningId && (slotAssocie?.id === sa.planningId || remp.planningId === sa.planningId)) return true
+        if (sa.groupeId && slotAssocie?.groupeId === sa.groupeId) return true
+        if (sa.coachId && (sa.coachId === remp.coachRemplaceId || sa.coachId === coachId)) return true
+        return false
       })
-      continue
-    }
 
-    // Option B : Vérifier si le coach remplaçant avait déjà un cours régulier sur cette date à la même heure
-    const seancesMemeJour = creneauxEffectuesParDate.get(dateKey) || []
-    const seancesChevauchantes = seancesMemeJour.filter((s) => rempDebutMin < s.finMin && s.debutMin < rempFinMin)
-
-    if (seancesChevauchantes.length > 0) {
-      let minutesNonCouvertes = 0
-      for (let m = rempDebutMin; m < rempFinMin; m++) {
-        const dansCreneau = m >= slotDebutMin && m < slotFinMin
-        const estCouverte = seancesChevauchantes.some((s) => m >= s.debutMin && m < s.finMin)
-        if (dansCreneau && !estCouverte) {
-          minutesNonCouvertes++
-        }
-      }
-
-      const descGroupes = seancesChevauchantes.map((s) => s.description).join(', ')
-
-      if (minutesNonCouvertes <= 0) {
-        // Le remplacement a eu lieu 100% en même temps que son cours régulier déjà rémunéré
-        const sousTitre = `${jourSemaineRemp} ${dateStr} · ${remp.heureDebut} – ${remp.heureFin} · déjà payé (cours simultané avec ${descGroupes})`
+      if (aAnnulationClub) {
         lignesRemplacements.push({
-          id: remp.id,
+          id: ligneId,
           type: 'remplacement',
-          description: `Remplacement de ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin} (Simultané avec ${descGroupes} : déjà rémunéré dans planning fixe)`,
+          remplacementId: remp.id,
+          description: `Remplacement de ${coachNom} - ${dateStr} ${portionDebutStr}-${portionFinStr} (Séance annulée par le club : non rémunéré)`,
           heures: 0,
           montant: 0,
           date: remp.date,
           titre,
-          sousTitre,
+          sousTitre: `${jourSemaineRemp} ${dateStr} · ${portionDebutStr} – ${portionFinStr} · séance annulée par le club`,
           datesBadges: [rempDateCourt],
           detailCalculDuree: '0h00',
           coachRemplaceNom: coachNom,
-          noteInfo: 'déjà payé (cours simultané)',
+          noteInfo: 'séance annulée par le club',
         })
+        continue
+      }
+
+      // Option B : Vérifier si le coach remplaçant avait déjà un cours régulier sur cette date à la même heure
+      const seancesMemeJour = creneauxEffectuesParDate.get(dateKey) || []
+      const seancesChevauchantes = seancesMemeJour.filter((s) => portionDebutMin < s.finMin && s.debutMin < portionFinMin)
+
+      if (seancesChevauchantes.length > 0) {
+        let minutesNonCouvertes = 0
+        for (let m = portionDebutMin; m < portionFinMin; m++) {
+          const dansCreneau = m >= slotDebutMin && m < slotFinMin
+          const estCouverte = seancesChevauchantes.some((s) => m >= s.debutMin && m < s.finMin)
+          if (dansCreneau && !estCouverte) {
+            minutesNonCouvertes++
+          }
+        }
+
+        const descGroupes = seancesChevauchantes.map((s) => s.description).join(', ')
+
+        if (minutesNonCouvertes <= 0) {
+          // Le remplacement a eu lieu 100% en même temps que son cours régulier déjà rémunéré
+          const sousTitre = `${jourSemaineRemp} ${dateStr} · ${portionDebutStr} – ${portionFinStr} · déjà payé (cours simultané avec ${descGroupes})`
+          lignesRemplacements.push({
+            id: ligneId,
+            type: 'remplacement',
+            remplacementId: remp.id,
+            description: `Remplacement de ${coachNom} - ${dateStr} ${portionDebutStr}-${portionFinStr} (Simultané avec ${descGroupes} : déjà rémunéré dans planning fixe)`,
+            heures: 0,
+            montant: 0,
+            date: remp.date,
+            titre,
+            sousTitre,
+            datesBadges: [rempDateCourt],
+            detailCalculDuree: '0h00',
+            coachRemplaceNom: coachNom,
+            noteInfo: 'déjà payé (cours simultané)',
+          })
+        } else {
+          // Le remplacement déborde partiellement du cours régulier : payé au prorata
+          const minutesPayees = (minutesNonCouvertes / slotDureeReelleMin) * slotTempsFactureMin
+          const heuresPayees = minutesPayees / 60
+          heuresRemplacements += heuresPayees
+          const sousTitre = `${jourSemaineRemp} ${dateStr} · ${portionDebutStr} – ${portionFinStr} · prolongation de ${formatMinutesEnHM(Math.round(minutesPayees))} facturée`
+          lignesRemplacements.push({
+            id: ligneId,
+            type: 'remplacement',
+            remplacementId: remp.id,
+            description: `Remplacement de ${coachNom} - ${dateStr} ${portionDebutStr}-${portionFinStr} (Simultané avec ${descGroupes} : prolongation de ${formatMinutesEnHM(Math.round(minutesPayees))} facturée)`,
+            heures: heuresPayees,
+            montant: heuresPayees * tauxHoraire,
+            date: remp.date,
+            titre,
+            sousTitre,
+            datesBadges: [rempDateCourt],
+            detailCalculDuree: formatHeuresEnHM(heuresPayees),
+            coachRemplaceNom: coachNom,
+            noteInfo: `prolongation de ${formatMinutesEnHM(Math.round(minutesPayees))} facturée`,
+          })
+        }
       } else {
-        // Le remplacement déborde partiellement du cours régulier : payé au prorata
-        const minutesPayees = (minutesNonCouvertes / slotDureeReelleMin) * slotTempsFactureMin
+        // Aucun chevauchement avec un cours propre : rémunération proportionnelle au créneau remplacé
+        const minutesPayees = (dureeCouverteMin / slotDureeReelleMin) * slotTempsFactureMin
         const heuresPayees = minutesPayees / 60
         heuresRemplacements += heuresPayees
-        const sousTitre = `${jourSemaineRemp} ${dateStr} · ${remp.heureDebut} – ${remp.heureFin} · prolongation de ${formatMinutesEnHM(Math.round(minutesPayees))} facturée`
+        const detailMajor =
+          slotTempsFactureMin !== slotDureeReelleMin
+            ? ` (${formatMinutesEnHM(Math.round(minutesPayees))} facturées)`
+            : ''
+
+        const sousTitreParts = [`${jourSemaineRemp} ${dateStr} · ${portionDebutStr} – ${portionFinStr}`]
+        if (detailMajor) sousTitreParts.push(detailMajor.trim())
+        if (remp.motif) sousTitreParts.push(remp.motif)
+
         lignesRemplacements.push({
-          id: remp.id,
+          id: ligneId,
           type: 'remplacement',
-          description: `Remplacement de ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin} (Simultané avec ${descGroupes} : prolongation de ${formatMinutesEnHM(Math.round(minutesPayees))} facturée)`,
+          remplacementId: remp.id,
+          description: `Remplacement de ${coachNom} - ${dateStr} ${portionDebutStr}-${portionFinStr}${detailMajor}${remp.motif ? ` (${remp.motif})` : ''}`,
           heures: heuresPayees,
           montant: heuresPayees * tauxHoraire,
           date: remp.date,
           titre,
-          sousTitre,
+          sousTitre: sousTitreParts.join(' · '),
           datesBadges: [rempDateCourt],
           detailCalculDuree: formatHeuresEnHM(heuresPayees),
           coachRemplaceNom: coachNom,
-          noteInfo: `prolongation de ${formatMinutesEnHM(Math.round(minutesPayees))} facturée`,
         })
       }
-    } else {
-      // Aucun chevauchement avec un cours propre : rémunération proportionnelle au créneau remplacé
-      const minutesPayees = (dureeCouverteMin / slotDureeReelleMin) * slotTempsFactureMin
-      const heuresPayees = minutesPayees / 60
-      heuresRemplacements += heuresPayees
-      const detailMajor =
-        slotTempsFactureMin !== slotDureeReelleMin
-          ? ` (${formatMinutesEnHM(Math.round(minutesPayees))} facturées)`
-          : ''
-
-      const sousTitreParts = [`${jourSemaineRemp} ${dateStr} · ${remp.heureDebut} – ${remp.heureFin}`]
-      if (detailMajor) sousTitreParts.push(detailMajor.trim())
-      if (remp.motif) sousTitreParts.push(remp.motif)
-
-      lignesRemplacements.push({
-        id: remp.id,
-        type: 'remplacement',
-        description: `Remplacement de ${coachNom} - ${dateStr} ${remp.heureDebut}-${remp.heureFin}${detailMajor}${remp.motif ? ` (${remp.motif})` : ''}`,
-        heures: heuresPayees,
-        montant: heuresPayees * tauxHoraire,
-        date: remp.date,
-        titre,
-        sousTitre: sousTitreParts.join(' · '),
-        datesBadges: [rempDateCourt],
-        detailCalculDuree: formatHeuresEnHM(heuresPayees),
-        coachRemplaceNom: coachNom,
-      })
     }
   }
 

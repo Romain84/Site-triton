@@ -920,5 +920,76 @@ describe('Lot 7 — Lignes de facture lisibles et structurées (3 niveaux, absen
     expect(ligneTournant.sousTitre).not.toContain('Piscine de Cavaillon')
     expect(ligneTournant.datesBadges).toEqual(['03/10'])
   })
+
+  it('génère deux lignes distinctes lorsqu un remplacement couvre deux créneaux consécutifs du coach absent (ex: 19h30-21h30 pour 2x1h)', async () => {
+    vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.evenementTournant.findMany).mockResolvedValue([])
+
+    // Remplacement effectué par Armelle pour Florian de 19h30 à 21h30 le jeudi 01/10/2026
+    vi.mocked(prisma.remplacement.findMany)
+      .mockResolvedValueOnce([
+        {
+          id: 'remp-multi-1',
+          date: new Date('2026-10-01T12:00:00Z'),
+          heureDebut: '19:30',
+          heureFin: '21:30',
+          coachRemplaceId: 'coach-florian',
+          coachRemplacantId: 'coach-armelle',
+          planningId: null,
+          actif: true,
+          coachRemplace: { id: 'coach-florian', prenom: 'Florian', nom: 'Di-Giusto' },
+        } as any,
+      ])
+      .mockResolvedValueOnce([]) // remplacements reçus (0)
+
+    // Les plannings du coach absent (Florian) : 2 cours consécutifs d'1h le jeudi
+    vi.mocked(prisma.planning.findMany)
+      .mockResolvedValueOnce([]) // plannings propres du coach remplaçant (Armelle n'a pas de cours régulier)
+      .mockResolvedValueOnce([
+        {
+          id: 'plan-florian-juniors',
+          jourSemaine: 'Jeudi',
+          heureDebut: '19:30',
+          heureFin: '20:30',
+          tempsFacture: null,
+          actif: true,
+          groupeId: 'grp-juniors',
+          groupe: { nom: 'Juniors Compétition' },
+          coachs: [{ coachId: 'coach-florian' }],
+        } as any,
+        {
+          id: 'plan-florian-adultes',
+          jourSemaine: 'Jeudi',
+          heureDebut: '20:30',
+          heureFin: '21:30',
+          tempsFacture: null,
+          actif: true,
+          groupeId: 'grp-adultes',
+          groupe: { nom: 'Adultes Compétition' },
+          coachs: [{ coachId: 'coach-florian' }],
+        } as any,
+      ])
+
+    const res = await calculerFactureCoach('coach-armelle', 10, 2026)
+
+    expect(res.lignesRemplacements).toHaveLength(2)
+
+    const ligne1 = res.lignesRemplacements[0]
+    expect(ligne1.titre).toBe('Juniors Compétition — pour Florian Di-Giusto')
+    expect(ligne1.sousTitre).toContain('19:30 – 20:30')
+    expect(ligne1.heures).toBe(1)
+    expect(ligne1.montant).toBe(30)
+    expect(ligne1.detailCalculDuree).toBe('1h00')
+
+    const ligne2 = res.lignesRemplacements[1]
+    expect(ligne2.titre).toBe('Adultes Compétition — pour Florian Di-Giusto')
+    expect(ligne2.sousTitre).toContain('20:30 – 21:30')
+    expect(ligne2.heures).toBe(1)
+    expect(ligne2.montant).toBe(30)
+    expect(ligne2.detailCalculDuree).toBe('1h00')
+
+    expect(res.totalHeures).toBe(2)
+    expect(res.totalMontant).toBe(60)
+  })
 })
 
