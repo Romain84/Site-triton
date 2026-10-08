@@ -58,6 +58,11 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
    - Tâche planifiée `systemd` (`docker-prune.timer`) active sur le VPS.
    - En cas d'intervention manuelle : `sudo docker builder prune -af` et `sudo docker image prune -f`.
 
+6. **Maintenance & Politique de Redémarrage du VPS** :
+   - **Pas de redémarrage de routine** : L'hôte Debian tourne en haute disponibilité continue. Les conteneurs applicatifs Docker (`restart: always`) sont déjà renouvelés à chaque déploiement.
+   - **Mises à jour système hôte** : Les correctifs de sécurité critiques sont automatisés via `unattended-upgrades`. Les commandes `sudo apt update && sudo apt upgrade -y` n'affectent pas les conteneurs applicatifs.
+   - Un redémarrage machine complet (`sudo reboot`) n'est requis que lors de mises à jour du noyau Linux (`linux-image`), de préférence planifié tard en soirée.
+
 ---
 
 ## 🛠️ 3. STACK TECHNIQUE & SÉCURITÉ
@@ -68,7 +73,11 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
 - **Authentification & Sessions** :
   - Gestion sécurisée via `jose` (JWT chiffré en HS256 dans cookies HTTP-Only).
   - Deux cookies hermétiques : `coach_session` (validité 7 jours) et `admin_session`.
-  - Rôles administratifs gérés : `admin`, `president`, `tresorier`.
+  - Rôles administratifs gérés :
+    - `admin` : Plein accès (Finances, Factures, Devis, Boutique, Tarifs, Utilisateurs, Paramètres).
+    - `superviseur` : Rôle strictement sportif & opérationnel (Plannings, Présences, Tests de nage, Stages, Remplacements, Communication, Galerie, Chatbot).
+    - **Herméticité absolue du profil superviseur** : ZÉRO accès aux finances, trésorerie, factures coachs, devis, dons/Cerfa, boutique admin (`/admin/boutique`), taux horaires et paramètres d'argent.
+    - Blocage hermétique à 3 niveaux : middleware HTTP 403 (`lib/security/superviseur-guard.ts`), masquage complet dans l'UI/sidebar/onglets, et assainissement strict des données API (valeurs financières masquées à 0 et clés de modification filtrées).
   - Pas de jetons dans le localStorage.
 - **Protection Anti-Abus & Sécurité Réseau** :
   - Validation stricte d'origine CSRF (`isSameOriginRequest`).
@@ -132,6 +141,8 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
 - **Prestations manuelles** : L'admin peut ajouter des vacations manuelles pour tout coach sélectionné (heures ponctuelles, indemnités, forfaits spécifiques). Elles s'intègrent instantanément dans la facture mensuelle en cours.
 - **Déclaration d'absence & Remplacement** :
   - L'absence d'un coach déduit automatiquement les heures de sa facture et crédite le coach remplaçant qui a accepté la vacation.
+  - **Règle de non-cumul sur créneaux identiques multi-groupes** : Lorsqu'un remplacement couvre plusieurs groupes sur une même plage horaire et une même date (ex. 18:00 – 19:15 pour Benjamins 1, Benjamins 2 et Adultes), la vacation n'est comptabilisée qu'une seule fois dans la facturation (durée réelle du créneau = 1h15, et non multipliée par le nombre de groupes).
+  - **Durée réelle exacte** : La durée facturée d'un remplacement correspond strictement à l'écart horaire début/fin (ex. 19:30 – 21:30 = 2h00).
 - **Vacations tournantes du samedi (`EvenementTournant`)** :
   - Prise ou libération de créneaux en direct entre coachs avec verrouillage immédiat pour éviter les doublons.
 - **Détection des conflits** : Vérification automatique des chevauchements d'horaires (`/api/coach/planning/check-conflit`).
