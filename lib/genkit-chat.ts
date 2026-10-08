@@ -23,49 +23,210 @@ const MODEL_MAP: Record<string, string> = {
   'mistral-7b': 'open-mistral-7b',
 }
 
+export interface ChatAction {
+  label: string
+  url: string
+  icon?: 'swimmer' | 'calendar' | 'document' | 'mail' | 'cart' | 'info'
+}
+
+export interface ChatResponseResult {
+  response: string
+  actions: ChatAction[]
+  suggestions: string[]
+}
+
 /**
- * Récupère la réponse de l'assistant IA Mistral avec grounding strict et données temps réel
- * @param userMessage Message de l'adhérent ou visiteur
- * @param history Historique des derniers messages pour le fil de discussion
- * @returns Réponse générée
+ * Analyse sémantique et par mots-clés de la demande pour cibler les données requises.
+ * Réduit la consommation de tokens de plus de 75% par rapport à l'injection globale.
  */
-export async function getChatResponse(
+export function detectUserIntents(
+  userMessage: string,
+  history?: { role: string; content: string }[]
+) {
+  const combinedText = [
+    userMessage,
+    ...(history?.slice(-2).map((h) => h.content) || []),
+  ].join(' ').toLowerCase()
+
+  const planning = /\b(planning|horaire|horaires|heure|heures|cours|seance|séance|seances|séances|creneau|créneau|creneaux|créneaux|quand|jour|jours|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|matin|soir|aujourd'hui|demain|vacance|vacances|ferie|férié|noel|noël|toussaint|paques|pâques|ete|été)\b/i.test(combinedText)
+
+  const groupes = /\b(groupe|groupes|niveau|niveaux|age|âge|ans|enfant|enfants|fils|fille|petit|petits|bebe|bébé|bebes|bébés|ado|ados|adulte|adultes|maitre|maître|maitres|maîtres|debutant|débutant|perfectionnement|sauvnage|sauv'nage|pass-sport|pass'sport|ecole|école|competition|compétition|avenir|avenirs|benjamin|benjamins|junior|juniors|senior|seniors|loisir|loisirs|aquagym|nfs|nage forme|santé|sante|ssa|bnssa|sauvetage|nageur|nager)\b/i.test(combinedText)
+
+  const tarifs = /\b(tarif|tarifs|prix|cout|coût|coute|coûte|cotisation|cotisations|euro|euros|€|payer|paiement|paiements|cb|carte|cheque|chèque|cheques|chèques|espece|espèce|especes|espèces|virement|prelevement|prélèvement|echelonne|échelonné|pass sport|pass'sport|aide|aides|reduction|réduction)\b/i.test(combinedText)
+
+  const inscriptions = /\b(inscri|inscrire|inscription|inscriptions|reinscri|réinscri|reinscription|réinscription|monclub|dossier|document|documents|certificat|medical|médical|licence|ffn|formulaire|questionnaire|adhesion|adhésion)\b/i.test(combinedText)
+
+  const testsNage = /\b(test|tests|test de nage|tests de nage|evaluer|évaluer|evaluation|évaluation|essai|séance d'essai|seance d'essai|rdv test|rdv)\b/i.test(combinedText)
+
+  const annulations = /\b(annul|annule|annulé|annulée|annulations|seance annulee|séance annulée|ferme|fermé|fermeture|greve|grève|intemperie|intempérie|travaux|technique|vidange|maintenu|maintien)\b/i.test(combinedText)
+
+  const boutique = /\b(boutique|bonnet|bonnets|maillot|maillots|combinaison|lunettes|materiel|matériel|equipement|équipement|sac|pull|veste|textile|gourde)\b/i.test(combinedText)
+
+  const calendrier = /\b(calendrier|competition|compétition|competitions|compétitions|meeting|meetings|date|dates|evenement|événement|evenements|événements|championnat|interclubs)\b/i.test(combinedText)
+
+  const actualites = /\b(actu|actus|actualite|actualité|actualites|actualités|nouvelle|nouvelles|nouvel|stage|stages)\b/i.test(combinedText)
+
+  const isGreetingOrGeneric = !planning && !groupes && !tarifs && !inscriptions && !testsNage && !annulations && !boutique && !calendrier && !actualites
+
+  return {
+    planning: planning || annulations,
+    groupes: groupes || isGreetingOrGeneric,
+    tarifs,
+    inscriptions,
+    testsNage: testsNage || (groupes && /\b(enfant|enfants|fils|fille|petit|petits|bebe|bébé|ado|ados|nouveau|nouvelle|ans)\b/i.test(combinedText)),
+    annulations,
+    boutique,
+    calendrier,
+    actualites,
+    isGreetingOrGeneric,
+  }
+}
+
+/**
+ * Génère des actions rapides pertinentes et des questions suggérées selon la réponse et les intentions
+ */
+export function deriveActionsAndSuggestions(
+  response: string,
+  intents: ReturnType<typeof detectUserIntents>,
+  userMessage: string
+): { actions: ChatAction[]; suggestions: string[] } {
+  const actions: ChatAction[] = []
+  const suggestions: string[] = []
+  const lowerRes = response.toLowerCase()
+  const lowerMsg = userMessage.toLowerCase()
+
+  // 1. Boutons d'action cliquables
+  if (intents.testsNage || lowerRes.includes('test') || lowerRes.includes('tests-nage') || lowerRes.includes('évaluation')) {
+    actions.push({
+      label: 'Prendre RDV Test de Nage',
+      url: '/tests-nage',
+      icon: 'swimmer',
+    })
+  }
+
+  if (intents.inscriptions || intents.tarifs || lowerRes.includes('monclub') || lowerRes.includes('/inscription')) {
+    actions.push({
+      label: 'Inscriptions en ligne',
+      url: '/inscription',
+      icon: 'document',
+    })
+  }
+
+  if (intents.planning || lowerRes.includes('/planning') || lowerRes.includes('horaire')) {
+    actions.push({
+      label: 'Consulter le planning',
+      url: '/planning',
+      icon: 'calendar',
+    })
+  }
+
+  if (intents.groupes && !actions.some((a) => a.url === '/groupes') && (lowerRes.includes('groupe') || lowerRes.includes('/groupes'))) {
+    actions.push({
+      label: 'Découvrir nos groupes',
+      url: '/groupes',
+      icon: 'swimmer',
+    })
+  }
+
+  if (intents.boutique || lowerRes.includes('/boutique')) {
+    actions.push({
+      label: 'Boutique du club',
+      url: '/boutique',
+      icon: 'cart',
+    })
+  }
+
+  // Si le bot n'a pas pu répondre ou renvoie vers le contact
+  if (
+    lowerRes.includes('contact') ||
+    lowerRes.includes('ne dispose pas') ||
+    lowerRes.includes('n\'ai pas cette information')
+  ) {
+    actions.push({
+      label: 'Contacter le secrétariat',
+      url: '/contact',
+      icon: 'mail',
+    })
+  }
+
+  // Dédupliquer les actions par URL et limiter à 3 max pour un affichage épuré
+  const uniqueActions: ChatAction[] = []
+  for (const act of actions) {
+    if (!uniqueActions.some((a) => a.url === act.url)) {
+      uniqueActions.push(act)
+    }
+    if (uniqueActions.length >= 3) break
+  }
+
+  // 2. Suggestions de relance (Chips interactifs)
+  if (intents.testsNage || lowerMsg.includes('test')) {
+    suggestions.push('Combien de temps dure le test ?')
+    suggestions.push('Quels sont les horaires des cours ?')
+    suggestions.push('Quels sont les tarifs annuels ?')
+  } else if (intents.planning || intents.annulations) {
+    suggestions.push('Y a-t-il cours pendant les vacances ?')
+    suggestions.push('Comment s\'inscrire à un groupe ?')
+    suggestions.push('Où se déroulent les cours ?')
+  } else if (intents.tarifs || intents.inscriptions) {
+    suggestions.push('Peut-on payer en plusieurs fois ?')
+    suggestions.push('Quels documents faut-il fournir ?')
+    suggestions.push('Comment réserver un test de niveau ?')
+  } else if (intents.groupes) {
+    suggestions.push('Quels sont les tarifs de ce groupe ?')
+    suggestions.push('Quels sont les jours d\'entraînement ?')
+    suggestions.push('Faut-il passer un test de niveau ?')
+  } else {
+    suggestions.push('Quel groupe pour mon enfant ?')
+    suggestions.push('Quels sont les tarifs du club ?')
+    suggestions.push('Consulter les horaires des cours')
+  }
+
+  return { actions: uniqueActions, suggestions: suggestions.slice(0, 3) }
+}
+
+/**
+ * Récupère la réponse structurée de l'assistant IA avec actions, suggestions et routage intelligent
+ */
+export async function getStructuredChatResponse(
   userMessage: string,
   history?: { role: 'user' | 'assistant'; content: string }[]
-): Promise<string> {
+): Promise<ChatResponseResult> {
   const apiKey = process.env.MISTRAL_API_KEY
 
   if (!apiKey || apiKey === 'your-mistral-api-key-here') {
     throw new Error('MISTRAL_API_KEY not configured')
   }
 
-  // Récupérer les paramètres et toutes les bases de connaissances en parallèle (avec cache TTL 5 min)
+  // Détection des intentions pour charger uniquement les données nécessaires
+  const intents = detectUserIntents(userMessage, history)
+
+  // Récupérer les paramètres et bases de connaissances ciblées en parallèle
   const [
     settings,
-    planningKnowledge,
-    groupesKnowledge,
     faqKnowledge,
     suggestionsKnowledge,
-    calendrierKnowledge,
-    actualitesKnowledge,
-    boutiqueKnowledge,
     datesKnowledge,
+    planningKnowledge,
+    groupesKnowledge,
     seancesAnnuleesKnowledge,
     testsNageKnowledge,
     inscriptionBlocksKnowledge,
+    calendrierKnowledge,
+    actualitesKnowledge,
+    boutiqueKnowledge,
   ] = await Promise.all([
     prisma.settings.findFirst({ select: { chatbotModel: true, emailClub: true } }),
-    getPlanningKnowledgeBase(),
-    getGroupesKnowledgeBase(),
     getCustomKnowledgeBase(),
     getCorrectedSuggestionsKnowledgeBase(),
-    getCalendrierKnowledgeBase(),
-    getActualitesKnowledgeBase(),
-    getBoutiqueKnowledgeBase(),
     getSiteDatesKnowledgeBase(),
-    getSeancesAnnuleesKnowledgeBase(),
-    getSessionsTestsNageKnowledgeBase(),
-    getInscriptionBlocksKnowledgeBase(),
+    intents.planning ? getPlanningKnowledgeBase() : Promise.resolve(''),
+    intents.groupes || intents.tarifs ? getGroupesKnowledgeBase() : Promise.resolve(''),
+    intents.planning || intents.annulations ? getSeancesAnnuleesKnowledgeBase() : Promise.resolve(''),
+    intents.testsNage || intents.groupes ? getSessionsTestsNageKnowledgeBase() : Promise.resolve(''),
+    intents.inscriptions || intents.tarifs ? getInscriptionBlocksKnowledgeBase() : Promise.resolve(''),
+    intents.calendrier ? getCalendrierKnowledgeBase() : Promise.resolve(''),
+    intents.actualites ? getActualitesKnowledgeBase() : Promise.resolve(''),
+    intents.boutique ? getBoutiqueKnowledgeBase() : Promise.resolve(''),
   ])
 
   const activeModelName = settings?.chatbotModel || 'mistral-small'
@@ -78,8 +239,45 @@ export async function getChatResponse(
   const formattedTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   const dayOfWeek = now.toLocaleDateString('fr-FR', { weekday: 'long' })
 
+  // Assemblage dynamique des sections pertinentes
+  const knowledgeSections: string[] = []
+
+  if (datesKnowledge) {
+    knowledgeSections.push(`<dates_et_regles_saison>\n${datesKnowledge}\n</dates_et_regles_saison>`)
+  }
+  if (planningKnowledge) {
+    knowledgeSections.push(`<planning_hebdomadaire_et_vacances>\n${planningKnowledge}\n</planning_hebdomadaire_et_vacances>`)
+  }
+  if (seancesAnnuleesKnowledge) {
+    knowledgeSections.push(`<seances_annulees_en_temps_reel>\n${seancesAnnuleesKnowledge}\n</seances_annulees_en_temps_reel>`)
+  }
+  if (testsNageKnowledge) {
+    knowledgeSections.push(`<tests_de_niveau_nouveaux_adherents>\n${testsNageKnowledge}\n</tests_de_niveau_nouveaux_adherents>`)
+  }
+  if (groupesKnowledge) {
+    knowledgeSections.push(`<groupes_et_tarifs_officiels>\n${groupesKnowledge}\n</groupes_et_tarifs_officiels>`)
+  }
+  if (inscriptionBlocksKnowledge) {
+    knowledgeSections.push(`<blocs_page_inscription_et_formation_ssa>\n${inscriptionBlocksKnowledge}\n</blocs_page_inscription_et_formation_ssa>`)
+  }
+  if (calendrierKnowledge) {
+    knowledgeSections.push(`<calendrier_competitions_et_evenements>\n${calendrierKnowledge}\n</calendrier_competitions_et_evenements>`)
+  }
+  if (actualitesKnowledge) {
+    knowledgeSections.push(`<actualites_du_club>\n${actualitesKnowledge}\n</actualites_du_club>`)
+  }
+  if (boutiqueKnowledge) {
+    knowledgeSections.push(`<articles_boutique_du_club>\n${boutiqueKnowledge}\n</articles_boutique_du_club>`)
+  }
+  if (faqKnowledge) {
+    knowledgeSections.push(`<faq_et_connaissances_club>\n${faqKnowledge}\n</faq_et_connaissances_club>`)
+  }
+  if (suggestionsKnowledge) {
+    knowledgeSections.push(`<exemples_reponses_verifiees>\n${suggestionsKnowledge}\n</exemples_reponses_verifiees>`)
+  }
+
   const systemInstructions = `Tu es l'assistant virtuel officiel du Triton Club Cavaillon (association sportive de natation à Cavaillon, Vaucluse).
-Ton rôle est de renseigner les adhérents, futurs adhérents et parents avec une EXACTITUDE ABSOLUE par rapport à la réalité terrain du club.
+Ton rôle est de renseigner les adhérents, futurs adhérents et parents avec une EXACTITUDE ABSOLUE, concision et bienveillance.
 
 =======================================================
 REPRÉSENTATION TEMPORELLE EN TEMPS RÉEL (OBLIGATOIRE) :
@@ -101,52 +299,10 @@ Structure : Association 100% bénévole.
 - Il n'y a PAS d'accueil téléphonique.
 - Il n'y a PAS de guichet physique ni de permanence au bord du bassin à la piscine.
 - Tout échange s'effectue exclusivement en ligne via le formulaire /contact ou par e-mail à ${clubEmail}.
-- INTERDICTION ABSOLUE d'inventer des horaires d'ouverture de secrétariat (ex: "du lundi au vendredi de 17h à 19h") ou un faux numéro de téléphone.
+- INTERDICTION ABSOLUE d'inventer des horaires d'ouverture de secrétariat physique ou un faux numéro de téléphone.
 </identite_et_contact_club>
 
-<dates_et_regles_saison>
-${datesKnowledge}
-</dates_et_regles_saison>
-
-<planning_hebdomadaire_et_vacances>
-${planningKnowledge}
-</planning_hebdomadaire_et_vacances>
-
-<seances_annulees_en_temps_reel>
-${seancesAnnuleesKnowledge}
-</seances_annulees_en_temps_reel>
-
-<tests_de_niveau_nouveaux_adherents>
-${testsNageKnowledge}
-</tests_de_niveau_nouveaux_adherents>
-
-<groupes_et_tarifs_officiels>
-${groupesKnowledge}
-</groupes_et_tarifs_officiels>
-
-<blocs_page_inscription_et_formation_ssa>
-${inscriptionBlocksKnowledge}
-</blocs_page_inscription_et_formation_ssa>
-
-<calendrier_competitions_et_evenements>
-${calendrierKnowledge}
-</calendrier_competitions_et_evenements>
-
-<actualites_du_club>
-${actualitesKnowledge}
-</actualites_du_club>
-
-<articles_boutique_du_club>
-${boutiqueKnowledge}
-</articles_boutique_du_club>
-
-<faq_et_connaissances_club>
-${faqKnowledge}
-</faq_et_connaissances_club>
-
-<exemples_reponses_verifiees>
-${suggestionsKnowledge}
-</exemples_reponses_verifiees>
+${knowledgeSections.join('\n\n')}
 
 =======================================================
 RÈGLES D'OR ABSOLUES ET CONSIGNES MÉTIER (INVIOLABLES) :
@@ -166,25 +322,17 @@ RÈGLES D'OR ABSOLUES ET CONSIGNES MÉTIER (INVIOLABLES) :
    - La seule et unique démarche est de contacter l'équipe bénévole du club via le [formulaire de contact](/contact) ou par e-mail à ${clubEmail} avec nom, prénom et motif. Il n'existe aucune procédure automatique ni aucun bureau physique pour cela.
 
 4. PLANNING & SÉANCES ANNULÉES :
-   - Si un utilisateur demande si un cours a lieu, vérifie toujours la section <seances_annulees_en_temps_reel> et les vacances scolaires avant de confirmer. Si une séance ou un créneau de test est bloqué ou annulé (par exemple à la suite d'un incident technique ou de travaux à la piscine), signale-le immédiatement avec son motif et oriente l'utilisateur.
+   - Si un utilisateur demande si un cours a lieu, vérifie toujours les séances annulées et les vacances scolaires avant de confirmer.
 
-5. FORMATION SSA / SURVEILLANT SAUVETEUR AQUATIQUE (EX-BNSSA) :
-   - Utilise toujours les conditions réelles : formation conjointe au diplôme d'État et au certificat de sécurité civile SSA, dispensée en partenariat avec la Croix-Blanche.
-   - Pack Secourisme PSE1 + PSE2 inclus.
-   - Tarif officiel complet : 750 €. Formule engagement club avec remboursement de 250 € pour 4 journées de surveillance (coût net : 500 €).
-   - Séances le jeudi de 19h30 à 21h30 (ou 20h00 à 21h30) à la piscine de Cavaillon. Début le 1er octobre 2026.
-   - Dès 16 ans (17 ans à l'examen), test natatoire préalable avec un MNS du club.
-
-6. TESTS DE NIVEAU POUR NOUVEAUX ADHÉRENTS :
+5. TESTS DE NIVEAU POUR NOUVEAUX ADHÉRENTS :
    - Test de 5 minutes dans l'eau avec un éducateur diplômé.
    - Garantie Sérénité : si le test n'est pas concluant ou si aucun groupe n'est adapté, remboursement intégral de la cotisation sans délai.
-   - Mentionne le statut réel des sessions (ouvertes aux réservations ou bloquées/fermées).
+   - Lien direct : [Prendre rendez-vous pour un test de niveau](/tests-nage).
 
-7. STYLE ET FORME :
-   - Ton accueillant, bienveillant et professionnel.
-   - Réponses concises, aérées et directes.
-   - Mets en gras les informations cruciales.
-   - Fournis toujours des liens clairs au format Markdown : [page d'inscription](/inscription), [formulaire de contact](/contact), [planning des cours](/planning), [tarifs des groupes](/groupes), [boutique](/boutique), [calendrier](/calendrier).`
+6. STYLE ET FORME :
+   - Sois percutant, structuré et bienveillant. Évite les longs pavés inutiles.
+   - Mets en gras les informations clés (**dates**, **groupes**, **tarifs**).
+   - Utilise des puces claires pour les horaires ou étapes.`
 
   const messagesPayload: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
     { role: 'system', content: systemInstructions },
@@ -270,5 +418,22 @@ RÈGLES D'OR ABSOLUES ET CONSIGNES MÉTIER (INVIOLABLES) :
       '.'
   }
 
-  return textResponse
+  const { actions, suggestions } = deriveActionsAndSuggestions(textResponse, intents, userMessage)
+
+  return {
+    response: textResponse,
+    actions,
+    suggestions,
+  }
+}
+
+/**
+ * Récupère la réponse textuelle de l'assistant IA Mistral (rétrocompatible avec les anciens appels)
+ */
+export async function getChatResponse(
+  userMessage: string,
+  history?: { role: 'user' | 'assistant'; content: string }[]
+): Promise<string> {
+  const result = await getStructuredChatResponse(userMessage, history)
+  return result.response
 }

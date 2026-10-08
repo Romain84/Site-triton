@@ -5,12 +5,23 @@ import { usePathname } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 
+interface MessageAction {
+  label: string
+  url: string
+  icon?: 'swimmer' | 'calendar' | 'document' | 'mail' | 'cart' | 'info'
+}
+
 interface Message {
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
+  actions?: MessageAction[]
+  suggestions?: string[]
   feedbackSent?: 'up' | 'down'
 }
+
+const STORAGE_KEY = 'tcc_chat_messages_v2'
+const STORAGE_OPEN_KEY = 'tcc_chat_open_state'
 
 function formatMessageContent(content: string, role: 'user' | 'assistant') {
   if (role === 'user') {
@@ -131,6 +142,7 @@ export default function ChatPopup() {
   const [showBadge, setShowBadge] = useState(true)
   const [lastUserMessage, setLastUserMessage] = useState<string | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [dynamicSuggestions, setDynamicSuggestions] = useState<string[] | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Récupérer le statut du quota
@@ -151,6 +163,50 @@ export default function ChatPopup() {
       console.error('Erreur récupération quota:', err)
     }
   }
+
+  // 1. Restauration de session (persistance de navigation)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedMessages = sessionStorage.getItem(STORAGE_KEY)
+        if (savedMessages) {
+          const parsed = JSON.parse(savedMessages)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(
+              parsed.map((m: any) => ({
+                ...m,
+                timestamp: new Date(m.timestamp),
+              }))
+            )
+          }
+        }
+        const savedOpen = sessionStorage.getItem(STORAGE_OPEN_KEY)
+        if (savedOpen === 'true') {
+          setIsOpen(true)
+        }
+      } catch (err) {
+        console.error('Erreur chargement session chatbot:', err)
+      }
+    }
+  }, [])
+
+  // 2. Sauvegarde de session lors des échanges
+  useEffect(() => {
+    if (typeof window !== 'undefined' && messages.length > 1) {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages))
+      } catch {
+        // En cas de quota sessionStorage plein, ignorer sans bloquer
+      }
+    }
+  }, [messages])
+
+  // 3. Mémoriser l'état ouvert/fermé
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(STORAGE_OPEN_KEY, isOpen ? 'true' : 'false')
+    }
+  }, [isOpen])
 
   // Récupérer le statut dès l'ouverture du chat
   useEffect(() => {
@@ -219,12 +275,12 @@ export default function ChatPopup() {
     }
   }, [isOpen])
 
-  // Suggestions contextuelles intelligentes en fonction de la page visitée
+  // Suggestions contextuelles en fonction de la page visitée
   const getContextSuggestions = () => {
     if (pathname?.startsWith('/boutique') || pathname?.startsWith('/panier')) {
       return [
         'Où retirer ma commande ?',
-        'Quels sont les délais de préparation ?',
+        'Quels sont les délais de livraison ?',
         'Puis-je échanger un article ?'
       ]
     }
@@ -243,29 +299,32 @@ export default function ChatPopup() {
       ]
     }
     return [
-      'Comment s\'inscrire ?',
+      'Quel groupe pour mon enfant ?',
       'Quels sont les tarifs du club ?',
-      'Puis-je faire une séance d\'essai ?'
+      'Comment réserver un test de niveau ?'
     ]
   }
 
-  // Suggestions de suivi après le début de conversation
+  // Suggestions de suivi après début de conversation
   const getFollowUpSuggestions = () => [
     'Quels sont les tarifs ?',
-    'Où se trouve la piscine ?',
-    'Comment contacter le club ?'
+    'Consulter les horaires des cours',
+    'Comment contacter le secrétariat ?'
   ]
 
-  // Afficher les suggestions quand le dernier message est de l'assistant et pas en chargement ni limité
   const shouldShowSuggestions = !isLoading && !error && messages.length > 0 && messages[messages.length - 1].role === 'assistant' && (countdown === null || countdown <= 0)
-  const currentSuggestions = messages.length <= 1 ? getContextSuggestions() : getFollowUpSuggestions()
+  const currentSuggestions = dynamicSuggestions && dynamicSuggestions.length > 0
+    ? dynamicSuggestions
+    : messages.length <= 1
+    ? getContextSuggestions()
+    : getFollowUpSuggestions()
 
   // Scroll to bottom when messages change
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [messages, isOpen])
+  }, [messages, isOpen, isLoading])
 
   const sendMessage = async (text: string) => {
     const trimmedMessage = text.trim()
@@ -321,13 +380,19 @@ export default function ChatPopup() {
         return
       }
 
-      // Add assistant response
+      // Add assistant response avec actions et suggestions structurées
       const assistantMessage: Message = {
         role: 'assistant',
         content: data.response,
         timestamp: new Date(),
+        actions: data.actions || [],
+        suggestions: data.suggestions || [],
       }
       setMessages((prev) => [...prev, assistantMessage])
+
+      if (data.suggestions && data.suggestions.length > 0) {
+        setDynamicSuggestions(data.suggestions)
+      }
 
     } catch (err) {
       console.error('Erreur lors de l\'envoi du message:', err)
@@ -343,7 +408,6 @@ export default function ChatPopup() {
   const handleRetry = () => {
     if (lastUserMessage) {
       setError(null)
-      // Supprimer le dernier message utilisateur qui a échoué pour le renvoyer
       setMessages((prev) => {
         const lastIdx = prev.length - 1
         if (prev[lastIdx]?.role === 'user') {
@@ -355,8 +419,11 @@ export default function ChatPopup() {
     }
   }
 
-  // Nouvelle conversation
+  // Nouvelle conversation & réinitialisation du cache local
   const handleNewConversation = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(STORAGE_KEY)
+    }
     setMessages([
       {
         role: 'assistant',
@@ -367,12 +434,12 @@ export default function ChatPopup() {
     setInputMessage('')
     setError(null)
     setLastUserMessage(null)
-    fetchQuotaStatus() // Récupérer le statut actuel du quota
+    setDynamicSuggestions(null)
+    fetchQuotaStatus()
     toast.success('Nouvelle conversation démarrée', { icon: '🔄', duration: 2000 })
   }
 
   const handleFeedback = async (messageIndex: number, type: 'up' | 'down') => {
-    // Mark this message as voted in local state
     setMessages((prev) =>
       prev.map((msg, idx) =>
         idx === messageIndex ? { ...msg, feedbackSent: type } : msg
@@ -441,7 +508,6 @@ export default function ChatPopup() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
           </svg>
         )}
-        {/* Badge de bienvenue — disparaît après première ouverture */}
         {!isOpen && showBadge && (
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full shadow-md">
             <span className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75" />
@@ -449,30 +515,33 @@ export default function ChatPopup() {
         )}
       </button>
 
-      {/* Chat popup — plein écran mobile, popup ou grande vue desktop */}
+      {/* Chat popup */}
       {isOpen && (
         <div className={`fixed glass-panel shadow-2xl overflow-hidden z-50 animate-slide-up transition-all duration-300 ${
           isExpanded
-            ? 'bottom-2 right-2 left-2 top-2 sm:bottom-6 sm:right-6 sm:left-auto sm:top-auto sm:w-[680px] sm:h-[600px] sm:max-w-[calc(100vw-3rem)] rounded-2xl'
-            : 'bottom-0 right-0 w-full h-[100dvh] sm:bottom-24 sm:right-6 sm:w-96 sm:h-auto sm:max-w-[calc(100vw-3rem)] sm:rounded-2xl'
+            ? 'bottom-2 right-2 left-2 top-2 sm:bottom-6 sm:right-6 sm:left-auto sm:top-auto sm:w-[680px] sm:h-[620px] sm:max-w-[calc(100vw-3rem)] rounded-2xl flex flex-col'
+            : 'bottom-0 right-0 w-full h-[100dvh] sm:bottom-24 sm:right-6 sm:w-[420px] sm:h-auto sm:max-w-[calc(100vw-3rem)] sm:rounded-2xl flex flex-col'
         }`}>
           {/* Header */}
-          <div className="bg-gradient-to-r from-primary to-primary-dark text-white p-4">
+          <div className="bg-gradient-to-r from-primary to-primary-dark text-white p-4 shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
                   <span className="text-lg">🏊</span>
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm tracking-wide">Assistant Triton</h3>
-                  <p className="text-[10px] text-white/80 font-medium">En ligne • Intelligence Artificielle du Club</p>
+                  <h3 className="font-bold text-sm tracking-wide flex items-center gap-1.5">
+                    Assistant Triton
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  </h3>
+                  <p className="text-[10px] text-white/80 font-medium">Assistant virtuel • Réponses instantanées</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 {/* Bouton agrandir / réduire */}
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="hidden sm:flex w-8 h-8 rounded-full hover:bg-white/10 items-center justify-center text-white/80 hover:text-white transition-all"
+                  className="hidden sm:flex w-8 h-8 rounded-full hover:bg-white/10 items-center justify-center text-white/80 hover:text-white transition-all cursor-pointer"
                   aria-label={isExpanded ? "Réduire la fenêtre" : "Agrandir la fenêtre"}
                   title={isExpanded ? "Réduire" : "Agrandir"}
                 >
@@ -488,7 +557,7 @@ export default function ChatPopup() {
                 {messages.length > 1 && (
                   <button
                     onClick={handleNewConversation}
-                    className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition-all"
+                    className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition-all cursor-pointer"
                     aria-label="Nouvelle conversation"
                     title="Nouvelle conversation"
                   >
@@ -500,7 +569,7 @@ export default function ChatPopup() {
                 {/* Bouton fermer */}
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition-all"
+                  className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition-all cursor-pointer"
                   aria-label="Fermer le chat"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -511,9 +580,9 @@ export default function ChatPopup() {
             </div>
           </div>
 
-          {/* Messages — hauteur adaptative mobile/desktop */}
-          <div className={`overflow-y-auto p-4 space-y-4 bg-slate-50/60 flex flex-col ${
-            isExpanded ? 'h-[calc(100vh-210px)] sm:h-[440px]' : 'h-[calc(100dvh-180px)] sm:h-80'
+          {/* Messages */}
+          <div className={`overflow-y-auto p-4 space-y-4 bg-slate-50/70 flex-1 ${
+            isExpanded ? 'h-[calc(100vh-210px)] sm:h-[430px]' : 'h-[calc(100dvh-180px)] sm:h-[350px]'
           }`}>
             {messages.map((message, index) => (
               <div
@@ -521,21 +590,104 @@ export default function ChatPopup() {
                 className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}
               >
                 <div
-                  className={`max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed ${
+                  className={`max-w-[88%] p-3.5 rounded-2xl text-sm leading-relaxed ${
                     message.role === 'user'
                       ? 'bg-gradient-to-br from-primary to-primary-dark text-white rounded-tr-none shadow-md shadow-primary/10'
-                      : 'bg-white border border-slate-100 text-slate-800 rounded-tl-none shadow-xs'
+                      : 'bg-white border border-slate-200/80 text-slate-800 rounded-tl-none shadow-xs'
                   }`}
                 >
                   {formatMessageContent(message.content, message.role)}
+
+                  {/* Boutons d'Action Rapide cliquables (pour l'assistant) */}
+                  {message.role === 'assistant' && message.actions && message.actions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2 border-t border-slate-100">
+                      {message.actions.map((act, actIdx) => {
+                        const iconEmoji =
+                          act.icon === 'swimmer'
+                            ? '🏊'
+                            : act.icon === 'calendar'
+                            ? '📅'
+                            : act.icon === 'document'
+                            ? '📝'
+                            : act.icon === 'cart'
+                            ? '🛒'
+                            : act.icon === 'mail'
+                            ? '✉️'
+                            : '👉'
+
+                        return (
+                          <Link
+                            key={actIdx}
+                            href={act.url}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-lg text-xs font-semibold border border-primary/20 hover:border-transparent transition-all shadow-2xs hover:shadow-xs group cursor-pointer"
+                          >
+                            <span className="text-xs group-hover:scale-110 transition-transform">{iconEmoji}</span>
+                            <span>{act.label}</span>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Diagnostic d'orientation interactif (au premier message de bienvenue) */}
+                  {index === 0 && message.role === 'assistant' && messages.length <= 1 && (
+                    <div className="mt-3 p-3 bg-gradient-to-br from-primary/5 via-sky-50 to-blue-50/50 rounded-xl border border-primary/15 space-y-2">
+                      <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <span>🎯</span> <span>Orientation rapide en 1 clic :</span>
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                        <button
+                          onClick={() => sendMessage("Quel groupe pour mon enfant de 4 à 10 ans ?")}
+                          className="text-left px-2.5 py-2 rounded-lg bg-white/95 hover:bg-white text-xs text-slate-700 hover:text-primary font-medium border border-slate-200/70 hover:border-primary/40 shadow-2xs hover:shadow-xs transition-all flex items-center gap-2 group cursor-pointer"
+                        >
+                          <span className="text-base group-hover:scale-110 transition-transform">👶</span>
+                          <div>
+                            <div className="font-semibold text-slate-800">Enfants (4 - 10 ans)</div>
+                            <div className="text-[10px] text-slate-500">Sauv&apos;Nage &amp; Écoles</div>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => sendMessage("Quels sont les groupes ados et compétition ?")}
+                          className="text-left px-2.5 py-2 rounded-lg bg-white/95 hover:bg-white text-xs text-slate-700 hover:text-primary font-medium border border-slate-200/70 hover:border-primary/40 shadow-2xs hover:shadow-xs transition-all flex items-center gap-2 group cursor-pointer"
+                        >
+                          <span className="text-base group-hover:scale-110 transition-transform">🏊</span>
+                          <div>
+                            <div className="font-semibold text-slate-800">Ados &amp; Compétition</div>
+                            <div className="text-[10px] text-slate-500">Pass&apos;Sports &amp; Jeunes</div>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => sendMessage("Quelles sont les activités pour adultes et maîtres ?")}
+                          className="text-left px-2.5 py-2 rounded-lg bg-white/95 hover:bg-white text-xs text-slate-700 hover:text-primary font-medium border border-slate-200/70 hover:border-primary/40 shadow-2xs hover:shadow-xs transition-all flex items-center gap-2 group cursor-pointer"
+                        >
+                          <span className="text-base group-hover:scale-110 transition-transform">🌊</span>
+                          <div>
+                            <div className="font-semibold text-slate-800">Adultes &amp; Maîtres</div>
+                            <div className="text-[10px] text-slate-500">Loisirs, NFS &amp; Aquagym</div>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => sendMessage("Comment se passe la formation surveillant sauveteur SSA ?")}
+                          className="text-left px-2.5 py-2 rounded-lg bg-white/95 hover:bg-white text-xs text-slate-700 hover:text-primary font-medium border border-slate-200/70 hover:border-primary/40 shadow-2xs hover:shadow-xs transition-all flex items-center gap-2 group cursor-pointer"
+                        >
+                          <span className="text-base group-hover:scale-110 transition-transform">🛟</span>
+                          <div>
+                            <div className="font-semibold text-slate-800">Formation SSA (BNSSA)</div>
+                            <div className="text-[10px] text-slate-500">Dès 16 ans • Croix-Blanche</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <p className={`text-[11px] mt-1.5 font-medium ${message.role === 'user' ? 'text-white/90' : 'text-slate-500'}`}>
                     {message.timestamp.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
 
-                {/* Thumbs Feedback (sous le message assistant, sauf le premier) */}
+                {/* Thumbs Feedback */}
                 {message.role === 'assistant' && index > 0 && (
-                  <div className="flex items-center gap-2.5 mt-1.5 ml-2.5 text-xs text-slate-600 bg-white/70 backdrop-blur px-2.5 py-1 rounded-full border border-slate-200/60 shadow-2xs">
+                  <div className="flex items-center gap-2.5 mt-1.5 ml-2.5 text-xs text-slate-600 bg-white/80 backdrop-blur px-2.5 py-1 rounded-full border border-slate-200/60 shadow-2xs">
                     <span className="font-semibold text-slate-600">Pertinent ?</span>
                     <button
                       onClick={() => handleFeedback(index, 'up')}
@@ -563,11 +715,14 @@ export default function ChatPopup() {
             {/* Loading indicator */}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-white p-3 rounded-2xl shadow-sm rounded-bl-md">
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200/60 rounded-bl-md">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500 font-medium">Recherche dans les données du club...</span>
+                    <div className="flex gap-1">
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -580,7 +735,7 @@ export default function ChatPopup() {
                 {!(countdown !== null && countdown > 0) && (
                   <button
                     onClick={handleRetry}
-                    className="text-xs font-bold text-red-600 hover:text-red-800 underline transition-colors"
+                    className="text-xs font-bold text-red-600 hover:text-red-800 underline transition-colors cursor-pointer"
                   >
                     🔄 Réessayer
                   </button>
@@ -591,18 +746,18 @@ export default function ChatPopup() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Suggestions persistantes — contextuelles au début, de suivi ensuite */}
+          {/* Suggestions persistantes */}
           {shouldShowSuggestions && (
-            <div className="px-4 py-2.5 border-t border-slate-100 bg-white">
+            <div className="px-4 py-2.5 border-t border-slate-100 bg-white shrink-0">
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                {messages.length <= 1 ? 'Suggestions contextuelles' : 'Questions rapides'}
+                {dynamicSuggestions && dynamicSuggestions.length > 0 ? 'Questions suggérées' : messages.length <= 1 ? 'Suggestions rapides' : 'Questions suivantes'}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {currentSuggestions.map((suggestion) => (
                   <button
                     key={suggestion}
                     onClick={() => sendMessage(suggestion)}
-                    className="text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200/60 text-slate-700 px-3 py-1.5 rounded-full transition-all hover:scale-[1.02] active:scale-[0.98] outline-none"
+                    className="text-xs bg-slate-50 hover:bg-primary/10 border border-slate-200/70 hover:border-primary/30 text-slate-700 hover:text-primary px-3 py-1.5 rounded-full transition-all hover:scale-[1.02] active:scale-[0.98] outline-none cursor-pointer"
                   >
                     {suggestion}
                   </button>
@@ -612,8 +767,7 @@ export default function ChatPopup() {
           )}
 
           {/* Input */}
-          <div className="p-3 bg-white border-t border-slate-100">
-            {/* Status indicator / Compteur de messages restants */}
+          <div className="p-3 bg-white border-t border-slate-100 shrink-0">
             {monthlyQuotaExceeded ? (
               <div className="flex items-center gap-1.5 px-3 py-1.5 mb-2 bg-red-50 border border-red-200 text-red-700 rounded-xl text-[11px] font-medium">
                 <span className="shrink-0 text-xs">⚠️</span>
@@ -644,7 +798,7 @@ export default function ChatPopup() {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={monthlyQuotaExceeded ? "Quota mensuel épuisé..." : countdown !== null && countdown > 0 ? "Quota temporairement épuisé..." : "Votre question..."}
+                placeholder={monthlyQuotaExceeded ? "Quota mensuel épuisé..." : countdown !== null && countdown > 0 ? "Quota temporairement épuisé..." : "Posez votre question sur les cours, tarifs, tests..."}
                 disabled={isLoading || (countdown !== null && countdown > 0) || monthlyQuotaExceeded}
                 maxLength={500}
                 className="flex-1 px-4 py-2.5 border border-slate-200 rounded-full focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white bg-slate-50 transition-all outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed"
@@ -652,7 +806,7 @@ export default function ChatPopup() {
               <button
                 onClick={handleSendMessage}
                 disabled={isLoading || !inputMessage.trim() || (countdown !== null && countdown > 0) || monthlyQuotaExceeded}
-                className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark text-white rounded-full hover:from-primary-dark hover:to-emerald-600 shadow-md shadow-primary/15 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0"
+                className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark text-white rounded-full hover:from-primary-dark hover:to-emerald-600 shadow-md shadow-primary/15 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0 cursor-pointer"
                 aria-label="Envoyer"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -664,8 +818,8 @@ export default function ChatPopup() {
         </div>
       )}
 
-      {/* Styles for animation */}
-      <style>{`
+      {/* Animation style */}
+      <style jsx global>{`
         @keyframes slide-up {
           from {
             opacity: 0;
@@ -679,8 +833,7 @@ export default function ChatPopup() {
         .animate-slide-up {
           animation: slide-up 0.3s ease-out;
         }
-      `}
-      </style>
+      `}</style>
     </>
   )
 }

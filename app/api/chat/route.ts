@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getChatResponse } from '@/lib/genkit-chat'
+import { getStructuredChatResponse } from '@/lib/genkit-chat'
 import { rateLimiter } from '@/lib/rate-limiter'
 import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
@@ -119,14 +119,15 @@ export async function POST(request: NextRequest) {
         .map((item: any) => ({ role: item.role as 'user' | 'assistant', content: item.content }))
     }
 
-    // Call Mistral AI via Genkit (avec historique de conversation)
-    const response = await getChatResponse(message, validatedHistory)
+    // Call Mistral AI via Genkit (avec routage d'intentions et historique de conversation)
+    const { response, actions, suggestions } = await getStructuredChatResponse(message, validatedHistory)
 
     // Auto-detect unresolved questions (fallback responses)
     if (
       response.includes("Je n'ai pas cette information") ||
       response.includes("information non présente") ||
-      response.includes("n'ai pas cette information précise")
+      response.includes("n'ai pas cette information précise") ||
+      response.includes("ne dispose pas de cette information")
     ) {
       try {
         // Enregistrer la question non résolue en base de données de manière asynchrone non-bloquante
@@ -145,10 +146,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Return response with rate limit headers
+    // Return response with actions, suggestions and rate limit headers
     return NextResponse.json(
       {
         response,
+        actions,
+        suggestions,
         remaining: rateLimitResult.remaining,
         resetTime: rateLimitResult.resetTime,
       },
