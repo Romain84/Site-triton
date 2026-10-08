@@ -441,13 +441,14 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
   const manualRempIds = (factureExistante?.lignes?.map(l => l.remplacementId).filter(id => Boolean(id) && !id?.startsWith('comp_')) as string[]) || []
 
-  // 2. Remplacements et Absences (pour tout le mois concerné)
+  // 2. Remplacements et Absences (pour la période considérée)
   const [remplacementsEffectues, remplacementsRecus] = await Promise.all([
     prisma.remplacement.findMany({
       where: {
         coachRemplacantId: coachId,
+        statut: 'accepte',
         actif: true,
-        date: { gte: dateDebut, lte: dateFinMois },
+        date: { gte: dateDebut, lte: dateFin },
         ...(manualRempIds.length > 0 && {
           id: { notIn: manualRempIds }
         })
@@ -459,8 +460,9 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     prisma.remplacement.findMany({
       where: {
         coachRemplaceId: coachId,
+        statut: { notIn: ['refuse', 'annule'] },
         actif: true,
-        date: { gte: dateDebut, lte: dateFinMois },
+        date: { gte: dateDebut, lte: dateFin },
         ...(manualRempIds.length > 0 && {
           id: { notIn: manualRempIds }
         })
@@ -581,7 +583,9 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     const dateKey = `${rempDateObj.getFullYear()}-${String(rempDateObj.getMonth() + 1).padStart(2, '0')}-${String(rempDateObj.getDate()).padStart(2, '0')}`
     const dateStr = rempDateObj.toLocaleDateString('fr-FR')
     const rempDateCourt = rempDateObj.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
-    const coachNom = remp.coachRemplace ? `${remp.coachRemplace.prenom} ${remp.coachRemplace.nom || ''}`.trim() : 'Coach'
+    const coachNom = remp.coachRemplace
+      ? `${(remp.coachRemplace.prenom || '').trim()} ${(remp.coachRemplace.nom || '').trim()}`.trim()
+      : 'Coach'
 
     const rempDebutMin = timeToMinutes(remp.heureDebut)
     const rempFinMin = timeToMinutes(remp.heureFin)
@@ -818,7 +822,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     const rempDebutMin = timeToMinutes(remp.heureDebut)
     const rempFinMin = timeToMinutes(remp.heureFin)
     const coachNom = remp.coachRemplacant
-      ? `${remp.coachRemplacant.prenom} ${remp.coachRemplacant.nom || ''}`.trim()
+      ? `${(remp.coachRemplacant.prenom || '').trim()} ${(remp.coachRemplacant.nom || '').trim()}`.trim()
       : null
     const descPrefix = coachNom ? `Absence (Remplacé(e) par ${coachNom})` : `Absence sans remplacement`
 
