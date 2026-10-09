@@ -139,22 +139,22 @@ export default async function EcoleDeNatationPage() {
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
               ENF 1 · Découverte (Mer. 09h15 / Ven. 17h15)
             </div>
-            <h2 className="text-xl font-black text-slate-900">ENF 1 : Première découverte aquatique</h2>
+            <h2 className="text-xl font-black text-slate-900">ENF 1 : Apprentissage des nages codifiées</h2>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Pour les enfants qui ne savent pas nager. En petit groupe dans le petit bassin, l&apos;enfant apprend à être en confiance, mettre la tête sous l&apos;eau, souffler, flotter et se déplacer en autonomie.
+              Pour les enfants qui savent déjà se déplacer dans l&apos;eau en autonomie sans se tenir, mais ne maîtrisent pas encore les nages codifiées (crawl, dos, brasse). En petit groupe dans le petit bassin, l&apos;enfant apprend les techniques de nage et perfectionne son aisance sans matériel.
             </p>
             <ul className="space-y-2 text-xs font-semibold text-slate-700">
               <li className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-cyan-600 shrink-0" />
-                <span>Immersion progressive et gestion du souffle</span>
+                <span>Prérequis : savoir se déplacer seul dans l&apos;eau sans se tenir</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-cyan-600 shrink-0" />
-                <span>Flottaison ventrale et dorsale en sécurité</span>
+                <span>Apprentissage des premières techniques de nages codifiées</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-cyan-600 shrink-0" />
-                <span>Autonomie et premiers déplacements sans matériel</span>
+                <span>Autonomie complète aux vestiaires et en bassin</span>
               </li>
             </ul>
           </div>

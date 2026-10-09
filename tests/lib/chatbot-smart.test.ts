@@ -34,6 +34,12 @@ describe('Assistant Virtuel - Détection des Intentions', () => {
     expect(intents.planning).toBe(true)
     expect(intents.groupes).toBe(true)
   })
+
+  it('détecte les intentions de groupe pour un enfant et prérequis de déplacement', () => {
+    const intents = detectUserIntents("Mon fils a 6 ans, il sait se déplacer mais ne sait pas nager le crawl")
+    expect(intents.groupes).toBe(true)
+    expect(intents.testsNage).toBe(true)
+  })
 })
 
 describe('Assistant Virtuel - Dérivation des Actions et Suggestions', () => {

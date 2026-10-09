@@ -774,7 +774,7 @@ const rawData = {
     {
       "id": "cmozpevx1000ah438fbaw0qy7",
       "nom": "Ecole de natation française (ENF 1)",
-      "description": " L'École de Natation permet aux enfants d'acquérir les bases fondamentales en toute sécurité.\nDe la découverte du milieu aquatique jusqu'à la maîtrise des premières techniques de nage et l'obtention du Pass'Sports de l'Eau.\n\n✅ Prérequis obligatoires :\n- Ne sait pas nager\n- Autonome aux vestiaires\n\n📌 Pour les nouveaux :\n- Test de niveau à la rentrée. Changement de groupe possible par l'entraîneur (selon les places disponibles)",
+      "description": " L'École de Natation permet aux enfants d'acquérir les bases fondamentales en toute sécurité.\nDe la découverte des techniques de nage jusqu'à l'obtention du Pass'Sports de l'Eau.\n\n✅ Prérequis obligatoires :\n- Sait déjà se déplacer seul dans l'eau sans se tenir (ne maîtrise pas encore les nages codifiées : crawl, dos, brasse)\n- Autonome aux vestiaires\n\n📌 Pour les nouveaux :\n- Test de niveau à la rentrée. Changement de groupe possible par l'entraîneur (selon les places disponibles)",
       "total": 22,
       "inscrits": 20,
       "inscrits1Cours": 0,

@@ -221,6 +221,15 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
   2. **Pôle 2 : Équipe & Gestion sportive** (Gestion des coachs, Remplacements & vacations, Planning régulier, Séances annulées).
   3. **Pôles suivants** : Adhérents & Inscriptions, Communication & Événements, Configuration & Système.
 
+### M. Règles Pédagogiques & Groupes Enfants (ENF 1 & ENF 2)
+- **Groupe ENF 1 (École de Natation Française 1, 6 à 8/9 ans)** :
+  - **Sens de « ne sait pas nager »** : Cela ne signifie **JAMAIS** partir de zéro !
+  - **Prérequis obligatoire** : L'enfant **doit déjà savoir se déplacer seul dans l'eau sans se tenir** (flottaison et propulsion autonomes, sans s'accrocher au mur, au bord ou à un adulte).
+  - **Ce qu'il apprend** : Les **nages codifiées** (crawl avec respiration latérale, dos crawlé, brasse). Il ne sait pas encore les nager de manière codifiée, c'est tout l'objet de ce groupe.
+  - **Prérequis vestiaires** : Autonome pour s'habiller et se déshabiller seul.
+- **Groupe ENF 2 (École de Natation Française 2)** :
+  - Pour les enfants maîtrisant déjà les bases des nages codifiées (au moins 2 nages codifiées), en vue du perfectionnement technique et de la préparation au Pass'Sports de l'eau.
+
 ---
 
 ## 📦 5. COMMANDES CLÉS DU PROJET

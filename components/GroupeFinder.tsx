@@ -41,8 +41,8 @@ const RECOMMENDATIONS: Record<string, GroupeRecommendation> = {
     bassin: 'Petit Bassin · Piscine Alphonse Roudière',
     creneaux: ['Mercredi 13h30 - 14h15', 'Samedi 09h15 - 10h00'],
     tarif: '200 € (1 cours) ou 270 € (2 cours) / an',
-    description: 'Première découverte aquatique en petit groupe. L\'enfant apprend à être en confiance, mettre la tête sous l\'eau, souffler, flotter et se déplacer.',
-    pointsForts: ['Encadrement dédié dans le petit bassin', 'Apprentissage progressif et ludique', 'Aisance aquatique en sécurité'],
+    description: 'Pour les enfants qui savent déjà se déplacer seuls dans l\'eau sans se tenir, mais ne maîtrisent pas encore les nages codifiées. Apprentissage progressif des techniques de nage et autonomie aquatique.',
+    pointsForts: ['Prérequis : savoir se déplacer sans appui', 'Apprentissage des nages codifiées', 'Bassin adapté et encadrement dédié'],
     planningUrl: '/planning',
     inscriptionUrl: '/inscription'
   },
