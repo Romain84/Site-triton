@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import toast from 'react-hot-toast'
-import { HelpTooltip } from '@/components/ui/Tooltip'
 import { formatHeuresEnHM } from '@/lib/facture-format'
 
 interface Coach {
@@ -86,6 +85,10 @@ export default function FacturesManager() {
   const [loading, setLoading] = useState(true)
   const [filterStatut, setFilterStatut] = useState<string>('all')
   const [filterCoach, setFilterCoach] = useState<string>('all')
+  const [filterMois, setFilterMois] = useState<string>('all')
+  const [filterAnnee, setFilterAnnee] = useState<string>('all')
+  const [searchCoach, setSearchCoach] = useState<string>('')
+  const [expandedCoaches, setExpandedCoaches] = useState<Record<string, boolean>>({})
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   
   // États pour le Drawer de prévisualisation
@@ -485,17 +488,117 @@ export default function FacturesManager() {
     }
   }
 
-  const uniqueCoaches = Array.from(
-    new Set(factures.map(f => f.coachId))
-  ).map(id => factures.find(f => f.coachId === id)!.coach)
+  const uniqueCoaches = useMemo(() => {
+    return Array.from(
+      new Set(factures.map((f) => f.coachId))
+    ).map((id) => factures.find((f) => f.coachId === id)!.coach)
+  }, [factures])
 
   const displayCoaches = allCoaches.length > 0 ? allCoaches : uniqueCoaches
 
-  const filteredFactures = factures.filter(f => {
-    if (filterStatut !== 'all' && f.statut !== filterStatut) return false
-    if (filterCoach !== 'all' && f.coachId !== filterCoach) return false
-    return true
-  })
+  const availableYears = useMemo(() => {
+    const years = Array.from(new Set(factures.map((f) => f.annee))).filter(Boolean)
+    const currentYear = new Date().getFullYear()
+    if (!years.includes(currentYear)) {
+      years.push(currentYear)
+    }
+    return years.sort((a, b) => b - a)
+  }, [factures])
+
+  const filteredFactures = useMemo(() => {
+    return factures.filter((f) => {
+      if (filterStatut !== 'all' && f.statut !== filterStatut) return false
+      if (filterCoach !== 'all' && f.coachId !== filterCoach) return false
+      if (filterMois !== 'all' && f.mois !== Number(filterMois)) return false
+      if (filterAnnee !== 'all' && f.annee !== Number(filterAnnee)) return false
+      if (searchCoach.trim()) {
+        const q = searchCoach.toLowerCase()
+        const coachName = `${f.coach?.prenom || ''} ${f.coach?.nom || ''}`.toLowerCase()
+        const num = (f.numero || '').toLowerCase()
+        if (!coachName.includes(q) && !num.includes(q)) return false
+      }
+      return true
+    })
+  }, [factures, filterStatut, filterCoach, filterMois, filterAnnee, searchCoach])
+
+  const groupedByCoach = useMemo(() => {
+    const map = new Map<string, {
+      coachId: string
+      coach: Coach
+      factures: Facture[]
+      totalMontant: number
+      count: number
+    }>()
+
+    for (const f of filteredFactures) {
+      if (!map.has(f.coachId)) {
+        map.set(f.coachId, {
+          coachId: f.coachId,
+          coach: f.coach,
+          factures: [],
+          totalMontant: 0,
+          count: 0,
+        })
+      }
+      const group = map.get(f.coachId)!
+      group.factures.push(f)
+      group.totalMontant += f.montantTotal || 0
+      group.count += 1
+    }
+
+    const groups = Array.from(map.values()).map((g) => ({
+      ...g,
+      factures: [...g.factures].sort((a, b) => {
+        if (b.annee !== a.annee) return b.annee - a.annee
+        if (b.mois !== a.mois) return b.mois - a.mois
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      }),
+    }))
+
+    groups.sort((a, b) =>
+      `${a.coach?.prenom || ''} ${a.coach?.nom || ''}`.localeCompare(
+        `${b.coach?.prenom || ''} ${b.coach?.nom || ''}`
+      )
+    )
+
+    return groups
+  }, [filteredFactures])
+
+  const globalFilteredStats = useMemo(() => {
+    const totalMontant = filteredFactures.reduce((acc, f) => acc + (f.montantTotal || 0), 0)
+    return {
+      totalMontant,
+      totalFactures: filteredFactures.length,
+      totalCoaches: groupedByCoach.length,
+    }
+  }, [filteredFactures, groupedByCoach])
+
+  const toggleCoachExpanded = (coachId: string) => {
+    setExpandedCoaches((prev) => ({
+      ...prev,
+      [coachId]: !prev[coachId],
+    }))
+  }
+
+  const expandAllCoaches = () => {
+    const all: Record<string, boolean> = {}
+    groupedByCoach.forEach((g) => {
+      all[g.coachId] = true
+    })
+    setExpandedCoaches(all)
+  }
+
+  const collapseAllCoaches = () => {
+    setExpandedCoaches({})
+  }
+
+  const resetFilters = () => {
+    setFilterStatut('all')
+    setFilterCoach('all')
+    setFilterMois('all')
+    setFilterAnnee('all')
+    setSearchCoach('')
+  }
 
   const renderFactureSections = (sections: any[]) => {
     return (
@@ -663,14 +766,6 @@ export default function FacturesManager() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h2 className="text-2xl font-bold flex items-center gap-2">
           Gestion des Factures
-          <HelpTooltip title="Factures des coaches">
-            <p>Suivi des factures mensuelles des coaches.</p>
-            <p className="mt-1"><strong>Statuts :</strong></p>
-            <p className="text-gray-400">• Brouillon : en cours de préparation</p>
-            <p className="text-blue-400">• Générée : prête à être envoyée</p>
-            <p className="text-yellow-400">• Envoyée : en attente de paiement</p>
-            <p className="text-green-400">• Payée : règlement effectué</p>
-          </HelpTooltip>
         </h2>
         <button
           onClick={handleOpenGenerateModal}
@@ -680,7 +775,7 @@ export default function FacturesManager() {
         </button>
       </div>
 
-      {/* ── Onglets de Navigation : Factures enregistrées vs Factures en cours ── */}
+      {/* ── Onglets de Navigation : Factures générées vs Factures en cours ── */}
       <div className="flex border-b border-slate-200 mb-6 gap-2">
         <button
           onClick={() => setActiveTab('enregistrees')}
@@ -691,10 +786,7 @@ export default function FacturesManager() {
           }`}
         >
           <span>📁</span>
-          <span>Factures enregistrées</span>
-          <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600 font-semibold">
-            {factures.length}
-          </span>
+          <span>Factures générées</span>
         </button>
 
         <button
@@ -711,276 +803,31 @@ export default function FacturesManager() {
           }`}
         >
           <span>⚡</span>
-          <span>Contrôle du mois & Factures en cours</span>
+          <span>Factures en cours</span>
           {enCoursData?.stats?.totalAnomalies && enCoursData.stats.totalAnomalies > 0 ? (
             <span className="ml-1 px-2 py-0.5 rounded-full text-[11px] bg-amber-100 text-amber-800 border border-amber-200 font-bold">
               {enCoursData.stats.totalAnomalies} point{enCoursData.stats.totalAnomalies > 1 ? 's' : ''}
             </span>
-          ) : (
-            <span className="ml-1 px-2 py-0.5 rounded-full text-[11px] bg-sky-50 text-sky-700 border border-sky-200 font-bold">
-              Temps réel
-            </span>
-          )}
+          ) : null}
         </button>
       </div>
 
       {activeTab === 'enregistrees' && (
         <>
-          {/* Filtres */}
-      <div className="card p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Filtrer par statut
-            </label>
-            <select
-              value={filterStatut}
-              onChange={(e) => setFilterStatut(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="brouillon">Brouillon</option>
-              <option value="generee">Générée</option>
-              <option value="envoyee">Envoyée</option>
-              <option value="payee">Payée</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Filtrer par coach
-            </label>
-            <select
-              value={filterCoach}
-              onChange={(e) => setFilterCoach(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            >
-              <option value="all">Tous les coaches</option>
-              {uniqueCoaches.map((coach) => (
-                <option key={coach.id} value={coach.id}>
-                  {coach.prenom} {coach.nom || ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Liste des factures */}
-      {filteredFactures.length === 0 ? (
-        <div className="card p-8 text-center">
-          <p className="text-gray-600">Aucune facture trouvée</p>
-        </div>
-      ) : (
-        <div className="grid gap-3">
-          {filteredFactures.map((facture) => (
-            <div
-              key={facture.id}
-              className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white hover:border-slate-300 transition-all shadow-2xs space-y-3.5"
-            >
-              {/* LIGNE PRINCIPALE : INFOS COACH & MONTANT */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                {/* GAUCHE : COACH, NUMÉRO, PÉRIODE */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary font-black text-sm flex items-center justify-center shrink-0">
-                    {facture.coach.prenom?.[0] || 'C'}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
-                        {facture.coach.prenom} {facture.coach.nom || ''}
-                      </h3>
-                      <span className="text-xs font-mono font-semibold text-slate-400">
-                        {facture.numero}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 font-medium">
-                      <span className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-md text-[11px]">
-                        📅 {moisNoms[facture.mois - 1]} {facture.annee}
-                      </span>
-                      {facture._count && facture._count.lignes > 0 && (
-                        <span className="bg-amber-50 text-amber-800 text-[11px] px-2 py-0.5 rounded-md font-bold border border-amber-200/80 flex items-center gap-1">
-                          ⚠️ Ajout manuel
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* DROITE : STATUT & MONTANT */}
-                <div className="flex items-center sm:flex-col sm:items-end justify-between gap-1 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                      statutsLabels[facture.statut]?.color || 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {statutsLabels[facture.statut]?.label || facture.statut}
-                  </span>
-                  <p className="text-lg sm:text-xl font-black text-slate-950">
-                    {facture.montantTotal.toFixed(2)} €
-                  </p>
-                </div>
-              </div>
-
-              {/* LIGNE SECONDAIRE : BOUTONS D'ACTION & SELECTEUR DE STATUT */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-100/80">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <button
-                    onClick={() => handleOpenPreview(facture.id)}
-                    className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    🔎 Détail
-                  </button>
-                  {facture.statut === 'brouillon' && (
-                    <button
-                      onClick={() => handleQuickGenerate(facture.id)}
-                      disabled={generatingAction === `quick-gen-${facture.id}`}
-                      className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-2xs"
-                      title="Générer la facture et créer le PDF officiel"
-                    >
-                      <span>⚡</span>
-                      <span>{generatingAction === `quick-gen-${facture.id}` ? 'Génération...' : 'Générer'}</span>
-                    </button>
-                  )}
-                  {facture.pdfPath && (
-                    <a
-                      href={facture.pdfPath}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 transition-colors flex items-center gap-1.5"
-                    >
-                      📄 PDF
-                    </a>
-                  )}
-                  <button
-                    onClick={() => handleQuickSendToClub(facture.id)}
-                    disabled={generatingAction === `quick-${facture.id}`}
-                    className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                    title="Générer/mettre à jour le PDF et l'envoyer au club par e-mail"
-                  >
-                    {generatingAction === `quick-${facture.id}` ? 'Envoi...' : '✉️ Envoyer club'}
-                  </button>
-                  {(facture.statut === 'envoyee' || facture.statut === 'payee') && (
-                    <button
-                      onClick={() => handleUnlockFacture(facture.id, facture.numero)}
-                      disabled={updatingId === facture.id}
-                      className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                      title="Repasser en brouillon pour permettre au coach de modifier ses séances"
-                    >
-                      🔓 Déverrouiller
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleDeleteFacture(facture.id, facture.numero)}
-                    className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    🗑️
-                  </button>
-                </div>
-
-                {/* SELECT STATUT COMPACT */}
-                <div className="flex items-center gap-1.5 ml-auto">
-                  <span className="text-[11px] font-semibold text-slate-400">Statut:</span>
-                  <select
-                    value={facture.statut}
-                    onChange={(e) => handleChangeStatut(facture.id, e.target.value)}
-                    disabled={updatingId === facture.id}
-                    className="px-2.5 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50/50 text-slate-800 font-semibold focus:ring-1 focus:ring-primary focus:bg-white disabled:opacity-50 cursor-pointer"
-                  >
-                    <option value="brouillon">Brouillon</option>
-                    <option value="generee">Générée</option>
-                    <option value="envoyee">Envoyée</option>
-                    <option value="payee">Payée</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Légende des statuts */}
-      <div className="mt-8 card p-6">
-        <h3 className="text-lg font-semibold mb-4">Légende des statuts</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-              Brouillon
-            </span>
-            <p className="text-xs text-gray-600 mt-2">
-              Facture en cours de création, non finalisée
-            </p>
-          </div>
-          <div>
-            <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-              Générée
-            </span>
-            <p className="text-xs text-gray-600 mt-2">
-              Facture générée en PDF, prête à être envoyée
-            </p>
-          </div>
-          <div>
-            <span className="px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-              Envoyée
-            </span>
-            <p className="text-xs text-gray-600 mt-2">
-              Facture envoyée au club, en attente de paiement
-            </p>
-          </div>
-          <div>
-            <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-              Payée
-            </span>
-            <p className="text-xs text-gray-600 mt-2">
-              Virement reçu, facture réglée
-            </p>
-          </div>
-        </div>
-      </div>
-        </>
-      )}
-
-      {/* ── Onglet 2 : Factures en cours & Génération coachs ── */}
-      {activeTab === 'en_cours' && (
-        <div className="space-y-6">
-          {/* Bannière explicative & rassurance */}
-          <div className="bg-sky-50/80 border border-sky-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <span className="text-2xl mt-0.5">⚡</span>
-              <div>
-                <h4 className="font-bold text-slate-800 text-sm sm:text-base">
-                  Génération & consultation des factures coachs en temps réel
-                </h4>
-                <p className="text-xs sm:text-sm text-slate-600 mt-0.5 leading-relaxed">
-                  Ce tableau calcule dynamiquement les heures (créneaux fixes, tournants, remplacements, déductions d&apos;absences, compétitions) pour chaque coach actif. Vous pouvez consulter le détail ou <strong>générer et envoyer la facture officielle à la place du coach</strong> en un clic.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => fetchEnCours(selectedMoisEnCours, selectedAnneeEnCours)}
-              disabled={loadingEnCours}
-              className="px-4 py-2 bg-white hover:bg-sky-100 text-sky-800 border border-sky-200 font-semibold rounded-xl text-xs sm:text-sm shadow-2xs transition-all flex items-center gap-2 shrink-0 cursor-pointer disabled:opacity-50"
-            >
-              <span className={loadingEnCours ? 'animate-spin' : ''}>🔄</span>
-              <span>{loadingEnCours ? 'Calcul en cours...' : 'Actualiser'}</span>
-            </button>
-          </div>
-
-          {/* Filtres Mois & Année */}
-          <div className="card p-4 sm:p-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+          {/* Filtres & Recherche */}
+          <div className="card p-4 sm:p-5 mb-6 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+              {/* Mois */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Mois de calcul
+                  Mois
                 </label>
                 <select
-                  value={selectedMoisEnCours}
-                  onChange={(e) => {
-                    const m = parseInt(e.target.value, 10)
-                    setSelectedMoisEnCours(m)
-                    fetchEnCours(m, selectedAnneeEnCours)
-                  }}
-                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white font-medium"
+                  value={filterMois}
+                  onChange={(e) => setFilterMois(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white font-medium"
                 >
+                  <option value="all">Tous les mois</option>
                   {moisNoms.map((nom, idx) => (
                     <option key={idx} value={idx + 1}>
                       {nom}
@@ -989,20 +836,18 @@ export default function FacturesManager() {
                 </select>
               </div>
 
+              {/* Année */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
                   Année
                 </label>
                 <select
-                  value={selectedAnneeEnCours}
-                  onChange={(e) => {
-                    const a = parseInt(e.target.value, 10)
-                    setSelectedAnneeEnCours(a)
-                    fetchEnCours(selectedMoisEnCours, a)
-                  }}
-                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white font-medium"
+                  value={filterAnnee}
+                  onChange={(e) => setFilterAnnee(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white font-medium"
                 >
-                  {[2024, 2025, 2026, 2027].map((y) => (
+                  <option value="all">Toutes les années</option>
+                  {availableYears.map((y) => (
                     <option key={y} value={y}>
                       {y}
                     </option>
@@ -1010,11 +855,375 @@ export default function FacturesManager() {
                 </select>
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-slate-500 pb-1">
-                <span>📅 Période analysée :</span>
-                <span className="font-bold text-slate-800">
-                  {moisNoms[selectedMoisEnCours - 1]} {selectedAnneeEnCours}
+              {/* Statut */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Statut
+                </label>
+                <select
+                  value={filterStatut}
+                  onChange={(e) => setFilterStatut(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white font-medium"
+                >
+                  <option value="all">Tous les statuts</option>
+                  <option value="brouillon">Brouillon</option>
+                  <option value="generee">Générée</option>
+                  <option value="envoyee">Envoyée</option>
+                  <option value="payee">Payée</option>
+                </select>
+              </div>
+
+              {/* Coach */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Coach
+                </label>
+                <select
+                  value={filterCoach}
+                  onChange={(e) => setFilterCoach(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white font-medium"
+                >
+                  <option value="all">Tous les coaches</option>
+                  {displayCoaches.map((coach) => (
+                    <option key={coach.id} value={coach.id}>
+                      {coach.prenom} {coach.nom || ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Recherche libre */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Recherche
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchCoach}
+                    onChange={(e) => setSearchCoach(e.target.value)}
+                    placeholder="Nom, N° facture..."
+                    className="w-full px-3 py-2 pr-8 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white placeholder-slate-400"
+                  />
+                  {searchCoach && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchCoach('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Barre de récapitulatif & Déplier/Replier */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs">
+              <div className="flex items-center gap-3 flex-wrap text-slate-600">
+                <span>
+                  <strong>{globalFilteredStats.totalCoaches}</strong> coach{globalFilteredStats.totalCoaches > 1 ? 's' : ''}
                 </span>
+                <span>•</span>
+                <span>
+                  <strong>{globalFilteredStats.totalFactures}</strong> facture{globalFilteredStats.totalFactures > 1 ? 's' : ''}
+                </span>
+                <span>•</span>
+                <span className="text-slate-900 font-bold">
+                  Total cumulé : <span className="text-primary font-black text-sm">{globalFilteredStats.totalMontant.toFixed(2)} €</span>
+                </span>
+
+                {(filterStatut !== 'all' || filterCoach !== 'all' || filterMois !== 'all' || filterAnnee !== 'all' || searchCoach.trim() !== '') && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="text-primary hover:underline font-semibold ml-1 cursor-pointer"
+                  >
+                    Réinitialiser les filtres
+                  </button>
+                )}
+              </div>
+
+              {groupedByCoach.length > 0 && (
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={expandAllCoaches}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors cursor-pointer text-xs"
+                  >
+                    📂 Tout déplier
+                  </button>
+                  <button
+                    type="button"
+                    onClick={collapseAllCoaches}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors cursor-pointer text-xs"
+                  >
+                    📁 Tout replier
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Factures classées par coach */}
+          {groupedByCoach.length === 0 ? (
+            <div className="card p-10 text-center space-y-3">
+              <div className="text-3xl">📁</div>
+              <p className="text-slate-600 font-medium">Aucune facture trouvée pour ces critères</p>
+              {(filterStatut !== 'all' || filterCoach !== 'all' || filterMois !== 'all' || filterAnnee !== 'all' || searchCoach.trim() !== '') && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-bold text-xs hover:bg-primary/20 transition-colors cursor-pointer inline-block"
+                >
+                  Réinitialiser les filtres
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3.5">
+              {groupedByCoach.map((group) => {
+                const isExpanded = Boolean(expandedCoaches[group.coachId])
+                return (
+                  <div
+                    key={group.coachId}
+                    className="border border-slate-200/90 rounded-2xl bg-white shadow-2xs overflow-hidden transition-all hover:border-slate-300"
+                  >
+                    {/* EN-TÊTE DU COACH (CLIQUABLE) */}
+                    <button
+                      type="button"
+                      onClick={() => toggleCoachExpanded(group.coachId)}
+                      className="w-full text-left p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 transition-colors cursor-pointer select-none"
+                    >
+                      {/* GAUCHE : AVATAR + NOM + EMAIL */}
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary font-black text-base flex items-center justify-center shrink-0 border border-primary/20">
+                          {group.coach?.prenom?.[0] || 'C'}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-base font-extrabold text-slate-900 truncate">
+                              {group.coach?.prenom} {group.coach?.nom || ''}
+                            </h3>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold border border-slate-200/60">
+                              {group.count} facture{group.count > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          {group.coach?.email && (
+                            <p className="text-xs text-slate-500 truncate mt-0.5 font-medium">
+                              {group.coach.email}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* DROITE : MONTANT TOTAL DU COACH + CHEVRON */}
+                      <div className="flex items-center justify-between sm:justify-end gap-5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                        <div className="text-left sm:text-right">
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">
+                            Montant total
+                          </span>
+                          <span className="text-lg sm:text-xl font-black text-slate-950">
+                            {group.totalMontant.toFixed(2)} €
+                          </span>
+                        </div>
+
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 font-bold transition-transform">
+                          <span className={`transform transition-transform text-xs ${isExpanded ? 'rotate-180' : ''}`}>
+                            ▼
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* HISTORIQUE COMPLET DES FACTURES DU COACH */}
+                    {isExpanded && (
+                      <div className="border-t border-slate-100 bg-slate-50/50 p-3 sm:p-4 space-y-3">
+                        {group.factures.map((facture) => (
+                          <div
+                            key={facture.id}
+                            className="p-3.5 sm:p-4 rounded-xl border border-slate-200/80 bg-white hover:border-slate-300 transition-all shadow-2xs space-y-3"
+                          >
+                            {/* LIGNE PRINCIPALE DE LA FACTURE */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                <span className="bg-sky-50 text-sky-800 font-bold px-2.5 py-1 rounded-lg text-xs border border-sky-200/60">
+                                  📅 {moisNoms[facture.mois - 1]} {facture.annee}
+                                </span>
+                                <span className="text-xs font-mono font-semibold text-slate-500">
+                                  {facture.numero}
+                                </span>
+                                {facture._count && facture._count.lignes > 0 && (
+                                  <span className="bg-amber-50 text-amber-800 text-[11px] px-2 py-0.5 rounded-md font-bold border border-amber-200/80 flex items-center gap-1">
+                                    ⚠️ Ajout manuel
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                                <span
+                                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                    statutsLabels[facture.statut]?.color || 'bg-gray-100 text-gray-800'
+                                  }`}
+                                >
+                                  {statutsLabels[facture.statut]?.label || facture.statut}
+                                </span>
+                                <p className="text-base sm:text-lg font-black text-slate-950">
+                                  {facture.montantTotal.toFixed(2)} €
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* ACTIONS & SELECTEUR STATUT */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenPreview(facture.id)}
+                                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  🔎 Détail
+                                </button>
+                                {facture.statut === 'brouillon' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickGenerate(facture.id)}
+                                    disabled={generatingAction === `quick-gen-${facture.id}`}
+                                    className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-2xs"
+                                    title="Générer la facture et créer le PDF officiel"
+                                  >
+                                    <span>⚡</span>
+                                    <span>{generatingAction === `quick-gen-${facture.id}` ? 'Génération...' : 'Générer'}</span>
+                                  </button>
+                                )}
+                                {facture.pdfPath && (
+                                  <a
+                                    href={facture.pdfPath}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 transition-colors flex items-center gap-1.5"
+                                  >
+                                    📄 PDF
+                                  </a>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickSendToClub(facture.id)}
+                                  disabled={generatingAction === `quick-${facture.id}`}
+                                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                                  title="Générer/mettre à jour le PDF et l'envoyer au club par e-mail"
+                                >
+                                  {generatingAction === `quick-${facture.id}` ? 'Envoi...' : '✉️ Envoyer club'}
+                                </button>
+                                {(facture.statut === 'envoyee' || facture.statut === 'payee') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUnlockFacture(facture.id, facture.numero)}
+                                    disabled={updatingId === facture.id}
+                                    className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                                    title="Repasser en brouillon pour permettre au coach de modifier ses séances"
+                                  >
+                                    🔓 Déverrouiller
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteFacture(facture.id, facture.numero)}
+                                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 transition-colors flex items-center gap-1 cursor-pointer"
+                                  title="Supprimer la facture"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+
+                              {/* Sélecteur statut */}
+                              <div className="flex items-center gap-1.5 ml-auto">
+                                <span className="text-[11px] font-semibold text-slate-400">Statut :</span>
+                                <select
+                                  value={facture.statut}
+                                  onChange={(e) => handleChangeStatut(facture.id, e.target.value)}
+                                  disabled={updatingId === facture.id}
+                                  className="px-2.5 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50/50 text-slate-800 font-semibold focus:ring-1 focus:ring-primary focus:bg-white disabled:opacity-50 cursor-pointer"
+                                >
+                                  <option value="brouillon">Brouillon</option>
+                                  <option value="generee">Générée</option>
+                                  <option value="envoyee">Envoyée</option>
+                                  <option value="payee">Payée</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── Onglet 2 : Factures en cours & Génération coachs ── */}
+      {activeTab === 'en_cours' && (
+        <div className="space-y-6">
+          {/* Filtres Mois & Année avec Actualiser */}
+          <div className="card p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                    Mois de calcul
+                  </label>
+                  <select
+                    value={selectedMoisEnCours}
+                    onChange={(e) => {
+                      const m = parseInt(e.target.value, 10)
+                      setSelectedMoisEnCours(m)
+                      fetchEnCours(m, selectedAnneeEnCours)
+                    }}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white font-medium"
+                  >
+                    {moisNoms.map((nom, idx) => (
+                      <option key={idx} value={idx + 1}>
+                        {nom}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                    Année
+                  </label>
+                  <select
+                    value={selectedAnneeEnCours}
+                    onChange={(e) => {
+                      const a = parseInt(e.target.value, 10)
+                      setSelectedAnneeEnCours(a)
+                      fetchEnCours(selectedMoisEnCours, a)
+                    }}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white font-medium"
+                  >
+                    {[2024, 2025, 2026, 2027].map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => fetchEnCours(selectedMoisEnCours, selectedAnneeEnCours)}
+                  disabled={loadingEnCours}
+                  className="px-4 py-2.5 bg-white hover:bg-sky-50 text-sky-800 border border-sky-200 font-semibold rounded-xl text-xs sm:text-sm shadow-2xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <span className={loadingEnCours ? 'animate-spin' : ''}>🔄</span>
+                  <span>{loadingEnCours ? 'Calcul en cours...' : 'Actualiser'}</span>
+                </button>
               </div>
             </div>
           </div>
