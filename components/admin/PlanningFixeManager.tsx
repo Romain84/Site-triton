@@ -1009,7 +1009,7 @@ export default function PlanningFixeManager() {
               <input
                 type="number"
                 min="1"
-                step="5"
+                step="1"
                 required
                 value={tempsFacture}
                 onChange={(e) => setTempsFacture(e.target.value)}
@@ -1925,7 +1925,7 @@ export default function PlanningFixeManager() {
                 <input
                   type="number"
                   min="0"
-                  step="5"
+                  step="1"
                   value={quickTempsFacture}
                   onChange={(e) => setQuickTempsFacture(e.target.value)}
                   placeholder="Ex: 75 pour 1h15"
