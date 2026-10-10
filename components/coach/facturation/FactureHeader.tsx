@@ -176,59 +176,29 @@ export default function FactureHeader({
           </div>
         </div>
 
-        {/* BANNIÈRE CONTEXTUELLE D'ÉTAT (AFFINÉE) */}
-        {isBrouillon && (
-          <div className="p-3 bg-amber-50/80 border border-amber-200/70 rounded-xl flex items-start gap-2.5 text-amber-900 text-xs font-semibold leading-relaxed">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <p>Facture en <strong>brouillon</strong>. Vérifiez vos séances et prestations ci-dessous.</p>
-              <p className="text-[11px] text-amber-700 font-normal mt-0.5">
-                Cliquez sur <strong>&quot;Générer la facture&quot;</strong> pour créer le document officiel et le transmettre directement au club.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {isGeneree && (
-          <div className="p-3 bg-sky-50/80 border border-sky-200/70 rounded-xl flex items-start gap-2.5 text-sky-900 text-xs font-semibold leading-relaxed">
-            <FileText className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
-            <div>
-              <p>Facture générée. Cliquez sur <strong>&quot;Générer la facture&quot;</strong> pour l&apos;officialiser et la transmettre au club.</p>
-            </div>
-          </div>
-        )}
-
-        {isEnvoyee && (
-          <div className="p-3 bg-emerald-50/80 border border-emerald-200/70 rounded-xl flex items-start gap-2.5 text-emerald-900 text-xs font-semibold leading-relaxed">
-            <Lock className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-            <div>
-              <p>🔒 <strong>Facture transmise au club.</strong> Tout est désormais verrouillé et archivé.</p>
-            </div>
-          </div>
-        )}
-
-        {isPayee && (
-          <div className="p-3 bg-purple-50/80 border border-purple-200/70 rounded-xl flex items-start gap-2.5 text-purple-900 text-xs font-semibold leading-relaxed">
-            <CheckCircle2 className="w-4 h-4 text-purple-700 shrink-0 mt-0.5" />
-            <div>
-              <p>✅ <strong>Facture payée.</strong> Le règlement a été effectué par le club pour ce mois.</p>
-            </div>
-          </div>
-        )}
-
         {/* BARRE DE BOUTONS D'ACTION (COMPACTE & ÉLÉGANTE) */}
         <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100">
-          {/* ACTION : GÉNÉRER ET TRANSMETTRE */}
+          {/* ACTION : GÉNÉRER OU TRANSMETTRE */}
           {(isBrouillon || isGeneree) && (
             <button
               type="button"
               onClick={onGenerateInvoice}
               disabled={generatingInvoice || !totalMontant}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-extrabold shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
-              title="Générer la facture officielle et l'envoyer directement au club et sur votre boîte e-mail"
+              title={
+                isGeneree
+                  ? "Transmettre la facture officielle par email au club"
+                  : "Générer la facture officielle et l'envoyer au club"
+              }
             >
-              {generatingInvoice ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-              <span>Générer la facture</span>
+              {generatingInvoice ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : isGeneree ? (
+                <FileText className="w-3.5 h-3.5" />
+              ) : (
+                <FileText className="w-3.5 h-3.5" />
+              )}
+              <span>{isGeneree ? 'Transmettre au club' : 'Générer la facture'}</span>
             </button>
           )}
 

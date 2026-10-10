@@ -86,7 +86,6 @@ export default function PlanningTournantPage() {
   const [absenceHeureFin, setAbsenceHeureFin] = useState('19:30')
   const [absenceMotif, setAbsenceMotif] = useState('')
   const [absenceCoachRemplacantId, setAbsenceCoachRemplacantId] = useState('')
-  const [absenceSansRemplacant, setAbsenceSansRemplacant] = useState(false)
   const [submittingAbsence, setSubmittingAbsence] = useState(false)
 
   const fetchEvenements = useCallback(async () => {
@@ -252,10 +251,21 @@ export default function PlanningTournantPage() {
     }
   }
 
+  const parseTimeToMin = (t: string) => {
+    if (!t) return 0
+    const [h, m] = t.split(':').map(Number)
+    return (h || 0) * 60 + (m || 0)
+  }
+
   const handleSubmitAbsence = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!absenceDate || !absenceHeureDebut || !absenceHeureFin) {
       toast.error('Veuillez renseigner la date et les horaires')
+      return
+    }
+
+    if (parseTimeToMin(absenceHeureDebut) >= parseTimeToMin(absenceHeureFin)) {
+      toast.error('L\'heure de fin doit être postérieure à l\'heure de début')
       return
     }
 
@@ -269,9 +279,9 @@ export default function PlanningTournantPage() {
           heureDebut: absenceHeureDebut,
           heureFin: absenceHeureFin,
           motif: absenceMotif.trim() || undefined,
-          coachRemplacantId: !absenceSansRemplacant && absenceCoachRemplacantId ? absenceCoachRemplacantId : undefined,
-          sansRemplacant: absenceSansRemplacant,
-          statut: absenceSansRemplacant ? 'sans_remplacant' : (absenceCoachRemplacantId ? 'accepte' : 'en_attente'),
+          coachRemplacantId: absenceCoachRemplacantId || undefined,
+          sansRemplacant: false,
+          statut: absenceCoachRemplacantId ? 'accepte' : 'en_attente',
         }),
       })
 
@@ -281,7 +291,6 @@ export default function PlanningTournantPage() {
         setAbsenceDate('')
         setAbsenceMotif('')
         setAbsenceCoachRemplacantId('')
-        setAbsenceSansRemplacant(false)
         setShowDeclareForm(false)
         setMainTab('mes_creneaux')
         await fetchRemplacements()
@@ -401,12 +410,6 @@ export default function PlanningTournantPage() {
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
                 <span>Déclarer une absence ponctuelle</span>
               </h2>
-              <span className="text-xs text-slate-400">
-                Vous pouvez également déclarer une absence en 1 clic directement depuis{' '}
-                <a href="/coach/dashboard" className="text-cyan-600 underline font-bold">
-                  votre agenda
-                </a>.
-              </span>
             </div>
 
             <form onSubmit={handleSubmitAbsence} className="space-y-4 pt-1">
@@ -445,6 +448,15 @@ export default function PlanningTournantPage() {
                 </div>
               </div>
 
+              {absenceHeureDebut && absenceHeureFin && parseTimeToMin(absenceHeureFin) > parseTimeToMin(absenceHeureDebut) && (
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-900 bg-amber-50/70 border border-amber-200/70 px-3 py-2 rounded-xl">
+                  <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                  <span>
+                    Durée de l&apos;absence : {Math.max(0, parseTimeToMin(absenceHeureFin) - parseTimeToMin(absenceHeureDebut))} minutes
+                  </span>
+                </div>
+              )}
+
               <div>
                 <label className="text-[11px] font-bold text-slate-700 block mb-1">
                   Motif <span className="text-slate-400 font-normal">(facultatif)</span>
@@ -459,38 +471,27 @@ export default function PlanningTournantPage() {
               </div>
 
               {/* Choix remplaçant */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800">
-                  <input
-                    type="checkbox"
-                    checked={absenceSansRemplacant}
-                    onChange={(e) => setAbsenceSansRemplacant(e.target.checked)}
-                    className="rounded-sm text-cyan-600 focus:ring-cyan-500"
-                  />
-                  <span>Pas de remplaçant nécessaire (cours annulé ou assuré seul par le co-entraîneur)</span>
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-700 block">
+                  Entraîneur remplaçant
                 </label>
-
-                {!absenceSansRemplacant && (
-                  <div className="pt-1">
-                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                      Désigner un remplaçant direct <span className="text-emerald-600 font-semibold">(Validation 1-clic)</span>
-                    </label>
-                    <select
-                      value={absenceCoachRemplacantId}
-                      onChange={(e) => setAbsenceCoachRemplacantId(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
-                    >
-                      <option value="">-- Proposer à tous les entraîneurs (demande ouverte) --</option>
-                      {coaches
-                        .filter((c) => c.id !== currentCoach?.id)
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.prenom} {c.nom || ''}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                )}
+                <select
+                  value={absenceCoachRemplacantId}
+                  onChange={(e) => setAbsenceCoachRemplacantId(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
+                >
+                  <option value="">-- Proposer à toute l&apos;équipe (demande ouverte) --</option>
+                  {coaches
+                    .filter((c) => c.id !== currentCoach?.id)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.prenom} {c.nom || ''} (désignation directe)
+                      </option>
+                    ))}
+                </select>
+                <p className="text-[10px] text-slate-400">
+                  Si aucun remplaçant n&apos;est désigné, le créneau sera proposé à l&apos;équipe dans les remplacements à pourvoir.
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">

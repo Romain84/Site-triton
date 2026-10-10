@@ -8,14 +8,14 @@ import CoachNav from '@/components/coach/CoachNav'
 import { getErrorMessage } from '@/lib/utils'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 import toast from 'react-hot-toast'
-import { Clock, Loader2 } from 'lucide-react'
+import { Loader2, FileText, Receipt } from 'lucide-react'
 
 import FactureHeader from '@/components/coach/facturation/FactureHeader'
 import FactureSections from '@/components/coach/facturation/FactureSections'
 import ModalPrestation from '@/components/coach/facturation/ModalPrestation'
 import ModalCompetition from '@/components/coach/facturation/ModalCompetition'
 import HistoriqueFactures from '@/components/coach/facturation/HistoriqueFactures'
-import { FacturationData, PastInvoice, LigneFacture } from '@/components/coach/facturation/types'
+import { FacturationData, LigneFacture } from '@/components/coach/facturation/types'
 
 const MOIS_NOMS = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -52,11 +52,12 @@ function FacturationContent() {
     return a ? parseInt(a, 10) : currentDate.getFullYear()
   })
 
+  const [activeTab, setActiveTab] = useState<'mois' | 'historique'>('mois')
+  const [refreshHistKey, setRefreshHistKey] = useState(0)
   const [loading, setLoading] = useState(true)
   const [generatingInvoice, setGeneratingInvoice] = useState(false)
   const [downloadingPDF, setDownloadingPDF] = useState(false)
   const [data, setData] = useState<FacturationData | null>(null)
-  const [allInvoicesOfYear, setAllInvoicesOfYear] = useState<PastInvoice[]>([])
 
   // Modales
   const [showModalPrestation, setShowModalPrestation] = useState(false)
@@ -83,12 +84,6 @@ function FacturationContent() {
         setData(resData)
       } else {
         toast.error(resData.error || 'Erreur lors du calcul de la facturation')
-      }
-
-      const resHist = await fetch(`/api/coach/facturation/historique?annee=${selectedAnnee}`)
-      if (resHist.ok) {
-        const histData = await resHist.json()
-        setAllInvoicesOfYear(histData.factures || [])
       }
     } catch {
       toast.error('Erreur de connexion au serveur')
@@ -175,6 +170,7 @@ function FacturationContent() {
       if (res.ok) {
         toast.success(resData.message || 'Facture générée et transmise au club avec succès !')
         fetchFacturation()
+        setRefreshHistKey((k) => k + 1)
       } else {
         toast.error(resData.error || 'Erreur lors de la génération de la facture')
       }
@@ -208,6 +204,7 @@ function FacturationContent() {
       if (res.ok) {
         toast.success(resData.message || 'Facture régénérée avec succès !')
         fetchFacturation()
+        setRefreshHistKey((k) => k + 1)
       } else {
         toast.error(resData.error || 'Erreur lors de la régénération')
       }
@@ -243,6 +240,7 @@ function FacturationContent() {
         toast.success('Prestation ajoutée avec succès')
         setShowModalPrestation(false)
         fetchFacturation()
+        setRefreshHistKey((k) => k + 1)
       } else {
         toast.error(resData.error || 'Erreur lors de l\'ajout')
       }
@@ -283,6 +281,7 @@ function FacturationContent() {
         toast.success('Compétition ajoutée à votre facture')
         setShowModalCompetition(false)
         fetchFacturation()
+        setRefreshHistKey((k) => k + 1)
       } else {
         toast.error(resData.error || 'Erreur lors de l\'enregistrement')
       }
@@ -318,6 +317,7 @@ function FacturationContent() {
       if (res.ok) {
         toast.success(isComp ? 'Compétition supprimée' : 'Ligne supprimée')
         fetchFacturation()
+        setRefreshHistKey((k) => k + 1)
       } else {
         toast.error('Erreur lors de la suppression')
       }
@@ -334,78 +334,89 @@ function FacturationContent() {
     ...(data?.lignesManuelles || []),
   ]
 
-  const isCurrentMonth =
-    selectedMois === currentDate.getMonth() + 1 && selectedAnnee === currentDate.getFullYear()
-
   return (
     <div className="min-h-screen pt-2 pb-24 sm:pb-12 bg-slate-50/50 text-slate-900">
       <div className="container mx-auto px-4 max-w-5xl space-y-6">
         <CoachNav />
 
-        {/* EN-TÊTE FACTURATION & SÉLECTEUR */}
-        <FactureHeader
-          selectedMois={selectedMois}
-          selectedAnnee={selectedAnnee}
-          onPrevMonth={handlePrevMonth}
-          onNextMonth={handleNextMonth}
-          totalHeures={data?.totalHeures || 0}
-          tauxHoraire={data?.tauxHoraire || 0}
-          totalMontant={data?.totalMontant || 0}
-          statut={data?.statut}
-          isBlocked={data?.isBlocked}
-          generatingInvoice={generatingInvoice}
-          downloadingPDF={downloadingPDF}
-          onGenerateInvoice={handleGenerateInvoice}
-          onRegenerateInvoice={handleRegenerateInvoice}
-          onDownloadPDF={() => handleDownloadPDF()}
-          onOpenModalPrestation={() => setShowModalPrestation(true)}
-          onOpenModalCompetition={() => setShowModalCompetition(true)}
-        />
+        {/* ONGLETS NAVIGATION */}
+        <div className="flex items-center gap-2 border-b border-slate-200/80 pb-3">
+          <button
+            type="button"
+            onClick={() => setActiveTab('mois')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'mois'
+                ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-600/20'
+                : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200/70'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Facture du mois ({MOIS_NOMS[selectedMois - 1]} {selectedAnnee})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('historique')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'historique'
+                ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-600/20'
+                : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200/70'
+            }`}
+          >
+            <Receipt className="w-4 h-4" />
+            Historique de tous les PDF
+          </button>
+        </div>
 
-        {/* NOTE PÉDAGOGIQUE SI MOIS EN COURS */}
-        {isCurrentMonth && (
-          <div className="p-3.5 bg-blue-50/80 border border-blue-200/70 rounded-2xl flex items-start gap-3 text-blue-900 text-xs font-medium">
-            <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <p className="font-bold text-blue-950">Mois en cours : cumul progressif des séances</p>
-              <p className="text-[11px] text-blue-700 font-normal leading-relaxed">
-                Les créneaux hebdomadaires récurrents de votre planning s&apos;accumulent au fur et à mesure des jours écoulés jusqu&apos;à la fin du mois.
-                {data && data.totalMontant <= 0 && (
-                  <span className="block mt-1 text-blue-800 font-semibold">
-                    ℹ️ Vos séances régulières ne sont comptabilisées qu&apos;à leur date effective. C&apos;est pourquoi votre solde actuel ne reflète pour l&apos;instant que les éventuelles déductions ou forfaits.
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* CONTENU PRINCIPAL OU CHARGEMENT */}
-        {loading ? (
-          <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-2">
-            <Loader2 className="w-6 h-6 animate-spin mx-auto text-cyan-600" />
-            <p className="text-xs text-slate-500 font-bold">Calcul des heures en cours...</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* SECTIONS STRUCTURÉES DE LA FACTURE */}
-            <FactureSections
-              sections={data?.sections}
-              allLignesFallback={allLignesFallback}
-              isBlocked={data?.isBlocked}
-              totalHeures={data?.totalHeures || 0}
-              totalMontant={data?.totalMontant || 0}
-              onDeleteLine={handleDeleteLine}
-            />
-
-            {/* HISTORIQUE DES FACTURES DE L'ANNÉE */}
-            <HistoriqueFactures
-              invoices={allInvoicesOfYear}
+        {activeTab === 'mois' ? (
+          <>
+            {/* EN-TÊTE FACTURATION & SÉLECTEUR */}
+            <FactureHeader
+              selectedMois={selectedMois}
               selectedAnnee={selectedAnnee}
-              onDownloadPDF={handleDownloadPDF}
-              downloadingPdf={downloadingPDF}
+              onPrevMonth={handlePrevMonth}
+              onNextMonth={handleNextMonth}
+              totalHeures={data?.totalHeures || 0}
+              tauxHoraire={data?.tauxHoraire || 0}
+              totalMontant={data?.totalMontant || 0}
+              statut={data?.statut}
+              isBlocked={data?.isBlocked}
+              generatingInvoice={generatingInvoice}
+              downloadingPDF={downloadingPDF}
+              onGenerateInvoice={handleGenerateInvoice}
+              onRegenerateInvoice={handleRegenerateInvoice}
+              onDownloadPDF={() => handleDownloadPDF()}
+              onOpenModalPrestation={() => setShowModalPrestation(true)}
+              onOpenModalCompetition={() => setShowModalCompetition(true)}
             />
-          </div>
+
+            {/* CONTENU PRINCIPAL OU CHARGEMENT */}
+            {loading ? (
+              <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-2">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto text-cyan-600" />
+                <p className="text-xs text-slate-500 font-bold">Calcul des heures en cours...</p>
+              </div>
+            ) : (
+              <FactureSections
+                sections={data?.sections}
+                allLignesFallback={allLignesFallback}
+                isBlocked={data?.isBlocked}
+                totalHeures={data?.totalHeures || 0}
+                totalMontant={data?.totalMontant || 0}
+                onDeleteLine={handleDeleteLine}
+              />
+            )}
+          </>
+        ) : (
+          <HistoriqueFactures
+            onDownloadPDF={handleDownloadPDF}
+            onSelectMonth={(m, a) => {
+              setSelectedMois(m)
+              setSelectedAnnee(a)
+              setActiveTab('mois')
+            }}
+            downloadingPdf={downloadingPDF}
+            refreshKey={refreshHistKey}
+          />
         )}
 
         {/* MODALE PRESTATION MANUELLE */}
