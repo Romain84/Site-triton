@@ -14,6 +14,7 @@ interface GenerateAiArticleModalProps {
     datePubli: string
     instagramText?: string
   }) => void
+  onArticlePublished?: () => void
 }
 
 interface CalendarEvent {
@@ -27,9 +28,11 @@ export default function GenerateAiArticleModal({
   isOpen,
   onClose,
   onArticleGenerated,
+  onArticlePublished,
 }: GenerateAiArticleModalProps) {
   const toast = useToast()
   const [loading, setLoading] = useState(false)
+  const [publishing, setPublishing] = useState(false)
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [selectedEventId, setSelectedEventId] = useState<string>('')
   const [competitionName, setCompetitionName] = useState<string>('')
@@ -40,12 +43,26 @@ export default function GenerateAiArticleModal({
   const [generatedInstagramText, setGeneratedInstagramText] = useState<string>('')
   const [copiedInstagram, setCopiedInstagram] = useState(false)
   const [isGenerated, setIsGenerated] = useState(false)
+  const [stats, setStats] = useState<{
+    swimmersCount?: number
+    officialPodiumsCount?: number
+    virtualPodiumsCount?: number
+    podiumsSaved?: number
+  } | null>(null)
+  const [lastGeneratedArticle, setLastGeneratedArticle] = useState<{
+    titre: string
+    slug: string
+    contenu: string
+    instagramText?: string
+  } | null>(null)
 
   useEffect(() => {
     if (isOpen) {
       fetchEvents()
       setIsGenerated(false)
       setGeneratedInstagramText('')
+      setStats(null)
+      setLastGeneratedArticle(null)
     }
   }, [isOpen])
 
@@ -96,10 +113,23 @@ export default function GenerateAiArticleModal({
 
       if (response.ok && (data.success || result.titre)) {
         setIsGenerated(true)
+        setStats({
+          swimmersCount: result.swimmersCount,
+          officialPodiumsCount: result.officialPodiumsCount,
+          virtualPodiumsCount: result.virtualPodiumsCount,
+          podiumsSaved: result.podiumsSaved,
+        })
+        setLastGeneratedArticle({
+          titre: result.titre,
+          slug: result.slug,
+          contenu: result.contenu,
+          instagramText: result.instagramText,
+        })
+
         if (result.isFallbackDraft) {
           toast.success(result.notice || 'Article structuré généré avec succès en mode gabarit assisté !')
         } else {
-          toast.success('Article de compétition généré avec succès par l\'IA !')
+          toast.success('Article de compétition généré avec succès à partir des résultats réels !')
         }
 
         if (result.instagramText) {
@@ -125,6 +155,40 @@ export default function GenerateAiArticleModal({
     }
   }
 
+  const handleDirectPublish = async () => {
+    if (!lastGeneratedArticle || publishing) return
+    setPublishing(true)
+
+    try {
+      const response = await fetch('/api/admin/actualites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titre: lastGeneratedArticle.titre,
+          slug: lastGeneratedArticle.slug,
+          contenu: lastGeneratedArticle.contenu,
+          datePubli: new Date().toISOString().split('T')[0],
+          auteur: 'Entraîneurs Triton Club',
+          image: '',
+          publie: true,
+        }),
+      })
+
+      if (response.ok) {
+        toast.success('🎉 Article publié avec succès sur le site !')
+        if (onArticlePublished) onArticlePublished()
+        onClose()
+      } else {
+        const err = await response.json()
+        toast.error('Erreur lors de la publication : ' + (err.error || 'Inconnue'))
+      }
+    } catch {
+      toast.error('Erreur réseau lors de la publication directe.')
+    } finally {
+      setPublishing(false)
+    }
+  }
+
   const copyInstagramText = () => {
     if (!generatedInstagramText) return
     navigator.clipboard.writeText(generatedInstagramText)
@@ -142,11 +206,11 @@ export default function GenerateAiArticleModal({
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xl">✨</span>
-            <h3 className="text-lg font-bold">Générateur d'Article IA (Résultats de Compétition)</h3>
+            <h3 className="text-lg font-bold">Générateur d'Article IA (Résultats LiveFFN)</h3>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors text-xl font-bold p-1"
+            className="text-slate-400 hover:text-white transition-colors text-xl font-bold p-1 cursor-pointer"
           >
             ✕
           </button>
@@ -181,17 +245,17 @@ export default function GenerateAiArticleModal({
                 type="text"
                 value={competitionName}
                 onChange={(e) => setCompetitionName(e.target.value)}
-                placeholder="Ex: Meeting Régional Benjamins"
+                placeholder="Ex: Pré-saison"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
               />
             </div>
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Lieu / Piscine</label>
+              <label className="block font-bold text-slate-700 mb-1">Lieu / Bassin</label>
               <input
                 type="text"
                 value={lieu}
                 onChange={(e) => setLieu(e.target.value)}
-                placeholder="Ex: Avignon - Stuart Mill"
+                placeholder="Ex: Cavaillon (Bassin 25m)"
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
               />
             </div>
@@ -205,23 +269,23 @@ export default function GenerateAiArticleModal({
               type="url"
               value={liveffnUrl}
               onChange={(e) => setLiveffnUrl(e.target.value)}
-              placeholder="Ex: https://www.liveffn.com/cgi-bin/resultats.php?competition=94240&langue=fra"
+              placeholder="Ex: https://www.liveffn.com/cgi-bin/resultats.php?competition=94540&langue=fra"
               className="w-full px-3.5 py-2.5 border border-blue-300 bg-blue-50/50 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-600 outline-none font-mono text-xs"
             />
             <p className="text-[11px] text-slate-500 mt-1">
-              💡 Collez simplement le lien de la compétition LiveFFN : l'IA en tirera automatiquement les podiums et temps de nos nageurs !
+              💡 Collez simplement le lien LiveFFN : les 20 nageurs, courses et podiums réels du club sont extraits automatiquement sans aucune hallucination !
             </p>
           </div>
 
           <div>
             <label className="block font-bold text-slate-700 mb-1">
-              📝 Résultats bruts / Notes du coach ou export FFN *
+              📝 Notes complémentaires du coach (optionnel)
             </label>
             <textarea
-              rows={5}
+              rows={4}
               value={rawNotes}
               onChange={(e) => setRawNotes(e.target.value)}
-              placeholder="Collez ici les résultats ou vos notes du week-end (ex: Lucas 1er au 100 NL 54s2, Emma 2e 50 dos, 4x50 NL benjamins en or, 15 records personnels battus)..."
+              placeholder="Ajoutez des notes d'ambiance ou félicitations du coach (ex: ambiance survoltée, super esprit d'équipe, 12 records personnels battus)..."
               className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-sans focus:ring-2 focus:ring-slate-900 outline-none"
             />
           </div>
@@ -235,20 +299,47 @@ export default function GenerateAiArticleModal({
               className="mt-0.5 h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 cursor-pointer"
             />
             <label htmlFor="groupByBirthYear" className="text-xs text-amber-950 font-medium cursor-pointer leading-tight">
-              <strong>📊 Re-classer & valoriser par année de naissance / sous-catégories d'âge</strong> (ex: séparer J14, J15, J16, J17 afin de valoriser un J15 qui est bas dans le classement général Juniors).
+              <strong>📊 Valoriser les catégories & années d'âge</strong> (mettre en valeur les Benjamins et Juniors au sein de leur propre génération d'âge).
             </label>
           </div>
+
+          {/* Rendu des stats après génération */}
+          {stats && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-1 text-xs">
+              <p className="font-bold text-blue-950 flex items-center gap-1.5">
+                <span>🏊‍♂️</span> Bilan des données réelles extraites de LiveFFN :
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-semibold text-blue-900">
+                <div className="bg-white p-2 rounded-lg border border-blue-100 text-center">
+                  <span className="block text-lg font-extrabold text-blue-700">{stats.swimmersCount || 0}</span>
+                  Nageurs réels
+                </div>
+                <div className="bg-white p-2 rounded-lg border border-blue-100 text-center">
+                  <span className="block text-lg font-extrabold text-amber-600">{stats.officialPodiumsCount || 0}</span>
+                  Podiums Scratch
+                </div>
+                <div className="bg-white p-2 rounded-lg border border-blue-100 text-center">
+                  <span className="block text-lg font-extrabold text-purple-600">{stats.virtualPodiumsCount || 0}</span>
+                  Podiums Catégorie
+                </div>
+                <div className="bg-white p-2 rounded-lg border border-blue-100 text-center">
+                  <span className="block text-lg font-extrabold text-emerald-600">{stats.podiumsSaved || 0}</span>
+                  Enregistrés en BDD
+                </div>
+              </div>
+            </div>
+          )}
 
           {generatedInstagramText && (
             <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-xs uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
-                  <span>📸</span> Version réseaux sociaux (Instagram / Facebook)
+                  <span>📸</span> Post réseaux sociaux (Instagram / Facebook)
                 </span>
                 <button
                   type="button"
                   onClick={copyInstagramText}
-                  className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-xs font-bold transition-all shadow-xs"
+                  className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-xs font-bold transition-all shadow-xs cursor-pointer"
                 >
                   {copiedInstagram ? '✓ Copié !' : 'Copier le post'}
                 </button>
@@ -260,13 +351,27 @@ export default function GenerateAiArticleModal({
           )}
 
           {isGenerated && (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1">
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
               <p className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
-                <span>✅</span> L'article a été généré et pré-rempli dans l'éditeur ci-dessous !
+                <span>✅</span> Article généré avec succès ! Que souhaitez-vous faire ?
               </p>
-              <p className="text-[11px] text-emerald-700">
-                Vous pouvez copier le post Instagram ci-dessus ou cliquer sur « Ouvrir l'éditeur » pour vérifier, ajouter une photo et publier l'article.
-              </p>
+              <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleDirectPublish}
+                  disabled={publishing}
+                  className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-xs disabled:opacity-50 text-center"
+                >
+                  {publishing ? 'Publication en cours...' : '🚀 Publier immédiatement sur le site'}
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 px-4 py-2 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-lg border border-slate-300 transition-colors cursor-pointer text-center"
+                >
+                  ✏️ Vérifier & modifier dans l'éditeur
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -276,21 +381,12 @@ export default function GenerateAiArticleModal({
           <button
             type="button"
             onClick={onClose}
-            disabled={loading}
+            disabled={loading || publishing}
             className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
           >
             Fermer
           </button>
-          {isGenerated ? (
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer"
-            >
-              <span>👉</span>
-              <span>Ouvrir l'éditeur et finaliser l'article</span>
-            </button>
-          ) : (
+          {!isGenerated && (
             <button
               type="button"
               onClick={handleGenerate}
@@ -300,7 +396,7 @@ export default function GenerateAiArticleModal({
               {loading ? (
                 <>
                   <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                  <span>Génération par l'IA en cours...</span>
+                  <span>Analyse LiveFFN & Rédaction IA...</span>
                 </>
               ) : (
                 <>

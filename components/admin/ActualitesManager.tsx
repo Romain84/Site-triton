@@ -562,6 +562,7 @@ export default function ActualitesManager() {
       <GenerateAiArticleModal
         isOpen={isAiModalOpen}
         onClose={() => setIsAiModalOpen(false)}
+        onArticlePublished={fetchActualites}
         onArticleGenerated={(articleData) => {
           setEditingId(null)
           setFormData({
