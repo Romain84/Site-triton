@@ -8,9 +8,9 @@ import { generateFallbackDraftArticle } from '@/lib/competition-summary-fallback
 
 const aiLogger = logger.withContext('CompetitionSummaryAI')
 
-// Modèles Mistral par ordre de rapidité et d'absence de rate limit
-const CANDIDATE_MODELS = [
+const MISTRAL_CANDIDATE_MODELS = [
   'ministral-8b-latest',
+  'codestral-latest',
   'open-mistral-7b',
   'mistral-small-latest',
 ]
@@ -55,44 +55,102 @@ export async function POST(request: NextRequest) {
 
     // Protection anti-explosion de tokens
     let truncatedNotes = effectiveNotes
-    if (truncatedNotes.length > 7000) {
-      truncatedNotes = truncatedNotes.slice(0, 7000) + '\n[... extrait synthétisé des résultats pour analyse]'
+    if (truncatedNotes.length > 7500) {
+      truncatedNotes = truncatedNotes.slice(0, 7500) + '\n[... extrait synthétisé des résultats pour analyse]'
     }
 
-    const apiKey = process.env.MISTRAL_API_KEY
-    const hasValidKey = apiKey && apiKey !== 'your-mistral-api-key-here'
+    const openaiApiKey = process.env.OPENAI_API_KEY
+    const hasOpenAI = Boolean(openaiApiKey && openaiApiKey.startsWith('sk-') && openaiApiKey.length > 20)
+
+    const mistralApiKey = process.env.MISTRAL_API_KEY
+    const hasMistral = Boolean(mistralApiKey && mistralApiKey !== 'your-mistral-api-key-here')
 
     let parsedResult: any = null
+    let usedModel = ''
     let usedFallback = false
     let fallbackNotice = ''
 
-    if (hasValidKey) {
-      const systemPrompt = `Tu es le responsable de communication et coach du Triton Club Cavaillon (club de natation FFN à Cavaillon, 84).
-Ton rôle est de rédiger un superbe article d'actualité captivant, dynamique et chaleureux pour le site web du club et ses réseaux sociaux, basé STRICTEMENT sur les résultats réels ci-dessous.
+    // Prompt de grand journaliste sportif d'élite
+    const systemPrompt = `Tu es un grand journaliste sportif et rédacteur passionné pour le Triton Club Cavaillon (club de natation FFN en Provence).
+Ton objectif est de rédiger un article captivant, vivant, chaleureux et vibrant sur les exploits du club lors de la compétition, digne d'un grand quotidien sportif (comme L'Équipe ou La Provence Sport), tout en valorisant la fierté et l'esprit de famille du club.
 
-DONNÉES OFFICIELLES RÉELLES (COMPÉTITION & RÉSULTATS DU CLUB) :
+DIRECTIVES ÉDITORIALES STRICTES :
+1. TON ET STYLE DE RÉDACTION :
+   - Écris un texte fluide, immersif, élégant et rythmé.
+   - BANNIS ABSOLUMENT les clichés robotiques creux du type : "des performances à couper le souffle", "faire étinceler les bassins", "une journée riche en émotions".
+   - BANNIS les listes de courses brutes avec des puces monotones. Raconte une VRAIE histoire sportive avec du relief.
+2. STRUCTURE DU CONTENU HTML ("contenu") :
+   - <h2> Une entrée en matière percutante qui pose le décor (la rentrée sportive, l'énergie au bord des plots à Cavaillon, l'effervescence des retrouvailles, l'ambiance chaleureuse).
+   - <h3> Les têtes d'affiche et exploits majeurs : décrypte les performances marquantes avec leurs chronos et points FFN (ex: la domination de Marius Cresp au 50m brasse, la polyvalence de Keara Garnier, les médailles d'Iris Raoul).
+   - <h3> La jeunesse triomphante & les révélations : mets en lumière les Benjamins 2013 et 2014 (Ethan Chevalier Maurin, Melissa Raposo Machado, Lilirose Marin, Louka Fourgereau) qui trustent les avant-postes de leur génération face à tous les clubs adverses.
+   - <div class="tableau-podiums my-6 overflow-x-auto"> : Un tableau d'honneur HTML clair et élégant des médaillés (Place, Nageur, Catégorie, Épreuve, Chrono).
+   - <h3> Le mot du staff technique : félicitations sincères de l'équipe des entraîneurs, remerciements aux officiels et parents supporters, et dynamique positive pour les prochains rendez-vous de la saison.
+3. RÈGLE STRICTE ANTI-HALLUCINATION :
+   - Tu as l'interdiction FORMELLE d'inventer le moindre nom de nageur ou temps.
+   - Tu dois citer UNIQUEMENT les vrais nageurs et vraies performances mentionnés dans les données fournies ci-dessous.
+4. TEXTE RÉSEAUX SOCIAUX ("instagramText") :
+   - Rédige un post moderne et percutant pour Instagram et Facebook, avec des sauts de ligne, des émojis bien dosés, les médaillés clés et les hashtags officiels (#TritonClubCavaillon #Natation #Cavaillon #FFN #EspritTriton).
+
+DONNÉES OFFICIELLES FOURNIES :
 ${effectiveTitle ? `- Nom de la compétition : ${effectiveTitle}` : ''}
 ${effectiveLieu ? `- Lieu : ${effectiveLieu}` : ''}
-${liveffnUrl ? `- URL officielle LiveFFN : ${liveffnUrl}` : ''}
-- Résultats officiels & Notes fournies :
+${liveffnUrl ? `- URL LiveFFN : ${liveffnUrl}` : ''}
 """
 ${truncatedNotes}
 """
 
-RÈGLES ABSOLUES ANTI-HALLUCINATION (CRITIQUE) :
-1. INTERDICTION FORMELLE D'INVENTER : Tu as l'interdiction absolue d'inventer le moindre nom de nageur, le moindre temps ou le moindre classement.
-2. Tu dois citer UNIQUEMENT et STRICTEMENT les nageurs réels figurant dans les données fournies ci-dessus. Tout nageur imaginaire (ex: Lucas Dupont, Emma Martin, Théo Leroy) est formellement banni.
-3. VALORISATION DES CATÉGORIES D'ÂGE : Mets en valeur à la fois les podiums scratchs généraux (médaille d'Or, Argent, Bronze) ET les performances remarquables par année d'âge (Benjamins 2013-2014, Juniors 2009-2012).
-4. FORMAT DE SORTIE : Réponds STRICTEMENT avec un JSON valide, sans texte additionnel et sans balises markdown \`\`\`json.
-
+FORMAT DE SORTIE JSON STRICT (sans texte autour et sans markdown \`\`\`json) :
 {
-  "titre": "Titre enthousiaste avec emojis",
+  "titre": "Titre journalistique accrocheur avec emojis",
   "slug": "titre-slugifie-sans-accents-et-tirets",
-  "contenu": "Article complet au format HTML avec balises <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>. Structure :\\n- Introduction chaleureuse\\n- Les podiums et médailles du club\\n- Les temps forts par génération d'âge (Benjamins, Juniors...)\\n- Félicitations aux nageurs, entraîneurs et parents.",
-  "instagramText": "Post percutant pour Instagram/Facebook avec emojis, mention des vrais médaillés et hashtags (#TritonClubCavaillon #Natation #Cavaillon #FFN)."
+  "contenu": "Code HTML complet de l'article avec <h2>, <h3>, <p>, <strong>, <em>, <table>...",
+  "instagramText": "Post percutant pour Instagram/Facebook"
 }`
 
-      for (const model of CANDIDATE_MODELS) {
+    // 2. PRIORITÉ 1 : OpenAI GPT-4o si la clé est configurée
+    if (hasOpenAI) {
+      try {
+        aiLogger.info('Appel de l\'API OpenAI avec le modèle gpt-4o...')
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 45000)
+
+        const gptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiApiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            messages: [{ role: 'user', content: systemPrompt }],
+            temperature: 0.35,
+            max_tokens: 3500,
+            response_format: { type: 'json_object' },
+          }),
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId)
+
+        if (gptResponse.ok) {
+          const resData = await gptResponse.json()
+          const text = resData.choices?.[0]?.message?.content?.trim() || ''
+          const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').trim()
+          parsedResult = JSON.parse(jsonText)
+          usedModel = 'OpenAI GPT-4o'
+          aiLogger.info('Article généré avec succès avec OpenAI GPT-4o !')
+        } else {
+          const errText = await gptResponse.text()
+          aiLogger.warn(`Erreur API OpenAI HTTP ${gptResponse.status}:`, errText)
+        }
+      } catch (gptErr: any) {
+        aiLogger.warn('Exception lors de l\'appel OpenAI GPT-4o:', gptErr?.message)
+      }
+    }
+
+    // 3. PRIORITÉ 2 : Modèles Mistral AI si pas d'OpenAI ou échec
+    if (!parsedResult && hasMistral) {
+      for (const model of MISTRAL_CANDIDATE_MODELS) {
         let attempt = 0
         const maxAttemptsForModel = 2
 
@@ -100,18 +158,19 @@ RÈGLES ABSOLUES ANTI-HALLUCINATION (CRITIQUE) :
           attempt++
           try {
             const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 30000)
+            const timeoutId = setTimeout(() => controller.abort(), 35000)
 
             const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
+                'Authorization': `Bearer ${mistralApiKey}`,
               },
               body: JSON.stringify({
                 model,
                 messages: [{ role: 'user', content: systemPrompt }],
-                temperature: 0.25,
+                temperature: 0.3,
+                max_tokens: 3000,
                 response_format: { type: 'json_object' },
               }),
               signal: controller.signal,
@@ -126,7 +185,8 @@ RÈGLES ABSOLUES ANTI-HALLUCINATION (CRITIQUE) :
               try {
                 const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').trim()
                 parsedResult = JSON.parse(jsonText)
-                aiLogger.info(`Article compétition généré avec succès avec le modèle ${model}`)
+                usedModel = `Mistral (${model})`
+                aiLogger.info(`Article compétition généré avec succès avec ${model}`)
                 break
               } catch (parseErr) {
                 aiLogger.warn(`Erreur parsing JSON sur ${model}`, { parseErr, text })
@@ -227,6 +287,7 @@ RÈGLES ABSOLUES ANTI-HALLUCINATION (CRITIQUE) :
       virtualPodiumsCount: liveData?.virtualPodiums.length || 0,
       swimmersCount: liveData?.swimmers.length || 0,
       podiums: podiumsToSave,
+      usedModel: usedModel || 'Gabarit assisté',
       isFallbackDraft: usedFallback,
       notice: fallbackNotice || undefined,
     }
