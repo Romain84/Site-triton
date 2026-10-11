@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useToast } from '@/hooks/useToast'
 import { formatLongDateFr } from '@/lib/date'
 
@@ -31,7 +31,7 @@ export default function PodiumsManager() {
   const [podiums, setPodiums] = useState<Podium[]>([])
   const [competitions, setCompetitions] = useState<string[]>([])
   const [selectedCompetition, setSelectedCompetition] = useState<string>('')
-  const [statsParNageur, setStatsParNageur] = useState<Record<string, NageurStats>>({})
+  const [activeTab, setActiveTab] = useState<'scratch' | 'categorie'>('scratch')
   const [filterNageur, setFilterNageur] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -46,11 +46,9 @@ export default function PodiumsManager() {
       const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
-        const rawPodiums = data.podiums || data.data?.podiums || []
-        const rawStats = data.statsParNageur || data.data?.statsParNageur || {}
+        const rawPodiums: Podium[] = data.podiums || data.data?.podiums || []
         const rawComps = data.competitions || data.data?.competitions || []
         setPodiums(rawPodiums)
-        setStatsParNageur(rawStats)
         if (rawComps.length > 0) {
           setCompetitions(rawComps)
         }
@@ -114,7 +112,9 @@ export default function PodiumsManager() {
   }
 
   const handleDeleteSwimmerPodiums = async (nom: string) => {
-    const confirmed = confirm(`Supprimer tous les podiums de ${nom} du palmarès ?`)
+    const isScratch = activeTab === 'scratch'
+    const labelType = isScratch ? 'scratch' : 'par catégorie'
+    const confirmed = confirm(`Supprimer tous les podiums (${labelType}) de ${nom} ?`)
     if (!confirmed) return
 
     setActionLoading(true)
@@ -163,9 +163,35 @@ export default function PodiumsManager() {
     }
   }
 
-  const filteredNageurs = Object.keys(statsParNageur).filter((nom) =>
-    nom.toLowerCase().includes(filterNageur.toLowerCase())
-  )
+  // Filtrage selon l'onglet actif (Scratch vs Par Catégorie)
+  const scratchPodiums = useMemo(() => podiums.filter(p => !p.estVirtuel), [podiums])
+  const categoryPodiums = useMemo(() => podiums.filter(p => p.estVirtuel), [podiums])
+
+  const displayedPodiums = activeTab === 'scratch' ? scratchPodiums : categoryPodiums
+
+  // Groupement des statistiques par nageur pour l'onglet actif
+  const statsParNageur = useMemo(() => {
+    const stats: Record<string, NageurStats> = {}
+    for (const pod of displayedPodiums) {
+      const nom = pod.nageurNom
+      if (!stats[nom]) {
+        stats[nom] = { total: 0, or: 0, argent: 0, bronze: 0, virtuels: 0, podiums: [] }
+      }
+      stats[nom].total += 1
+      if (pod.place === 1) stats[nom].or += 1
+      if (pod.place === 2) stats[nom].argent += 1
+      if (pod.place === 3) stats[nom].bronze += 1
+      if (pod.estVirtuel) stats[nom].virtuels += 1
+      stats[nom].podiums.push(pod)
+    }
+    return stats
+  }, [displayedPodiums])
+
+  const filteredNageurs = useMemo(() => {
+    return Object.keys(statsParNageur).filter((nom) =>
+      nom.toLowerCase().includes(filterNageur.toLowerCase())
+    )
+  }, [statsParNageur, filterNageur])
 
   if (loading && podiums.length === 0) {
     return <p className="text-slate-600 font-medium">Chargement du bilan des podiums de la saison...</p>
@@ -178,7 +204,7 @@ export default function PodiumsManager() {
         <div>
           <h2 className="text-2xl font-bold text-slate-900">🏅 Bilan des Podiums & Palmarès de la Saison</h2>
           <p className="text-sm text-slate-600 mt-1">
-            Sauvegarde automatique des podiums officiels (Scratch) et par catégorie d'âge (Virtuels) extraits de LiveFFN.
+            Classement officiel de la saison séparé en médailles <strong>Scratch</strong> et performances <strong>Par Catégorie</strong>.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -205,10 +231,51 @@ export default function PodiumsManager() {
           )}
 
           <div className="bg-slate-900 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-xs flex items-center gap-2">
-            <span>🏆 Total :</span>
+            <span>🏆 Total Saison :</span>
             <span className="text-amber-400 text-base">{podiums.length}</span>
           </div>
         </div>
+      </div>
+
+      {/* Les 2 Onglets Principaux : Scratch et Par Catégorie */}
+      <div className="flex border-b border-slate-200 gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab('scratch')}
+          className={`pb-3 pt-2 px-5 text-sm font-bold border-b-2 transition-all flex items-center gap-2.5 cursor-pointer ${
+            activeTab === 'scratch'
+              ? 'border-amber-500 text-amber-700 font-extrabold'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span>🥇 Podiums Scratch</span>
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+              activeTab === 'scratch' ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            {scratchPodiums.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('categorie')}
+          className={`pb-3 pt-2 px-5 text-sm font-bold border-b-2 transition-all flex items-center gap-2.5 cursor-pointer ${
+            activeTab === 'categorie'
+              ? 'border-purple-600 text-purple-700 font-extrabold'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span>📊 Podiums Par Catégorie (Année d&apos;âge)</span>
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+              activeTab === 'categorie' ? 'bg-purple-100 text-purple-900' : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            {categoryPodiums.length}
+          </span>
+        </button>
       </div>
 
       {/* Barre de filtres et d'actions par compétition */}
@@ -218,7 +285,7 @@ export default function PodiumsManager() {
             type="text"
             value={filterNageur}
             onChange={(e) => setFilterNageur(e.target.value)}
-            placeholder="🔍 Rechercher un nageur..."
+            placeholder={`🔍 Rechercher un nageur (${activeTab === 'scratch' ? 'Scratch' : 'Catégorie'})...`}
             className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-slate-800"
           />
         </div>
@@ -251,12 +318,33 @@ export default function PodiumsManager() {
         </div>
       </div>
 
+      {/* Description de l'onglet actif */}
+      <div className="px-4 py-2.5 rounded-xl text-xs font-medium border flex items-center gap-2 bg-slate-50 text-slate-700 border-slate-200">
+        {activeTab === 'scratch' ? (
+          <>
+            <span className="text-base">🥇</span>
+            <span>
+              <strong>Onglet Scratch</strong> : Présente les médailles obtenues au classement général absolu de chaque course (tous âges et clubs réunis).
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="text-base">📊</span>
+            <span>
+              <strong>Onglet Par Catégorie</strong> : Valorise les jeunes nageurs classés dans le Top 3 de leur propre année de naissance (Avenirs, Benjamins 2013-2014, Juniors 2009-2012).
+            </span>
+          </>
+        )}
+      </div>
+
       {/* Palmarès par Nageur */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredNageurs.length === 0 ? (
           <div className="col-span-2 text-center py-12 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-slate-500">
-            {podiums.length === 0
-              ? "Aucun podium enregistré pour le moment cette saison. Les podiums s'ajouteront automatiquement lors de la génération d'articles de compétition !"
+            {displayedPodiums.length === 0
+              ? activeTab === 'scratch'
+                ? "Aucun podium scratch officiel enregistré pour le moment."
+                : "Aucun podium par catégorie d'âge enregistré pour le moment."
               : "Aucun résultat ne correspond à votre recherche."}
           </div>
         ) : (
@@ -266,11 +354,11 @@ export default function PodiumsManager() {
               <div key={nom} className="card p-5 bg-white border border-slate-200 rounded-2xl shadow-2xs space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">🏊‍♂️</span>
+                    <span className="text-xl">{activeTab === 'scratch' ? '🏊‍♂️' : '🌟'}</span>
                     <div>
                       <h3 className="font-bold text-base text-slate-900 leading-tight">{nom}</h3>
                       <p className="text-[11px] text-slate-500">
-                        {stat.total} podium{stat.total > 1 ? 's' : ''} ({stat.virtuels} par catégorie)
+                        {stat.total} podium{stat.total > 1 ? 's' : ''} ({activeTab === 'scratch' ? 'Scratch' : 'par catégorie'})
                       </p>
                     </div>
                   </div>
