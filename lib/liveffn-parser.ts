@@ -54,23 +54,53 @@ export async function fetchLiveFFNData(liveffnUrl: string): Promise<LiveFFNData 
       .replace(/<\/td>/gi, ' ')
       .replace(/<[^>]+>/g, '')
       .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
+      .map(line => line.replace(/\s+/g, ' ').trim())
+      .filter(line => line.length > 1)
+
+    // Éliminer le bruit technique LiveFFN et les en-têtes web superflus
+    const NOISY_PATTERNS = [
+      /^liveffn\b/i,
+      /^fédération française de natation/i,
+      /^tous droits réservés/i,
+      /^menu principal/i,
+      /^rechercher une compétition/i,
+      /^mentions légales/i,
+      /^javascript est nécessaire/i,
+      /^retour aux résultats/i,
+      /^connexion\b/i,
+      /^mot de passe/i,
+      /^engagements\b/i,
+      /^programme\b/i,
+      /^records\b/i,
+    ]
+
+    const filteredLines = textLines.filter(line => !NOISY_PATTERNS.some(p => p.test(line)))
+
+    // Déduplication des lignes consécutives
+    const deduplicatedLines: string[] = []
+    for (const line of filteredLines) {
+      if (deduplicatedLines[deduplicatedLines.length - 1] !== line) {
+        deduplicatedLines.push(line)
+      }
+    }
 
     // 4. Filtrer les lignes concernant spécifiquement Cavaillon / Triton
-    const tritonResults = textLines.filter(line => {
+    const tritonResults = deduplicatedLines.filter(line => {
       const lower = line.toLowerCase()
-      return lower.includes('cavaillon') || lower.includes('triton')
+      return lower.includes('cavaillon') || lower.includes('triton') || lower.includes(' tcc ')
     })
 
-    // Sélectionner jusqu'à 200 lignes significatives si le filtrage spécifique est court
-    const rawTextContent = textLines.slice(0, 300).join('\n')
+    // Sélectionner un extrait compact pertinent (lignes avec chiffres/temps de nage)
+    const rawTextContent = deduplicatedLines
+      .filter(l => /\d/.test(l))
+      .slice(0, 80)
+      .join('\n')
 
     return {
       title,
-      location: textLines.find(l => l.toLowerCase().includes('bassin') || l.toLowerCase().includes('piscine')) || '',
-      bassin: textLines.find(l => l.toLowerCase().includes('bassin de')) || '',
-      tritonResults: tritonResults.length > 0 ? tritonResults : textLines.slice(0, 100),
+      location: deduplicatedLines.find(l => l.toLowerCase().includes('bassin') || l.toLowerCase().includes('piscine')) || '',
+      bassin: deduplicatedLines.find(l => l.toLowerCase().includes('bassin de')) || '',
+      tritonResults: tritonResults.length > 0 ? tritonResults.slice(0, 120) : deduplicatedLines.slice(0, 60),
       rawTextContent,
     }
   } catch (error) {

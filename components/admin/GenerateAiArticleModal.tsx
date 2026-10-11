@@ -66,6 +66,7 @@ export default function GenerateAiArticleModal({
   }
 
   const handleGenerate = async () => {
+    if (loading) return
     if (!rawNotes.trim() && !liveffnUrl.trim()) {
       toast.error('Veuillez coller une URL LiveFFN ou saisir les résultats de la compétition.')
       return
@@ -90,8 +91,13 @@ export default function GenerateAiArticleModal({
       const data = await response.json()
 
       if (response.ok && data.success && data.data) {
-        toast.success('Article de compétition généré avec succès par l\'IA !')
         const result = data.data
+
+        if (result.isFallbackDraft) {
+          toast.success(result.notice || 'Article structuré généré avec succès en mode gabarit assisté !')
+        } else {
+          toast.success('Article de compétition généré avec succès par l\'IA !')
+        }
 
         if (result.instagramText) {
           setGeneratedInstagramText(result.instagramText)

@@ -4,8 +4,18 @@ import { logger } from '@/lib/logger'
 import { prisma } from '@/lib/prisma'
 import { fetchLiveFFNData } from '@/lib/liveffn-parser'
 import { requireAdmin } from '@/lib/api/guards'
+import { generateFallbackDraftArticle } from '@/lib/competition-summary-fallback'
 
 const aiLogger = logger.withContext('CompetitionSummaryAI')
+
+// Cascade de modèles Mistral en cas de saturation ou dépassement de cadence (HTTP 429)
+const CANDIDATE_MODELS = [
+  'mistral-small-latest',
+  'ministral-8b-latest',
+  'open-mistral-7b',
+]
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,12 +56,20 @@ export async function POST(request: NextRequest) {
       return apiError('Veuillez fournir une URL LiveFFN ou saisir les résultats de la compétition.', 400)
     }
 
-    const apiKey = process.env.MISTRAL_API_KEY
-    if (!apiKey || apiKey === 'your-mistral-api-key-here') {
-      return apiError('La clé MISTRAL_API_KEY n\'est pas configurée.', 500)
+    // Protection anti-explosion de tokens (limite à 5000 caractères pour éviter le plafond TPM)
+    if (effectiveNotes.length > 5000) {
+      effectiveNotes = effectiveNotes.slice(0, 5000) + '\n[... extrait synthétisé des résultats pour analyse]'
     }
 
-    const systemPrompt = `Tu es le responsable de communication et coach du Triton Club Cavaillon (club de natation FFN à Cavaillon, 84).
+    const apiKey = process.env.MISTRAL_API_KEY
+    const hasValidKey = apiKey && apiKey !== 'your-mistral-api-key-here'
+
+    let parsedResult: any = null
+    let usedFallback = false
+    let fallbackNotice = ''
+
+    if (hasValidKey) {
+      const systemPrompt = `Tu es le responsable de communication et coach du Triton Club Cavaillon (club de natation FFN à Cavaillon, 84).
 Ton rôle est de transformer les résultats officiels LiveFFN ou notes brutes d'une compétition de natation en un superbe article d'actualité captivant, dynamique et chaleureux pour le site web du club et ses réseaux sociaux.
 
 DONNÉES EN ENTRÉE (COMPÉTITION & RÉSULTATS LIVEFFN) :
@@ -90,43 +108,108 @@ RÈGLES IMPORTANTES ET GESTION DES ANNÉES D'ÂGE (CRITIQUE) :
 4. Garde un ton très positif, motivant et rassembleur ("Allez les Tritons !").
 5. Ne réponds rien d'autre que du JSON brut valide (pas de markdown \`\`\`json avant ou après).`
 
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'mistral-small-latest',
-        messages: [{ role: 'user', content: systemPrompt }],
-        temperature: 0.3,
-        response_format: { type: 'json_object' },
-      }),
-    })
+      // Parcours des modèles candidats avec réessais en cas de rate-limit (429)
+      for (const model of CANDIDATE_MODELS) {
+        let attempt = 0
+        const maxAttemptsForModel = 2
 
-    if (!response.ok) {
-      const errText = await response.text()
-      aiLogger.error('Erreur API Mistral HTTP ' + response.status, { errText })
-      return apiError('Erreur de communication avec l\'API Mistral AI.', 502)
+        while (attempt < maxAttemptsForModel) {
+          attempt++
+          try {
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 30000)
+
+            const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+              },
+              body: JSON.stringify({
+                model,
+                messages: [{ role: 'user', content: systemPrompt }],
+                temperature: 0.3,
+                response_format: { type: 'json_object' },
+              }),
+              signal: controller.signal,
+            })
+
+            clearTimeout(timeoutId)
+
+            if (response.ok) {
+              const resData = await response.json()
+              const text = resData.choices?.[0]?.message?.content?.trim() || ''
+
+              try {
+                const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').trim()
+                parsedResult = JSON.parse(jsonText)
+                aiLogger.info(`Article compétition généré avec succès avec le modèle ${model}`)
+                break // Succès avec ce modèle
+              } catch (parseErr) {
+                aiLogger.warn(`Erreur parsing JSON sur ${model}`, { parseErr, text })
+                // Tenter le modèle suivant
+                break
+              }
+            }
+
+            // Gestion de l'erreur 429 (Rate limit)
+            if (response.status === 429) {
+              const retryAfterHeader = response.headers.get('retry-after')
+              const retryAfterSeconds = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 2
+              const waitMs = Math.min(Math.max(isNaN(retryAfterSeconds) ? 2 : retryAfterSeconds, 1.5) * 1000, 4000)
+
+              aiLogger.warn(`Mistral 429 (Rate limit) sur ${model}. Tentative ${attempt}/${maxAttemptsForModel}. Attente de ${waitMs}ms...`)
+
+              if (attempt < maxAttemptsForModel) {
+                await sleep(waitMs)
+                continue // Réessayer le même modèle après l'attente
+              } else {
+                aiLogger.warn(`Modèle ${model} saturé après ${attempt} tentatives, bascule vers le modèle suivant...`)
+                break // Passer au modèle suivant
+              }
+            }
+
+            // Autres erreurs HTTP (500, 502, 503...)
+            const errText = await response.text()
+            aiLogger.warn(`Erreur API Mistral HTTP ${response.status} sur ${model}`, { errText })
+            break // Essayer le modèle suivant
+          } catch (err: any) {
+            aiLogger.warn(`Exception lors de l'appel Mistral sur ${model} (tentative ${attempt}):`, err?.message || err)
+            if (attempt < maxAttemptsForModel) {
+              await sleep(1500)
+            } else {
+              break
+            }
+          }
+        }
+
+        // Si nous avons obtenu un résultat valide, arrêter la boucle des modèles
+        if (parsedResult) {
+          break
+        }
+      }
     }
 
-    const resData = await response.json()
-    const text = resData.choices?.[0]?.message?.content?.trim() || ''
+    // 4. Si Mistral n'a pas pu répondre (429 persistant, quota épuisé ou pas de clé), bascule en mode gabarit assisté
+    if (!parsedResult) {
+      usedFallback = true
+      fallbackNotice = 'Génération effectuée en mode gabarit assisté (l\'API Mistral AI est temporairement saturée ou indisponible).'
+      aiLogger.warn('Bascule sur le générateur de secours (FallbackDraft) pour la compétition:', { effectiveTitle })
 
-    let parsed: any
-    try {
-      const jsonText = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').trim()
-      parsed = JSON.parse(jsonText)
-    } catch (parseErr) {
-      aiLogger.error('Erreur parsing JSON IA', { parseErr, text })
-      return apiError('L\'IA n\'a pas généré un format JSON valide. Réessayez.', 500)
+      parsedResult = generateFallbackDraftArticle({
+        competitionName: effectiveTitle,
+        lieu: effectiveLieu,
+        liveffnUrl,
+        rawNotes: effectiveNotes,
+      })
     }
 
-    // Enregistrer automatiquement les podiums extrait en BDD pour le bilan de fin de saison
-    if (Array.isArray(parsed.podiums) && parsed.podiums.length > 0) {
+    // 5. Enregistrer automatiquement les podiums extraits en BDD pour le bilan de fin de saison
+    let podiumsSaved = 0
+    if (Array.isArray(parsedResult.podiums) && parsedResult.podiums.length > 0) {
       try {
-        const compTitle = effectiveTitle || parsed.titre || 'Compétition Natation'
-        for (const pod of parsed.podiums) {
+        const compTitle = effectiveTitle || parsedResult.titre || 'Compétition Natation'
+        for (const pod of parsedResult.podiums) {
           if (pod.nageurNom && typeof pod.nageurNom === 'string') {
             await prisma.podiumSaison.create({
               data: {
@@ -139,23 +222,26 @@ RÈGLES IMPORTANTES ET GESTION DES ANNÉES D'ÂGE (CRITIQUE) :
                 temps: pod.temps || null,
               },
             })
+            podiumsSaved++
           }
         }
-        aiLogger.info(`${parsed.podiums.length} podiums (officiels/virtuels) sauvegardés en BDD pour la compétition "${compTitle}"`)
+        aiLogger.info(`${podiumsSaved} podiums sauvegardés en BDD pour la compétition "${compTitle}"`)
       } catch (saveErr) {
         aiLogger.error('Erreur lors de la sauvegarde des podiums en BDD:', saveErr)
       }
     }
 
     return apiSuccess({
-      titre: parsed.titre || 'Compétition Natation - Résultats',
-      slug: parsed.slug || 'competition-resultats',
-      contenu: parsed.contenu || text,
-      instagramText: parsed.instagramText || '',
-      podiumsSaved: Array.isArray(parsed.podiums) ? parsed.podiums.length : 0,
+      titre: parsedResult.titre || 'Compétition Natation - Résultats',
+      slug: parsedResult.slug || 'competition-resultats',
+      contenu: parsedResult.contenu || '',
+      instagramText: parsedResult.instagramText || '',
+      podiumsSaved,
+      isFallbackDraft: usedFallback,
+      notice: fallbackNotice || undefined,
     })
   } catch (error: any) {
-    aiLogger.error('Erreur lors de la génération du résumé de compétition avec l\'IA:', error)
-    return apiError('Erreur lors de la génération de l\'article par l\'IA.', 500)
+    aiLogger.error('Erreur inattendue lors de la génération de l\'article:', error)
+    return apiError('Erreur lors de la génération de l\'article.', 500)
   }
 }
