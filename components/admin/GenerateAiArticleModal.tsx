@@ -39,10 +39,13 @@ export default function GenerateAiArticleModal({
   const [groupByBirthYear, setGroupByBirthYear] = useState<boolean>(true)
   const [generatedInstagramText, setGeneratedInstagramText] = useState<string>('')
   const [copiedInstagram, setCopiedInstagram] = useState(false)
+  const [isGenerated, setIsGenerated] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
       fetchEvents()
+      setIsGenerated(false)
+      setGeneratedInstagramText('')
     }
   }, [isOpen])
 
@@ -89,10 +92,10 @@ export default function GenerateAiArticleModal({
       })
 
       const data = await response.json()
+      const result = data.data || data
 
-      if (response.ok && data.success && data.data) {
-        const result = data.data
-
+      if (response.ok && (data.success || result.titre)) {
+        setIsGenerated(true)
         if (result.isFallbackDraft) {
           toast.success(result.notice || 'Article structuré généré avec succès en mode gabarit assisté !')
         } else {
@@ -255,6 +258,17 @@ export default function GenerateAiArticleModal({
               </p>
             </div>
           )}
+
+          {isGenerated && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1">
+              <p className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                <span>✅</span> L'article a été généré et pré-rempli dans l'éditeur ci-dessous !
+              </p>
+              <p className="text-[11px] text-emerald-700">
+                Vous pouvez copier le post Instagram ci-dessus ou cliquer sur « Ouvrir l'éditeur » pour vérifier, ajouter une photo et publier l'article.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -263,28 +277,39 @@ export default function GenerateAiArticleModal({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200/60 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
           >
             Fermer
           </button>
-          <button
-            type="button"
-            onClick={handleGenerate}
-            disabled={loading}
-            className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 disabled:opacity-50 cursor-pointer"
-          >
-            {loading ? (
-              <>
-                <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                <span>Génération par l'IA en cours...</span>
-              </>
-            ) : (
-              <>
-                <span>✨</span>
-                <span>Générer l'article</span>
-              </>
-            )}
-          </button>
+          {isGenerated ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+            >
+              <span>👉</span>
+              <span>Ouvrir l'éditeur et finaliser l'article</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={loading}
+              className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+            >
+              {loading ? (
+                <>
+                  <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  <span>Génération par l'IA en cours...</span>
+                </>
+              ) : (
+                <>
+                  <span>✨</span>
+                  <span>Générer l'article</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

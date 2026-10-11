@@ -231,7 +231,7 @@ RÈGLES IMPORTANTES ET GESTION DES ANNÉES D'ÂGE (CRITIQUE) :
       }
     }
 
-    return apiSuccess({
+    const resultPayload = {
       titre: parsedResult.titre || 'Compétition Natation - Résultats',
       slug: parsedResult.slug || 'competition-resultats',
       contenu: parsedResult.contenu || '',
@@ -239,6 +239,11 @@ RÈGLES IMPORTANTES ET GESTION DES ANNÉES D'ÂGE (CRITIQUE) :
       podiumsSaved,
       isFallbackDraft: usedFallback,
       notice: fallbackNotice || undefined,
+    }
+
+    return apiSuccess({
+      ...resultPayload,
+      data: resultPayload,
     })
   } catch (error: any) {
     aiLogger.error('Erreur inattendue lors de la génération de l\'article:', error)

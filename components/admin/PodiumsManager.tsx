@@ -42,13 +42,32 @@ export default function PodiumsManager() {
       const res = await fetch('/api/admin/podiums')
       if (res.ok) {
         const data = await res.json()
-        setPodiums(data.data?.podiums || [])
-        setStatsParNageur(data.data?.statsParNageur || {})
+        const rawPodiums = data.podiums || data.data?.podiums || []
+        const rawStats = data.statsParNageur || data.data?.statsParNageur || {}
+        setPodiums(rawPodiums)
+        setStatsParNageur(rawStats)
       }
     } catch {
       toast.error('Erreur lors du chargement du bilan des podiums.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDeletePodium = async (id: string) => {
+    if (!confirm('Supprimer ce podium du palmarès ?')) return
+    try {
+      const res = await fetch(`/api/admin/podiums?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        toast.success('Podium supprimé du palmarès.')
+        fetchPodiums()
+      } else {
+        toast.error('Erreur lors de la suppression.')
+      }
+    } catch {
+      toast.error('Erreur réseau lors de la suppression.')
     }
   }
 
@@ -69,9 +88,19 @@ export default function PodiumsManager() {
             Sauvegarde automatique des podiums officiels et virtuels (par année d'âge J14, J15, J16...) extraits par l'IA.
           </p>
         </div>
-        <div className="bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-xs flex items-center gap-2">
-          <span>🏆 Total Podiums Saison :</span>
-          <span className="text-amber-400 text-base">{podiums.length}</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={fetchPodiums}
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+            title="Rafraîchir les podiums"
+          >
+            🔄 Actualiser
+          </button>
+          <div className="bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-xs flex items-center gap-2">
+            <span>🏆 Total Podiums Saison :</span>
+            <span className="text-amber-400 text-base">{podiums.length}</span>
+          </div>
         </div>
       </div>
 
@@ -118,17 +147,27 @@ export default function PodiumsManager() {
                           {pod.competition} • {formatLongDateFr(pod.date)}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          pod.place === 1 ? 'bg-amber-400 text-slate-950' : pod.place === 2 ? 'bg-slate-300 text-slate-900' : 'bg-amber-700 text-white'
-                        }`}>
-                          {pod.place === 1 ? '1er (Or)' : pod.place === 2 ? '2e (Arg)' : '3e (Br)'}
-                        </span>
-                        {pod.estVirtuel && (
-                          <span className="block text-[9px] font-bold text-purple-700 mt-0.5">
-                            📊 Année {pod.categorie}
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            pod.place === 1 ? 'bg-amber-400 text-slate-950' : pod.place === 2 ? 'bg-slate-300 text-slate-900' : 'bg-amber-700 text-white'
+                          }`}>
+                            {pod.place === 1 ? '1er (Or)' : pod.place === 2 ? '2e (Arg)' : '3e (Br)'}
                           </span>
-                        )}
+                          {pod.estVirtuel && (
+                            <span className="block text-[9px] font-bold text-purple-700 mt-0.5">
+                              📊 Année {pod.categorie}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePodium(pod.id)}
+                          className="text-slate-400 hover:text-rose-600 transition-colors p-1 text-xs cursor-pointer"
+                          title="Supprimer ce podium"
+                        >
+                          ✕
+                        </button>
                       </div>
                     </div>
                   ))}

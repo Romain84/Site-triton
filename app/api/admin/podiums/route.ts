@@ -40,12 +40,39 @@ export async function GET(request: NextRequest) {
       statsParNageur[nom].podiums.push(pod)
     }
 
-    return apiSuccess({
+    const resultPayload = {
       podiums,
       statsParNageur,
       totalPodiums: podiums.length,
+    }
+
+    return apiSuccess({
+      ...resultPayload,
+      data: resultPayload,
     })
   } catch (error: any) {
     return apiError('Erreur lors de la récupération des podiums de la saison.', 500)
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requireAdmin()
+    if (!auth.ok) return auth.response
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return apiError('Identifiant du podium manquant.', 400)
+    }
+
+    await prisma.podiumSaison.delete({
+      where: { id },
+    })
+
+    return apiSuccess({ deleted: true, id })
+  } catch (error: any) {
+    return apiError('Erreur lors de la suppression du podium.', 500)
   }
 }
