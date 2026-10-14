@@ -680,6 +680,29 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
   const lignesRemplacements: FactureLigneCalculated[] = []
   const seenRempSlotKeys = new Set<string>()
 
+  interface RemplacementOccurrenceCalculee {
+    ligneId: string
+    primaryRempId: string
+    date: Date
+    dateKey: string
+    dateStr: string
+    rempDateCourt: string
+    jourSemaine: string
+    heureDebut: string
+    heureFin: string
+    titre: string
+    coachNom: string
+    groupeNom: string
+    heuresPayees: number
+    minutesPayees: number
+    motif?: string
+    detailMajor?: string
+    noteInfo?: string
+    customDescription?: string
+  }
+
+  const rempOccurrencesCalculees: RemplacementOccurrenceCalculee[] = []
+
   for (const fusedRemp of rempsEffectuesFusionnes) {
     const coachsNom = fusedRemp.coachRemplaceNoms.length > 0 ? fusedRemp.coachRemplaceNoms.join(', ') : 'Coach'
 
@@ -797,20 +820,23 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       })
 
       if (aAnnulationClub) {
-        lignesRemplacements.push({
-          id: ligneId,
-          type: 'remplacement',
-          remplacementId: primaryRempId,
-          description: `Remplacement de ${coachsNom} - ${fusedRemp.dateStr} ${portionDebutStr}-${portionFinStr} (Séance annulée par le club : non rémunéré)`,
-          heures: 0,
-          montant: 0,
+        rempOccurrencesCalculees.push({
+          ligneId,
+          primaryRempId,
           date: fusedRemp.date,
+          dateKey: fusedRemp.dateKey,
+          dateStr: fusedRemp.dateStr,
+          rempDateCourt: fusedRemp.rempDateCourt,
+          jourSemaine: fusedRemp.jourSemaineRemp,
+          heureDebut: portionDebutStr,
+          heureFin: portionFinStr,
           titre,
-          sousTitre: `${fusedRemp.jourSemaineRemp} ${fusedRemp.dateStr} · ${portionDebutStr} – ${portionFinStr} · séance annulée par le club`,
-          datesBadges: [fusedRemp.rempDateCourt],
-          detailCalculDuree: '0h00',
-          coachRemplaceNom: coachsNom,
+          coachNom: coachsNom,
+          groupeNom,
+          heuresPayees: 0,
+          minutesPayees: 0,
           noteInfo: 'séance annulée par le club',
+          customDescription: `Remplacement de ${coachsNom} - ${fusedRemp.dateStr} ${portionDebutStr}-${portionFinStr} (Séance annulée par le club : non rémunéré)`,
         })
         continue
       }
@@ -833,75 +859,183 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
         if (minutesNonCouvertes <= 0) {
           // Le remplacement a eu lieu 100% en même temps que son cours régulier déjà rémunéré
-          const sousTitre = `${fusedRemp.jourSemaineRemp} ${fusedRemp.dateStr} · ${portionDebutStr} – ${portionFinStr} · déjà payé (cours simultané avec ${descGroupes})`
-          lignesRemplacements.push({
-            id: ligneId,
-            type: 'remplacement',
-            remplacementId: primaryRempId,
-            description: `Remplacement de ${coachsNom} - ${fusedRemp.dateStr} ${portionDebutStr}-${portionFinStr} (Simultané avec ${descGroupes} : déjà rémunéré dans planning fixe)`,
-            heures: 0,
-            montant: 0,
+          rempOccurrencesCalculees.push({
+            ligneId,
+            primaryRempId,
             date: fusedRemp.date,
+            dateKey: fusedRemp.dateKey,
+            dateStr: fusedRemp.dateStr,
+            rempDateCourt: fusedRemp.rempDateCourt,
+            jourSemaine: fusedRemp.jourSemaineRemp,
+            heureDebut: portionDebutStr,
+            heureFin: portionFinStr,
             titre,
-            sousTitre,
-            datesBadges: [fusedRemp.rempDateCourt],
-            detailCalculDuree: '0h00',
-            coachRemplaceNom: coachsNom,
+            coachNom: coachsNom,
+            groupeNom,
+            heuresPayees: 0,
+            minutesPayees: 0,
             noteInfo: 'déjà payé (cours simultané)',
+            customDescription: `Remplacement de ${coachsNom} - ${fusedRemp.dateStr} ${portionDebutStr}-${portionFinStr} (Simultané avec ${descGroupes} : déjà rémunéré dans planning fixe)`,
           })
         } else {
           // Le remplacement déborde partiellement du cours régulier : payé au prorata
           const minutesPayees = (minutesNonCouvertes / slotDureeReelleMin) * slotTempsFactureMin
           const heuresPayees = minutesPayees / 60
-          heuresRemplacements += heuresPayees
-          const sousTitre = `${fusedRemp.jourSemaineRemp} ${fusedRemp.dateStr} · ${portionDebutStr} – ${portionFinStr} · prolongation de ${formatMinutesEnHM(Math.round(minutesPayees))} facturée`
-          lignesRemplacements.push({
-            id: ligneId,
-            type: 'remplacement',
-            remplacementId: primaryRempId,
-            description: `Remplacement de ${coachsNom} - ${fusedRemp.dateStr} ${portionDebutStr}-${portionFinStr} (Simultané avec ${descGroupes} : prolongation de ${formatMinutesEnHM(Math.round(minutesPayees))} facturée)`,
-            heures: heuresPayees,
-            montant: heuresPayees * tauxHoraire,
+          rempOccurrencesCalculees.push({
+            ligneId,
+            primaryRempId,
             date: fusedRemp.date,
+            dateKey: fusedRemp.dateKey,
+            dateStr: fusedRemp.dateStr,
+            rempDateCourt: fusedRemp.rempDateCourt,
+            jourSemaine: fusedRemp.jourSemaineRemp,
+            heureDebut: portionDebutStr,
+            heureFin: portionFinStr,
             titre,
-            sousTitre,
-            datesBadges: [fusedRemp.rempDateCourt],
-            detailCalculDuree: formatHeuresEnHM(heuresPayees),
-            coachRemplaceNom: coachsNom,
+            coachNom: coachsNom,
+            groupeNom,
+            heuresPayees,
+            minutesPayees: Math.round(minutesPayees),
             noteInfo: `prolongation de ${formatMinutesEnHM(Math.round(minutesPayees))} facturée`,
+            customDescription: `Remplacement de ${coachsNom} - ${fusedRemp.dateStr} ${portionDebutStr}-${portionFinStr} (Simultané avec ${descGroupes} : prolongation de ${formatMinutesEnHM(Math.round(minutesPayees))} facturée)`,
           })
         }
       } else {
         // Aucun chevauchement avec un cours propre : rémunération proportionnelle au créneau remplacé
         const minutesPayees = (dureeCouverteMin / slotDureeReelleMin) * slotTempsFactureMin
         const heuresPayees = minutesPayees / 60
-        heuresRemplacements += heuresPayees
         const detailMajor =
           slotTempsFactureMin !== slotDureeReelleMin
-            ? ` (${formatMinutesEnHM(Math.round(minutesPayees))} facturées)`
-            : ''
+            ? `(${formatMinutesEnHM(Math.round(minutesPayees))} facturées)`
+            : undefined
+        const motifText = fusedRemp.motifs.filter(Boolean).join(' · ') || undefined
 
-        const motifText = fusedRemp.motifs.filter(Boolean).join(' · ')
-        const sousTitreParts = [`${fusedRemp.jourSemaineRemp} ${fusedRemp.dateStr} · ${portionDebutStr} – ${portionFinStr}`]
-        if (detailMajor) sousTitreParts.push(detailMajor.trim())
-        if (motifText) sousTitreParts.push(motifText)
-
-        lignesRemplacements.push({
-          id: ligneId,
-          type: 'remplacement',
-          remplacementId: primaryRempId,
-          description: `Remplacement de ${coachsNom} - ${fusedRemp.dateStr} ${portionDebutStr}-${portionFinStr}${detailMajor}${motifText ? ` (${motifText})` : ''}`,
-          heures: heuresPayees,
-          montant: heuresPayees * tauxHoraire,
+        rempOccurrencesCalculees.push({
+          ligneId,
+          primaryRempId,
           date: fusedRemp.date,
+          dateKey: fusedRemp.dateKey,
+          dateStr: fusedRemp.dateStr,
+          rempDateCourt: fusedRemp.rempDateCourt,
+          jourSemaine: fusedRemp.jourSemaineRemp,
+          heureDebut: portionDebutStr,
+          heureFin: portionFinStr,
           titre,
-          sousTitre: sousTitreParts.join(' · '),
-          datesBadges: [fusedRemp.rempDateCourt],
-          detailCalculDuree: formatHeuresEnHM(heuresPayees),
-          coachRemplaceNom: coachsNom,
+          coachNom: coachsNom,
+          groupeNom,
+          heuresPayees,
+          minutesPayees: Math.round(minutesPayees),
+          motif: motifText,
+          detailMajor,
         })
       }
     }
+  }
+
+  // Regrouper les séances de remplacement récurrentes identiques (même titre, même jour et mêmes horaires)
+  // en mutualisant les dates différentes sous forme de badges (ex : 01/10, 08/10)
+  interface GroupedRemplacement {
+    groupKey: string
+    titre: string
+    jourSemaine: string
+    heureDebut: string
+    heureFin: string
+    heuresUnitaires: number
+    minutesUnitaires: number
+    coachNom: string
+    groupeNom: string
+    detailMajor?: string
+    noteInfo?: string
+    motifs: string[]
+    occurrences: RemplacementOccurrenceCalculee[]
+  }
+
+  const groupedRempMap = new Map<string, GroupedRemplacement>()
+
+  for (const occ of rempOccurrencesCalculees) {
+    const key = `${occ.titre}__${occ.jourSemaine}__${occ.heureDebut}__${occ.heureFin}__${occ.heuresPayees.toFixed(4)}__${occ.noteInfo || ''}`
+    const existing = groupedRempMap.get(key)
+    if (existing) {
+      existing.occurrences.push(occ)
+      if (occ.motif && !existing.motifs.includes(occ.motif)) {
+        existing.motifs.push(occ.motif)
+      }
+    } else {
+      groupedRempMap.set(key, {
+        groupKey: key,
+        titre: occ.titre,
+        jourSemaine: occ.jourSemaine,
+        heureDebut: occ.heureDebut,
+        heureFin: occ.heureFin,
+        heuresUnitaires: occ.heuresPayees,
+        minutesUnitaires: occ.minutesPayees,
+        coachNom: occ.coachNom,
+        groupeNom: occ.groupeNom,
+        detailMajor: occ.detailMajor,
+        noteInfo: occ.noteInfo,
+        motifs: occ.motif ? [occ.motif] : [],
+        occurrences: [occ],
+      })
+    }
+  }
+
+  // Trier les groupes selon la première date chronologique, puis par heure de début
+  const sortedRempGroups = Array.from(groupedRempMap.values()).sort((a, b) => {
+    const minDateA = Math.min(...a.occurrences.map((o) => o.date.getTime()))
+    const minDateB = Math.min(...b.occurrences.map((o) => o.date.getTime()))
+    if (minDateA !== minDateB) return minDateA - minDateB
+    return timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut)
+  })
+
+  for (const grp of sortedRempGroups) {
+    grp.occurrences.sort((a, b) => a.date.getTime() - b.date.getTime())
+
+    const datesBadges = Array.from(new Set(grp.occurrences.map((o) => o.rempDateCourt)))
+    const nbSeances = grp.occurrences.length
+    const totalHeures = grp.heuresUnitaires * nbSeances
+    const montantTotal = totalHeures * tauxHoraire
+    heuresRemplacements += totalHeures
+
+    const firstOcc = grp.occurrences[0]
+    const primaryId = firstOcc.primaryRempId
+
+    const sousTitreParts = [`${grp.jourSemaine} · ${grp.heureDebut} – ${grp.heureFin}`]
+    if (grp.detailMajor) sousTitreParts.push(grp.detailMajor.trim())
+    if (grp.noteInfo) sousTitreParts.push(grp.noteInfo)
+    if (grp.motifs.length > 0) sousTitreParts.push(grp.motifs.join(' · '))
+
+    const detailCalculDuree =
+      grp.heuresUnitaires === 0
+        ? '0h00'
+        : nbSeances > 1
+        ? `${nbSeances} × ${formatMinutesEnHM(grp.minutesUnitaires)} = ${formatHeuresEnHM(totalHeures)}`
+        : formatMinutesEnHM(grp.minutesUnitaires)
+
+    const descDates = datesBadges.join(', ')
+    const description =
+      firstOcc.customDescription && nbSeances === 1
+        ? firstOcc.customDescription
+        : nbSeances > 1
+        ? `Remplacement de ${grp.coachNom} - ${grp.groupeNom} (${grp.jourSemaine} ${grp.heureDebut}-${grp.heureFin}) (${descDates})`
+        : `Remplacement de ${grp.coachNom} - ${firstOcc.dateStr} ${grp.heureDebut}-${grp.heureFin}${grp.detailMajor ? ` ${grp.detailMajor}` : ''}${grp.motifs.length > 0 ? ` (${grp.motifs.join(' · ')})` : ''}`
+
+    lignesRemplacements.push({
+      id: `${primaryId}_${grp.heureDebut.replace(':', 'h')}`,
+      type: 'remplacement',
+      remplacementId: primaryId,
+      description,
+      heures: totalHeures,
+      montant: montantTotal,
+      date: firstOcc.date,
+      titre: grp.titre,
+      sousTitre: sousTitreParts.join(' · '),
+      datesBadges,
+      nbSeances,
+      dureeUnitaireMinutes: grp.minutesUnitaires,
+      detailCalculDuree,
+      coachRemplaceNom: grp.coachNom,
+      noteInfo: grp.noteInfo,
+    })
   }
 
   // Grouper les absences reçues par date pour fusionner les créneaux multi-groupes identiques (non double déduction)

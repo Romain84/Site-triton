@@ -992,6 +992,146 @@ describe('Lot 7 — Lignes de facture lisibles et structurées (3 niveaux, absen
     expect(res.totalMontant).toBe(60)
   })
 
+  it('fusionne les séances de remplacement récurrentes identiques avec les dates différentes en badges (cas réel Armelle : 6 séances groupées en 3 lignes)', async () => {
+    vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.evenementTournant.findMany).mockResolvedValue([])
+
+    // 4 créneaux de remplacement acceptés par Armelle en Octobre 2026 :
+    // - Jeudi 01/10 : 19h30 à 21h30 (couvre 2 cours de Florian : Juniors 1h + Adultes 1h)
+    // - Mardi 06/10 : 19h30 à 21h00 (couvre 1 cours de Florian : Adultes 1h30)
+    // - Jeudi 08/10 : 19h30 à 21h30 (couvre 2 cours de Florian : Juniors 1h + Adultes 1h)
+    // - Mardi 13/10 : 19h30 à 21h00 (couvre 1 cours de Florian : Adultes 1h30)
+    vi.mocked(prisma.remplacement.findMany)
+      .mockResolvedValueOnce([
+        {
+          id: 'remp-arm-1',
+          date: new Date('2026-10-01T12:00:00Z'),
+          heureDebut: '19:30',
+          heureFin: '21:30',
+          coachRemplaceId: 'coach-florian',
+          coachRemplacantId: 'coach-armelle',
+          planningId: null,
+          actif: true,
+          coachRemplace: { id: 'coach-florian', prenom: 'Florian', nom: 'Di-Giusto' },
+        } as any,
+        {
+          id: 'remp-arm-2',
+          date: new Date('2026-10-06T12:00:00Z'),
+          heureDebut: '19:30',
+          heureFin: '21:00',
+          coachRemplaceId: 'coach-florian',
+          coachRemplacantId: 'coach-armelle',
+          planningId: null,
+          actif: true,
+          coachRemplace: { id: 'coach-florian', prenom: 'Florian', nom: 'Di-Giusto' },
+        } as any,
+        {
+          id: 'remp-arm-3',
+          date: new Date('2026-10-08T12:00:00Z'),
+          heureDebut: '19:30',
+          heureFin: '21:30',
+          coachRemplaceId: 'coach-florian',
+          coachRemplacantId: 'coach-armelle',
+          planningId: null,
+          actif: true,
+          coachRemplace: { id: 'coach-florian', prenom: 'Florian', nom: 'Di-Giusto' },
+        } as any,
+        {
+          id: 'remp-arm-4',
+          date: new Date('2026-10-13T12:00:00Z'),
+          heureDebut: '19:30',
+          heureFin: '21:00',
+          coachRemplaceId: 'coach-florian',
+          coachRemplacantId: 'coach-armelle',
+          planningId: null,
+          actif: true,
+          coachRemplace: { id: 'coach-florian', prenom: 'Florian', nom: 'Di-Giusto' },
+        } as any,
+      ])
+      .mockResolvedValueOnce([]) // remplacements reçus (0)
+
+    // Plannings de Florian Di-Giusto :
+    // - Jeudi 19:30-20:30 : Juniors Compétition
+    // - Jeudi 20:30-21:30 : Adultes Compétition
+    // - Mardi 19:30-21:00 : Adultes Compétition
+    vi.mocked(prisma.planning.findMany)
+      .mockResolvedValueOnce([]) // Plannings propres d'Armelle (0)
+      .mockResolvedValueOnce([
+        {
+          id: 'plan-florian-juniors',
+          jourSemaine: 'Jeudi',
+          heureDebut: '19:30',
+          heureFin: '20:30',
+          tempsFacture: null,
+          actif: true,
+          groupeId: 'grp-juniors',
+          groupe: { nom: 'Juniors Compétition' },
+          coachs: [{ coachId: 'coach-florian' }],
+        } as any,
+        {
+          id: 'plan-florian-adultes-jeu',
+          jourSemaine: 'Jeudi',
+          heureDebut: '20:30',
+          heureFin: '21:30',
+          tempsFacture: null,
+          actif: true,
+          groupeId: 'grp-adultes',
+          groupe: { nom: 'Adultes Compétition' },
+          coachs: [{ coachId: 'coach-florian' }],
+        } as any,
+        {
+          id: 'plan-florian-adultes-mar',
+          jourSemaine: 'Mardi',
+          heureDebut: '19:30',
+          heureFin: '21:00',
+          tempsFacture: null,
+          actif: true,
+          groupeId: 'grp-adultes',
+          groupe: { nom: 'Adultes Compétition' },
+          coachs: [{ coachId: 'coach-florian' }],
+        } as any,
+      ])
+
+    const res = await calculerFactureCoach('coach-armelle', 10, 2026)
+
+    // Exactement 3 lignes fusionnées au lieu de 6 !
+    expect(res.lignesRemplacements).toHaveLength(3)
+
+    // Ligne 1 : Juniors Compétition (Jeudi 19:30 - 20:30) sur les deux jeudis 01/10 et 08/10
+    const ligne1 = res.lignesRemplacements[0]
+    expect(ligne1.titre).toBe('Juniors Compétition — pour Florian Di-Giusto')
+    expect(ligne1.sousTitre).toBe('Jeudi · 19:30 – 20:30')
+    expect(ligne1.datesBadges).toEqual(['01/10', '08/10'])
+    expect(ligne1.nbSeances).toBe(2)
+    expect(ligne1.heures).toBe(2)
+    expect(ligne1.montant).toBe(60) // 2 * 30€
+    expect(ligne1.detailCalculDuree).toBe('2 × 1h00 = 2h00')
+
+    // Ligne 2 : Adultes Compétition (Jeudi 20:30 - 21:30) sur les deux jeudis 01/10 et 08/10
+    const ligne2 = res.lignesRemplacements[1]
+    expect(ligne2.titre).toBe('Adultes Compétition — pour Florian Di-Giusto')
+    expect(ligne2.sousTitre).toBe('Jeudi · 20:30 – 21:30')
+    expect(ligne2.datesBadges).toEqual(['01/10', '08/10'])
+    expect(ligne2.nbSeances).toBe(2)
+    expect(ligne2.heures).toBe(2)
+    expect(ligne2.montant).toBe(60) // 2 * 30€
+    expect(ligne2.detailCalculDuree).toBe('2 × 1h00 = 2h00')
+
+    // Ligne 3 : Adultes Compétition (Mardi 19:30 - 21:00) sur les deux mardis 06/10 et 13/10
+    const ligne3 = res.lignesRemplacements[2]
+    expect(ligne3.titre).toBe('Adultes Compétition — pour Florian Di-Giusto')
+    expect(ligne3.sousTitre).toBe('Mardi · 19:30 – 21:00')
+    expect(ligne3.datesBadges).toEqual(['06/10', '13/10'])
+    expect(ligne3.nbSeances).toBe(2)
+    expect(ligne3.heures).toBe(3) // 2 * 1.5h
+    expect(ligne3.montant).toBe(90) // 2 * 45€
+    expect(ligne3.detailCalculDuree).toBe('2 × 1h30 = 3h00')
+
+    // Total exact d'Armelle : 7h00 et 210.00 €
+    expect(res.totalHeures).toBe(7)
+    expect(res.totalMontant).toBe(210)
+  })
+
   it('fusionne les créneaux simultanés du coach absent pour ne payer qu une seule fois la durée (ex: 3 groupes de 18h00 à 19h15 -> 1 seule ligne de 1h15)', async () => {
     vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
     vi.mocked(prisma.evenementTournant.findMany).mockResolvedValue([])
