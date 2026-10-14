@@ -331,7 +331,7 @@ function FacturationContent() {
     ...(data?.lignesPlanningTournant || []),
     ...(data?.lignesRemplacements || []),
     ...(data?.lignesAbsences || []),
-    ...(data?.lignesManuelles || []),
+    ...(data?.lignesManuelles || []).filter((l) => !['remplacement', 'absence'].includes(l.type)),
   ]
 
   return (

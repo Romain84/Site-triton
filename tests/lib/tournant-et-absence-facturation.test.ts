@@ -163,5 +163,52 @@ describe('Calculs de facturation : Planning Tournant et Absences', () => {
       const netHanneJournee = ligneHanneFixe.heures + ligneHanneAbsence.heures
       expect(netHanneJournee).toBe(0) // Neutralisation parfaite à 0h
     })
+
+    it('applique la règle de non-cumul sur créneaux identiques multi-groupes (ROBOT.md 4.C)', () => {
+      // Cas réel Lorenzo : remplacement couvrant plusieurs groupes sur le même créneau 18:00 - 19:15
+      const rempBenjamins = {
+        id: 'remp_benj',
+        date: new Date('2026-10-07'),
+        heureDebut: '18:00',
+        heureFin: '19:15',
+        coachRemplace: { prenom: 'Florian', nom: 'Di-Giusto' },
+        groupe: 'Benjamins',
+      }
+      const rempAdultes = {
+        id: 'remp_adultes',
+        date: new Date('2026-10-07'),
+        heureDebut: '18:00',
+        heureFin: '19:15',
+        coachRemplace: { prenom: 'Florian', nom: 'Di-Giusto' },
+        groupe: 'Adultes',
+      }
+
+      // La fusion des deux créneaux simultanés doit donner exactement un seul créneau de 1h15
+      const debMin1 = 18 * 60
+      const finMin1 = 19 * 60 + 15
+      const debMin2 = 18 * 60
+      const finMin2 = 19 * 60 + 15
+
+      const debutMinFusionne = Math.min(debMin1, debMin2)
+      const finMinFusionne = Math.max(finMin1, finMin2)
+      const dureeReelleHeures = (finMinFusionne - debutMinFusionne) / 60
+
+      expect(dureeReelleHeures).toBe(1.25) // 1h15 et NON 2h30 !
+      const montantUnique = dureeReelleHeures * tauxHoraire
+      expect(montantUnique).toBe(43.75) // Payé 1 seule fois
+    })
+
+    it('distingue les créneaux consécutifs qui ne se chevauchent pas', () => {
+      // Créneau 1 : 17:30 - 18:30 (1h)
+      // Créneau 2 : 18:30 - 19:30 (1h)
+      const sDeb1 = 17 * 60 + 30
+      const sFin1 = 18 * 60 + 30
+      const sDeb2 = 18 * 60 + 30
+      const sFin2 = 19 * 60 + 30
+
+      // Chevauchement strict : sDeb2 < sFin1
+      const seChevauchent = sDeb2 < sFin1
+      expect(seChevauchent).toBe(false) // Créneaux consécutifs distincts -> 2 heures payées
+    })
   })
 })

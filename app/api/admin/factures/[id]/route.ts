@@ -77,12 +77,15 @@ export async function GET(
     }
 
     // Regrouper toutes les lignes calculées (planning fixe, remplacements, absences, compétitions, manuelles)
+    const validManuelles = (details.lignesManuelles || []).filter(
+      (l) => !['remplacement', 'absence'].includes(l.type)
+    )
     const allCalculatedLignes = [
       ...details.lignesPlanningFixe.map((l, i) => ({ id: `fixe_${i}`, ...l })),
       ...details.lignesPlanningTournant.map((l, i) => ({ id: `tournant_${i}`, ...l })),
       ...details.lignesRemplacements.map((l, i) => ({ id: `remp_${i}`, ...l })),
       ...details.lignesAbsences.map((l, i) => ({ id: `abs_${i}`, ...l })),
-      ...details.lignesManuelles,
+      ...validManuelles,
     ]
 
     return NextResponse.json({

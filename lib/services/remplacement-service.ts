@@ -37,7 +37,7 @@ export async function syncRemplacementBillingLines(remplacementId: string): Prom
       return
     }
 
-    // 1. Supprimer les éventuelles anciennes lignes manuelles associées à ce remplacement
+    // 1. Supprimer les éventuelles anciennes lignes associées à ce remplacement
     const existingLignes = await prisma.ligneFactureCoach.findMany({
       where: { remplacementId },
       select: { id: true, factureId: true },
@@ -83,10 +83,18 @@ export async function syncRemplacementBillingLines(remplacementId: string): Prom
     if (factureRemplace) factureIdsToRecalculate.add(factureRemplace.id)
     if (factureRemplacant) factureIdsToRecalculate.add(factureRemplacant.id)
 
-    // 3. Recalculer le montant total de toutes les factures affectées via le moteur de calcul unifié
+    // 3. Purger les anciennes lignes obsolètes en base et recalculer le montant total
     for (const factureId of factureIdsToRecalculate) {
       const f = await prisma.factureCoach.findUnique({ where: { id: factureId } })
       if (f && ['brouillon', 'generee'].includes(f.statut)) {
+        // Nettoyer les lignes de type 'remplacement' ou 'absence' qui auraient pu être créées par d'anciennes versions
+        await prisma.ligneFactureCoach.deleteMany({
+          where: {
+            factureId,
+            type: { in: ['remplacement', 'absence'] },
+          },
+        })
+
         const details = await calculerFactureCoach(f.coachId, f.mois, f.annee)
         await prisma.factureCoach.update({
           where: { id: factureId },
