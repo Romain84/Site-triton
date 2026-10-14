@@ -1,20 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { calculerFactureCoach } from '@/lib/facture-calculations'
 
 const replacementLogger = logger.withContext('RemplacementService')
-
-function parseTimeToMinutes(t: string): number {
-  const [h, m] = t.split(':').map(Number)
-  return (h || 0) * 60 + (m || 0)
-}
-
-function generateNumeroFacture(coachId: string, mois: number, annee: number): string {
-  const shortId = coachId.slice(-4).toUpperCase()
-  const monthStr = String(mois).padStart(2, '0')
-  return `FAC-${annee}${monthStr}-${shortId}`
-}
-
-import { calculerFactureCoach } from '@/lib/facture-calculations'
 
 /**
  * Synchronise les lignes de facturation lors d'un remplacement :

@@ -1223,6 +1223,17 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
 
   if (factureBrouillon) {
     // Les remplacements et absences sont calculés dynamiquement depuis la table Remplacement.
+    // Purge active en base de données de toute ligne résiduelle de type 'remplacement' ou 'absence' qui résiderait encore dans la table LigneFactureCoach
+    const hasObsoleteLines = factureBrouillon.lignes.some((l) => ['remplacement', 'absence'].includes(l.type))
+    if (hasObsoleteLines && !isVerrouilleeDefinitive) {
+      await prisma.ligneFactureCoach.deleteMany({
+        where: {
+          factureId: factureBrouillon.id,
+          type: { in: ['remplacement', 'absence'] },
+        },
+      })
+    }
+
     // On exclut formellement les types 'remplacement' et 'absence' des lignes manuelles pour éviter tout doublon.
     const TYPES_MANUELS = ['competition', 'forfait_regional', 'forfait_transport', 'manuel']
     lignesManuelles = factureBrouillon.lignes

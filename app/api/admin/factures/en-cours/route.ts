@@ -79,7 +79,9 @@ export async function GET(request: NextRequest) {
           const heuresTournants = (details.lignesPlanningTournant || []).reduce((acc, l) => acc + (l.heures || 0), 0)
           const heuresRemplacements = (details.lignesRemplacements || []).reduce((acc, l) => acc + (l.heures || 0), 0)
           const heuresAbsences = (details.lignesAbsences || []).reduce((acc, l) => acc + (l.heures || 0), 0)
-          const heuresManuelles = (details.lignesManuelles || []).reduce((acc, l) => acc + (l.heures || 0), 0)
+          const heuresManuelles = (details.lignesManuelles || [])
+            .filter((l) => l.type === 'manuel')
+            .reduce((acc, l) => acc + (l.heures || 0), 0)
 
           // Analyse automatique des anomalies et points de vigilance
           const anomalies = await analyserControleMois(coach.id, mois, annee, details)
