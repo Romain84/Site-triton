@@ -176,4 +176,38 @@ describe('Service Contrôle du mois - Détection des anomalies et points de vigi
     const anomalies = await analyserControleMois('coach-1', 9, 2026, details)
     expect(anomalies).toHaveLength(0)
   })
+
+  it('signale une demande de remplacement encore en attente d acceptation (REMPLACEMENT_EN_ATTENTE)', async () => {
+    const details: FactureCoachDetails = {
+      ...baseDetails,
+      lignesPlanningFixe: [
+        {
+          type: 'planning_fixe',
+          description: 'Juniors Compétition',
+          heures: 6,
+          montant: 180,
+          dureeUnitaireMinutes: 90,
+          absencesAssociees: [
+            {
+              date: '15/09',
+              dateComplete: '2026-09-15',
+              type: 'absence',
+              enAttente: true,
+              heures: -1.5,
+              montant: -45,
+              minutes: 90,
+              texteDeduction: '− 1h30',
+              description: '↳ Absence 15/09',
+            },
+          ],
+        },
+      ],
+    }
+
+    const anomalies = await analyserControleMois('coach-1', 9, 2026, details)
+    const enAttente = anomalies.find((a) => a.code === 'REMPLACEMENT_EN_ATTENTE')
+    expect(enAttente).toBeDefined()
+    expect(enAttente?.severite).toBe('warning')
+    expect(enAttente?.titre).toContain('Demande de remplacement en attente')
+  })
 })

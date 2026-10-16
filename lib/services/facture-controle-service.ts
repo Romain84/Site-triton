@@ -1,5 +1,4 @@
-import { prisma } from '@/lib/prisma'
-import { FactureCoachDetails, FactureLigneCalculated } from '@/lib/facture-calculations'
+import { FactureCoachDetails } from '@/lib/facture-calculations'
 
 export type SeveriteAnomalie = 'error' | 'warning' | 'info'
 
@@ -9,6 +8,7 @@ export interface AnomalieFacture {
     | 'ABSENCE_ORPHELINE'
     | 'ABSENCE_TROP_LONGUE'
     | 'ABSENCE_SANS_REMPLACANT'
+    | 'REMPLACEMENT_EN_ATTENTE'
     | 'REMPLACEMENT_SIMULTANE'
     | 'SEANCE_ANNULEE_CLUB'
     | 'MONTANT_NEGATIF'
@@ -66,16 +66,27 @@ export async function analyserControleMois(
             })
           }
 
-          // 3. Absence sans remplaçant
+          // 3. Absence en attente de remplaçant vs sans remplaçant
           if (!abs.coachRemplacantNom) {
-            anomalies.push({
-              id: `abs-sans-remp-${abs.id || Math.random()}`,
-              code: 'ABSENCE_SANS_REMPLACANT',
-              severite: 'warning',
-              titre: 'Absence sans remplaçant',
-              description: `Absence le ${abs.date} (${ligne.titre || ligne.description}) sans aucun remplaçant désigné.`,
-              date: abs.date,
-            })
+            if (abs.enAttente) {
+              anomalies.push({
+                id: `remp-en-attente-${abs.id || Math.random()}`,
+                code: 'REMPLACEMENT_EN_ATTENTE',
+                severite: 'warning',
+                titre: 'Demande de remplacement en attente',
+                description: `Absence le ${abs.date} (${ligne.titre || ligne.description}) toujours en attente d'acceptation par un remplaçant.`,
+                date: abs.date,
+              })
+            } else {
+              anomalies.push({
+                id: `abs-sans-remp-${abs.id || Math.random()}`,
+                code: 'ABSENCE_SANS_REMPLACANT',
+                severite: 'warning',
+                titre: 'Absence sans remplaçant',
+                description: `Absence le ${abs.date} (${ligne.titre || ligne.description}) sans aucun remplaçant désigné.`,
+                date: abs.date,
+              })
+            }
           }
         } else if (abs.type === 'annulation') {
           // 4. Séance annulée par le club
@@ -139,32 +150,6 @@ export async function analyserControleMois(
         })
       }
     }
-  }
-
-  // 8. Créneaux actifs du coach sans temps à facturer
-  try {
-    const creneauxSansTemps = await prisma.planning.findMany({
-      where: {
-        actif: true,
-        tempsFacture: null,
-        coachs: {
-          some: { coachId },
-        },
-      },
-      include: { groupe: true },
-    })
-
-    for (const c of creneauxSansTemps) {
-      anomalies.push({
-        id: `creneau-sans-temps-${c.id}`,
-        code: 'CRENEAU_SANS_TEMPS_FACTURE',
-        severite: 'warning',
-        titre: 'Créneau sans temps à facturer',
-        description: `Le créneau ${c.jourSemaine} ${c.heureDebut}-${c.heureFin} (${c.groupe?.nom || 'Groupe'}) n'a pas de temps à facturer défini.`,
-      })
-    }
-  } catch {
-    // Si table plannings non accessible
   }
 
   return anomalies

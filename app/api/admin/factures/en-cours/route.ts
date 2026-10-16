@@ -29,51 +29,77 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Mois ou année invalide' }, { status: 400 })
     }
 
-    // 1. Récupérer tous les coachs actifs
-    const coaches = await prisma.coach.findMany({
-      where: { actif: true },
-      select: {
-        id: true,
-        prenom: true,
-        nom: true,
-        email: true,
-        telephone: true,
-        photo: true,
-        siret: true,
-        heuresAdminHebdo: true,
-      },
-      orderBy: [
-        { prenom: 'asc' },
-        { nom: 'asc' },
-      ],
-    })
+    const dateDebut = new Date(annee, mois - 1, 1, 0, 0, 0, 0)
+    let dateFin = new Date(annee, mois, 0, 23, 59, 59, 999)
+    if (annee === now.getFullYear() && mois === now.getMonth() + 1) {
+      dateFin = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+    } else if (annee > now.getFullYear() || (annee === now.getFullYear() && mois > now.getMonth() + 1)) {
+      dateFin = new Date(annee, mois - 1, 1, 0, 0, 0)
+    }
 
-    // 2. Récupérer les factures déjà enregistrées pour ce mois/année
-    const existingFactures = await prisma.factureCoach.findMany({
-      where: {
-        mois,
-        annee,
-      },
-      select: {
-        id: true,
-        coachId: true,
-        numero: true,
-        statut: true,
-        montantTotal: true,
-        tauxHoraire: true,
-        pdfPath: true,
-        updatedAt: true,
-      },
-    })
+    // 1. Récupérer les coachs actifs, factures existantes et données communes du mois en une seule passe parallèle
+    const [coaches, existingFactures, settings, periodesVacances, seancesAnnulees] = await Promise.all([
+      prisma.coach.findMany({
+        where: { actif: true },
+        select: {
+          id: true,
+          prenom: true,
+          nom: true,
+          email: true,
+          telephone: true,
+          photo: true,
+          siret: true,
+          heuresAdminHebdo: true,
+        },
+        orderBy: [
+          { prenom: 'asc' },
+          { nom: 'asc' },
+        ],
+      }),
+      prisma.factureCoach.findMany({
+        where: {
+          mois,
+          annee,
+        },
+        include: {
+          lignes: true,
+        },
+      }),
+      prisma.settings.findFirst(),
+      prisma.periodeVacances.findMany({
+        where: {
+          actif: true,
+          impacteFacturation: true,
+          OR: [
+            { dateDebut: { gte: dateDebut, lte: dateFin } },
+            { dateFin: { gte: dateDebut, lte: dateFin } },
+            { AND: [{ dateDebut: { lte: dateDebut } }, { dateFin: { gte: dateFin } }] },
+          ],
+        },
+      }),
+      prisma.seanceAnnulee.findMany({
+        where: {
+          date: {
+            gte: dateDebut,
+            lte: dateFin,
+          },
+        },
+      }),
+    ])
 
     const facturesByCoachId = new Map(existingFactures.map((f) => [f.coachId, f]))
 
-    // 3. Calculer les détails pour chaque coach en parallèle (lecture seule pure)
+    // 2. Calculer les détails pour chaque coach en parallèle en réutilisant le contexte partagé
     const results = await Promise.all(
       coaches.map(async (coach) => {
-        const existing = facturesByCoachId.get(coach.id)
+        const existing = facturesByCoachId.get(coach.id) ?? null
         try {
-          const details = await calculerFactureCoach(coach.id, mois, annee)
+          const details = await calculerFactureCoach(coach.id, mois, annee, {
+            settings,
+            periodesVacances,
+            seancesAnnulees,
+            factureExistante: existing,
+          })
 
           const heuresFixes = (details.lignesPlanningFixe || []).reduce((acc, l) => acc + (l.heures || 0), 0)
           const heuresTournants = (details.lignesPlanningTournant || []).reduce((acc, l) => acc + (l.heures || 0), 0)

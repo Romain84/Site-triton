@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // 2. Si la facture est payée et possède un PDF archivé sur le disque, on sert l'archive
-    if (facture && facture.pdfPath) {
+    // 2. Si la facture est envoyée ou payée (verrouillée) et possède un PDF archivé sur le disque, on sert l'archive
+    if (facture && facture.pdfPath && ['envoyee', 'payee'].includes(facture.statut)) {
       const filePath = path.join(process.cwd(), 'public', facture.pdfPath)
       try {
         const archivedBuffer = await readFile(filePath)

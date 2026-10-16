@@ -13,6 +13,14 @@ export interface FactureAbsenceAssociee {
   texteDeduction: string // "− 1h30"
   description: string // "↳ Absence 29/09 (piscine fermée)" ou "↳ Séance annulée 29/09 (piscine fermée)"
   type?: 'absence' | 'annulation'
+  enAttente?: boolean
+}
+
+export interface FactureCalculationSharedContext {
+  settings?: any
+  periodesVacances?: any[]
+  seancesAnnulees?: any[]
+  factureExistante?: any
 }
 
 export interface FactureLigneCalculated {
@@ -116,42 +124,16 @@ export function parseDateDebutSaison(dateStr?: string | null): Date | null {
   return null
 }
 
-export async function calculerFactureCoach(coachId: string, mois: number, annee: number): Promise<FactureCoachDetails> {
-  // Récupérer les paramètres (taux horaire, débuts de cours)
-  const settings = await prisma.settings.findFirst()
-  const tauxHoraire = settings?.tauxHoraire || 35
-  const forfaitDemiJournee = settings?.forfaitCompetition || 150
-  const forfaitRegionalActif = settings?.forfaitRegionalActif || false
-  const montantForfaitRegional = settings?.montantForfaitRegional || 50
-
-  // Récupérer la date de début officiel de saison (ex: 14 Septembre 2026)
-  const dateDebutSaison = parseDateDebutSaison(settings?.debutCoursNormal)
-  const dateDebutBnssa = parseDateDebutSaison(settings?.debutCoursBnssa)
-
-  // Vérifier si la facture existe déjà
-  const factureExistante = await prisma.factureCoach.findUnique({
-    where: {
-      coachId_mois_annee: {
-        coachId,
-        mois,
-        annee,
-      },
-    },
-    include: {
-      lignes: true,
-    },
-  })
-
-  const dateFinMois = new Date(annee, mois, 0, 23, 59, 59)
-  const isPayee = factureExistante?.statut === 'payee'
-  const isEnvoyee = factureExistante?.statut === 'envoyee'
-  const isGeneree = factureExistante?.statut === 'generee'
-  const isVerrouilleeDefinitive = isPayee || isEnvoyee
-  const isLocked = isVerrouilleeDefinitive
-
+export async function calculerFactureCoach(
+  coachId: string,
+  mois: number,
+  annee: number,
+  sharedContext?: FactureCalculationSharedContext
+): Promise<FactureCoachDetails> {
   // Calculer les dates de début et fin du mois
   const now = new Date()
   const dateDebut = new Date(annee, mois - 1, 1, 0, 0, 0, 0)
+  const dateFinMois = new Date(annee, mois, 0, 23, 59, 59)
   let dateFin = new Date(annee, mois, 0, 23, 59, 59, 999)
 
   // Si on calcule pour le mois et l'année en cours, on limite le planning fixe au jour actuel
@@ -162,59 +144,93 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     dateFin = new Date(annee, mois - 1, 1, 0, 0, 0)
   }
 
-  // Récupérer les périodes de vacances qui impactent la facturation
-  const periodesVacances = await prisma.periodeVacances.findMany({
-    where: {
-      actif: true,
-      impacteFacturation: true,
-      OR: [
-        {
-          dateDebut: {
-            gte: dateDebut,
-            lte: dateFin,
+  // Exécuter les requêtes initiales indépendantes en parallèle (avec réutilisation du contexte partagé si fourni)
+  const [settings, factureExistante, periodesVacances, seancesAnnulees, planningsFixe] = await Promise.all([
+    sharedContext?.settings !== undefined
+      ? Promise.resolve(sharedContext.settings)
+      : prisma.settings.findFirst(),
+    sharedContext?.factureExistante !== undefined
+      ? Promise.resolve(sharedContext.factureExistante)
+      : prisma.factureCoach.findUnique({
+          where: {
+            coachId_mois_annee: {
+              coachId,
+              mois,
+              annee,
+            },
+          },
+          include: {
+            lignes: true,
+          },
+        }),
+    sharedContext?.periodesVacances !== undefined
+      ? Promise.resolve(sharedContext.periodesVacances)
+      : prisma.periodeVacances.findMany({
+          where: {
+            actif: true,
+            impacteFacturation: true,
+            OR: [
+              {
+                dateDebut: {
+                  gte: dateDebut,
+                  lte: dateFin,
+                },
+              },
+              {
+                dateFin: {
+                  gte: dateDebut,
+                  lte: dateFin,
+                },
+              },
+              {
+                AND: [
+                  { dateDebut: { lte: dateDebut } },
+                  { dateFin: { gte: dateFin } },
+                ],
+              },
+            ],
+          },
+        }),
+    sharedContext?.seancesAnnulees !== undefined
+      ? Promise.resolve(sharedContext.seancesAnnulees)
+      : prisma.seanceAnnulee.findMany({
+          where: {
+            date: {
+              gte: dateDebut,
+              lte: dateFin,
+            },
+          },
+        }),
+    prisma.planning.findMany({
+      where: {
+        coachs: {
+          some: {
+            coachId,
           },
         },
-        {
-          dateFin: {
-            gte: dateDebut,
-            lte: dateFin,
-          },
-        },
-        {
-          AND: [
-            { dateDebut: { lte: dateDebut } },
-            { dateFin: { gte: dateFin } },
-          ],
-        },
-      ],
-    },
-  })
-
-  // Récupérer les séances annulées du mois
-  const seancesAnnulees = await prisma.seanceAnnulee.findMany({
-    where: {
-      date: {
-        gte: dateDebut,
-        lte: dateFin,
+        actif: true,
       },
-    },
-  })
-
-  // 1. Calculer les heures du planning fixe
-  const planningsFixe = await prisma.planning.findMany({
-    where: {
-      coachs: {
-        some: {
-          coachId,
-        },
+      include: {
+        groupe: true,
+        occupations: true,
       },
-      actif: true,
-    },
-    include: {
-      groupe: true,
-      occupations: true,
-    },
-  })
+    }),
+  ])
+
+  const tauxHoraire = settings?.tauxHoraire || 35
+  const forfaitDemiJournee = settings?.forfaitCompetition || 150
+  const forfaitRegionalActif = settings?.forfaitRegionalActif || false
+  const montantForfaitRegional = settings?.montantForfaitRegional || 50
+
+  // Récupérer la date de début officiel de saison (ex: 14 Septembre 2026)
+  const dateDebutSaison = parseDateDebutSaison(settings?.debutCoursNormal)
+  const dateDebutBnssa = parseDateDebutSaison(settings?.debutCoursBnssa)
+
+  const isPayee = factureExistante?.statut === 'payee'
+  const isEnvoyee = factureExistante?.statut === 'envoyee'
+  const isGeneree = factureExistante?.statut === 'generee'
+  const isVerrouilleeDefinitive = isPayee || isEnvoyee
+  const isLocked = isVerrouilleeDefinitive
 
   let heuresPlanningFixe = 0
   const lignesPlanningFixe: FactureLigneCalculated[] = []
@@ -1052,6 +1068,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     planningIds: string[]
     remplacementIds: string[]
     motifs: string[]
+    enAttente: boolean
   }
 
   const rempsRecusParDate = new Map<string, typeof remplacementsRecus>()
@@ -1082,6 +1099,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       const coachNom = r.coachRemplacant
         ? `${(r.coachRemplacant.prenom || '').trim()} ${(r.coachRemplacant.nom || '').trim()}`.trim()
         : ''
+      const isEnAttente = (r as any).statut === 'en_attente'
 
       const last = fusedJour.length > 0 ? fusedJour[fusedJour.length - 1] : null
 
@@ -1102,6 +1120,9 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
         if (r.motif && !last.motifs.includes(r.motif)) {
           last.motifs.push(r.motif)
         }
+        if (isEnAttente) {
+          last.enAttente = true
+        }
       } else {
         fusedJour.push({
           date: r.date,
@@ -1116,6 +1137,7 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
           planningIds: r.planningId ? [r.planningId] : [],
           remplacementIds: [r.id],
           motifs: r.motif ? [r.motif] : [],
+          enAttente: isEnAttente,
         })
       }
     }
@@ -1185,6 +1207,8 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
             minutes: Math.round(deductionMin),
             texteDeduction: `− ${formatMinutesEnHM(Math.round(deductionMin))}`,
             description: descAbsence,
+            type: 'absence',
+            enAttente: fusedAbs.enAttente,
           })
         }
       }
@@ -1301,17 +1325,43 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     }
   }
 
-  // 3. Planning tournant
+  // 3. Planning tournant (filtrage vacances + fermetures piscine + regroupement des créneaux récurrents identiques)
   const evenementsTournants = await prisma.evenementTournant.findMany({
     where: {
       coachId,
       actif: true,
       date: { gte: dateDebut, lte: dateFinMois },
     },
+    orderBy: [
+      { date: 'asc' },
+      { heureDebut: 'asc' },
+    ],
   })
 
-  let heuresPlanningTournant = 0
-  const lignesPlanningTournant: FactureLigneCalculated[] = []
+  interface TournantOccurrence {
+    id: string
+    titre: string
+    date: Date
+    dateStr: string
+    evtDateCourt: string
+    jourSemaine: string
+    heureDebut: string
+    heureFin: string
+    dureeHeures: number
+  }
+
+  interface GroupedTournant {
+    groupKey: string
+    titre: string
+    jourSemaine: string
+    heureDebut: string
+    heureFin: string
+    dureeUnitaireHeures: number
+    occurrences: TournantOccurrence[]
+  }
+
+  const groupedTournantsMap = new Map<string, GroupedTournant>()
+
   for (const evt of evenementsTournants) {
     const dateEvt = new Date(evt.date)
     const estEnVacances = periodesVacances.some((periode) => {
@@ -1320,45 +1370,116 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
       return dateEvt >= debut && dateEvt <= fin
     })
 
-    if (!estEnVacances) {
-      const dureeHeures = arrondirDemiHeureSuperieure(calculerDuree(evt.heureDebut, evt.heureFin))
-      heuresPlanningTournant += dureeHeures
-      const dateStr = new Date(evt.date).toLocaleDateString('fr-FR')
-      const evtDateCourt = dateEvt.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
-      lignesPlanningTournant.push({
-        id: evt.id,
-        type: 'planning_tournant',
-        description: `${evt.titre} - ${dateStr} ${evt.heureDebut}-${evt.heureFin}`,
-        heures: dureeHeures,
-        montant: dureeHeures * tauxHoraire,
-        date: evt.date,
+    if (estEnVacances) continue
+
+    // Vérifier si le créneau tournant tombe un jour de fermeture exceptionnelle du club (seancesAnnulees)
+    const estAnnuleeClub = seancesAnnulees.some((sa) => {
+      const saD = new Date(sa.date)
+      const isMemeDate =
+        saD.getFullYear() === dateEvt.getFullYear() &&
+        saD.getMonth() === dateEvt.getMonth() &&
+        saD.getDate() === dateEvt.getDate()
+      if (!isMemeDate) return false
+      if (!sa.planningId && !sa.groupeId && !sa.coachId) return true
+      if (sa.coachId && sa.coachId === coachId) return true
+      if (sa.groupeId && (evt as any).groupeId && sa.groupeId === (evt as any).groupeId) return true
+      return false
+    })
+
+    if (estAnnuleeClub) continue
+
+    const dureeHeures = arrondirDemiHeureSuperieure(calculerDuree(evt.heureDebut, evt.heureFin))
+    const dateStr = dateEvt.toLocaleDateString('fr-FR')
+    const evtDateCourt = dateEvt.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+    const jourSemaine = joursSemaineRef[dateEvt.getDay()]
+
+    const occ: TournantOccurrence = {
+      id: evt.id,
+      titre: evt.titre,
+      date: dateEvt,
+      dateStr,
+      evtDateCourt,
+      jourSemaine,
+      heureDebut: evt.heureDebut,
+      heureFin: evt.heureFin,
+      dureeHeures,
+    }
+
+    const key = `${evt.titre}__${jourSemaine}__${evt.heureDebut}__${evt.heureFin}__${dureeHeures.toFixed(4)}`
+    const existing = groupedTournantsMap.get(key)
+    if (existing) {
+      existing.occurrences.push(occ)
+    } else {
+      groupedTournantsMap.set(key, {
+        groupKey: key,
         titre: evt.titre,
-        sousTitre: `${dateStr} · ${evt.heureDebut} – ${evt.heureFin}`,
-        datesBadges: [evtDateCourt],
-        detailCalculDuree: formatHeuresEnHM(dureeHeures),
+        jourSemaine,
+        heureDebut: evt.heureDebut,
+        heureFin: evt.heureFin,
+        dureeUnitaireHeures: dureeHeures,
+        occurrences: [occ],
       })
     }
   }
 
-  // 4. Lignes manuelles
-  let lignesManuelles: FactureLigneCalculated[] = []
-  const factureBrouillon = await prisma.factureCoach.findUnique({
-    where: {
-      coachId_mois_annee: {
-        coachId,
-        mois,
-        annee,
-      },
-    },
-    include: {
-      lignes: true,
-    },
+  let heuresPlanningTournant = 0
+  const lignesPlanningTournant: FactureLigneCalculated[] = []
+
+  const sortedTournantGroups = Array.from(groupedTournantsMap.values()).sort((a, b) => {
+    const minDateA = Math.min(...a.occurrences.map((o) => o.date.getTime()))
+    const minDateB = Math.min(...b.occurrences.map((o) => o.date.getTime()))
+    if (minDateA !== minDateB) return minDateA - minDateB
+    return timeToMinutes(a.heureDebut) - timeToMinutes(b.heureDebut)
   })
+
+  for (const grp of sortedTournantGroups) {
+    grp.occurrences.sort((a, b) => a.date.getTime() - b.date.getTime())
+    const datesBadges = Array.from(new Set(grp.occurrences.map((o) => o.evtDateCourt)))
+    const nbSeances = grp.occurrences.length
+    const totalHeures = grp.dureeUnitaireHeures * nbSeances
+    const montantTotal = totalHeures * tauxHoraire
+    heuresPlanningTournant += totalHeures
+
+    const firstOcc = grp.occurrences[0]
+    const sousTitre =
+      nbSeances > 1
+        ? `${grp.jourSemaine} · ${grp.heureDebut} – ${grp.heureFin}`
+        : `${firstOcc.dateStr} · ${grp.heureDebut} – ${grp.heureFin}`
+
+    const detailCalculDuree =
+      nbSeances > 1
+        ? `${nbSeances} × ${formatHeuresEnHM(grp.dureeUnitaireHeures)} = ${formatHeuresEnHM(totalHeures)}`
+        : formatHeuresEnHM(totalHeures)
+
+    const description =
+      nbSeances > 1
+        ? `${grp.titre} - ${grp.jourSemaine} ${grp.heureDebut}-${grp.heureFin} (${datesBadges.join(', ')})`
+        : `${grp.titre} - ${firstOcc.dateStr} ${grp.heureDebut}-${grp.heureFin}`
+
+    lignesPlanningTournant.push({
+      id: firstOcc.id,
+      type: 'planning_tournant',
+      description,
+      heures: totalHeures,
+      montant: montantTotal,
+      date: firstOcc.date,
+      titre: grp.titre,
+      sousTitre,
+      datesBadges,
+      nbSeances,
+      dureeUnitaireMinutes: Math.round(grp.dureeUnitaireHeures * 60),
+      detailCalculDuree,
+    })
+  }
+
+  // 4. Lignes manuelles (réutilise factureExistante chargée en début de fonction sans double requête Prisma)
+  let lignesManuelles: FactureLigneCalculated[] = []
+  const factureBrouillon = factureExistante
 
   if (factureBrouillon) {
     // Les remplacements et absences sont calculés dynamiquement depuis la table Remplacement.
     // Purge active en base de données de toute ligne résiduelle de type 'remplacement' ou 'absence' qui résiderait encore dans la table LigneFactureCoach
-    const hasObsoleteLines = factureBrouillon.lignes.some((l) => ['remplacement', 'absence'].includes(l.type))
+    const hasObsoleteLines = factureBrouillon.lignes.some((l: any) => ['remplacement', 'absence'].includes(l.type))
     if (hasObsoleteLines && !isVerrouilleeDefinitive) {
       await prisma.ligneFactureCoach.deleteMany({
         where: {
@@ -1371,8 +1492,8 @@ export async function calculerFactureCoach(coachId: string, mois: number, annee:
     // On exclut formellement les types 'remplacement' et 'absence' des lignes manuelles pour éviter tout doublon.
     const TYPES_MANUELS = ['competition', 'forfait_regional', 'forfait_transport', 'manuel']
     lignesManuelles = factureBrouillon.lignes
-      .filter((l) => TYPES_MANUELS.includes(l.type))
-      .map((l) => {
+      .filter((l: any) => TYPES_MANUELS.includes(l.type))
+      .map((l: any) => {
         let titre = l.description
         let sousTitre = ''
         let detailCalculDuree = ''

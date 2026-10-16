@@ -231,7 +231,12 @@ export async function genererFacturePDF(
         }
 
         if (ligne.datesBadges && ligne.datesBadges.length > 0) {
-          parts.push(`Dates : ${ligne.datesBadges.join(', ')}`)
+          const singleDateAlreadyShown =
+            ligne.datesBadges.length === 1 &&
+            parts.some((p) => p.includes(ligne.datesBadges![0]))
+          if (!singleDateAlreadyShown) {
+            parts.push(`Dates : ${ligne.datesBadges.join(', ')}`)
+          }
         }
 
         const designation = parts.join('\n')

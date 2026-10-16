@@ -57,6 +57,17 @@ interface Remplacement {
   statut: 'en_attente' | 'accepte' | 'annule' | 'sans_remplacant'
 }
 
+interface PlanningRegular {
+  id: string
+  jourSemaine: string
+  heureDebut: string
+  heureFin: string
+  nomSession?: string | null
+  groupe?: { id: string; nom: string } | null
+}
+
+const JOURS_SEMAINE_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
+
 export default function PlanningTournantPage() {
   const router = useRouter()
   const { confirm } = useConfirmDialog()
@@ -73,6 +84,7 @@ export default function PlanningTournantPage() {
   const [demandesOuvertes, setDemandesOuvertes] = useState<Remplacement[]>([])
   const [mesAbsences, setMesAbsences] = useState<Remplacement[]>([])
   const [mesRemplacements, setMesRemplacements] = useState<Remplacement[]>([])
+  const [mesPlannings, setMesPlannings] = useState<PlanningRegular[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [loadingRemplacements, setLoadingRemplacements] = useState(true)
 
@@ -84,6 +96,7 @@ export default function PlanningTournantPage() {
   const [absenceDate, setAbsenceDate] = useState('')
   const [absenceHeureDebut, setAbsenceHeureDebut] = useState('18:00')
   const [absenceHeureFin, setAbsenceHeureFin] = useState('19:30')
+  const [absencePlanningId, setAbsencePlanningId] = useState<string>('')
   const [absenceMotif, setAbsenceMotif] = useState('')
   const [absenceCoachRemplacantId, setAbsenceCoachRemplacantId] = useState('')
   const [submittingAbsence, setSubmittingAbsence] = useState(false)
@@ -118,6 +131,7 @@ export default function PlanningTournantPage() {
         setDemandesOuvertes(data.demandesOuvertes || [])
         setMesAbsences(data.mesAbsences || [])
         setMesRemplacements(data.mesRemplacements || [])
+        setMesPlannings(data.mesPlannings || [])
       }
 
       if (resCoaches.ok) {
@@ -257,6 +271,75 @@ export default function PlanningTournantPage() {
     return (h || 0) * 60 + (m || 0)
   }
 
+  const getCreneauxForDate = useCallback(
+    (dateStr: string) => {
+      if (!dateStr) return []
+      const [y, m, d] = dateStr.split('-').map(Number)
+      if (!y || !m || !d) return []
+      const dateObj = new Date(y, m - 1, d, 12, 0, 0)
+      const jourNom = JOURS_SEMAINE_FR[dateObj.getDay()]
+
+      const rawDuJour = mesPlannings
+        .filter((p) => p.jourSemaine === jourNom)
+        .sort((a, b) => parseTimeToMin(a.heureDebut) - parseTimeToMin(b.heureDebut))
+
+      // Fusionner les groupes simultanés au même horaire
+      const merged: Array<{
+        id: string
+        heureDebut: string
+        heureFin: string
+        debutMin: number
+        finMin: number
+        label: string
+      }> = []
+
+      for (const p of rawDuJour) {
+        const deb = parseTimeToMin(p.heureDebut)
+        const fin = parseTimeToMin(p.heureFin)
+        const nom = p.nomSession || p.groupe?.nom || 'Cours'
+        const last = merged.length > 0 ? merged[merged.length - 1] : null
+
+        if (last && deb < last.finMin) {
+          if (fin > last.finMin) {
+            last.finMin = fin
+            last.heureFin = p.heureFin
+          }
+          if (!last.label.includes(nom)) {
+            last.label = `${last.label} · ${nom}`
+          }
+        } else {
+          merged.push({
+            id: p.id,
+            heureDebut: p.heureDebut,
+            heureFin: p.heureFin,
+            debutMin: deb,
+            finMin: fin,
+            label: nom,
+          })
+        }
+      }
+
+      return merged
+    },
+    [mesPlannings]
+  )
+
+  const creneauxDuJourSelectionne = useMemo(() => {
+    return getCreneauxForDate(absenceDate)
+  }, [absenceDate, getCreneauxForDate])
+
+  const handleAbsenceDateChange = (newDate: string) => {
+    setAbsenceDate(newDate)
+    const slots = getCreneauxForDate(newDate)
+    if (slots.length > 0) {
+      setAbsenceHeureDebut(slots[0].heureDebut)
+      setAbsenceHeureFin(slots[0].heureFin)
+      setAbsencePlanningId(slots[0].id)
+    } else {
+      setAbsencePlanningId('')
+    }
+  }
+
   const handleSubmitAbsence = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!absenceDate || !absenceHeureDebut || !absenceHeureFin) {
@@ -278,6 +361,7 @@ export default function PlanningTournantPage() {
           date: absenceDate,
           heureDebut: absenceHeureDebut,
           heureFin: absenceHeureFin,
+          planningId: absencePlanningId || undefined,
           motif: absenceMotif.trim() || undefined,
           coachRemplacantId: absenceCoachRemplacantId || undefined,
           sansRemplacant: false,
@@ -289,6 +373,7 @@ export default function PlanningTournantPage() {
       if (res.ok) {
         toast.success(data.message || 'Absence enregistrée avec succès')
         setAbsenceDate('')
+        setAbsencePlanningId('')
         setAbsenceMotif('')
         setAbsenceCoachRemplacantId('')
         setShowDeclareForm(false)
@@ -420,7 +505,7 @@ export default function PlanningTournantPage() {
                     type="date"
                     required
                     value={absenceDate}
-                    onChange={(e) => setAbsenceDate(e.target.value)}
+                    onChange={(e) => handleAbsenceDateChange(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
                   />
                 </div>
@@ -431,7 +516,10 @@ export default function PlanningTournantPage() {
                     type="time"
                     required
                     value={absenceHeureDebut}
-                    onChange={(e) => setAbsenceHeureDebut(e.target.value)}
+                    onChange={(e) => {
+                      setAbsenceHeureDebut(e.target.value)
+                      setAbsencePlanningId('')
+                    }}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
                   />
                 </div>
@@ -442,18 +530,80 @@ export default function PlanningTournantPage() {
                     type="time"
                     required
                     value={absenceHeureFin}
-                    onChange={(e) => setAbsenceHeureFin(e.target.value)}
+                    onChange={(e) => {
+                      setAbsenceHeureFin(e.target.value)
+                      setAbsencePlanningId('')
+                    }}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
                   />
                 </div>
               </div>
 
-              {absenceHeureDebut && absenceHeureFin && parseTimeToMin(absenceHeureFin) > parseTimeToMin(absenceHeureDebut) && (
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-900 bg-amber-50/70 border border-amber-200/70 px-3 py-2 rounded-xl">
-                  <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                  <span>
-                    Durée de l&apos;absence : {Math.max(0, parseTimeToMin(absenceHeureFin) - parseTimeToMin(absenceHeureDebut))} minutes
-                  </span>
+              {/* SÉLECTEUR INTELLIGENT DES CRÉNEAUX DU JOUR */}
+              {absenceDate && (
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                  {creneauxDuJourSelectionne.length > 0 ? (
+                    <>
+                      <p className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-cyan-600 shrink-0" />
+                        <span>Vos cours prévus ce jour (cliquez pour sélectionner) :</span>
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {creneauxDuJourSelectionne.map((slot) => {
+                          const isSelected =
+                            absenceHeureDebut === slot.heureDebut && absenceHeureFin === slot.heureFin
+                          return (
+                            <button
+                              key={slot.id}
+                              type="button"
+                              onClick={() => {
+                                setAbsenceHeureDebut(slot.heureDebut)
+                                setAbsenceHeureFin(slot.heureFin)
+                                setAbsencePlanningId(slot.id)
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                                isSelected
+                                  ? 'bg-cyan-600 text-white border-cyan-600 shadow-2xs'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:border-cyan-400 hover:text-cyan-900'
+                              }`}
+                            >
+                              {slot.heureDebut} – {slot.heureFin} · {slot.label}
+                            </button>
+                          )
+                        })}
+
+                        {creneauxDuJourSelectionne.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const first = creneauxDuJourSelectionne[0]
+                              const last = creneauxDuJourSelectionne[creneauxDuJourSelectionne.length - 1]
+                              setAbsenceHeureDebut(first.heureDebut)
+                              setAbsenceHeureFin(last.heureFin)
+                              setAbsencePlanningId('')
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                              absenceHeureDebut === creneauxDuJourSelectionne[0].heureDebut &&
+                              absenceHeureFin ===
+                                creneauxDuJourSelectionne[creneauxDuJourSelectionne.length - 1].heureFin
+                                ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'
+                            }`}
+                          >
+                            Tous mes cours ({creneauxDuJourSelectionne[0].heureDebut} –{' '}
+                            {creneauxDuJourSelectionne[creneauxDuJourSelectionne.length - 1].heureFin})
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs font-semibold text-amber-800">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>
+                        Aucun cours régulier n&apos;est planifié pour vous à cette date. Vérifiez le jour choisi.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 

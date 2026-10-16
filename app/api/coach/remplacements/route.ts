@@ -30,54 +30,73 @@ export async function GET() {
 
     const currentCoachId = session.coachId
 
-    // A) Demandes ouvertes (toutes les demandes 'en_attente' où le coach n'est pas le demandeur)
-    const demandesOuvertes = await prisma.remplacement.findMany({
-      where: {
-        actif: true,
-        statut: 'en_attente',
-        coachRemplaceId: { not: currentCoachId },
-        date: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
-      },
-      include: {
-        coachRemplace: {
-          select: { id: true, prenom: true, nom: true },
+    const [demandesOuvertes, mesAbsences, mesRemplacements, mesPlannings] = await Promise.all([
+      // A) Demandes ouvertes (toutes les demandes 'en_attente' où le coach n'est pas le demandeur)
+      prisma.remplacement.findMany({
+        where: {
+          actif: true,
+          statut: 'en_attente',
+          coachRemplaceId: { not: currentCoachId },
+          date: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
         },
-      },
-      orderBy: { date: 'asc' },
-    })
+        include: {
+          coachRemplace: {
+            select: { id: true, prenom: true, nom: true },
+          },
+        },
+        orderBy: { date: 'asc' },
+      }),
 
-    // B) Mes absences déclarées (où je suis le coach remplacé)
-    const mesAbsences = await prisma.remplacement.findMany({
-      where: {
-        actif: true,
-        coachRemplaceId: currentCoachId,
-      },
-      include: {
-        coachRemplacant: {
-          select: { id: true, prenom: true, nom: true },
+      // B) Mes absences déclarées (où je suis le coach remplacé)
+      prisma.remplacement.findMany({
+        where: {
+          actif: true,
+          coachRemplaceId: currentCoachId,
         },
-      },
-      orderBy: { date: 'desc' },
-    })
+        include: {
+          coachRemplacant: {
+            select: { id: true, prenom: true, nom: true },
+          },
+        },
+        orderBy: { date: 'desc' },
+      }),
 
-    // C) Mes remplacements effectués/acceptés (où je suis le coach remplaçant)
-    const mesRemplacements = await prisma.remplacement.findMany({
-      where: {
-        actif: true,
-        coachRemplacantId: currentCoachId,
-      },
-      include: {
-        coachRemplace: {
-          select: { id: true, prenom: true, nom: true },
+      // C) Mes remplacements effectués/acceptés (où je suis le coach remplaçant)
+      prisma.remplacement.findMany({
+        where: {
+          actif: true,
+          coachRemplacantId: currentCoachId,
         },
-      },
-      orderBy: { date: 'desc' },
-    })
+        include: {
+          coachRemplace: {
+            select: { id: true, prenom: true, nom: true },
+          },
+        },
+        orderBy: { date: 'desc' },
+      }),
+
+      // D) Plannings réguliers actifs du coach pour le sélecteur intelligent d'absence
+      prisma.planning.findMany({
+        where: {
+          actif: true,
+          coachs: {
+            some: { coachId: currentCoachId },
+          },
+        },
+        include: {
+          groupe: {
+            select: { id: true, nom: true },
+          },
+        },
+        orderBy: [{ heureDebut: 'asc' }],
+      }),
+    ])
 
     return NextResponse.json({
       demandesOuvertes,
       mesAbsences,
       mesRemplacements,
+      mesPlannings,
     })
   } catch (error) {
     coachLogger.error('Erreur lors de la récupération des remplacements coach', error)

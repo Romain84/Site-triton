@@ -202,7 +202,7 @@ export async function PATCH(
         dateGeneration: statut === 'generee' && !factureExistante.dateGeneration ? dateNow : undefined,
         dateEnvoi: statut === 'envoyee' && !factureExistante.dateEnvoi ? dateNow : undefined,
         datePaiement: statut === 'payee' && !factureExistante.datePaiement ? dateNow : undefined,
-        pdfPath: pdfPath || undefined,
+        pdfPath: statut === 'brouillon' ? null : (pdfPath || undefined),
       },
       include: {
         coach: {

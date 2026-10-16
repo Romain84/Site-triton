@@ -921,6 +921,65 @@ describe('Lot 7 — Lignes de facture lisibles et structurées (3 niveaux, absen
     expect(ligneTournant.datesBadges).toEqual(['03/10'])
   })
 
+  it('fusionne les créneaux tournants récurrents identiques (même titre et horaires) avec badges de dates et exclut les jours de fermeture piscine (seanceAnnulee)', async () => {
+    vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.planning.findMany).mockResolvedValue([])
+    vi.mocked(prisma.remplacement.findMany).mockResolvedValue([])
+    // Fermeture exceptionnelle de la piscine le samedi 17/10/2026
+    vi.mocked(prisma.seanceAnnulee.findMany).mockResolvedValue([
+      {
+        id: 'sa-samedi-17',
+        date: new Date('2026-10-17T12:00:00Z'),
+        motif: 'Compétition bassin fermé',
+        planningId: null,
+        groupeId: null,
+        coachId: null,
+      } as any,
+    ])
+    vi.mocked(prisma.evenementTournant.findMany).mockResolvedValue([
+      {
+        id: 'evt-tournant-1',
+        coachId: 'coach-1',
+        titre: 'ADULTES SAMEDI',
+        date: new Date('2026-10-03T09:00:00Z'),
+        heureDebut: '11:00',
+        heureFin: '12:30',
+        actif: true,
+      } as any,
+      {
+        id: 'evt-tournant-2',
+        coachId: 'coach-1',
+        titre: 'ADULTES SAMEDI',
+        date: new Date('2026-10-10T09:00:00Z'),
+        heureDebut: '11:00',
+        heureFin: '12:30',
+        actif: true,
+      } as any,
+      {
+        id: 'evt-tournant-3-annule',
+        coachId: 'coach-1',
+        titre: 'ADULTES SAMEDI',
+        date: new Date('2026-10-17T09:00:00Z'),
+        heureDebut: '11:00',
+        heureFin: '12:30',
+        actif: true,
+      } as any,
+    ])
+
+    const res = await calculerFactureCoach('coach-1', 10, 2026)
+
+    // Les 2 samedis maintenus (03/10 et 10/10) sont fusionnés en 1 seule ligne, et le 17/10 annulé est exclu
+    expect(res.lignesPlanningTournant).toHaveLength(1)
+    const ligne = res.lignesPlanningTournant[0]
+    expect(ligne.titre).toBe('ADULTES SAMEDI')
+    expect(ligne.sousTitre).toBe('Samedi · 11:00 – 12:30')
+    expect(ligne.datesBadges).toEqual(['03/10', '10/10'])
+    expect(ligne.nbSeances).toBe(2)
+    expect(ligne.heures).toBe(3)
+    expect(ligne.montant).toBe(90)
+    expect(ligne.detailCalculDuree).toBe('2 × 1h30 = 3h00')
+  })
+
   it('génère deux lignes distinctes lorsqu un remplacement couvre deux créneaux consécutifs du coach absent (ex: 19h30-21h30 pour 2x1h)', async () => {
     vi.mocked(prisma.factureCoach.findUnique).mockResolvedValue(null)
     vi.mocked(prisma.evenementTournant.findMany).mockResolvedValue([])
