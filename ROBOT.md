@@ -117,7 +117,9 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
   - **Inviolabilité stricte de l'existant** : Ne JAMAIS modifier, renommer ou écraser le numéro d'une facture déjà finalisée (`generee`, `envoyee`, `payee`). La facture `F-TCC-2026-0001` reste 100% intacte.
 - **Épuration visuelle des lignes de facture (UI et PDF)** :
   - **Séances régulières** : Le sous-titre affiche uniquement le jour et les horaires (ex. `Vendredi 17:00 – 18:00`). Les bassins physiques et lignes d'eau (ex. `Grand Bassin - Ligne 1, Ligne 2`) sont strictement exclus car superflus.
-  - **Créneaux tournants** : Le sous-titre affiche uniquement la date et les horaires (ex. `03/10/2026 · 11:00 – 12:30`). Le lieu (ex. `Piscine de Cavaillon`) est strictement exclu.
+  - **Créneaux tournants** : Le lieu (ex. `Piscine de Cavaillon`) est strictement exclu. Si une permanence est unique sur le mois (`nbSeances === 1`), le sous-titre affiche la date et les horaires (`03/10/2026 · 11:00 – 12:30`). Si elle se répète plusieurs fois aux mêmes horaires (`nbSeances > 1`), les séances sont fusionnées sur une seule ligne avec sous-titre `${Jour} · ${heureDebut} – ${heureFin}` et la liste des dates dans `datesBadges`.
+  - **Absence de doublon de date dans le PDF** : Lorsqu'une ligne n'a qu'une seule date dans `datesBadges` et que cette date est déjà présente dans le `sousTitre`, le PDF n'ajoute pas de mention `Dates : JJ/MM` redondante.
+  - **Compteur de section** : Le badge numérique d'en-tête de section affiche toujours le nombre de lignes affichées (`sec.lignes.length`).
 - **Règle d'arrondi des heures** : Arrondi strict à la demi-heure supérieure (`Math.ceil(minutes / 30) * 0.5`) sur tous les créneaux (fixes, remplacements, absences, tournants).
 - **Date de rentrée sportive** :
   - Les séances fixes (`planningsFixe`) antérieures à la date officielle de reprise des cours (`settings.debutCoursNormal`, ex: 14 Septembre 2026) ne sont JAMAIS facturées.
@@ -126,7 +128,7 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
   - Les créneaux de planning avec `semaineImpaire: true` ne sont comptabilisés que les semaines calendaires impaires correspondantes.
 - **Vacances & Séances Annulées** :
   - Les vacances scolaires avec `impacteFacturation: true` suspendent automatiquement les heures de cours régulières.
-  - Les séances ponctuellement déclarées comme annulées (`seanceAnnulee`) sont soustraites automatiquement des heures travaillées.
+  - Les séances ponctuellement déclarées comme annulées (`seanceAnnulee`) sont soustraites automatiquement des heures travaillées (cours réguliers ET permanences du planning tournant).
 - **Génération & Archivage PDF** :
   - Génération de factures PDF certifiées avec récapitulatif détaillé pour la comptabilité et les déclarations auto-entrepreneurs des éducateurs.
 - **Workflow & Rôle Admin** :
@@ -134,13 +136,16 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
   - **Génération et transmission en 1 clic** : Le bouton "Générer la facture" génère le PDF ET transmet directement la facture au club au statut `envoyee`. Il n'y a pas de bouton "Envoyer" séparé.
   - **Génération directe par l'Admin** : Depuis Admin > Factures (onglet *"⚡ Factures en cours & Génération"*), l'administrateur peut générer la facture à la place de chaque coach en 1 clic (statut `envoyee` direct avec transmission e-mail).
   - **Notification e-mail au club (`emailClub`)** : Reçue **UNIQUEMENT** lorsque la facture passe au statut **"Envoyée" (`envoyee`)** lors de cette génération directe. **AUCUN e-mail** en "Brouillon".
-  - **Verrouillage post-envoi** : Dès que le statut est `envoyee`, la facture et ses séances sont verrouillées. Seul l'admin dispose du bouton "Déverrouiller" pour la repasser en brouillon si besoin.
+  - **Verrouillage post-envoi & régénération PDF** : Dès que le statut est `envoyee` ou `payee`, la facture est verrouillée et son PDF archivé (`pdfPath`) fait foi. Si l'admin déverrouille la facture (retour en `brouillon`), `pdfPath` est remis à `null` afin que toute génération ou aperçu PDF reflète dynamiquement les dernières modifications.
 
 ### C. Remplacements, Vacations Tournantes & Prestations Manuelles
 - **Onglet dédié en Admin** : **"Remplacements & Prestations"** (`/admin/remplacements`).
 - **Prestations manuelles** : L'admin peut ajouter des vacations manuelles pour tout coach sélectionné (heures ponctuelles, indemnités, forfaits spécifiques). Elles s'intègrent instantanément dans la facture mensuelle en cours.
 - **Déclaration d'absence & Remplacement** :
+  - **Source unique de vérité (`Remplacement`)** : Les absences et remplacements sont calculés exclusivement à la volée depuis la table `Remplacement`. Aucune ligne de type `'remplacement'` ou `'absence'` ne doit être stockée dans `LigneFactureCoach`.
+  - **Filtrage strict sur les jours de cours effectifs** : Une absence déclarée par un coach ne s'applique que sur les jours de la semaine et plages horaires où ce coach possède réellement un cours régulier (`planningsFixe`).
   - L'absence d'un coach déduit automatiquement les heures de sa facture et crédite le coach remplaçant qui a accepté la vacation.
+  - **Fusion des remplacements récurrents** : Dans `REMPLACEMENTS EFFECTUÉS`, plusieurs remplacements portant sur le même cours, le même coach remplacé, le même jour de semaine et les mêmes horaires sont fusionnés sur une seule ligne avec l'ensemble des dates (`datesBadges`) et le détail du calcul (`2 × 1h00 = 2h00`).
   - **Règle de non-cumul sur créneaux identiques multi-groupes** : Lorsqu'un remplacement couvre plusieurs groupes sur une même plage horaire et une même date (ex. 18:00 – 19:15 pour Benjamins 1, Benjamins 2 et Adultes), la vacation n'est comptabilisée qu'une seule fois dans la facturation (durée réelle du créneau = 1h15, et non multipliée par le nombre de groupes).
   - **Durée réelle exacte** : La durée facturée d'un remplacement correspond strictement à l'écart horaire début/fin (ex. 19:30 – 21:30 = 2h00).
 - **Vacations tournantes du samedi (`EvenementTournant`)** :
@@ -238,22 +243,23 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
 # Développement local
 npm run dev
 
-# Tests automatisés
-npx vitest run
+# Tests automatisés & vérification TypeScript (utiliser npx.cmd sous PowerShell Windows)
+npx.cmd vitest run
+npx.cmd tsc --noEmit
 
 # Vérification du typage & build de production
-npm run build
+npm.cmd run build
 
 # Synchronisation du schéma Prisma vers PostgreSQL
-npx prisma db push
+npx.cmd prisma db push
 
 # Accès à l'interface graphique de la base de données
-npx prisma studio
+npx.cmd prisma studio
 
 # Déploiement VPS (sur 146.59.239.75, connexion: ssh debian@146.59.239.75)
+sudo docker exec triton-postgres-prod pg_dumpall -U postgres > /root/backups/pre_deploy_$(date +%Y%m%d_%H%M%S).sql
 sudo git -C /root/docker/site_triton pull origin main
-sudo docker compose -f /root/docker/site_triton/docker-compose.vps.yml build web
-sudo docker compose -f /root/docker/site_triton/docker-compose.vps.yml up -d web
+sudo docker compose -f /root/docker/site_triton/docker-compose.vps.yml up -d --build web
 
 # Maintenance disque VPS (en cas de saturation d'espace)
 sudo docker builder prune -af
