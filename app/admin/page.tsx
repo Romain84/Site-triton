@@ -402,7 +402,7 @@ export default function AdminPage() {
         )}
 
         {/* MAIN PANEL CONTENT */}
-        <main className="flex-1 min-h-screen p-6 md:p-10 max-w-6xl mx-auto w-full">
+        <main className="flex-1 min-h-screen p-4 sm:p-6 lg:p-8 w-full">
           <Suspense fallback={<TabLoading />}>
             {activeTab === 'dashboard' && <DashboardTab currentUser={currentUser} />}
             {activeTab === 'visiteurs' && <VisiteursTab />}

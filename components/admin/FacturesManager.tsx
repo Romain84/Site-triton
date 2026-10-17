@@ -762,7 +762,7 @@ export default function FacturesManager() {
   }
 
   return (
-    <div>
+    <div className="w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h2 className="text-2xl font-bold flex items-center gap-2">
           Gestion des Factures
@@ -1313,15 +1313,15 @@ export default function FacturesManager() {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-600">
                     <tr>
-                      <th className="py-3.5 px-4">Coach</th>
-                      <th className="py-3.5 px-4">Statut ce mois</th>
-                      <th className="py-3.5 px-4 text-right">Fixes</th>
-                      <th className="py-3.5 px-4 text-right">Rempl.</th>
-                      <th className="py-3.5 px-4 text-right">Absences</th>
-                      <th className="py-3.5 px-4 text-right">Total heures</th>
-                      <th className="py-3.5 px-4 text-right">Total prévisionnel</th>
-                      <th className="py-3.5 px-4 text-center">Contrôle &amp; Alertes</th>
-                      <th className="py-3.5 px-4 text-center">Actions</th>
+                      <th className="py-3.5 px-3 sm:px-4">Coach</th>
+                      <th className="py-3.5 px-3 sm:px-4 whitespace-nowrap">Statut</th>
+                      <th className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">Fixes</th>
+                      <th className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">Rempl.</th>
+                      <th className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">Absences</th>
+                      <th className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">Total h</th>
+                      <th className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">Total prévisionnel</th>
+                      <th className="py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">Contrôle &amp; Alertes</th>
+                      <th className="py-3.5 px-3 sm:px-4 text-center whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1329,23 +1329,23 @@ export default function FacturesManager() {
                       const statutStyle = statutsLabels[c.statut] || statutsLabels.brouillon
                       return (
                         <tr key={c.coach.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3.5 px-4">
-                            <div className="flex items-center gap-3">
+                          <td className="py-3.5 px-3 sm:px-4">
+                            <div className="flex items-center gap-2.5 sm:gap-3">
                               <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm shrink-0">
                                 {c.coach.prenom?.[0] || 'C'}
                               </div>
-                              <div>
-                                <p className="font-bold text-slate-900">
+                              <div className="min-w-0">
+                                <p className="font-bold text-slate-900 truncate">
                                   {c.coach.prenom} {c.coach.nom || ''}
                                 </p>
-                                <p className="text-xs text-slate-500">
+                                <p className="text-xs text-slate-500 truncate max-w-[150px] lg:max-w-[220px]" title={c.coach.email || ''}>
                                   {c.coach.email || 'Sans email'}
                                 </p>
                               </div>
                             </div>
                           </td>
 
-                          <td className="py-3.5 px-4">
+                          <td className="py-3.5 px-3 sm:px-4 whitespace-nowrap">
                             <div className="flex flex-col items-start gap-1">
                               <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statutStyle.color}`}>
                                 {statutStyle.label}
@@ -1358,11 +1358,11 @@ export default function FacturesManager() {
                             </div>
                           </td>
 
-                          <td className="py-3.5 px-4 text-right text-slate-700 font-medium">
+                          <td className="py-3.5 px-3 sm:px-4 text-right text-slate-700 font-medium whitespace-nowrap">
                             {formatHeuresEnHM(c.heuresFixes)}
                           </td>
 
-                          <td className="py-3.5 px-4 text-right">
+                          <td className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">
                             {c.heuresRemplacements > 0 ? (
                               <span className="text-emerald-700 font-semibold">
                                 +{formatHeuresEnHM(c.heuresRemplacements)}
@@ -1372,7 +1372,7 @@ export default function FacturesManager() {
                             )}
                           </td>
 
-                          <td className="py-3.5 px-4 text-right">
+                          <td className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">
                             {c.heuresAbsences > 0 ? (
                               <span className="text-red-700 font-semibold">
                                 -{formatHeuresEnHM(c.heuresAbsences)}
@@ -1382,7 +1382,7 @@ export default function FacturesManager() {
                             )}
                           </td>
 
-                          <td className="py-3.5 px-4 text-right">
+                          <td className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">
                             <span className="font-bold text-slate-900">
                               {formatHeuresEnHM(c.totalHeures)}
                             </span>
@@ -1391,13 +1391,13 @@ export default function FacturesManager() {
                             </span>
                           </td>
 
-                          <td className="py-3.5 px-4 text-right">
+                          <td className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">
                             <span className="text-base font-black text-primary">
                               {c.totalMontant.toFixed(2)} €
                             </span>
                           </td>
 
-                          <td className="py-3.5 px-4 text-center">
+                          <td className="py-3.5 px-3 sm:px-4 text-center">
                             {c.nbAnomalies && c.nbAnomalies > 0 ? (
                               <button
                                 type="button"
@@ -1574,7 +1574,7 @@ export default function FacturesManager() {
           />
 
           {/* Contenu du Drawer */}
-          <div className="relative w-full max-w-[550px] h-full bg-white shadow-2xl flex flex-col z-50 animate-slide-in overflow-hidden border-l border-slate-100">
+          <div className="relative w-full max-w-2xl sm:max-w-3xl h-full bg-white shadow-2xl flex flex-col z-50 animate-slide-in overflow-hidden border-l border-slate-100">
             {/* Header */}
             <div className="px-6 py-5 bg-gradient-to-r from-sky-50 to-white border-b border-slate-100 flex items-center justify-between">
               <div>
@@ -1919,7 +1919,7 @@ export default function FacturesManager() {
           />
 
           {/* Contenu du Drawer */}
-          <div className="relative w-full max-w-[550px] h-full bg-white shadow-2xl flex flex-col z-50 animate-slide-in overflow-hidden border-l border-slate-100">
+          <div className="relative w-full max-w-2xl sm:max-w-3xl h-full bg-white shadow-2xl flex flex-col z-50 animate-slide-in overflow-hidden border-l border-slate-100">
             {/* Header */}
             <div className="px-6 py-5 bg-gradient-to-r from-sky-50 via-white to-sky-50/50 border-b border-slate-100 flex items-center justify-between">
               <div>
