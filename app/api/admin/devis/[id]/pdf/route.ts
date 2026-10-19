@@ -30,17 +30,21 @@ export async function GET(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Devis introuvable' }, { status: 404 })
     }
 
-    let pdfBuffer: Buffer
+    let pdfBuffer: Buffer | null = null
 
-    // Vérifier si le fichier existe déjà sur le disque
     const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'devis')
     const fileName = `devis-${devis.id}.pdf`
     const filePath = path.join(uploadDir, fileName)
 
-    try {
-      pdfBuffer = await readFile(filePath)
-    } catch {
-      // Générer à la volée si inexistant
+    if (devis.statut !== 'brouillon') {
+      try {
+        pdfBuffer = await readFile(filePath)
+      } catch {
+        pdfBuffer = null
+      }
+    }
+
+    if (!pdfBuffer) {
       pdfBuffer = genererDevisPDF({
         numero: devis.numero,
         titre: devis.titre,
@@ -54,7 +58,7 @@ export async function GET(request: NextRequest, { params }: Params) {
         totalTVA: devis.totalTVA,
         totalTTC: devis.totalTTC,
         notes: devis.notes,
-        lignes: devis.lignes.map(l => ({
+        lignes: devis.lignes.map((l: any) => ({
           description: l.description,
           quantite: l.quantite,
           prixUnitaire: l.prixUnitaire,

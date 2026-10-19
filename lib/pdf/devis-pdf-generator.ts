@@ -206,7 +206,7 @@ export function genererDevisPDF(data: DevisPDFData): Buffer {
   doc.setFontSize(7.5)
   doc.setTextColor(100, 116, 139)
   doc.text(
-    'Règlement par virement bancaire ou chèque à l\'ordre du Triton Club Cavaillon.',
+    'Règlement par virement bancaire (coordonnées bancaires ci-dessous).',
     marginX,
     currentY + 14,
     { maxWidth: 90 }
@@ -266,19 +266,14 @@ export function genererDevisPDF(data: DevisPDFData): Buffer {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
   doc.setTextColor(71, 85, 105)
-  doc.text('Banque : Crédit Mutuel (CCM Cavaillon)', pageWidth - marginX - 78, currentY + 10)
-  doc.text('Titulaire : TRITON CLUB CAVAILLON', pageWidth - marginX - 78, currentY + 14)
+  doc.text('Banque : Crédit Mutuel (CCM Cavaillon)', pageWidth - marginX - 78, currentY + 10.5)
+  doc.text('Titulaire : TRITON CLUB CAVAILLON', pageWidth - marginX - 78, currentY + 15)
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
   doc.setTextColor(15, 23, 42)
-  doc.text('IBAN : FR76 1027 8065 1400 0210 4070 102', pageWidth - marginX - 78, currentY + 18.5)
-  doc.text('BIC : CMCIFR2A', pageWidth - marginX - 78, currentY + 23)
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(6.5)
-  doc.setTextColor(100, 116, 139)
-  doc.text('Ou par chèque à l\'ordre du club', pageWidth - marginX - 78, currentY + 28)
+  doc.text('IBAN : FR76 1027 8065 1400 0210 4070 102', pageWidth - marginX - 78, currentY + 20)
+  doc.text('BIC : CMCIFR2A', pageWidth - marginX - 78, currentY + 25)
 
   // 8. Pied de page discret
   doc.setFont('helvetica', 'normal')

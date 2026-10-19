@@ -1101,7 +1101,6 @@ export default function DonsManager({ currentUser }: DonsManagerProps) {
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200/85 rounded-lg outline-none text-slate-700 font-semibold cursor-pointer text-xs"
                     >
                       <option value="virement">Virement</option>
-                      <option value="cheque">Chèque</option>
                       <option value="numeraire">Espèces</option>
                       <option value="nature">Don en nature</option>
                       <option value="abandon_frais">Abandon de frais bénévolat</option>

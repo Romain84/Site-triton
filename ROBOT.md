@@ -184,7 +184,7 @@ Toute édition de devis, facture, document officiel, e-mail, pied de page ou men
 
 ### G. Gestion des Devis & Recherche Entreprises (`/admin/devis`)
 - **Module Devis Formations & Conventions** : Référence séquentielle `DEV-AAAA-XXXX` (SSA, BNSSA, entreprises).
-- **Mentions légales & Conformité** : Exonération de TVA (art. 261-7-1° du CGI), modalités de règlement (virement / chèque), signature du club et RIB officiel Crédit Mutuel intégré au PDF.
+- **Mentions légales & Conformité** : Exonération de TVA (art. 261-7-1° du CGI), modalités de règlement (virement bancaire uniquement — AUCUN chèque accepté au club), signature du club et RIB officiel Crédit Mutuel intégré au PDF.
 - **Connecteur API Recherche Entreprises** :
   - Intégration de l'API officielle `https://recherche-entreprises.api.gouv.fr` pour l'auto-complétion instantanée des fiches entreprises (SIREN/SIRET, raison sociale, adresse légale) avec cache mémoire de 5 minutes.
 
