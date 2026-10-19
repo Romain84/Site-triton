@@ -1,5 +1,17 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { genererDevisPDF, DevisPDFData } from '@/lib/pdf/devis-pdf-generator'
+import { genererNumeroDevisSequentiel } from '@/lib/devis-utils'
+import { prisma } from '@/lib/prisma'
+
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    devis: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      count: vi.fn(),
+    },
+  },
+}))
 
 describe('Génération et calculs de Devis', () => {
   it('calcule correctement les totaux pour le pack SSA (750 €)', () => {
@@ -78,3 +90,42 @@ describe('Génération et calculs de Devis', () => {
     expect(header).toBe('%PDF-')
   })
 })
+
+describe('Numérotation séquentielle des devis (genererNumeroDevisSequentiel)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('génère DEV-2026-0001 quand aucun devis n\'existe pour l\'année', async () => {
+    vi.mocked(prisma.devis.findMany).mockResolvedValueOnce([])
+    vi.mocked(prisma.devis.findUnique).mockResolvedValueOnce(null)
+
+    const num = await genererNumeroDevisSequentiel(2026)
+    expect(num).toBe('DEV-2026-0001')
+  })
+
+  it('génère DEV-2026-0003 si seul DEV-2026-0002 existe en base (cas après suppression de 0001)', async () => {
+    vi.mocked(prisma.devis.findMany).mockResolvedValueOnce([
+      { numero: 'DEV-2026-0002' } as any,
+    ])
+    vi.mocked(prisma.devis.findUnique).mockResolvedValueOnce(null)
+
+    const num = await genererNumeroDevisSequentiel(2026)
+    expect(num).toBe('DEV-2026-0003')
+  })
+
+  it('gère les collisions concurrentes via la boucle de vérification', async () => {
+    vi.mocked(prisma.devis.findMany).mockResolvedValueOnce([
+      { numero: 'DEV-2026-0001' } as any,
+      { numero: 'DEV-2026-0002' } as any,
+    ])
+    // Simuler que DEV-2026-0003 a été créé au même moment par un autre processus
+    vi.mocked(prisma.devis.findUnique)
+      .mockResolvedValueOnce({ id: 'devis-conflict', numero: 'DEV-2026-0003' } as any)
+      .mockResolvedValueOnce(null)
+
+    const num = await genererNumeroDevisSequentiel(2026)
+    expect(num).toBe('DEV-2026-0004')
+  })
+})
+

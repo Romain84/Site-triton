@@ -102,7 +102,6 @@ export async function POST(request: NextRequest) {
 
     const dateEm = dateEmission ? new Date(dateEmission) : new Date()
     const annee = dateEm.getFullYear()
-    const numero = await genererNumeroDevisSequentiel(annee)
 
     // Calcul de la date de validité (+30 jours par défaut)
     const dateVal = dateValidite
@@ -129,32 +128,49 @@ export async function POST(request: NextRequest) {
     const totalTVA = 0 // Exonéré
     const totalTTC = totalHT
 
-    // Créer le devis en base avec ses lignes
-    const devis = await prisma.devis.create({
-      data: {
-        numero,
-        titre: titre.trim(),
-        clientNom: clientNom.trim(),
-        clientEmail: clientEmail?.trim() || null,
-        clientTelephone: clientTelephone?.trim() || null,
-        clientAdresse: clientAdresse?.trim() || null,
-        dateEmission: dateEm,
-        dateValidite: dateVal,
-        notes: notes?.trim() || null,
-        totalHT,
-        totalTVA,
-        totalTTC,
-        statut: 'brouillon',
-        lignes: {
-          create: processedLignes,
-        },
-      },
-      include: {
-        lignes: {
-          orderBy: { ordre: 'asc' },
-        },
-      },
-    })
+    // Créer le devis en base avec ses lignes (avec retry automatique anti-collision sur le numéro)
+    let devis: any = null
+    let attempts = 0
+    while (!devis && attempts < 3) {
+      attempts++
+      const numero = await genererNumeroDevisSequentiel(annee)
+      try {
+        devis = await prisma.devis.create({
+          data: {
+            numero,
+            titre: titre.trim(),
+            clientNom: clientNom.trim(),
+            clientEmail: clientEmail?.trim() || null,
+            clientTelephone: clientTelephone?.trim() || null,
+            clientAdresse: clientAdresse?.trim() || null,
+            dateEmission: dateEm,
+            dateValidite: dateVal,
+            notes: notes?.trim() || null,
+            totalHT,
+            totalTVA,
+            totalTTC,
+            statut: 'brouillon',
+            lignes: {
+              create: processedLignes,
+            },
+          },
+          include: {
+            lignes: {
+              orderBy: { ordre: 'asc' },
+            },
+          },
+        })
+      } catch (err: any) {
+        if (err?.code === 'P2002' && attempts < 3) {
+          continue
+        }
+        throw err
+      }
+    }
+
+    if (!devis) {
+      throw new Error('Impossible de générer un devis avec un numéro unique')
+    }
 
     // Générer et archiver le PDF
     try {
@@ -171,7 +187,7 @@ export async function POST(request: NextRequest) {
         totalTVA: devis.totalTVA,
         totalTTC: devis.totalTTC,
         notes: devis.notes,
-        lignes: devis.lignes.map(l => ({
+        lignes: devis.lignes.map((l: any) => ({
           description: l.description,
           quantite: l.quantite,
           prixUnitaire: l.prixUnitaire,
