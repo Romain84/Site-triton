@@ -26,6 +26,9 @@ export async function GET(
   try {
     const auth = await requireAdmin()
     if (!auth.ok) return auth.response
+    if (auth.session.role !== 'admin') {
+      return apiError('Accès réservé aux administrateurs principaux', 403)
+    }
 
     const { filename } = await params
 

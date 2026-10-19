@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
     const isImageMime = file.type ? file.type.startsWith('image/') && file.type !== 'image/svg+xml' : false
     const isImageExt = validExtensions.includes(fileExtLower)
 
-    // Validation du type (les SVGs sont exclus pour prévenir les attaques XSS stocké)
-    if (!isImageMime && !isImageExt) {
+    // Validation stricte du type (les SVGs sont exclus pour prévenir les attaques XSS stocké)
+    if (!isImageMime || !isImageExt) {
       logAdminAudit({
         action: 'upload.logo.error',
         actorId: session.userId,
@@ -75,17 +75,21 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer()
     let buffer = Buffer.from(bytes)
-    let fileExt = path.extname(file.name).toLowerCase()
-    let originalName = path.basename(file.name, fileExt).replace(/[^a-zA-Z0-9.-]/g, '_')
+    const rawExt = path.extname(file.name).toLowerCase()
+    const originalName = path.basename(file.name, rawExt).replace(/[^a-zA-Z0-9.-]/g, '_')
+    const fileExt = '.webp'
 
     // Convertir en WebP (conserve la transparence pour les logos PNG)
     try {
       buffer = await sharp(buffer)
         .webp({ quality: 90, alphaQuality: 100 })
         .toBuffer()
-      fileExt = '.webp'
     } catch (err) {
-      uploadLogger.warn('Erreur lors de la conversion sharp en WebP, utilisation du buffer d\'origine', err)
+      uploadLogger.warn('Fichier logo invalide ou non décodable par sharp', err)
+      return NextResponse.json(
+        { error: 'Le fichier fourni n\'est pas une image valide ou est corrompu.' },
+        { status: 400 }
+      )
     }
 
     const fileName = `logo-${Date.now()}-${originalName}${fileExt}`

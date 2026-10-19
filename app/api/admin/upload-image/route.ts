@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
     const isImageMime = file.type ? file.type.startsWith('image/') && file.type !== 'image/svg+xml' : false
     const isImageExt = validExtensions.includes(fileExtLower)
 
-    // Validation du type
-    if (!isImageMime && !isImageExt) {
+    // Validation stricte du type (MIME et extension requis)
+    if (!isImageMime || !isImageExt) {
       logAdminAudit({
         action: 'upload.image.error',
         actorId: session.userId,
@@ -78,15 +78,18 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer()
     let buffer = Buffer.from(bytes)
-    let fileExt = '.webp'
+    const fileExt = '.webp'
 
     try {
       buffer = await sharp(buffer)
         .webp({ quality: 88, alphaQuality: 100 })
         .toBuffer()
     } catch (err) {
-      uploadLogger.warn('Erreur lors de la conversion sharp en WebP, conservation de l\'extension d\'origine', err)
-      fileExt = path.extname(file.name).toLowerCase() || '.png'
+      uploadLogger.warn('Fichier image invalide ou non décodable par sharp', err)
+      return NextResponse.json(
+        { error: 'Le fichier fourni n\'est pas une image valide ou est corrompu.' },
+        { status: 400 }
+      )
     }
 
     const safeFileName = `${crypto.randomUUID()}${fileExt}`

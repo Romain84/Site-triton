@@ -48,11 +48,12 @@ export async function PUT(
     }
 
     // Sécurité Superviseur :
-    // - Un superviseur ne peut pas attribuer le rôle admin
-    // - Un superviseur ne peut pas modifier un compte admin existant
+    // - Un superviseur ne peut pas attribuer un rôle exécutif/financier (admin, tresorier, president)
+    // - Un superviseur ne peut pas modifier un compte admin, tresorier ou president existant
+    const privilegedRoles = ['admin', 'tresorier', 'president']
     if (auth.session.role === 'superviseur') {
-      if (userToUpdate.role === 'admin' || role === 'admin') {
-        return apiError('Un superviseur ne peut pas modifier un administrateur ni attribuer ce rôle', 403)
+      if (privilegedRoles.includes(userToUpdate.role) || privilegedRoles.includes(role)) {
+        return apiError('Un superviseur ne peut pas modifier un administrateur/trésorier/président ni attribuer ces rôles', 403)
       }
     }
 
@@ -135,10 +136,10 @@ export async function DELETE(
     }
 
     // Sécurité Superviseur :
-    // - Un superviseur ne peut pas supprimer un administrateur
+    // - Un superviseur ne peut pas supprimer un administrateur, trésorier ou président
     if (auth.session.role === 'superviseur') {
-      if (userToDelete.role === 'admin') {
-        return apiError('Un superviseur ne peut pas supprimer un administrateur', 403)
+      if (['admin', 'tresorier', 'president'].includes(userToDelete.role)) {
+        return apiError('Un superviseur ne peut pas supprimer un administrateur, trésorier ou président', 403)
       }
     }
 

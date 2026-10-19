@@ -52,8 +52,12 @@ export async function middleware(request: NextRequest) {
   ].join('; ')
   response.headers.set('Content-Security-Policy', csp)
 
-  // Protection des documents sensibles téléversés (Reçus fiscaux Cerfa & Factures coachs)
-  if (pathname.startsWith('/uploads/recus/')) {
+  // Protection des documents sensibles téléversés (Reçus fiscaux Cerfa, Justificatifs comptables, Devis & Factures coachs)
+  if (
+    pathname.startsWith('/uploads/recus/') ||
+    pathname.startsWith('/uploads/justificatifs/') ||
+    pathname.startsWith('/uploads/devis/')
+  ) {
     const adminToken = request.cookies.get('admin_session')?.value
     if (!adminToken) {
       return NextResponse.json({ error: 'Accès interdit - Authentification requise' }, { status: 401 })
@@ -192,6 +196,8 @@ export const config = {
   matcher: [
     '/uploads/factures/:path*',
     '/uploads/recus/:path*',
+    '/uploads/justificatifs/:path*',
+    '/uploads/devis/:path*',
     '/api/admin/:path*',
     '/api/coach/:path*',
     '/api/auth/admin/:path*',

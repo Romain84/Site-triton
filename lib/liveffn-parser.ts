@@ -79,13 +79,14 @@ export async function fetchLiveFFNData(liveffnUrl: string): Promise<LiveFFNData 
     }
 
     const competitionId = parsed.searchParams.get('competition')
-    if (!competitionId) {
-      liveffnLogger.warn(`Aucun paramètre competition trouvé dans l'URL: ${liveffnUrl}`)
+    if (!competitionId || !/^\d+$/.test(competitionId)) {
+      liveffnLogger.warn(`Paramètre competition manquant ou invalide dans l'URL: ${liveffnUrl}`)
       return null
     }
 
     // 1. Déterminer l'identifiant de structure de Cavaillon
-    let structureId = parsed.searchParams.get('structure')
+    const rawStructureId = parsed.searchParams.get('structure')
+    let structureId = rawStructureId && /^\d+$/.test(rawStructureId) ? rawStructureId : null
 
     if (!structureId) {
       const listStructuresUrl = `https://www.liveffn.com/cgi-bin/resultats.php?competition=${competitionId}&langue=fra&go=detail&action=structure`

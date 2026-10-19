@@ -3,13 +3,14 @@ import { z } from 'zod'
 import { getAdminSession, getCoachSession, type AdminSession, type CoachSession } from '@/lib/auth/session'
 import { apiError } from '@/lib/api/response'
 import { logger } from '@/lib/logger'
+import { prisma } from '@/lib/prisma'
 
 type GuardResult<T> =
   | { ok: true; session: T }
   | { ok: false; response: NextResponse }
 
 /**
- * Exige une session admin valide.
+ * Exige une session admin valide et vérifie que le compte est toujours actif en base.
  */
 export async function requireAdmin(): Promise<GuardResult<AdminSession>> {
   const session = await getAdminSession()
@@ -19,18 +20,35 @@ export async function requireAdmin(): Promise<GuardResult<AdminSession>> {
       response: apiError('Non authentifié', 401, undefined, 'UNAUTHENTICATED'),
     }
   }
-  if (session.role === 'coach') {
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { id: true, email: true, role: true, actif: true },
+  })
+  if (!dbUser || !dbUser.actif) {
+    return {
+      ok: false,
+      response: apiError('Compte introuvable ou désactivé', 401, undefined, 'UNAUTHENTICATED'),
+    }
+  }
+  if (dbUser.role === 'coach') {
     return {
       ok: false,
       response: apiError('Accès interdit', 403, undefined, 'FORBIDDEN'),
     }
   }
-  return { ok: true, session }
+  return {
+    ok: true,
+    session: {
+      userId: dbUser.id,
+      email: dbUser.email,
+      role: dbUser.role,
+    },
+  }
 }
 
 
 /**
- * Exige une session coach valide.
+ * Exige une session coach valide et vérifie que le compte coach est toujours actif en base.
  */
 export async function requireCoach(): Promise<GuardResult<CoachSession>> {
   const session = await getCoachSession()
@@ -40,7 +58,25 @@ export async function requireCoach(): Promise<GuardResult<CoachSession>> {
       response: apiError('Non authentifié', 401, undefined, 'UNAUTHENTICATED'),
     }
   }
-  return { ok: true, session }
+  const dbCoach = await prisma.coach.findUnique({
+    where: { id: session.coachId },
+    select: { id: true, email: true, prenom: true, nom: true, actif: true },
+  })
+  if (!dbCoach || !dbCoach.actif) {
+    return {
+      ok: false,
+      response: apiError('Compte coach introuvable ou désactivé', 401, undefined, 'UNAUTHENTICATED'),
+    }
+  }
+  return {
+    ok: true,
+    session: {
+      coachId: dbCoach.id,
+      email: dbCoach.email || session.email,
+      prenom: dbCoach.prenom,
+      nom: dbCoach.nom,
+    },
+  }
 }
 
 /**

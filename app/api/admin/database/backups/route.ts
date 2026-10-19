@@ -40,6 +40,9 @@ export async function GET() {
   try {
     const auth = await requireAdmin()
     if (!auth.ok) return auth.response
+    if (auth.session.role !== 'admin') {
+      return apiError('Accès réservé aux administrateurs principaux', 403)
+    }
 
     const backupDir = getBackupDir()
     const files = fs.readdirSync(backupDir)
@@ -95,6 +98,9 @@ export async function POST() {
   try {
     const auth = await requireAdmin()
     if (!auth.ok) return auth.response
+    if (auth.session.role !== 'admin') {
+      return apiError('Accès réservé aux administrateurs principaux', 403)
+    }
 
     const backupDir = getBackupDir()
     const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16)

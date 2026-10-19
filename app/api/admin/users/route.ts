@@ -57,8 +57,8 @@ export async function POST(request: NextRequest) {
 
     const { prenom, nom, email, password, role, actif } = validation.data
 
-    if (auth.session.role === 'superviseur' && role === 'admin') {
-      return apiError('Un superviseur ne peut pas créer de profil administrateur', 403)
+    if (auth.session.role === 'superviseur' && ['admin', 'tresorier', 'president'].includes(role)) {
+      return apiError('Un superviseur ne peut pas créer de profil administrateur, trésorier ou président', 403)
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } })

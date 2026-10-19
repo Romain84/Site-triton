@@ -21,6 +21,8 @@ describe('superviseur security guard', () => {
       expect(isSuperviseurFinanceRoute('/api/admin/boutique/commandes')).toBe(true)
       expect(isSuperviseurFinanceRoute('/api/admin/boutique/produits')).toBe(true)
       expect(isSuperviseurFinanceRoute('/api/admin/groupes/cout-saison')).toBe(true)
+      expect(isSuperviseurFinanceRoute('/api/admin/database')).toBe(true)
+      expect(isSuperviseurFinanceRoute('/api/admin/database/backups')).toBe(true)
     })
 
     it('autorise les routes opérationnelles nécessaires au superviseur', () => {
@@ -35,9 +37,11 @@ describe('superviseur security guard', () => {
   })
 
   describe('isSuperviseurBlockedUpload', () => {
-    it('bloque les reçus fiscaux et factures téléversées', () => {
+    it('bloque les reçus fiscaux, factures, justificatifs et devis téléversés', () => {
       expect(isSuperviseurBlockedUpload('/uploads/recus/cerfa-2026-001.pdf')).toBe(true)
       expect(isSuperviseurBlockedUpload('/uploads/factures/facture-coach-01.pdf')).toBe(true)
+      expect(isSuperviseurBlockedUpload('/uploads/justificatifs/facture-fournisseur.pdf')).toBe(true)
+      expect(isSuperviseurBlockedUpload('/uploads/devis/devis-123.pdf')).toBe(true)
     })
 
     it('autorise les uploads publics ou opérationnels', () => {

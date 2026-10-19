@@ -37,7 +37,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       - /var/lib/triton_uploads:/app/public/uploads
       - /root/backups:/app/backups
@@ -64,7 +64,7 @@ services:
         max-file: "3"
     command: >
       sh -c "
-        npx prisma db push --accept-data-loss &&
+        npx prisma db push &&
         mkdir -p /app/public/uploads /app/backups &&
         chown -R nextjs:nodejs /app/public/uploads /app/backups &&
         exec su-exec nextjs npm run start

@@ -51,6 +51,9 @@ export async function GET() {
   try {
     const auth = await requireAdmin()
     if (!auth.ok) return auth.response
+    if (auth.session.role !== 'admin') {
+      return apiError('Accès réservé aux administrateurs principaux', 403)
+    }
 
     const backupData: Record<string, any[]> = {}
     for (const modelName of PRISMA_MODELS) {
@@ -81,6 +84,9 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAdmin()
     if (!auth.ok) return auth.response
+    if (auth.session.role !== 'admin') {
+      return apiError('Accès réservé aux administrateurs principaux', 403)
+    }
 
     const body = await request.json()
     

@@ -12,6 +12,7 @@ export const SUPERVISEUR_BLOCKED_API_PREFIXES = [
   '/api/admin/prestations',
   '/api/admin/dons',
   '/api/admin/boutique',
+  '/api/admin/database',
 ] as const
 
 export const SUPERVISEUR_BLOCKED_EXACT_ROUTES = [
@@ -29,10 +30,15 @@ export function isSuperviseurFinanceRoute(pathname: string): boolean {
 }
 
 /**
- * Détermine si un chemin d'upload de fichier sensible (reçus fiscaux, factures) est interdit au superviseur.
+ * Détermine si un chemin d'upload de fichier sensible (reçus fiscaux, factures, justificatifs, devis) est interdit au superviseur.
  */
 export function isSuperviseurBlockedUpload(pathname: string): boolean {
-  return pathname.startsWith('/uploads/recus/') || pathname.startsWith('/uploads/factures/')
+  return (
+    pathname.startsWith('/uploads/recus/') ||
+    pathname.startsWith('/uploads/factures/') ||
+    pathname.startsWith('/uploads/justificatifs/') ||
+    pathname.startsWith('/uploads/devis/')
+  )
 }
 
 /**
