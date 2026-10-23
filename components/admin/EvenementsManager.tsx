@@ -1820,7 +1820,8 @@ export default function EvenementsManager() {
             <form onSubmit={handleAutoImport} className="p-6 space-y-5">
               {/* Note informative */}
               <div className="bg-sky-50 border border-sky-100 p-4 rounded-xl text-xs text-sky-800 leading-relaxed font-medium space-y-1">
-                <p className="font-bold text-sky-900 text-sm">💡 Comment ça marche ?</p>
+                <p className="font-bold text-sky-900 text-sm">💡 Importation intelligente (1 seul fichier requis)</p>
+                <p className="text-[11px] text-sky-700 font-semibold mb-1">📌 Saison sur 2 fichiers (2026 + 2027) : Vous pouvez importer le fichier 2026 puis le fichier 2027 (ou inversement). Chaque import met à jour son année sans écraser l&apos;autre.</p>
                 <p>Uploadez le PDF du calendrier (départemental ou régional). Si vous disposez déjà des règlements sportifs (CD84 et/ou PACA), ajoutez-les pour lier les fiches d&apos;épreuves, ouvertures de portes et horaires. Sinon, importez uniquement le calendrier : le système créera automatiquement toutes les compétitions futures sur les plannings des groupes !</p>
               </div>
 
@@ -1903,7 +1904,7 @@ export default function EvenementsManager() {
                 </button>
                 <button
                   type="submit"
-                  disabled={autoImportLoading || !calendarFile || !reglementFile}
+                  disabled={autoImportLoading || !calendarFile}
                   className="px-5 py-2.5 text-xs font-black bg-primary text-white rounded-lg hover:bg-primary-dark shadow-sm hover:shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
                 >
                   {autoImportLoading ? (

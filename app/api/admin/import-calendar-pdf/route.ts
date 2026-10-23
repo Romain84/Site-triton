@@ -5,6 +5,7 @@ import { getAdminSession } from '@/lib/auth/session'
 import { isSameOriginRequest } from '@/lib/security/origin'
 import { apiError, apiSuccess } from '@/lib/api/response'
 import { parseCalendarEventsFromText, parseCompetitionSheets, parseGeneralRegulations } from '@/lib/calendar/import-parser'
+import { parseCalendarEventsWithAI } from '@/lib/calendar/ai-parser'
 import { logger } from '@/lib/logger'
 
 const importLogger = logger.withContext('ImportCalendarPDF')
@@ -260,7 +261,14 @@ export async function POST(request: NextRequest) {
   const allSheets = [...sheets, ...regionalSheets];
 
   // ── Parsing + cross-référencement ────────────────────────────────────────
-  const events = parseCalendarEventsFromText(calendarText, allSheets);
+  let events = await parseCalendarEventsWithAI(calendarText, allSheets);
+  let extractionSource = 'ai-parser'
+
+  if (!events || events.length === 0) {
+    events = parseCalendarEventsFromText(calendarText, allSheets);
+    extractionSource = 'regex-heuristics'
+  }
+
   for (const event of events) {
     if (event.sheet) {
       event.pdfReglement = (event.sheet as any).pdfPath || publicPath;
@@ -273,7 +281,7 @@ export async function POST(request: NextRequest) {
 
   return apiSuccess({
     events,
-    source: 'pdf-parse',
+    source: extractionSource,
     sheetsFound: sheets.length,
     enrichedEvents: enrichedCount,
     synthesis,

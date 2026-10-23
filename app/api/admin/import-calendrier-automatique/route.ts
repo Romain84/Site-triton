@@ -7,6 +7,7 @@ import { apiError, apiSuccess } from '@/lib/api/response';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { parseCalendarEventsFromText, parseCompetitionSheets } from '@/lib/calendar/import-parser';
+import { parseCalendarEventsWithAI } from '@/lib/calendar/ai-parser';
 
 const importLogger = logger.withContext('ImportCalendrierAutomatique');
 
@@ -239,9 +240,7 @@ export async function POST(request: NextRequest) {
       importLogger.info(`${regionalSheets.length} fiches de compétition extraites du règlement régional PACA.`);
     }
 
-    const allSheets = [...sheets, ...regionalSheets];
-
-    // 3. Extraire le texte du PDF calendrier et parser les événements de manière robuste
+    // 3. Extraire le texte du PDF calendrier
     let calendarText: string;
     try {
       calendarText = await extractCalendarTextFromPdf(calendarBuffer);
@@ -250,8 +249,31 @@ export async function POST(request: NextRequest) {
       importLogger.warn('Extraction positionnelle échouée, fallback sur extraction par défaut:', extractErr);
       calendarText = await parsePdfText(calendarBuffer, {});
     }
-    const events = parseCalendarEventsFromText(calendarText, allSheets);
-    importLogger.info(`Parsed ${events.length} events from calendar PDF using robust regex parser.`);
+
+    // 3.bis Si aucun règlement séparé n'a été fourni, extraire les fiches présentes dans ce fichier unique
+    if (sheets.length === 0) {
+      try {
+        const fullSingleText = await parsePdfText(calendarBuffer, { pagerender: makeReglementPagerender() });
+        const singleSheets = parseCompetitionSheets(fullSingleText);
+        if (singleSheets.length > 0) {
+          singleSheets.forEach(s => (s as any).pdfPath = `/uploads/reglements/${uniqueCalName}`);
+          sheets.push(...singleSheets);
+          importLogger.info(`${singleSheets.length} fiches de compétition extraites directement du fichier unique.`);
+        }
+      } catch (sheetErr) {
+        importLogger.warn('Recherche de fiches dans le fichier unique ignorée:', sheetErr);
+      }
+    }
+
+    const allSheets = [...sheets, ...regionalSheets];
+
+    let events = await parseCalendarEventsWithAI(calendarText, allSheets);
+    if (!events || events.length === 0) {
+      events = parseCalendarEventsFromText(calendarText, allSheets);
+      importLogger.info(`Parsed ${events.length} events from calendar PDF using regex parser fallback.`);
+    } else {
+      importLogger.info(`Parsed ${events.length} events from calendar PDF using AI structured parser.`);
+    }
 
     if (events.length === 0) {
       return apiError('Aucun événement détecté dans le calendrier PDF. Vérifiez que le fichier est lisible.', 422, undefined, 'NO_EVENTS_FOUND');
