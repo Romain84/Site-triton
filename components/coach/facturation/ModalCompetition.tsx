@@ -52,7 +52,7 @@ export default function ModalCompetition({
 
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([])
   const [loadingEvents, setLoadingEvents] = useState(false)
-  const [selectedEventChoice, setSelectedEventChoice] = useState<string>('manual')
+  const [selectedEventChoice, setSelectedEventChoice] = useState<string>('')
   const [adminPiscines, setAdminPiscines] = useState<AdminPiscineItem[]>(() => getDefaultPiscinesFrequentes())
   const [selectedPiscinePreset, setSelectedPiscinePreset] = useState<string>('')
   const [calculatingRoute, setCalculatingRoute] = useState(false)
@@ -66,7 +66,7 @@ export default function ModalCompetition({
     setCompType('departementale')
     setCompFormat('demi_journee')
     setCompDistanceKm('0')
-    setSelectedEventChoice('manual')
+    setSelectedEventChoice('')
     setSelectedPiscinePreset('')
 
     const today = new Date()
@@ -103,6 +103,10 @@ export default function ModalCompetition({
 
   const handleSelectEvent = (choice: string) => {
     setSelectedEventChoice(choice)
+    if (!choice) {
+      setCompNom('')
+      return
+    }
     if (choice === 'manual') return
 
     const ev = calendarEvents.find((e) => e.id === choice)
@@ -218,7 +222,7 @@ export default function ModalCompetition({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!compNom.trim() || !compDate) {
-      toast.error('Veuillez renseigner le nom et la date de la compétition.')
+      toast.error('Veuillez choisir une compétition dans la liste ou renseigner un titre en saisie manuelle.')
       return
     }
 
@@ -409,6 +413,7 @@ export default function ModalCompetition({
               onChange={(e) => handleSelectEvent(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:bg-white focus:border-cyan-600 focus:outline-none transition-all"
             >
+              <option value="">Choix de la compétition ou autre</option>
               <option value="manual">✏️ Saisie manuelle</option>
               {calendarEvents.length > 0 && (
                 <optgroup label="Événements du club (m-1, m, m+1)">
@@ -431,12 +436,13 @@ export default function ModalCompetition({
               <input
                 type="text"
                 required
+                autoFocus
                 placeholder="Ex: Trophée Départemental, Championnats Régionaux PACA..."
                 value={compNom}
                 onChange={(e) => setCompNom(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:border-cyan-600 focus:outline-none"
               />
-            ) : (
+            ) : selectedEventChoice ? (
               <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs">
                 <span className="font-semibold text-slate-900 truncate">
                   {compNom || 'Compétition sélectionnée'}
@@ -449,6 +455,10 @@ export default function ModalCompetition({
                   Modifier le titre
                 </button>
               </div>
+            ) : (
+              <p className="text-[11px] text-slate-500 italic px-1">
+                Choisissez une compétition officielle dans la liste ci-dessus ou optez pour la saisie manuelle.
+              </p>
             )}
           </div>
 
@@ -456,7 +466,7 @@ export default function ModalCompetition({
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <label className="text-xs font-black text-slate-800">Date *</label>
-              {selectedEventChoice !== 'manual' && (
+              {selectedEventChoice && selectedEventChoice !== 'manual' && (
                 <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                   <span>Synchronisation automatique</span>
