@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
         id: true,
         title: true,
         date: true,
+        dateFin: true,
         lieu: true,
         type: true,
       },

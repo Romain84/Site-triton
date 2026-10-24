@@ -251,40 +251,59 @@ function FacturationContent() {
     }
   }
 
-  const handleAddCompetition = async (payload: {
-    typeCompetition: 'departementale' | 'regionale'
-    format: 'demi_journee' | 'journee'
-    nomCompetition: string
-    lieu: string
-    date: string
-    distanceKm: number
-  }) => {
+  const handleAddCompetition = async (
+    payload:
+      | {
+          typeCompetition: 'departementale' | 'regionale'
+          format: 'demi_journee' | 'journee'
+          nomCompetition: string
+          lieu: string
+          date: string
+          distanceKm: number
+        }
+      | Array<{
+          typeCompetition: 'departementale' | 'regionale'
+          format: 'demi_journee' | 'journee'
+          nomCompetition: string
+          lieu: string
+          date: string
+          distanceKm: number
+        }>
+  ) => {
     if (data?.isBlocked) {
       toast.error('Cette facture est transmise au club et ne peut plus être modifiée.')
       return
     }
 
+    const items = Array.isArray(payload) ? payload : [payload]
     setIsSubmittingCompetition(true)
     try {
-      const res = await fetch('/api/coach/facturation/competition', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mois: selectedMois,
-          annee: selectedAnnee,
-          ...payload,
-        }),
-      })
+      for (const item of items) {
+        const res = await fetch('/api/coach/facturation/competition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mois: selectedMois,
+            annee: selectedAnnee,
+            ...item,
+          }),
+        })
 
-      const resData = await res.json()
-      if (res.ok) {
-        toast.success('Compétition ajoutée à votre facture')
-        setShowModalCompetition(false)
-        fetchFacturation()
-        setRefreshHistKey((k) => k + 1)
-      } else {
-        toast.error(resData.error || 'Erreur lors de l\'enregistrement')
+        if (!res.ok) {
+          const resData = await res.json()
+          toast.error(resData.error || 'Erreur lors de l\'enregistrement')
+          return
+        }
       }
+
+      toast.success(
+        items.length > 1
+          ? `${items.length} journées de compétition ajoutées à votre facture`
+          : 'Compétition ajoutée à votre facture'
+      )
+      setShowModalCompetition(false)
+      fetchFacturation()
+      setRefreshHistKey((k) => k + 1)
     } catch {
       toast.error('Erreur lors de l\'enregistrement de la compétition')
     } finally {
@@ -433,6 +452,7 @@ function FacturationContent() {
           onClose={() => setShowModalCompetition(false)}
           selectedMois={selectedMois}
           selectedAnnee={selectedAnnee}
+          existingCompetitions={data?.lignesManuelles?.filter((l) => l.type === 'competition') || []}
           onSubmit={handleAddCompetition}
           isSubmitting={isSubmittingCompetition}
         />

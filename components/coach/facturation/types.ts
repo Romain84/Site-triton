@@ -81,6 +81,7 @@ export interface CalendarEventItem {
   id: string
   title: string
   date: string
+  dateFin?: string | null
   lieu?: string | null
   type?: string | null
 }

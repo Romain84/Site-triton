@@ -10,6 +10,7 @@ import {
   Navigation,
   Loader2,
   X,
+  CalendarDays,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import {
@@ -17,22 +18,95 @@ import {
   isVaucluseLieu,
   getDefaultPiscinesFrequentes,
 } from '@/lib/competition-distance'
-import { CalendarEventItem, AdminPiscineItem } from './types'
+import { CalendarEventItem, AdminPiscineItem, LigneFacture } from './types'
+
+export interface ModalCompetitionPayload {
+  typeCompetition: 'departementale' | 'regionale'
+  format: 'demi_journee' | 'journee'
+  nomCompetition: string
+  lieu: string
+  date: string
+  distanceKm: number
+}
 
 interface ModalCompetitionProps {
   isOpen: boolean
   onClose: () => void
   selectedMois: number
   selectedAnnee: number
-  onSubmit: (payload: {
-    typeCompetition: 'departementale' | 'regionale'
-    format: 'demi_journee' | 'journee'
-    nomCompetition: string
-    lieu: string
-    date: string
-    distanceKm: number
-  }) => Promise<boolean | void>
+  existingCompetitions?: LigneFacture[]
+  onSubmit: (payload: ModalCompetitionPayload | ModalCompetitionPayload[]) => Promise<boolean | void>
   isSubmitting: boolean
+}
+
+interface MultiDayOption {
+  date: string
+  label: string
+}
+
+function getDaysBetween(dateStartStr: string, dateEndStr?: string | null): MultiDayOption[] {
+  if (!dateEndStr) return []
+  const start = new Date(dateStartStr)
+  const end = new Date(dateEndStr)
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
+    return []
+  }
+
+  const days: MultiDayOption[] = []
+  const current = new Date(start)
+  while (current <= end && days.length < 7) {
+    const iso = current.toISOString().substring(0, 10)
+    const formatted = current.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    })
+    const label = formatted.charAt(0).toUpperCase() + formatted.slice(1)
+    days.push({ date: iso, label })
+    current.setDate(current.getDate() + 1)
+  }
+  return days
+}
+
+function checkEventAlreadyDeclared(
+  ev: CalendarEventItem,
+  existingList: LigneFacture[] = []
+): boolean {
+  if (!existingList || existingList.length === 0) return false
+
+  const evDateStr =
+    typeof ev.date === 'string'
+      ? ev.date.substring(0, 10)
+      : new Date(ev.date).toISOString().substring(0, 10)
+  const evDateFinStr = ev.dateFin
+    ? typeof ev.dateFin === 'string'
+      ? ev.dateFin.substring(0, 10)
+      : new Date(ev.dateFin).toISOString().substring(0, 10)
+    : null
+  const evTitleLower = (ev.title || '').toLowerCase().trim()
+
+  return existingList.some((line) => {
+    const lineDesc = (line.description || '').toLowerCase()
+    const lineDate = line.date
+      ? typeof line.date === 'string'
+        ? line.date.substring(0, 10)
+        : new Date(line.date).toISOString().substring(0, 10)
+      : ''
+
+    const titleMatch =
+      evTitleLower.length > 5 &&
+      (lineDesc.includes(evTitleLower) || evTitleLower.includes(lineDesc))
+    const dateMatch =
+      lineDate &&
+      (lineDate === evDateStr ||
+        (evDateFinStr && lineDate >= evDateStr && lineDate <= evDateFinStr))
+
+    return (
+      titleMatch ||
+      (dateMatch &&
+        evTitleLower.split(' ').some((w) => w.length > 4 && lineDesc.includes(w)))
+    )
+  })
 }
 
 export default function ModalCompetition({
@@ -40,6 +114,7 @@ export default function ModalCompetition({
   onClose,
   selectedMois,
   selectedAnnee,
+  existingCompetitions = [],
   onSubmit,
   isSubmitting,
 }: ModalCompetitionProps) {
@@ -53,9 +128,19 @@ export default function ModalCompetition({
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([])
   const [loadingEvents, setLoadingEvents] = useState(false)
   const [selectedEventChoice, setSelectedEventChoice] = useState<string>('')
-  const [adminPiscines, setAdminPiscines] = useState<AdminPiscineItem[]>(() => getDefaultPiscinesFrequentes())
+  const [adminPiscines, setAdminPiscines] = useState<AdminPiscineItem[]>(() =>
+    getDefaultPiscinesFrequentes()
+  )
   const [selectedPiscinePreset, setSelectedPiscinePreset] = useState<string>('')
   const [calculatingRoute, setCalculatingRoute] = useState(false)
+
+  // Gestion multi-jours (Week-end)
+  const [isMultiDay, setIsMultiDay] = useState(false)
+  const [availableDays, setAvailableDays] = useState<MultiDayOption[]>([])
+  const [multiDayMode, setMultiDayMode] = useState<'single' | 'both'>('single')
+  const [day1Format, setDay1Format] = useState<'demi_journee' | 'journee'>('demi_journee')
+  const [day2Format, setDay2Format] = useState<'demi_journee' | 'journee'>('journee')
+  const [regionalTransportTrips, setRegionalTransportTrips] = useState<number>(1)
 
   // Initialisation et chargement des événements dès l'ouverture
   useEffect(() => {
@@ -68,6 +153,12 @@ export default function ModalCompetition({
     setCompDistanceKm('0')
     setSelectedEventChoice('')
     setSelectedPiscinePreset('')
+    setIsMultiDay(false)
+    setAvailableDays([])
+    setMultiDayMode('single')
+    setDay1Format('demi_journee')
+    setDay2Format('journee')
+    setRegionalTransportTrips(1)
 
     const today = new Date()
     const currentMonthNum = today.getMonth() + 1
@@ -101,28 +192,54 @@ export default function ModalCompetition({
 
   if (!isOpen) return null
 
+  const selectedEvent = calendarEvents.find((e) => e.id === selectedEventChoice)
+  const isSelectedEventDeclared = Boolean(
+    selectedEventChoice &&
+      selectedEventChoice !== 'manual' &&
+      selectedEvent &&
+      checkEventAlreadyDeclared(selectedEvent, existingCompetitions)
+  )
+
   const handleSelectEvent = (choice: string) => {
     setSelectedEventChoice(choice)
-    if (!choice) {
+    if (!choice || choice === 'manual') {
+      setIsMultiDay(false)
+      setAvailableDays([])
+      setMultiDayMode('single')
+      if (choice === 'manual') return
       setCompNom('')
       return
     }
-    if (choice === 'manual') return
 
     const ev = calendarEvents.find((e) => e.id === choice)
     if (!ev) return
 
     setCompNom(ev.title)
 
-    if (ev.date) {
-      const dateStr =
-        typeof ev.date === 'string'
-          ? ev.date.substring(0, 10)
-          : new Date(ev.date).toISOString().substring(0, 10)
-      setCompDate(dateStr)
+    // Détection multi-jours
+    const days = getDaysBetween(ev.date, ev.dateFin)
+    if (days.length >= 2) {
+      setIsMultiDay(true)
+      setAvailableDays(days)
+      setMultiDayMode('single')
+      setCompDate(days[0].date)
+      setDay1Format('demi_journee')
+      setDay2Format('journee')
+    } else {
+      setIsMultiDay(false)
+      setAvailableDays([])
+      setMultiDayMode('single')
+      if (ev.date) {
+        const dateStr =
+          typeof ev.date === 'string'
+            ? ev.date.substring(0, 10)
+            : new Date(ev.date).toISOString().substring(0, 10)
+        setCompDate(dateStr)
+      }
     }
 
-    const poolsToSearch = adminPiscines.length > 0 ? adminPiscines : getDefaultPiscinesFrequentes()
+    const poolsToSearch =
+      adminPiscines.length > 0 ? adminPiscines : getDefaultPiscinesFrequentes()
     let isReg = false
     if (ev.lieu) {
       isReg = !isVaucluseLieu(ev.lieu)
@@ -163,7 +280,8 @@ export default function ModalCompetition({
 
   const handleSelectLevel = (level: 'departementale' | 'regionale') => {
     setCompType(level)
-    const poolsToSearch = adminPiscines.length > 0 ? adminPiscines : getDefaultPiscinesFrequentes()
+    const poolsToSearch =
+      adminPiscines.length > 0 ? adminPiscines : getDefaultPiscinesFrequentes()
     if (level === 'departementale') {
       setCompDistanceKm('0')
       setCompLieu('')
@@ -219,14 +337,23 @@ export default function ModalCompetition({
     }
   }
 
+  const distanceNum = compType === 'regionale' ? parseFloat(compDistanceKm) || 0 : 0
+  const transportUnitaire = distanceNum * 0.3
+
+  const totalCalculé =
+    isMultiDay && multiDayMode === 'both'
+      ? (day1Format === 'journee' ? 130 : 50) +
+        (day2Format === 'journee' ? 130 : 50) +
+        (compType === 'regionale' ? transportUnitaire * regionalTransportTrips : 0)
+      : (compFormat === 'journee' ? 130 : 50) +
+        (compType === 'regionale' ? transportUnitaire : 0)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!compNom.trim() || !compDate) {
+    if (!compNom.trim()) {
       toast.error('Veuillez choisir une compétition dans la liste ou renseigner un titre en saisie manuelle.')
       return
     }
-
-    const distanceNum = compType === 'regionale' ? parseFloat(compDistanceKm) || 0 : 0
 
     if (compType === 'regionale') {
       if (!compLieu.trim()) {
@@ -242,6 +369,36 @@ export default function ModalCompetition({
     }
 
     const lieuFinal = compType === 'regionale' ? compLieu.trim() : 'Vaucluse (84)'
+
+    // Cas multi-jours complet (2 jours)
+    if (isMultiDay && multiDayMode === 'both' && availableDays.length >= 2) {
+      const payload1: ModalCompetitionPayload = {
+        typeCompetition: compType,
+        format: day1Format,
+        nomCompetition: `${compNom.trim()} (${availableDays[0].label.split(' ')[0]})`,
+        lieu: lieuFinal,
+        date: availableDays[0].date,
+        distanceKm: distanceNum,
+      }
+
+      const payload2: ModalCompetitionPayload = {
+        typeCompetition: compType,
+        format: day2Format,
+        nomCompetition: `${compNom.trim()} (${availableDays[1].label.split(' ')[0]})`,
+        lieu: lieuFinal,
+        date: availableDays[1].date,
+        distanceKm: regionalTransportTrips === 2 ? distanceNum : 0,
+      }
+
+      await onSubmit([payload1, payload2])
+      return
+    }
+
+    if (!compDate) {
+      toast.error('Veuillez renseigner la date de la compétition.')
+      return
+    }
+
     await onSubmit({
       typeCompetition: compType,
       format: compFormat,
@@ -251,10 +408,6 @@ export default function ModalCompetition({
       distanceKm: distanceNum,
     })
   }
-
-  const totalCalculé =
-    (compFormat === 'journee' ? 130 : 50) +
-    (compType === 'regionale' ? (parseFloat(compDistanceKm) || 0) * 0.3 : 0)
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
@@ -349,53 +502,7 @@ export default function ModalCompetition({
             </div>
           </div>
 
-          {/* 2. FORMAT DE LA PRESTATION */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-black text-slate-800">
-              Format de la prestation *
-            </label>
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => setCompFormat('demi_journee')}
-                className={`p-3 rounded-2xl border text-center transition-all ${
-                  compFormat === 'demi_journee'
-                    ? 'border-cyan-600 bg-cyan-50/50 ring-1 ring-cyan-600 shadow-xs'
-                    : 'border-slate-200 bg-white hover:bg-slate-50'
-                }`}
-              >
-                <span className="text-xs font-black block text-slate-900">Demi-journée</span>
-                <span
-                  className={`text-sm font-extrabold ${
-                    compFormat === 'demi_journee' ? 'text-cyan-700' : 'text-slate-600'
-                  }`}
-                >
-                  50,00 €
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCompFormat('journee')}
-                className={`p-3 rounded-2xl border text-center transition-all ${
-                  compFormat === 'journee'
-                    ? 'border-cyan-600 bg-cyan-50/50 ring-1 ring-cyan-600 shadow-xs'
-                    : 'border-slate-200 bg-white hover:bg-slate-50'
-                }`}
-              >
-                <span className="text-xs font-black block text-slate-900">Journée complète</span>
-                <span
-                  className={`text-sm font-extrabold ${
-                    compFormat === 'journee' ? 'text-cyan-700' : 'text-slate-600'
-                  }`}
-                >
-                  130,00 €
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* 3. NOM DE LA COMPÉTITION & SÉLECTION CALENDRIER */}
+          {/* 2. NOM DE LA COMPÉTITION & SÉLECTION CALENDRIER */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-black text-slate-800">
@@ -418,13 +525,24 @@ export default function ModalCompetition({
               {calendarEvents.length > 0 && (
                 <optgroup label="Événements du club (m-1, m, m+1)">
                   {calendarEvents.map((ev) => {
+                    const isDeclared = checkEventAlreadyDeclared(ev, existingCompetitions)
                     const evDateStr = new Date(ev.date).toLocaleDateString('fr-FR', {
                       day: '2-digit',
                       month: '2-digit',
                     })
+                    const evDateFinStr = ev.dateFin
+                      ? ' - ' +
+                        new Date(ev.dateFin).toLocaleDateString('fr-FR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                        })
+                      : ''
+
                     return (
                       <option key={ev.id} value={ev.id}>
-                        📅 {evDateStr} - {ev.title} {ev.lieu ? `(${ev.lieu})` : ''}
+                        📅 {evDateStr}
+                        {evDateFinStr} - {ev.title} {ev.lieu ? `(${ev.lieu})` : ''}{' '}
+                        {isDeclared ? '⚠️ (Déjà sur votre facture)' : ''}
                       </option>
                     )
                   })}
@@ -450,7 +568,7 @@ export default function ModalCompetition({
                 <button
                   type="button"
                   onClick={() => setSelectedEventChoice('manual')}
-                  className="text-[11px] font-bold text-cyan-600 hover:underline shrink-0 ml-2"
+                  className="text-[11px] font-bold text-cyan-600 hover:underline shrink-0 ml-2 cursor-pointer"
                 >
                   Modifier le titre
                 </button>
@@ -460,27 +578,228 @@ export default function ModalCompetition({
                 Choisissez une compétition officielle dans la liste ci-dessus ou optez pour la saisie manuelle.
               </p>
             )}
+
+            {/* Avertissement préventif si doublon détecté */}
+            {isSelectedEventDeclared && (
+              <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs animate-in fade-in duration-200">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span className="font-bold block">Compétition déjà présente sur votre facture</span>
+                  <p className="text-[11px] text-amber-800">
+                    Une prestation pour cette compétition figure déjà sur votre facture de ce mois. Vous pouvez toutefois ajouter une autre journée ou session ci-dessous.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* 4. DATE DE LA COMPÉTITION */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-black text-slate-800">Date *</label>
-              {selectedEventChoice && selectedEventChoice !== 'manual' && (
-                <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  <span>Synchronisation automatique</span>
+          {/* 3. OPTION MULTI-JOURS (SI L'ÉVÉNEMENT DURE 2 JOURS OU PLUS) */}
+          {isMultiDay && availableDays.length >= 2 && (
+            <div className="p-3.5 rounded-2xl bg-cyan-50/60 border border-cyan-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-black text-cyan-950">
+                  <CalendarDays className="w-4 h-4 text-cyan-600" />
+                  <span>Compétition sur plusieurs jours ({availableDays.length} jours)</span>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800">
+                  Week-end
                 </span>
-              )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMultiDayMode('single')}
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                    multiDayMode === 'single'
+                      ? 'bg-white border-cyan-600 text-cyan-950 shadow-xs ring-1 ring-cyan-600'
+                      : 'bg-white/60 border-slate-200 text-slate-600 hover:bg-white'
+                  }`}
+                >
+                  <span className="text-xs font-bold block">Journée unique</span>
+                  <span className="block text-[10px] text-slate-500">1 seul jour de présence</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMultiDayMode('both')}
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                    multiDayMode === 'both'
+                      ? 'bg-white border-cyan-600 text-cyan-950 shadow-xs ring-1 ring-cyan-600'
+                      : 'bg-white/60 border-slate-200 text-slate-600 hover:bg-white'
+                  }`}
+                >
+                  <span className="text-xs font-bold block">Tout le week-end</span>
+                  <span className="block text-[10px] text-slate-500">Les 2 jours complets / demi-j.</span>
+                </button>
+              </div>
             </div>
-            <input
-              type="date"
-              required
-              value={compDate}
-              onChange={(e) => setCompDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:bg-white focus:border-cyan-600 focus:outline-none"
-            />
-          </div>
+          )}
+
+          {/* 4. CONFIGURATION DES FORMATS & JOURNÉES */}
+          {isMultiDay && multiDayMode === 'both' && availableDays.length >= 2 ? (
+            /* CONFIGURATION 2 JOURS EN PARALLÈLE */
+            <div className="space-y-3">
+              {/* Jour 1 */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-900">
+                    Jour 1 · {availableDays[0].label}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    {availableDays[0].date}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDay1Format('demi_journee')}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      day1Format === 'demi_journee'
+                        ? 'border-cyan-600 bg-white ring-1 ring-cyan-600 text-cyan-950 shadow-2xs'
+                        : 'border-slate-200 bg-white/70 text-slate-600 hover:bg-white'
+                    }`}
+                  >
+                    <span className="text-xs font-bold block">Demi-journée</span>
+                    <span className="text-xs font-extrabold text-slate-900">50,00 €</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDay1Format('journee')}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      day1Format === 'journee'
+                        ? 'border-cyan-600 bg-white ring-1 ring-cyan-600 text-cyan-950 shadow-2xs'
+                        : 'border-slate-200 bg-white/70 text-slate-600 hover:bg-white'
+                    }`}
+                  >
+                    <span className="text-xs font-bold block">Journée complète</span>
+                    <span className="text-xs font-extrabold text-slate-900">130,00 €</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Jour 2 */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-900">
+                    Jour 2 · {availableDays[1].label}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    {availableDays[1].date}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDay2Format('demi_journee')}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      day2Format === 'demi_journee'
+                        ? 'border-cyan-600 bg-white ring-1 ring-cyan-600 text-cyan-950 shadow-2xs'
+                        : 'border-slate-200 bg-white/70 text-slate-600 hover:bg-white'
+                    }`}
+                  >
+                    <span className="text-xs font-bold block">Demi-journée</span>
+                    <span className="text-xs font-extrabold text-slate-900">50,00 €</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDay2Format('journee')}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      day2Format === 'journee'
+                        ? 'border-cyan-600 bg-white ring-1 ring-cyan-600 text-cyan-950 shadow-2xs'
+                        : 'border-slate-200 bg-white/70 text-slate-600 hover:bg-white'
+                    }`}
+                  >
+                    <span className="text-xs font-bold block">Journée complète</span>
+                    <span className="text-xs font-extrabold text-slate-900">130,00 €</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* CONFIGURATION FORMAT UNIQUE & DATE */
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-800">
+                  Format de la prestation *
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setCompFormat('demi_journee')}
+                    className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                      compFormat === 'demi_journee'
+                        ? 'border-cyan-600 bg-cyan-50/50 ring-1 ring-cyan-600 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-xs font-black block text-slate-900">Demi-journée</span>
+                    <span
+                      className={`text-sm font-extrabold ${
+                        compFormat === 'demi_journee' ? 'text-cyan-700' : 'text-slate-600'
+                      }`}
+                    >
+                      50,00 €
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCompFormat('journee')}
+                    className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                      compFormat === 'journee'
+                        ? 'border-cyan-600 bg-cyan-50/50 ring-1 ring-cyan-600 shadow-xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-xs font-black block text-slate-900">Journée complète</span>
+                    <span
+                      className={`text-sm font-extrabold ${
+                        compFormat === 'journee' ? 'text-cyan-700' : 'text-slate-600'
+                      }`}
+                    >
+                      130,00 €
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* DATE DE LA COMPÉTITION */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-800">Date *</label>
+                  {selectedEventChoice && selectedEventChoice !== 'manual' && (
+                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      <span>Synchronisation automatique</span>
+                    </span>
+                  )}
+                </div>
+
+                {isMultiDay && availableDays.length >= 2 ? (
+                  <select
+                    value={compDate}
+                    onChange={(e) => setCompDate(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:bg-white focus:border-cyan-600 focus:outline-none"
+                  >
+                    {availableDays.map((d) => (
+                      <option key={d.date} value={d.date}>
+                        📅 {d.label} ({new Date(d.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="date"
+                    required
+                    value={compDate}
+                    onChange={(e) => setCompDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-900 focus:bg-white focus:border-cyan-600 focus:outline-none"
+                  />
+                )}
+              </div>
+            </div>
+          )}
 
           {/* 5. LIEU & DISTANCE (RÉGIONALE UNIQUEMENT) */}
           {compType === 'regionale' && (
@@ -587,7 +906,7 @@ export default function ModalCompetition({
 
                 <div className="p-2.5 rounded-xl bg-white border border-emerald-200/80 shadow-2xs">
                   <span className="text-[10px] text-slate-500 font-bold block">
-                    Forfait transport calculé
+                    Forfait transport (base 1 trajet aller)
                   </span>
                   <p className="text-xs font-mono font-black text-emerald-700">
                     {parseFloat(compDistanceKm) || 0} km × 0,30 € ={' '}
@@ -595,6 +914,45 @@ export default function ModalCompetition({
                   </p>
                 </div>
               </div>
+
+              {/* Option transport spécifique pour week-end 2 jours */}
+              {isMultiDay && multiDayMode === 'both' && (
+                <div className="p-3 rounded-xl bg-white border border-cyan-100 space-y-2 mt-2">
+                  <span className="text-[11px] font-bold text-slate-800 block">
+                    Option de trajet pour le week-end :
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRegionalTransportTrips(1)}
+                      className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                        regionalTransportTrips === 1
+                          ? 'border-cyan-600 bg-cyan-50/50 text-cyan-950 font-bold ring-1 ring-cyan-600'
+                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-xs block">1 aller-retour week-end</span>
+                      <span className="text-[10px] text-slate-500 font-normal">
+                        Hébergement sur place ou 1 seul trajet ({((parseFloat(compDistanceKm) || 0) * 0.3).toFixed(2)} €)
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRegionalTransportTrips(2)}
+                      className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                        regionalTransportTrips === 2
+                          ? 'border-cyan-600 bg-cyan-50/50 text-cyan-950 font-bold ring-1 ring-cyan-600'
+                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-xs block">2 allers-retours</span>
+                      <span className="text-[10px] text-slate-500 font-normal">
+                        Aller-retour chaque jour ({(((parseFloat(compDistanceKm) || 0) * 0.3) * 2).toFixed(2)} €)
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {(!compDistanceKm || parseFloat(compDistanceKm) <= 0) && (
                 <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-center gap-2">
@@ -627,22 +985,46 @@ export default function ModalCompetition({
 
           {/* 6. RÉCAPITULATIF LIVE */}
           <div className="p-4 rounded-2xl bg-slate-950 text-white space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-300">
-              <span>
-                Forfait compétition ({compFormat === 'journee' ? 'Journée complète' : 'Demi-journée'})
-              </span>
-              <span className="font-bold text-white font-mono">
-                {compFormat === 'journee' ? '130,00 €' : '50,00 €'}
-              </span>
-            </div>
+            {isMultiDay && multiDayMode === 'both' ? (
+              <>
+                <div className="flex items-center justify-between text-xs text-slate-300">
+                  <span>
+                    Jour 1 ({availableDays[0]?.label.split(' ')[0]}) :{' '}
+                    {day1Format === 'journee' ? 'Journée complète' : 'Demi-journée'}
+                  </span>
+                  <span className="font-bold text-white font-mono">
+                    {day1Format === 'journee' ? '130,00 €' : '50,00 €'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-300">
+                  <span>
+                    Jour 2 ({availableDays[1]?.label.split(' ')[0]}) :{' '}
+                    {day2Format === 'journee' ? 'Journée complète' : 'Demi-journée'}
+                  </span>
+                  <span className="font-bold text-white font-mono">
+                    {day2Format === 'journee' ? '130,00 €' : '50,00 €'}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between text-xs text-slate-300">
+                <span>
+                  Forfait compétition ({compFormat === 'journee' ? 'Journée complète' : 'Demi-journée'})
+                </span>
+                <span className="font-bold text-white font-mono">
+                  {compFormat === 'journee' ? '130,00 €' : '50,00 €'}
+                </span>
+              </div>
+            )}
 
             {compType === 'regionale' && (
               <div className="flex items-center justify-between text-xs text-slate-300">
                 <span>
-                  Forfait transport aller ({parseFloat(compDistanceKm) || 0} km × 0,30 €)
+                  Forfait transport ({parseFloat(compDistanceKm) || 0} km × 0,30 €
+                  {isMultiDay && multiDayMode === 'both' && regionalTransportTrips === 2 ? ' × 2 allers-retours' : ''})
                 </span>
                 <span className="font-bold text-emerald-400 font-mono">
-                  + {((parseFloat(compDistanceKm) || 0) * 0.3).toFixed(2)} €
+                  + {((parseFloat(compDistanceKm) || 0) * 0.3 * (isMultiDay && multiDayMode === 'both' ? regionalTransportTrips : 1)).toFixed(2)} €
                 </span>
               </div>
             )}
@@ -671,7 +1053,8 @@ export default function ModalCompetition({
               disabled={
                 isSubmitting ||
                 !compNom.trim() ||
-                !compDate ||
+                (!isMultiDay && !compDate) ||
+                (isMultiDay && multiDayMode === 'single' && !compDate) ||
                 (compType === 'regionale' &&
                   (!compDistanceKm || parseFloat(compDistanceKm) <= 0))
               }
@@ -682,7 +1065,11 @@ export default function ModalCompetition({
               ) : (
                 <Trophy className="w-3.5 h-3.5" />
               )}
-              <span>Ajouter à ma facture</span>
+              <span>
+                {isMultiDay && multiDayMode === 'both'
+                  ? `Ajouter les 2 journées (${totalCalculé.toFixed(2)} €)`
+                  : 'Ajouter à ma facture'}
+              </span>
             </button>
           </div>
         </form>
